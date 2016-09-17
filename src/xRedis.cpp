@@ -16,6 +16,7 @@ count(0)
 {
 	repliThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
 	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
+
 	repliThreads->detach();
 	sentiThreads->detach();
 	rObj * obj = createStringObject("set",3);
@@ -137,7 +138,7 @@ void xRedis::handleSetExpire(void * data)
 
 void xRedis::handleSalveRepliTimeOut(void * data)
 {
-	int32_t *sockfd = (int32_t *)data;
+	int32_t *sockfd = reinterpret_cast<int32_t *>(data);
 	{
 		MutexLockGuard mu(slaveMutex);
 		auto it = tcpconnMaps.find(*sockfd);
@@ -1086,7 +1087,8 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 			return false;
 		}
 
-		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,reinterpret_cast<void *>(session->conn->getSockfd()),
+		int32_t sockfd = session->conn->getSockfd();
+		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,(void *)&sockfd,
 				false,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
 		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
@@ -1939,7 +1941,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 				loop.cancelAfter(iter->second);
 			}
 			
-			xTimer * timer = loop.runAfter(milliseconds / 1000,reinterpret_cast<void *>(obj[0]),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
+			xTimer * timer = loop.runAfter(milliseconds / 1000,(void *)(obj[0]),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
 			expireTimers.insert(std::make_pair(obj[0],timer));
 		}
 	}
