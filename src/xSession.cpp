@@ -114,13 +114,14 @@ bool xSession::checkCommond(rObj*  robjs)
 
 int xSession::processCommand()
 {
-	/*std::string str = "HSET";
+	std::string str = "HSET";
 	std::string str1 = robjs[0]->ptr;
 	if(str != str1)
 	{
 		LOG_INFO<<robjs[0]->ptr;
+		LOG_INFO<<robjs.size();
 	}
-	*/
+
 
 
 	assert(robjs.size());
@@ -286,8 +287,9 @@ int xSession::processInlineBuffer(xBuffer *recvBuf)
 	{
 		rObj * obj = (rObj*)createStringObject(argv[j],sdslen(argv[j]));
 		robjs.push_back(obj);
+		sdsfree(argv[j]);
 	}
-	
+
 	zfree(argv);
 	return REDIS_OK;
    

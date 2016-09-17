@@ -166,7 +166,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		LOG_INFO<<"Client connect success";
+		//LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -218,7 +218,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 				}
 			}
 		}
-		LOG_INFO<<"Client disconnect";
+		//LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -1520,6 +1520,11 @@ bool xRedis::pingCommond(const std::deque <rObj*> & obj,xSession * session)
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown ping error");
 		return false;
+	}
+
+	for(auto it = obj.begin(); it != obj.end(); it ++)
+	{
+		zfree(*it);
 	}
 
 	addReply(session->sendBuf,shared.pong);
