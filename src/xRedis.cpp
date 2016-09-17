@@ -140,7 +140,6 @@ void xRedis::handleSalveRepliTimeOut(void * data)
 	int32_t *sockfd = (int32_t *)data;
 	{
 		MutexLockGuard mu(slaveMutex);
-		tcpconnMaps.erase(*sockfd);
 		auto it = tcpconnMaps.find(*sockfd);
 		if(it != tcpconnMaps.end())
 		{
@@ -180,6 +179,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			auto it =  tcpconnMaps.find(conn->getSockfd());
 			if(it != tcpconnMaps.end())
 			{
+				salveCount--;
 				tcpconnMaps.erase(conn->getSockfd());
 				if(tcpconnMaps.size() == 0)
 				{
@@ -1095,20 +1095,28 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 
 	if(!save(session))
 	{
+		repli.isreconnect =false;
 		session->conn->forceClose();
 		return false;
 	}
 
+
+	bool mark  = true;
 	char rdb_filename[] = "dump.rdb";
 	{
-		MutexLockGuard lk(slaveMutex);
-		if(!rdbReplication(rdb_filename,session))
 		{
+			MutexLockGuard lk(mutex);
+			mark = rdbReplication(rdb_filename,session);
+		}
+
+		if(!mark)
+		{
+			MutexLockGuard lk(slaveMutex);
 			if(timer)
 			{
 				session->conn->getLoop()->cancelAfter(timer);
 			}
-			
+
 			repliTimers.erase(session->conn->getSockfd());
 			tcpconnMaps.erase(session->conn->getSockfd());
 			if(tcpconnMaps.size() == 0)
@@ -1116,6 +1124,7 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 				repliEnabled = false;
 				slaveCached.retrieveAll();	
 			}
+			repli.isreconnect =false;
 			session->conn->forceClose();
 			LOG_INFO<<"master sync send failure";
 			return false;

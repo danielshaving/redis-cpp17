@@ -70,11 +70,15 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		int32_t  len = *(int32_t*)(recvBuf->peek());
 		if(len >= 4096  * 4096 * 100 || len <=0)
 		{
+			isreconnect = false;
 			LOG_WARN<<"Length is too large";
 			conn->forceClose();
 			break;
 		}
 		
+
+		//LOG_INFO<<"Salve node recv  mastr data :"<<recvBuf->readableBytes();
+
 		if(len > recvBuf->readableBytes() - 4)
 		{
 			break;
@@ -84,11 +88,13 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 
 		if(recvBuf->readableBytes() > len + 4)
 		{	
+			isreconnect = false;
 			conn->forceClose();
 			LOG_WARN<<"Slave recv data error";
 			return ;
 		}
 		
+
 		char rdb_filename[] = "dump.rdb";
 		if(rdbWrite(rdb_filename,recvBuf->peek(), len) == REDIS_OK)
 		{	
@@ -96,6 +102,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		}
 		else
 		{
+			isreconnect = false;
 			LOG_INFO<<"Replication save  rdb failure";
 			conn->forceClose();
 			return ;

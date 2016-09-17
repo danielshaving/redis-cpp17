@@ -61,7 +61,9 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 	if( (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
 	{
-		
+		sendBuf.retrieveAll();
+		sendSlaveBuf.retrieveAll();
+		sendPubSub.retrieveAll();
 	}
 	else
 	{
@@ -70,7 +72,6 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 			conn->send(&sendBuf);
 			sendBuf.retrieveAll();
 		}
-
 
 		if(sendPubSub.readableBytes() > 0 )
 		{
@@ -114,13 +115,13 @@ bool xSession::checkCommond(rObj*  robjs)
 
 int xSession::processCommand()
 {
-	std::string str = "HSET";
-	std::string str1 = robjs[0]->ptr;
-	if(str != str1)
-	{
-		LOG_INFO<<robjs[0]->ptr;
-		LOG_INFO<<robjs.size();
-	}
+//	std::string str = "HSET";
+//	std::string str1 = robjs[0]->ptr;
+//	if(str != str1)
+//	{
+//		LOG_INFO<<robjs[0]->ptr;
+//		LOG_INFO<<robjs.size();
+//	}
 
 
 
@@ -148,13 +149,16 @@ int xSession::processCommand()
 			{
 				if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
 				{
-					LOG_INFO<<"slaveof sync success";
-					if(redis->slaveCached.readableBytes() > 0)
+					if(++redis->salveCount >= redis->tcpconnMaps.size())
 					{
-						conn->send(&redis->slaveCached);
-						redis->slaveCached.retrieveAll();
-						xBuffer buffer;
-						redis->slaveCached.swap(buffer);
+						LOG_INFO<<"slaveof sync success";
+						if(redis->slaveCached.readableBytes() > 0)
+						{
+							conn->send(&redis->slaveCached);
+							redis->slaveCached.retrieveAll();
+							xBuffer buffer;
+							redis->slaveCached.swap(buffer);
+						}
 					}
 
 					auto iter = redis->repliTimers.find(conn->getSockfd());
@@ -178,13 +182,22 @@ int xSession::processCommand()
 
 		if( (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
 		{
-			
+
 		}
 		else
 		{
 			if( redis->masterPort == 0 )
 			{
-				replicationFeedSlaves(sendSlaveBuf,robjs[0],robjs);
+				MutexLockGuard mu(redis->slaveMutex);
+				if(redis->salveCount <  redis->tcpconnMaps.size())
+				{
+					replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
+				}
+				else
+				{
+					replicationFeedSlaves(sendSlaveBuf,robjs[0],robjs);
+				}
+
 			}
 			else
 			{
@@ -195,13 +208,11 @@ int xSession::processCommand()
 						clearObj();
 						addReplyErrorFormat(sendBuf,"slaveof mode commond unknown ");
 						return REDIS_ERR;
-					}	
+					}
 				}
-				
 			}
 		}
-
-
+				
 	}
 
 	auto iter = redis->handlerCommondMap.find(robjs[0]);

@@ -139,6 +139,7 @@ public:
 	std::atomic<bool>  authEnabled;
 	std::atomic<bool>  repliEnabled;
 	
+
 	std::atomic<int>	   salveCount;
 
 	xBuffer		slaveCached;

@@ -835,6 +835,7 @@ bool   rdbReplication(char *filename,xSession *session)
 		size_t readBytes = rioRepliRead(&rdb,(void*)buf,len);
 		if(readBytes == 0)
 		{
+			fclose(fp);
 			return false;
 		}
 		session->sendBuf.append((const char *)buf,readBytes);
