@@ -213,7 +213,6 @@ void xTcpconnection::send(xBuffer* buf)
     if (loop->isInLoopThread())
     {
       sendInLoop(buf->peek(), buf->readableBytes());
-      //buf->retrieveAll();
     }
     else
     {

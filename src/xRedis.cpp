@@ -86,6 +86,8 @@ count(0)
 	obj = createStringObject("bgsave",6);
 	handlerCommondMap[obj] = std::bind(&xRedis::bgsaveCommond, this, std::placeholders::_1, std::placeholders::_2);
 
+	obj = createStringObject("memory",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::memoryCommond, this, std::placeholders::_1, std::placeholders::_2);
 
 	obj = createStringObject("set",3);
 	unorderedmapCommonds.insert(obj);
@@ -619,6 +621,37 @@ bool xRedis::unsubscribeCommond(const std::deque <rObj*> & obj,xSession * sessio
 	}
 
 	return true;
+}
+
+
+bool xRedis::memoryCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size()  > 2)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown memory  error");
+		return false;
+	}
+#ifdef USE_JEMALLOC
+
+	char tmp[32];
+	unsigned narenas = 0;
+	size_t sz = sizeof(unsigned);
+	if (!je_mallctl("arenas.narenas", &narenas, &sz, NULL, 0))
+	{
+		sprintf(tmp, "arena.%d.purge", narenas);
+		if (!je_mallctl(tmp, NULL, 0, NULL, 0))
+		{
+			addReply(session->sendBuf, shared.ok);
+			return false;
+		}
+	}
+
+#endif
+
+    addReply(session->sendBuf,shared.ok);
+
+
+	return false;
 }
 
 bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
@@ -1644,10 +1677,9 @@ bool xRedis::hsetCommond(const std::deque <rObj*> & obj,xSession * session)
 			}
 			else
 			{
-				it->second.erase(iter);
-				zfree(iter->first);
+				zfree(obj[1]);
 				zfree(iter->second);
-				it->second.insert(std::make_pair(obj[1],obj[2]));
+				iter->second = obj[2];
 				update = true;
 			}
 		}
@@ -1706,7 +1738,6 @@ void xRedis::clearCommond()
 			MutexLockGuard lock(mu);
 			for(auto iter = map.begin(); iter !=map.end(); iter++)
 			{
-
 				auto iterr = expireTimers.find(iter->first);
 				if(iterr != expireTimers.end())
 				{
@@ -1831,7 +1862,6 @@ bool xRedis::quitCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	count++;
 	if(obj.size() <  2 || obj.size() > 8 )
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown  param error");
@@ -1843,7 +1873,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
     int unit = UNIT_SECONDS;	
     int flags = OBJ_SET_NO_FLAGS;
 
-	for (j = 2; j < obj.size();j++) 
+	for (j = 2; j < obj.size();j++)
 	{
 		const char *a = obj[j]->ptr;
 		rObj *next = (j == obj.size() - 2) ? NULL : obj[j + 1];
@@ -1859,7 +1889,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 		       !(flags & OBJ_SET_NX))
 		{
 			flags |= OBJ_SET_XX;
-		} 
+		}
 		else if ((a[0] == 'e' || a[0] == 'E') &&
 		       (a[1] == 'x' || a[1] == 'X') && a[2] == '\0' &&
 		       !(flags & OBJ_SET_PX) && next)
@@ -1868,7 +1898,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 			unit = UNIT_SECONDS;
 			expire = next;
 			j++;
-		} 
+		}
 		else if ((a[0] == 'p' || a[0] == 'P') &&
 		       (a[1] == 'x' || a[1] == 'X') && a[2] == '\0' &&
 		       !(flags & OBJ_SET_EX) && next)
@@ -1877,8 +1907,8 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 			unit = UNIT_MILLISECONDS;
 			expire = next;
 			j++;
-		} 
-		else 
+		}
+		else
 		{
 			addReply(session->sendBuf,shared.syntaxerr);
 			return false;
@@ -1888,11 +1918,11 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 
 	long long milliseconds = 0; /* initialized to avoid any harmness warning */
 
-	if (expire) 
+	if (expire)
 	{
 		if (getLongLongFromObjectOrReply(session->sendBuf, expire, &milliseconds, NULL) != REDIS_OK)
 		   return false;
-		if (milliseconds <= 0) 
+		if (milliseconds <= 0)
 		{
 		    addReplyErrorFormat(session->sendBuf,"invalid expire time in");
 		    return false;
@@ -1904,16 +1934,15 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 	size_t hash= obj[0]->hash;
 	int index = hash  % kShards;
 	MutexLock &mu = setMapShards[index].mutex;
-	SetMap & setMap = setMapShards[index].setMap;
+	auto & setMap = setMapShards[index].setMap;
 	{
 		MutexLockGuard lock(mu);
-		auto it = setMap.find(obj[0]);		
+		auto it = setMap.find(obj[0]);
 		if(it == setMap.end())
 		{
 			if(flags & OBJ_SET_XX)
 			{
 				addReply(session->sendBuf,shared.nullbulk);
-			
 				return false;
 			}
 			setMap.insert(std::make_pair(obj[0],obj[1]));
@@ -1923,24 +1952,24 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 			if(flags & OBJ_SET_NX)
 			{
 				addReply(session->sendBuf,shared.nullbulk);
-
 				return false;
 			}
-			
+
+			zfree(obj[0]);
 			zfree(it->second);
 			it->second = obj[1];
-			zfree(obj[0]);
 		}
 		
-		if (expire) 
+		if (expire)
 		{
+			LOG_INFO<<"expire";
 			auto iter = expireTimers.find(obj[0]);
 			if(iter != expireTimers.end())
 			{
 				expireTimers.erase(iter);
 				loop.cancelAfter(iter->second);
 			}
-			
+
 			xTimer * timer = loop.runAfter(milliseconds / 1000,(void *)(obj[0]),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
 			expireTimers.insert(std::make_pair(obj[0],timer));
 		}
@@ -1950,7 +1979,6 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 	{
 		zfree(obj[i]);
 	}
-	
 	addReply(session->sendBuf,shared.ok);
 	return true;
 }

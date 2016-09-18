@@ -68,7 +68,7 @@ public:
 	bool zrevrangeCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool keysCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool bgsaveCommond(const std::deque <rObj*> & obj,xSession * session);
-
+	bool memoryCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool save(xSession * session);
 	int removeCommond(rObj * obj,int &count);
 	void clearCommond();
@@ -85,7 +85,6 @@ public:
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj *,rObj *,Hash,Equal>,Hash,Equal> SortSet;
 	typedef std::unordered_map<rObj*,std::set<rSObj>,Hash,Equal> SSet;
 	typedef std::unordered_map<rObj*,std::list<xTcpconnectionPtr>,Hash,Equal> PubSub;
-
 	struct SetMapLock
 	{		
 		SetMap setMap;
