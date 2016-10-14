@@ -15,6 +15,7 @@ public:
 	uint32_t rdbLoadLen(xRio *rdb, int *isencoded);
 	int rdbSaveObjectType(xRio *rdb, rObj *o);
 	int rdbLoadObjectType(xRio *rdb);
+	uint32_t rdbLoadUType(xRio *rdb);
 	int rdbLoad(char *filename);
 	int rdbSaveBackground(char *filename);
 	int rdbSaveToSlavesSockets(void);
@@ -40,4 +41,7 @@ public:
 	rObj *rdbGenericLoadStringObject(xRio *rdb, int encode);
 	rObj *rdbLoadIntegerObject(xRio *rdb, int enctype, int encode);
 	rObj *rdbLoadEncodedStringObject(xRio *rdb);
+	int rdbSaveLzfStringObject(xRio *rdb, unsigned char *s, size_t len);
+	int rdbSaveValue(xRio *rdb, rObj *value,long long now);
+	int rdbSaveKey(xRio *rdb, rObj *value,long long now);
 };

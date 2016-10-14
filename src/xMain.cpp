@@ -1,5 +1,5 @@
 #include "xRedis.h"
-
+#include "xLzf.h"
 char *ascii_logo =
 "                _._                                                  \n"
 "           _.-``__ ''-._                                             \n"

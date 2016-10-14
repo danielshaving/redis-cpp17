@@ -327,6 +327,7 @@ int xRdb::rdbLoad(char *filename)
 	}
 
 
+	
 	while(1)
 	{
 		rObj *key,*val;
@@ -336,7 +337,7 @@ int xRdb::rdbLoad(char *filename)
 			return  REDIS_ERR;
 		}
 
-		if (type == REDIS_RDB_OPCODE_EOF)
+		if (type == REDIS_RDB_OPCODE_SET)
 		{
 			break;
 		}
@@ -355,6 +356,60 @@ int xRdb::rdbLoad(char *filename)
 		val->calHash();
 		setMap[key] = val;
 	}
+
+
+	while(1)
+	{
+		rObj *key,*kkey,*val;
+		std::unordered_map<rObj*,rObj*,Hash,Equal> umap;
+
+		if ((type = rdbLoadType(&rdb)) == -1)
+			return  REDIS_ERR;
+		
+		if (type == REDIS_RDB_OPCODE_EOF)
+			break;
+		
+		if ((key = rdbLoadStringObject(&rdb)) == nullptr)
+			return  REDIS_ERR;
+
+		if ((type = rdbLoadLen(&rdb,nullptr)) == -1)
+			return  REDIS_ERR;
+		
+		
+		for(int i = 0 ; i < type; i ++)
+		{
+			if ((rdbver = rdbLoadType(&rdb)) == -1)
+				return  REDIS_ERR;
+			
+			if(rdbver != REDIS_RDB_TYPE_STRING)
+			{
+				return REDIS_ERR;
+			}
+				
+			if ((kkey = rdbLoadStringObject(&rdb)) == nullptr)
+			{
+				return  REDIS_ERR;
+			}
+	  
+	        if ((val = rdbLoadObject(rdbver,&rdb)) == nullptr)
+	        {
+	        	return REDIS_ERR;
+	        }
+			
+			kkey->calHash();
+			val->calHash();
+			umap[kkey] = val;
+		}
+	   	
+		key->calHash();
+		hsetMap.insert(std::make_pair(key,umap));
+
+	}
+
+
+	
+
+	
 
 	uint64_t cksum,expected = rdb.cksum;
 	if(rioRead(&rdb,&cksum,8) == 0)
@@ -386,6 +441,16 @@ int xRdb::rdbLoadType(xRio *rdb)
 }
 
 
+uint32_t xRdb::rdbLoadUType(xRio *rdb) 
+{
+    uint32_t  type;
+    if (rioRead(rdb,&type,1) == 0) return -1;
+    return type;
+}
+
+
+
+
 int xRdb::rdbSaveLen(xRio *rdb, uint32_t len)
 {
 	unsigned char buf[2];
@@ -413,10 +478,26 @@ int xRdb::rdbSaveLen(xRio *rdb, uint32_t len)
     return nwritten;
 }
 
+
+int xRdb::rdbSaveLzfStringObject(xRio *rdb, unsigned char *s, size_t len)
+{
+	size_t comprlen,outlen;
+	unsigned char byte;
+	int n,nwritten = 0;
+	void *out;
+	return 1;
+}
+
 int xRdb::rdbSaveRawString(xRio *rdb, const  char *s, size_t len)
 {
 	int enclen;
 	int n,nwritten = 0;
+
+	if(len > 20)
+	{
+		//n = rdbSaveLzfStringObject(rdb,s,len);
+	}
+	
 	if((n = rdbSaveLen(rdb,len) == -1))
 	{
 		return -1;
@@ -522,6 +603,26 @@ int xRdb::rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long now)
 	return 1;
 }
 
+
+int xRdb::rdbSaveValue(xRio *rdb, rObj *value,long long now)
+{
+	if (rdbSaveObjectType(rdb,value) == -1) return -1;
+    if (rdbSaveStringObject(rdb,value) == -1) return -1;
+
+	return 1;
+}
+
+
+
+int xRdb::rdbSaveKey(xRio *rdb, rObj *key,long long now)
+{
+	if (rdbSaveObjectType(rdb,key) == -1) return -1;
+    if (rdbSaveStringObject(rdb,key) == -1) return -1;
+	return 1;
+}
+
+
+
 int xRdb::rdbWriteRaw(xRio *rdb, void *p, size_t len)
 {
    if (rdb && rioWrite(rdb,p,len) == 0)
@@ -540,10 +641,7 @@ int xRdb::rdbSaveRio(xRio *rdb,int *error)
 	long long now = time(0);
 	uint64_t cksum;
 	snprintf(magic,sizeof(magic),"REDIS%04d",REDIS_RDB_VERSION);
-	if (rdbWriteRaw(rdb,magic,9) == -1) 
-	{
-	   return REDIS_ERR;
-	}
+	if (rdbWriteRaw(rdb,magic,9) == -1)   return REDIS_ERR;
 
 	for(auto it = setMap.begin(); it != setMap.end(); it++)
 	{
@@ -551,6 +649,30 @@ int xRdb::rdbSaveRio(xRio *rdb,int *error)
 		 {
 		 	return REDIS_ERR;
 		 }
+	}
+
+	if (rdbSaveType(rdb,REDIS_RDB_OPCODE_SET) == -1) return REDIS_ERR;
+
+	for(auto it = hsetMap.begin(); it != hsetMap.end(); it++)
+	{
+		if (rdbSaveKey(rdb,it->first,now) == -1)
+		{
+		 	return REDIS_ERR;
+		}
+
+	
+		if((rdbSaveLen(rdb,it->second.size()) == -1))
+		{
+			return REDIS_ERR;
+		}
+		
+		for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+		{	
+			 if (rdbSaveKeyValuePair(rdb,iter->first,iter->second,now) == -1)
+			 {
+			 	return REDIS_ERR;
+			 }
+		}
 	}
 
 	if (rdbSaveType(rdb,REDIS_RDB_OPCODE_EOF) == -1)

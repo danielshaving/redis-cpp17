@@ -28,8 +28,6 @@ public:
     {
       if (!isInLoopThread())
       {
-    	  printf("threadId%d\n",threadId);
-    	  printf("currentid:%d \n",xCurrentThread::tid());
           abortNotInLoopThread();
       }
     }
