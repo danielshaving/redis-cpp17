@@ -65,10 +65,6 @@ xTimerQueue::~xTimerQueue()
 	timerfdChannel.disableAll();
 	timerfdChannel.remove();
 	::close(timerfd);
-	for(int i = 0 ; i < pqueue.size(); i ++)
-	{
-		delete pqueue.p[i];
-	}
 }
 
 void  xTimerQueue::addTimer(int64_t when,int64_t key,int8_t type, xTimerCallback&& cb)
