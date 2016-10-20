@@ -1,12 +1,18 @@
 #include "xTimer.h"
-xTimer::xTimer(xTimerCallback && cb,int64_t when,int64_t key,int8_t type)
-:callback(std::move(cb)),
-when(when),
-index(-1),
-key(key),
-type(type)
+
+xTimer::xTimer()
 {
-	func = 100;
+	
+}
+
+xTimer::xTimer(xTimerCallback && cb,int64_t when,int64_t key,int8_t type)
+:index(-1),
+when(when),
+key(key),
+type(type),
+callback(std::move(cb))
+{
+	
 }
 
 
@@ -22,6 +28,8 @@ void xTimer::run()
 	{
 		callback();	
 	}
+	
+	
 }
 
 
