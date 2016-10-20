@@ -16,11 +16,10 @@ public:
 	xTimer *head();
 	void clear();
 	xTimer *top();
-	bool reserve(int n);
+	void reserve();
 	void shiftUp(int hole_index, xTimer *e);
 	void shiftDown(int hole_index, xTimer *e);
 	
 	xTimer **p;
 	int n,a;
 };
-
