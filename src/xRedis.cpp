@@ -23,7 +23,7 @@ xRedis::xRedis()
 	      std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
 	server.setThreadNum(0);
 	server.start();
-
+	
 }
 
 xRedis::~xRedis()

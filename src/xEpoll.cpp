@@ -14,7 +14,7 @@ loop(loop),
 maxFd(0),
 epollFd(-1)
 {
-
+	init(-1);
 }
 
 xEpoll::~xEpoll()

@@ -61,6 +61,8 @@
 #include <jemalloc/jemalloc.h>
 #include "xHelp.h"
 #include "xSingleton.h"
+#include <sys/timerfd.h>
+
 
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
 /* Client request types */

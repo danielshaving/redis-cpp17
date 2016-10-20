@@ -1,32 +1,3 @@
-/* SDSLib, A C dynamic strings library
- *
- * Copyright (c) 2006-2012, Salvatore Sanfilippo <antirez at gmail dot com>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *   * Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of Redis nor the names of its contributors may be used
- *     to endorse or promote products derived from this software without
- *     specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,18 +6,6 @@
 #include <assert.h>
 #include "xSds.h"
 
-/* Create a new sds string with the content specified by the 'init' pointer
- * and 'initlen'.
- * If NULL is used for 'init' the string is initialized with zero bytes.
- *
- * The string is always null-termined (all the sds strings are, always) so
- * even if you create an sds string with:
- *
- * mystring = sdsnewlen("abc",3");
- *
- * You can print the string with printf() as there is an implicit \0 at the
- * end of the string. However the string is binary safe and can contain
- * \0 characters in the middle, as the length is stored in the sds header. */
 sds sdsnewlen(const void *init, size_t initlen) {
     struct sdshdr *sh;
     // T = O(N)
@@ -179,17 +138,14 @@ sds sdsgrowzero(sds s, size_t len) {
     s = sdsMakeRoomFor(s,len-curlen);
     if (s == NULL) return NULL;
 
-    /* Make sure added region doesn't contain garbage */
-    // T = O(N)
+  
     sh = (sdshdr*)(s-(sizeof(struct sdshdr)));
     memset(s+curlen,0,(len-curlen+1)); /* also set trailing \0 byte */
 
-    // ��������
     totlen = sh->len+sh->free;
     sh->len = len;
     sh->free = totlen-sh->len;
 
-    // �����µ� sds
     return s;
 }
 
@@ -241,10 +197,8 @@ sds sdscpylen(sds s, const char *t, size_t len) {
 
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
 
-    // sds ���� buf �ĳ���
     size_t totlen = sh->free+sh->len;
-
-    // ��� s �� buf ���Ȳ����� len ����ô��չ��
+   
     if (totlen < len) {
         // T = O(N)
         s = sdsMakeRoomFor(s,len-sh->len);
@@ -252,34 +206,16 @@ sds sdscpylen(sds s, const char *t, size_t len) {
         sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
         totlen = sh->free+sh->len;
     }
-
-    // ��������
-    // T = O(N)
     memcpy(s, t, len);
 
-    // ����ս����
     s[len] = '\0';
 
-    // ��������
     sh->len = len;
     sh->free = totlen-len;
 
-    // �����µ� sds
     return s;
 }
 
-/*
- * ���ַ������Ƶ� sds ���У�
- * ����ԭ�е��ַ���
- *
- * ��� sds �ĳ��������ַ����ĳ��ȣ���ô��չ sds ��
- *
- * ���Ӷ�
- *  T = O(N)
- *
- * ����ֵ
- *  sds �����Ƴɹ������µ� sds �����򷵻� NULL
- */
 /* Like sdscpylen() but 't' must be a null-termined string so that the length
  * of the string is obtained with strlen(). */
 sds sdscpy(sds s, const char *t) {
@@ -357,7 +293,6 @@ int sdsull2str(char *s, unsigned long long v) {
  *
  * sdscatprintf(sdsempty(),"%lld\n", value);
  */
-// ��������� long long ֵ value ������һ�� SDS
 sds sdsfromlonglong(long long value) {
     char buf[SDS_LLSTR_SIZE];
     int len = sdsll2str(buf,value);
@@ -365,11 +300,7 @@ sds sdsfromlonglong(long long value) {
     return sdsnewlen(buf,len);
 }
 
-/* 
- * ��ӡ�������� sdscatprintf ������
- *
- * T = O(N^2)
- */
+
 /* Like sdscatpritf() but gets va_list instead of being variadic. */
 sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     va_list cpy;
@@ -408,11 +339,6 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     return t;
 }
 
-/*
- * ��ӡ�����������ַ�����������Щ�ַ���׷�ӵ����� sds ��ĩβ
- *
- * T = O(N^2)
- */
 /* Append to the sds string 's' a string obtained using printf-alike format
  * specifier.
  *
@@ -555,14 +481,6 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
     return s;
 }
 
-/*
- * �� sds �������˽����޼���������� cset ָ���������ַ�
- *
- * ���� sdsstrim(xxyyabcyyxy, "xy") ������ "abc"
- *
- * �����ԣ�
- *  T = O(M*N)��M Ϊ SDS ���ȣ� N Ϊ cset ���ȡ�
- */
 /* Remove the part of the string from left and from right composed just of
  * contiguous characters found in 'cset', that is a null terminted C string.
  *
@@ -581,43 +499,30 @@ sds sdstrim(sds s, const char *cset) {
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
     char *start, *end, *sp, *ep;
     size_t len;
-
-    // ���úͼ�¼ָ��
     sp = start = s;
     ep = end = s+sdslen(s)-1;
 
-    // �޼�, T = O(N^2)
+
     while(sp <= end && strchr(cset, *sp)) sp++;
     while(ep > start && strchr(cset, *ep)) ep--;
 
-    // ���� trim ���֮��ʣ����ַ�������
+ 
     len = (sp > ep) ? 0 : ((ep-sp)+1);
     
-    // �������Ҫ��ǰ���ַ�������
     // T = O(N)
     if (sh->buf != sp) memmove(sh->buf, sp, len);
 
-    // ����ս��
+   
     sh->buf[len] = '\0';
 
-    // ��������
+ 
     sh->free = sh->free+(sh->len-len);
     sh->len = len;
 
-    // �����޼���� sds
+   
     return s;
 }
 
-/*
- * �������Խ�ȡ sds �ַ���������һ��
- * start �� end ���Ǳ����䣨�������ڣ�
- *
- * ������ 0 ��ʼ�����Ϊ sdslen(s) - 1
- * ���������Ǹ����� sdslen(s) - 1 == -1
- *
- * ���Ӷ�
- *  T = O(N)
- */
 /* Turn the string into a smaller (or equal) string containing only the
  * substring specified by the 'start' and 'end' indexes.
  *
@@ -659,23 +564,16 @@ void sdsrange(sds s, int start, int end) {
         start = 0;
     }
 
-    // �������Ҫ�����ַ��������ƶ�
-    // T = O(N)
+   
     if (start && newlen) memmove(sh->buf, sh->buf+start, newlen);
 
-    // ����ս��
+ 
     sh->buf[newlen] = 0;
 
-    // ��������
     sh->free = sh->free+(sh->len-newlen);
     sh->len = newlen;
 }
 
-/*
- * �� sds �ַ����е������ַ�ת��ΪСд
- *
- * T = O(N)
- */
 /* Apply tolower() to every character of the sds string 's'. */
 void sdstolower(sds s) {
     int len = sdslen(s), j;
@@ -683,11 +581,7 @@ void sdstolower(sds s) {
     for (j = 0; j < len; j++) s[j] = tolower(s[j]);
 }
 
-/*
- * �� sds �ַ����е������ַ�ת��Ϊ��д
- *
- * T = O(N)
- */
+
 /* Apply toupper() to every character of the sds string 's'. */
 void sdstoupper(sds s) {
     int len = sdslen(s), j;
@@ -695,14 +589,6 @@ void sdstoupper(sds s) {
     for (j = 0; j < len; j++) s[j] = toupper(s[j]);
 }
 
-/*
- * �Ա����� sds �� strcmp �� sds �汾
- *
- * ����ֵ
- *  int ����ȷ��� 0 ��s1 �ϴ󷵻������� s2 �ϴ󷵻ظ���
- *
- * T = O(N)
- */
 /* Compare two sds strings s1 and s2 with memcmp().
  *
  * Return value:
@@ -728,35 +614,6 @@ int sdscmp(const sds s1, const sds s2) {
     return cmp;
 }
 
-/* Split 's' with separator in 'sep'. An array
- * of sds strings is returned. *count will be set
- * by reference to the number of tokens returned.
- *
- * ʹ�÷ָ��� sep �� s ���зָ����һ�� sds �ַ��������顣
- * *count �ᱻ����Ϊ��������Ԫ�ص�������
- *
- * On out of memory, zero length string, zero length
- * separator, NULL is returned.
- *
- * ��������ڴ治�㡢�ַ�������Ϊ 0 ��ָ�������Ϊ 0
- * ����������� NULL
- *
- * Note that 'sep' is able to split a string using
- * a multi-character separator. For example
- * sdssplit("foo_-_bar","_-_"); will return two
- * elements "foo" and "bar".
- *
- * ע��ָ������Ե��ǰ�������ַ����ַ���
- *
- * This version of the function is binary-safe but
- * requires length arguments. sdssplit() is just the
- * same function but for zero-terminated strings.
- *
- * ����������� len ������������Ƕ����ư�ȫ�ġ�
- * ���ĵ����ᵽ�� sdssplit() �ѷ�����
- *
- * T = O(N^2)
- */
 sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count) {
     int elements = 0, slots = 5, start = 0, j;
     sds *tokens;
@@ -809,11 +666,7 @@ cleanup:
     }
 }
 
-/*
- * �ͷ� tokens ������ count �� sds
- *
- * T = O(N^2)
- */
+
 /* Free the result returned by sdssplitlen(), or do nothing if 'tokens' is NULL. */
 void sdsfreesplitres(sds *tokens, int count) {
     if (!tokens) return;
@@ -822,12 +675,7 @@ void sdsfreesplitres(sds *tokens, int count) {
     zfree(tokens);
 }
 
-/*
- * ������Ϊ len ���ַ��� p �Դ����ţ�quoted���ĸ�ʽ
- * ׷�ӵ����� sds ��ĩβ
- *
- * T = O(N)
- */
+
 /* Append to the sds string "s" an escaped string representation where
  * all the non-printable characters (tested with isprint()) are turned into
  * escapes in the form "\n\r\a...." or "\x<hex-number>".
@@ -864,11 +712,7 @@ sds sdscatrepr(sds s, const char *p, size_t len) {
 
 /* Helper function for sdssplitargs() that returns non zero if 'c'
  * is a valid hex digit. */
-/*
- * ��� c Ϊʮ�����Ʒ��ŵ�����һ������������
- *
- * T = O(1)
- */
+
 int is_hex_digit(char c) {
     return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
            (c >= 'A' && c <= 'F');
@@ -876,11 +720,7 @@ int is_hex_digit(char c) {
 
 /* Helper function for sdssplitargs() that converts a hex digit into an
  * integer from 0 to 15 */
-/*
- * ��ʮ�����Ʒ���ת��Ϊ 10 ����
- *
- * T = O(1)
- */
+
 int hex_digit_to_int(char c) {
     switch(c) {
     case '0': return 0;
@@ -903,48 +743,7 @@ int hex_digit_to_int(char c) {
     }
 }
 
-/* Split a line into arguments, where every argument can be in the
- * following programming-language REPL-alike form:
- *
- * ��һ���ı��ָ�ɶ��������ÿ���������������µ��������� REPL ��ʽ��
- *
- * foo bar "newline are supported\n" and "\xff\x00otherstuff"
- *
- * The number of arguments is stored into *argc, and an array
- * of sds is returned.
- *
- * �����ĸ����ᱣ���� *argc �У���������һ�� sds ���顣
- *
- * The caller should free the resulting array of sds strings with
- * sdsfreesplitres().
- *
- * ������Ӧ��ʹ�� sdsfreesplitres() ���ͷź������ص� sds ���顣
- *
- * Note that sdscatrepr() is able to convert back a string into
- * a quoted string in the same format sdssplitargs() is able to parse.
- *
- * sdscatrepr() ���Խ�һ���ַ���ת��Ϊһ�������ţ�quoted�����ַ�����
- * ��������ŵ��ַ������Ա� sdssplitargs() ������
- *
- * The function returns the allocated tokens on success, even when the
- * input string is empty, or NULL if the input contains unbalanced
- * quotes or closed quotes followed by non space characters
- * as in: "foo"bar or "foo'
- *
- * ��ʹ������ֿ��ַ����� NULL �������������δ��Ӧ�����ţ�
- * �������Ὣ�ѳɹ�������ַ����ȷ��ء�
- *
- * ���������Ҫ���� config.c �ж������ļ����з�����
- * ���ӣ�
- *  sds *arr = sdssplitargs("timeout 10086\r\nport 123321\r\n");
- * ��ó�
- *  arr[0] = "timeout"
- *  arr[1] = "10086"
- *  arr[2] = "port"
- *  arr[3] = "123321"
- *
- * T = O(N^2)
- */
+
 sds *sdssplitargs(const char *line, int *argc) {
     const char *p = line;
     char *current = NULL;
@@ -953,8 +752,7 @@ sds *sdssplitargs(const char *line, int *argc) {
     *argc = 0;
     while(1) {
 
-        /* skip blanks */
-        // �����հ�
+       
         // T = O(N)
         while(*p && isspace(*p)) p++;
 
@@ -1062,26 +860,6 @@ err:
     return NULL;
 }
 
-/* Modify the string substituting all the occurrences of the set of
- * characters specified in the 'from' string to the corresponding character
- * in the 'to' array.
- *
- * ���ַ��� s �У�
- * ������ from �г��ֵ��ַ����滻�� to �е��ַ�
- *
- * For instance: sdsmapchars(mystring, "ho", "01", 2)
- * will have the effect of turning the string "hello" into "0ell1".
- *
- * ������� sdsmapchars(mystring, "ho", "01", 2)
- * �ͻὫ "hello" ת��Ϊ "0ell1"
- *
- * The function returns the sds string pointer, that is always the same
- * as the input pointer since no resize is needed. 
- * ��Ϊ����� sds ���д�С������
- * ���Է��ص� sds ����� sds һ��
- *
- * T = O(N^2)
- */
 sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen) {
     size_t j, i, l = sdslen(s);
 

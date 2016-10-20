@@ -12,21 +12,14 @@ typedef char *sds;
 
 struct sdshdr {
     
-    // buf ����ռ�ÿռ�ĳ���
     int len;
 
-    // buf ��ʣ����ÿռ�ĳ���
     int free;
 
-    // ���ݿռ�
+  
     char buf[];
 };
 
-/*
- * ���� sds ʵ�ʱ�����ַ����ĳ���
- *
- * T = O(1)
- */
 
 static inline size_t sdsllen(const char *s) {
     struct sdshdr *sh = (sdshdr*)(s-(sizeof(struct sdshdr)));
@@ -39,11 +32,6 @@ static inline size_t sdslen(const sds s) {
     return sh->len;
 }
 
-/*
- * ���� sds ���ÿռ�ĳ���
- *
- * T = O(1)
- */
 static inline size_t sdsavail(const sds s) {
     struct sdshdr *sh = (sdshdr*)(s-(sizeof(struct sdshdr)));
     return sh->free;

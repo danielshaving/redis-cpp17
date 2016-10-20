@@ -2,6 +2,7 @@
 
 #include "xRio.h"
 #include "xObject.h"
+#include "xLzf.h"
 class xRdb
 {
 public:
@@ -44,4 +45,5 @@ public:
 	int rdbSaveLzfStringObject(xRio *rdb, unsigned char *s, size_t len);
 	int rdbSaveValue(xRio *rdb, rObj *value,long long now);
 	int rdbSaveKey(xRio *rdb, rObj *value,long long now);
+	rObj *rdbLoadLzfStringObject(xRio *rdb);
 };

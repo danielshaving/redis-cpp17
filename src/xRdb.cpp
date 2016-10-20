@@ -245,6 +245,28 @@ rObj *xRdb::rdbLoadEncodedStringObject(xRio *rdb)
 }
 
 
+rObj *xRdb::rdbLoadLzfStringObject(xRio *rdb) {
+    unsigned int len, clen;
+    unsigned char *c = NULL;
+    sds val = NULL;
+
+    if ((clen = rdbLoadLen(rdb,NULL)) == REDIS_RDB_LENERR) return NULL;
+    if ((len = rdbLoadLen(rdb,NULL)) == REDIS_RDB_LENERR) return NULL;
+    if ((c = (unsigned char *)zmalloc(clen)) == NULL) goto err;
+    if ((val = sdsnewlen(NULL,len)) == NULL) goto err;
+    if (rioRead(rdb,c,clen) == 0) goto err;
+    if (lzf_decompress(c,clen,val,len) == 0) goto err;
+    zfree(c);
+    return createObject(REDIS_STRING,val);
+err:
+    zfree(c);
+    sdsfree(val);
+    return NULL;
+}
+
+
+
+
 rObj *xRdb::rdbGenericLoadStringObject(xRio *rdb, int encode)
 {
     int isencoded;
@@ -259,7 +281,7 @@ rObj *xRdb::rdbGenericLoadStringObject(xRio *rdb, int encode)
         case REDIS_RDB_ENC_INT32:
             return rdbLoadIntegerObject(rdb,len,encode);
         case REDIS_RDB_ENC_LZF:
-            //return rdbLoadLzfStringObject(rdb);
+           	return rdbLoadLzfStringObject(rdb);
         default:
             TRACE("Unknown RDB encoding type");
             break;
@@ -485,7 +507,34 @@ int xRdb::rdbSaveLzfStringObject(xRio *rdb, unsigned char *s, size_t len)
 	unsigned char byte;
 	int n,nwritten = 0;
 	void *out;
-	return 1;
+
+	if(len <=4 ) return 0;
+	outlen = len- 4;
+	if((out = zmalloc(outlen + 1)) == nullptr) return 0;
+	comprlen = lzf_compress(s,len,out,outlen);
+	if(comprlen == 0)
+	{
+		zfree(out);
+		return 0;
+	}
+	
+	/* Data compressed! Let's save it on disk */
+    byte = (REDIS_RDB_ENCVAL<<6)|REDIS_RDB_ENC_LZF;
+    if ((n = rdbWriteRaw(rdb,&byte,1)) == -1) return REDIS_ERR;
+    nwritten += n;
+
+    if ((n = rdbSaveLen(rdb,comprlen)) == -1) return REDIS_ERR;
+    nwritten += n;
+
+    if ((n = rdbSaveLen(rdb,len)) == -1) return REDIS_ERR;
+    nwritten += n;
+
+    if ((n = rdbWriteRaw(rdb,out,comprlen)) == -1) return REDIS_ERR;
+    nwritten += n;
+
+    zfree(out);
+    return nwritten;
+	
 }
 
 int xRdb::rdbSaveRawString(xRio *rdb, const  char *s, size_t len)
@@ -495,7 +544,9 @@ int xRdb::rdbSaveRawString(xRio *rdb, const  char *s, size_t len)
 
 	if(len > 20)
 	{
-		//n = rdbSaveLzfStringObject(rdb,s,len);
+		n = rdbSaveLzfStringObject(rdb, (unsigned char*)s,len);
+		if (n == -1) return -1;
+        if (n > 0) return n;
 	}
 	
 	if((n = rdbSaveLen(rdb,len) == -1))

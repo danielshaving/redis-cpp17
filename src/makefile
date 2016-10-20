@@ -10,7 +10,7 @@ CXXOBJS=${patsubst %.cpp,./%.o,$(cppfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB= -lpthread  -lssl -lcrypto -lz -ldl 
+LIB= -lpthread  
 
 
 

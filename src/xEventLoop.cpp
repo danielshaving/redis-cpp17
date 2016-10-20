@@ -20,14 +20,13 @@ xEventLoop::xEventLoop()
 :wakeupFd(createEventfd()),
  threadId(xCurrentThread::tid()),
  epoller(new xEpoll(this)),
+ timerQueue(new xTimerQueue(this)),
  wakeupChannel(new xChannel(this,wakeupFd)),
  currentActiveChannel(nullptr),
  running(false),
  eventHandling(false),
  callingPendingFunctors(false)
-
 {
-	epoller->init(maxCount);
 	wakeupChannel->setReadCallback(std::bind(&xEventLoop::handleRead, this));
 	wakeupChannel->enableReading();
 }
@@ -66,6 +65,15 @@ void xEventLoop::removeChannel(xChannel* channel)
 	}
 	epoller->removeChannel(channel);
 }
+
+
+
+
+void xEventLoop::runAfter(int64_t value,int64_t key,int8_t type, xTimerCallback&& cb)
+{
+	timerQueue->addTimer(value,key,type,std::move(cb));
+}
+
 
 
 bool xEventLoop::hasChannel(xChannel* channel)

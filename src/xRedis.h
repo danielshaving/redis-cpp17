@@ -24,6 +24,7 @@ public:
 public:
 	xRedis();
 	~xRedis();
+	void handleTimeout();
 	void run();
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);

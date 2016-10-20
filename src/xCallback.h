@@ -7,7 +7,9 @@ class xConnector;
 
 typedef std::shared_ptr<xTcpconnection> xTcpconnectionPtr;
 typedef std::shared_ptr<xConnector> xConnectorPtr;
-typedef std::function<void()> TimerCallback;
+typedef std::function<void()> xTimerCallback;
+typedef std::function<int(void *,void *)> xCmpCallback;
+
 typedef std::function<void (const xTcpconnectionPtr&,void *)> ConnectionCallback;
 typedef std::function<void (void *)> ConnectionErrorCallback;
 typedef std::function<void (const xTcpconnectionPtr&)> CloseCallback;

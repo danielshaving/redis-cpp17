@@ -4,6 +4,8 @@
 #include "xChannel.h"
 #include "xEpoll.h"
 #include "xCurrentThread.h"
+#include "xTimerQueue.h"
+#include "xCallback.h"
 
 class xEventLoop
 {
@@ -22,8 +24,7 @@ public:
 	void updateChannel(xChannel* channel);
 	void removeChannel(xChannel* channel);
 	bool hasChannel(xChannel* channel);
-
-
+	void runAfter(int64_t value,int64_t key,int8_t type,xTimerCallback&& cb);
     void assertInLoopThread()
     {
       if (!isInLoopThread())
@@ -45,11 +46,12 @@ private:
     mutable std::mutex mutex;
 
     std::unique_ptr<xEpoll>   epoller;
+	std::unique_ptr<xTimerQueue> timerQueue;
     std::unique_ptr<xChannel> wakeupChannel;
     typedef std::vector<xChannel*> ChannelList;
     ChannelList activeChannels;
     xChannel* currentActiveChannel;
-
+	
     bool running;
     bool eventHandling;
     bool callingPendingFunctors;
