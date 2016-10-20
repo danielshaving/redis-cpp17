@@ -2,7 +2,7 @@
 
 xPriorityQueue::xPriorityQueue()
 {
-	p = 0;
+	p = nullptr;
 	n = 0;
 	a = 0;
 }
@@ -12,6 +12,10 @@ void xPriorityQueue::dtor()
 {
 	if(p)
 	{
+		for(int i = 0 ; i < a; i ++)
+		{
+			delete p[i];
+		}
 		delete []p;
 	}
 }
@@ -23,8 +27,11 @@ xPriorityQueue::~xPriorityQueue()
 
 bool xPriorityQueue::push(xTimer *e)
 {
-	if (!reserve(n + 1))
-		return false;
+	if(a < n + 1)
+	{
+		reserve();
+	}
+	
 	shiftUp(n++, e); 
 	return true;
 }
@@ -52,11 +59,6 @@ bool   xPriorityQueue::erase(xTimer *e)
 	{
 		xTimer *last = p[--n]; 
 		int parent = (*(int *)e - 1) / 2; 
-		/* we replace e with the last element in the heap.  We might need to
-		shift it upward if it is less than its parent, or downward if it is
-		greater than one or both its children. Since the children are known
-		to be less than the parent, it can't need to shift both up and
-		down. */
 		if (*(int *)e > 0 && (p[parent]->when  >  last->when) > 0)
 			shiftUp(*(int *)e, last); 
 		else
@@ -83,22 +85,34 @@ xTimer *xPriorityQueue::top()
 	return n?*p:nullptr;
 }
 
-bool xPriorityQueue::reserve(int n)
+void  xPriorityQueue::reserve()
 {
-	if(a < n)
+	int aa = a ? a * 2:8;
+	xTimer **pp = new xTimer * [aa];
+
+	for(int i = 0; i < a; i++)
 	{
-		xTimer **pp;
-		int aa = a ? a *2:80;
-		if(aa < n)
-		{
-			aa = n;
-		}
+		pp[i] = new xTimer();
+		pp[i]->callback = std::move(p[i]->callback);
+		pp[i]->index = p[i]->index;
+		pp[i]->key = p[i]->key;
+		pp[i]->when = p[i]->when;
+		pp[i]->type = p[i]->type;
 		
-		p = pp = new xTimer * [aa];
-		a = aa;
 	}
 
-	return true;
+	if(p)
+	{
+		for(int i = 0 ; i < a; i ++)
+		{
+			delete p[i];
+		}
+		delete []p;
+	}
+
+	a = aa;
+	p = pp;
+
 }
 
 
@@ -129,6 +143,3 @@ void xPriorityQueue::shiftDown(int hole_index, xTimer *e)
 	}
 	*(int *)(p[hole_index] = e) = hole_index; 
 }
-
-
-
