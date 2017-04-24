@@ -14,6 +14,7 @@ public:
 	~xSession();
 public:
 	 void resetVlaue();
+	 void clearObj();
 	 void reset();
 	 void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	 int processMultibulkBuffer(xBuffer *recvBuf);

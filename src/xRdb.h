@@ -3,6 +3,8 @@
 #include "xRio.h"
 #include "xObject.h"
 #include "xLzf.h"
+#include "xPosix.h"
+class xRedis;
 class xRdb
 {
 public:
@@ -17,12 +19,12 @@ public:
 	int rdbSaveObjectType(xRio *rdb, rObj *o);
 	int rdbLoadObjectType(xRio *rdb);
 	uint32_t rdbLoadUType(xRio *rdb);
-	int rdbLoad(char *filename);
+	int rdbLoad(char *filename,xRedis * redis);
 	int rdbSaveBackground(char *filename);
 	int rdbSaveToSlavesSockets(void);
 	void rdbRemoveTempFile(pid_t childpid);
-	int rdbSave(char *filename);
-	int rdbSaveRio(xRio *rdb, int *error);
+	int rdbSave(char *filename,xRedis * redis);
+	int rdbSaveRio(xRio *rdb, int *error,xRedis * redis);
 	int rdbSaveObject(xRio *rdb, rObj *o);
 	int rdbSaveStringObject(xRio *rdb, rObj *obj);
 	off_t rdbSavedObjectLen(xRio *o);
@@ -46,4 +48,6 @@ public:
 	int rdbSaveValue(xRio *rdb, rObj *value,long long now);
 	int rdbSaveKey(xRio *rdb, rObj *value,long long now);
 	rObj *rdbLoadLzfStringObject(xRio *rdb);
+private:
+	mutable MutexLock mutex;
 };

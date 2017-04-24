@@ -67,16 +67,16 @@ public:
 	int 				  sockfd;
 
 
-    xBuffer               recvBuff;
-    xBuffer               sendBuff;
-    ConnectionCallback    connectionCallback;
+	xBuffer               recvBuff;
+	xBuffer               sendBuff;
+	ConnectionCallback    connectionCallback;
 	MessageCallback 	  messageCallback;
 	WriteCompleteCallback writeCompleteCallback;
 	HighWaterMarkCallback highWaterMarkCallback;
 	CloseCallback 		  closeCallback;
 	size_t 				      highWaterMark;
 	StateE 				  state;
-	boost::scoped_ptr<xChannel> channel;
+	std::shared_ptr<xChannel> channel;
 	void 				*data;
 	void 				*context;
 

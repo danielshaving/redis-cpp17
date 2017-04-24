@@ -1,5 +1,9 @@
 #include "xRedis.h"
 #include "xLzf.h"
+
+
+
+
 char *ascii_logo =
 "                _._                                                  \n"
 "           _.-``__ ''-._                                             \n"
@@ -20,8 +24,6 @@ char *ascii_logo =
 "              `-.__.-'                                               \n";
 int main()
 {	
-	signal(SIGHUP, SIG_IGN);
-	signal(SIGPIPE, SIG_IGN);
 	printf("%s",ascii_logo);
 	xRedis redis;
 	redis.run();

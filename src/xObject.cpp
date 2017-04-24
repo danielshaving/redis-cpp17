@@ -1,9 +1,8 @@
 
 #include "xObject.h"
+sharedObjectsStruct shared;
 
-std::unordered_map<rObj*,rObj*,Hash,Equal> setMap;
-std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> hsetMap;
-struct sharedObjectsStruct shared;
+
 
 int string2ll(const char * s,size_t slen, long long * value)
 {
@@ -242,13 +241,14 @@ rObj *createRawStringObject(const char *ptr, size_t len)
 
 rObj * createEmbeddedStringObject(const char *ptr, size_t len)
 {
-	rObj *o = (rObj*)zmalloc(sizeof(rObj)+sizeof(struct sdshdr)+len+1);
+    rObj *o = (rObj*)zmalloc(sizeof(rObj)+sizeof(struct sdshdr)+len+1);
     struct sdshdr *sh = (sdshdr*)(o+1);
 
     o->type = REDIS_STRING;
     o->encoding = REDIS_ENCODING_EMBSTR;
     o->ptr = (const char*)(sh+1);
     o->refcount = 1;
+    o->hash = 0;
     //o->lru = LRU_CLOCK();
     sh->len = len;
     sh->free = 0;
@@ -293,7 +293,7 @@ void addReplyBulkLen(xBuffer & sendBuf,rObj *obj)
 
 void addReplyBulk(xBuffer &sendBuf,rObj *obj)
 {
-	addReplyBulkLen(sendBuf,obj);
+    addReplyBulkLen(sendBuf,obj);
     addReply(sendBuf,obj);
     addReply(sendBuf,shared.crlf);
 }
@@ -453,6 +453,50 @@ void memrev64(void *p) {
 }
 
 
+
+const uint32_t dict_hash_function_seed = 5381;
+unsigned int dictGenHashFunction(const void *key, int len) {
+	/* 'm' and 'r' are mixing constants generated offline.
+	 They're not really 'magic', they just happen to work well.  */
+	uint32_t seed = dict_hash_function_seed;
+	const uint32_t m = 0x5bd1e995;
+	const int r = 24;
+
+	/* Initialize the hash to a 'random' value */
+	uint32_t h = seed ^ len;
+
+	/* Mix 4 bytes at a time into the hash */
+	const unsigned char *data = (const unsigned char *)key;
+
+	while(len >= 4) {
+		uint32_t k = *(uint32_t*)data;
+
+		k *= m;
+		k ^= k >> r;
+		k *= m;
+
+		h *= m;
+		h ^= k;
+
+		data += 4;
+		len -= 4;
+	}
+
+	/* Handle the last few bytes of the input array  */
+	switch(len) {
+	case 3: h ^= data[2] << 16;
+	case 2: h ^= data[1] << 8;
+	case 1: h ^= data[0]; h *= m;
+	};
+
+	/* Do a few final mixes of the hash to ensure the last few
+	 * bytes are well-incorporated. */
+	h ^= h >> 13;
+	h *= m;
+	h ^= h >> 15;
+
+	return (unsigned int)h;
+}
 
 
 

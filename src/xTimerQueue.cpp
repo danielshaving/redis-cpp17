@@ -114,9 +114,10 @@ void  xTimerQueue::handleRead()
 			{
 				assert(false);
 			}
-
+			
 			timer->run();
 			delete timer;
+			timer = nullptr;
 		}
 		else
 		{

@@ -14,6 +14,10 @@ void xPriorityQueue::dtor()
 	{
 		for(int i = 0 ; i < a; i ++)
 		{
+			if(p[i] == nullptr)
+			{
+				continue;
+			}
 			delete p[i];
 		}
 		delete []p;
@@ -106,6 +110,7 @@ void  xPriorityQueue::reserve()
 		for(int i = 0 ; i < a; i ++)
 		{
 			delete p[i];
+			p[i] = nullptr;
 		}
 		delete []p;
 	}

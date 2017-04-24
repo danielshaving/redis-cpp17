@@ -1,8 +1,8 @@
 #include "xRedis.h"
 
-xRedis::xRedis()
+xRedis::xRedis():timerQueue(&loop)
 {
-
+	
 #define REGISTER_REDIS_HANDLER(table, func) \
 	handlerCommondMap.insert(std::make_pair(table, std::bind(&xRedis::func, this, std::placeholders::_1, std::placeholders::_2)));
 	REGISTER_REDIS_HANDLER("set",setCommond);
@@ -15,8 +15,8 @@ xRedis::xRedis()
 	REGISTER_REDIS_HANDLER("hgetall",hgetallCommond);
 	REGISTER_REDIS_HANDLER("ping",pingCommond);
 	REGISTER_REDIS_HANDLER("save",saveCommond);
-
 	createSharedObjects();
+	//timerQueue.addTimer(time(0) + 40 ,-1,-1,std::bind(&xRedis::handleTimeout,this));
 	loadDataFromDisk();
 	server.init(&loop,"0.0.0.0",6379,this);
 	server.setConnectionCallback(
@@ -30,19 +30,24 @@ xRedis::~xRedis()
 {
 
 }
+
+void xRedis::handleTimeout()
+{
+	loop.quit();
+}
 void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
 	{
 		std::shared_ptr<xSession> session (new xSession(this,conn));
-		std::unique_lock<std::mutex> lk(mutex);
+		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
 
 		//TRACE("redis client connect success\n");
 	}
 	else
 	{
-		std::unique_lock<std::mutex> lk(mutex);
+		MutexLockGuard mu(mutex);
 		sessions.erase(conn->getSockfd());
 		//TRACE("redis client disconnect\n");
 	}
@@ -65,13 +70,13 @@ void xRedis::loadDataFromDisk()
 {
 	long long start = ustime();
 	char rdb_filename[] = "dump.rdb";
-	if(rdb.rdbLoad(rdb_filename) == REDIS_OK)
+	if(rdb.rdbLoad(rdb_filename,this) == REDIS_OK)
 	{
-		TRACE("DB loaded from disk: %.3f seconds\n", (float)((ustime()-start)/ 1000000));
+		TRACE("load rdb success");
 	}
 	else
 	{
-		TRACE("Fatal error loading the DB: Exiting\n");
+		TRACE("load rdb fail");
 	}
 }
 
@@ -84,7 +89,7 @@ bool xRedis::saveCommond(const std::vector<rObj*> & obj,xSession * session)
 	}
 
 	char filename[] = "dump.rdb";
-	if(rdb.rdbSave(filename) == REDIS_OK)
+	if(rdb.rdbSave(filename,this) == REDIS_OK)
 	{
 		addReply(session->sendBuf,shared.ok);
 	}
@@ -105,7 +110,25 @@ bool xRedis::dbsizeCommond(const std::vector<rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	addReplyLongLong(session->sendBuf,setMap.size() + hsetMap.size());
+	int64_t size = 0;
+	{
+		MutexLockGuard lk(fmutex);
+		for(auto it = setShards.begin(); it != setShards.end(); it++)
+		{
+			size+=(*it).setMap.size();
+		}
+	}
+
+	{
+		MutexLockGuard lk(fmutex);
+		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
+		{
+			size+=(*it).hsetMap.size();
+		}
+	}
+	
+	addReplyLongLong(session->sendBuf,size);
+	
 	return true;
 }
 
@@ -120,6 +143,8 @@ bool xRedis::pingCommond(const std::vector<rObj*> & obj,xSession * session)
 	addReply(session->sendBuf,shared.pong);
 	return true;
 }
+
+
 bool xRedis::hgetallCommond(const std::vector<rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1)
@@ -128,25 +153,31 @@ bool xRedis::hgetallCommond(const std::vector<rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	auto it = hsetMap.find(obj[0]);
-	if(it == hsetMap.end())
+	obj[0]->calHash();
+	size_t hash= obj[0]->hash;
+	
+	MutexLock &mu = hsetShards[hash% kShards].mutex;
+	auto &hsetMap = hsetShards[hash% kShards].hsetMap;
 	{
-		addReply(session->sendBuf,shared.emptymultibulk);
-		return false;
+		MutexLockGuard lock(mu);
+		
+		auto it = hsetMap.find(obj[0]);
+		if(it == hsetMap.end())
+		{
+			addReply(session->sendBuf,shared.emptymultibulk);
+			return true;
+		}
+
+		addReplyMultiBulkLen(session->sendBuf,it->second.size() * 2);
+
+		for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+		{
+			addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdsllen(iter->first->ptr));
+			addReplyBulkCBuffer(session->sendBuf,iter->second->ptr,sdsllen(iter->second->ptr));
+		}
 	}
 
-	addReplyMultiBulkLen(session->sendBuf,it->second.size() * 2);
-
-	for(auto it1 = it->second.begin(); it1 != it->second.end(); it1++)
-	{
-		addReplyBulkCBuffer(session->sendBuf,it1->first->ptr,sdsllen(it1->first->ptr));
-		addReplyBulkCBuffer(session->sendBuf,it1->second->ptr,sdsllen(it1->second->ptr));
-	}
-
-	for(auto it2 = obj.begin(); it2 != obj.end(); it2++)
-	{
-		zfree(*it2);
-	}
+	zfree(obj[0]);
 
 	return true;
 }
@@ -160,38 +191,42 @@ bool xRedis::hsetCommond(const std::vector<rObj*> & obj,xSession * session)
 		return false;
 	}
 
-
+	obj[0]->calHash();
+	obj[1]->calHash();
+	size_t hash= obj[0]->hash;
 	bool update = false;
-	auto it = hsetMap.find(obj[0]);
-	if(it == hsetMap.end())
+	
+	MutexLock &mu = hsetShards[hash% kShards].mutex;
+	auto &hsetMap = hsetShards[hash% kShards].hsetMap;
 	{
-		std::unordered_map<rObj*,rObj*,Hash,Equal> hset;
-		hset.insert(std::make_pair(obj[1],obj[2]));
-		hsetMap.insert(std::make_pair(obj[0],std::move(hset)));
-	}
-	else
-	{
-		zfree(obj[0]);
-		auto it1 = it->second.find(obj[1]);
-		if(it1 == it->second.end())
+		MutexLockGuard lock(mu);
+		auto it = hsetMap.find(obj[0]);
+		if(it == hsetMap.end())
 		{
-			it->second.insert(std::make_pair(obj[1],obj[2]));
+			std::unordered_map<rObj*,rObj*,Hash,Equal> hset;
+			hset.insert(std::make_pair(obj[1],obj[2]));
+			hsetMap.insert(std::make_pair(obj[0],std::move(hset)));
 		}
 		else
 		{
-			auto x = it1->first;
-			auto y = it1->second;
-			it->second.erase(it1);
-			zfree(x);
-			zfree(y);
-
-			it->second.insert(std::make_pair(obj[1],obj[2]));
-			update = true;
+			zfree(obj[0]);
+			auto iter = it->second.find(obj[1]);
+			if(iter ==  it->second.end())
+			{
+				it->second.insert(std::make_pair(obj[1],obj[2]));
+			}
+			else
+			{
+				it->second.erase(iter);
+				zfree(iter->first);
+				zfree(iter->second);
+				it->second.insert(std::make_pair(obj[1],obj[2]));
+				update = true;
+			}
 		}
 	}
-
+	
 	addReply(session->sendBuf,update ? shared.czero : shared.cone);
-
 
 	return true;
 }
@@ -203,62 +238,88 @@ bool xRedis::hgetCommond(const std::vector<rObj*> & obj,xSession * session)
 		addReplyErrorFormat(session->sendBuf,"unknown  hget error");
 		return false;
 	}
-
-
-	auto it = hsetMap.find(obj[0]);
-	if(it == hsetMap.end())
+	
+	obj[0]->calHash();
+	obj[1]->calHash();
+	size_t hash= obj[0]->hash;
+	MutexLock &mu = hsetShards[hash% kShards].mutex;
+	auto &hsetMap = hsetShards[hash% kShards].hsetMap;
 	{
-		addReply(session->sendBuf,shared.nullbulk);
-		return false;
+		MutexLockGuard lock(mu);
+		auto it = hsetMap.find(obj[0]);
+		if(it == hsetMap.end())
+		{
+			zfree(obj[0]);
+			zfree(obj[1]);
+			addReply(session->sendBuf,shared.nullbulk);
+			return true;
+		}
+
+		auto iter = it->second.find(obj[1]);
+		if(iter == it->second.end())
+		{
+			zfree(obj[0]);
+			zfree(obj[1]);
+			addReply(session->sendBuf,shared.nullbulk);
+			return true;
+		}
+		addReplyBulk(session->sendBuf,iter->second);
 	}
-
-	auto it1 = it->second.find(obj[1]);
-	if(it1 == it->second.end())
-	{
-		addReply(session->sendBuf,shared.nullbulk);
-		return false;
-	}
-
-	for(auto it2 = obj.begin(); it2 != obj.end(); it2++)
-	{
-		zfree(*it2);
-	}
-
-
-
-	addReplyBulk(session->sendBuf,it1->second);
-
+	
+	zfree(obj[0]);
+	zfree(obj[1]);
+			
 	return true;
 }
 
 
 bool xRedis::flushdbCommond(const std::vector<rObj*> & obj,xSession * session)
 {
+	if(obj.size() > 0)
 	{
-		for(auto it = hsetMap.begin(); it != hsetMap.end(); it++)
+		addReplyErrorFormat(session->sendBuf,"unknown  flushdb error");
+		return false;
+	}
+
+	MutexLockGuard lk(fmutex);
+	
+	{
+		for(auto it = setShards.begin(); it != setShards.end(); it++)
 		{
-			for(auto it1 = it->second.begin(); it1 != it->second.end(); it1 ++)
+			auto &map = (*it).setMap;
+			for(auto sit = map.begin(); sit !=map.end(); sit++)
 			{
-				zfree(it1->first);
-				zfree(it1->second);
+				zfree(sit->first);
+				zfree(sit->second);
 			}
-			it->second.clear();
-			zfree(it->first);
+			map.clear();
 		}
-
-		hsetMap.clear();
+		
 	}
 
 	{
-		for(auto it = setMap.begin(); it != setMap.end(); it++)
+		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
 		{
-			zfree(it->first);
-			zfree(it->second);
+			auto &map = (*it).hsetMap;
+			for(auto sit = map.begin(); sit!=map.end(); sit++)
+			{
+				zfree(sit->first);
+				auto  &mmap = sit->second;
+				for(auto ssit = mmap.begin(); ssit!=mmap.end(); ssit++)
+				{
+					zfree(ssit->first);
+					zfree(ssit->second);
+				}
+				mmap.clear();
+			}
+			map.clear();
+			
 		}
-		setMap.clear();
 	}
+	
 
-	addReply(session->sendBuf,shared.ok);
+	
+	addReply(session->sendBuf,shared.ok);	
 	return true;
 }
 
@@ -281,16 +342,25 @@ bool xRedis::setCommond(const std::vector<rObj*> & obj,xSession * session)
 		return false;
 	}
 
-
-	auto it = setMap.find(obj[0]);
-	if(it != setMap.end())
+	obj[0]->calHash();
+	size_t hash= obj[0]->hash;
+	MutexLock &mu = setShards[hash% kShards].mutex;
+	SetMap & setMap = setShards[hash % kShards].setMap;
 	{
-		setMap.erase(it);
-		zfree(it->first);
-		zfree(it->second);
+		MutexLockGuard lock(mu);
+		auto it = setMap.find(obj[0]);
+		if(it == setMap.end())
+		{
+			setMap.insert(std::make_pair(obj[0],obj[1]));
+		}
+		else
+		{
+			setMap.erase(it);
+			zfree(it->second);
+			zfree(it->first);
+			setMap.insert(std::make_pair(obj[0],obj[1]));
+		}
 	}
-	setMap[obj[0]] = obj[1];
-
 	addReply(session->sendBuf,shared.ok);
 	return true;
 }
@@ -302,15 +372,26 @@ bool xRedis::getCommond(const std::vector<rObj*> & obj,xSession * session)
 		addReplyErrorFormat(session->sendBuf,"unknown  param error");
 		return false;
 	}
-
-	auto it = setMap.find(obj[0]);
-	if(it == setMap.end())
+	
+	obj[0]->calHash();
+	size_t hash = obj[0]->hash;
+	MutexLock &mu = setShards[hash  % kShards].mutex;
+	SetMap & setMap = setShards[hash  % kShards].setMap;
 	{
-		addReply(session->sendBuf,shared.nullbulk);
-		return false;
+		MutexLockGuard lock(mu);
+		auto it = setMap.find(obj[0]);
+		if(it == setMap.end())
+		{
+			zfree(obj[0]);
+			addReply(session->sendBuf,shared.nullbulk);
+			return true;
+		}
+	
+		addReplyBulk(session->sendBuf,it->second);
 	}
 	zfree(obj[0]);
-	addReplyBulk(session->sendBuf,it->second);
+	
+	
 	return true;
 }
 

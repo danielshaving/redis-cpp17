@@ -53,15 +53,15 @@
 #include <boost/function.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/unordered_map.hpp>
+#include <array>
+
 #include <utility>
 #include <unistd.h>
 #include <limits.h>
 #include <stdint.h>
 #include <sys/stat.h>
-#include <jemalloc/jemalloc.h>
-#include "xHelp.h"
-#include "xSingleton.h"
 #include <sys/timerfd.h>
+#include "xHelp.h"
 
 
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
@@ -71,7 +71,7 @@
 /* Error codes */
 #define REDIS_OK                0
 #define REDIS_ERR               -1
-#define REDIS_INLINE_MAX_SIZE   (1024*64) /* Max size of inline reads */
+#define REDIS_INLINE_MAX_SIZE   (1024*64 *10) /* Max size of inline reads */
 #define REDIS_LRU_BITS 24
 #define REDIS_MBULK_BIG_ARG     (4096*11)
 #define REDIS_STRING 0
@@ -204,6 +204,10 @@
 #define REDIS_RDB_OPCODE_EXPIRETIME 253
 #define REDIS_RDB_OPCODE_SELECTDB   254
 #define REDIS_RDB_OPCODE_EOF        255
+
+#define REDIS_RDB_SET 100
+#define REDIS_RDB_HSET 101
+
 
 
 

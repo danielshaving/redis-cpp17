@@ -36,7 +36,6 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 		if(reqtype == REDIS_REQ_INLINE )
 		{
-			assert(false);
 			addReplyError(sendBuf,"Unknown request type");
 			conn->send(&sendBuf);
 			recvBuf->retrieveAll();
@@ -73,12 +72,14 @@ int xSession::processCommand()
 	auto iter = redis->handlerCommondMap.find(commond);
 	if(iter == redis->handlerCommondMap.end() )
 	{
+		clearObj();
 		addReplyErrorFormat(sendBuf,"unknown command '%s'",commond.c_str());
 		return REDIS_ERR;
 	}
 
 	if(!iter->second(robjs,this))
 	{
+		clearObj();
 		return REDIS_ERR;
 	}
 	return REDIS_OK;
@@ -90,6 +91,15 @@ void xSession::resetVlaue()
 {
 	
 }
+
+void xSession::clearObj()
+{
+	for(auto it = robjs.begin(); it != robjs.end(); it++)
+	{
+		zfree(*it);
+	}	
+}
+
 void xSession::reset()
 {
 	 argc = 0;
@@ -103,7 +113,6 @@ void xSession::reset()
 
 int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 {
-	bool marks = true;
 	const char * newline = nullptr;
 	int pos = 0,ok;
 	long long ll = 0 ;
@@ -115,31 +124,36 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		{
 			if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 			{
-				assert(false);
 				addReplyError(sendBuf,"Protocol error: too big mbulk count string");
+				assert(false);
 			}
 			return REDIS_ERR;
 		}
 
-		if((newline - queryBuf ) > ((signed)(recvBuf->readableBytes())-2))
-		{
-			return REDIS_ERR;
-		}
+
+
+		  if (newline-(queryBuf) > ((signed)recvBuf->readableBytes()-2))
+		  {
+		  	assert(false);
+		  	return REDIS_ERR;
+		  }
+     
 
 		if(queryBuf[0] != '*')
 		{
 			assert(false);
+			return REDIS_ERR;
 		}
 
 		ok = string2ll(queryBuf + 1,newline - ( queryBuf + 1),&ll);
 		if(!ok || ll > 1024 * 1024)
 		{
-			assert(false);
 			addReplyError(sendBuf,"Protocol error: invalid multibulk length");
+			assert(false);
 			return REDIS_ERR;
 		}
 
-		pos = newline - queryBuf + 2;
+		pos = (newline - queryBuf) + 2;
 		if(ll <= 0)
 		{
 			recvBuf->retrieve(pos);
@@ -159,23 +173,22 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			{
 				if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 				{
-					assert(false);
-					return REDIS_OK;
+					addReplyError(sendBuf,"Protocol error: too big bulk count string");
+					return REDIS_ERR;
 				}
-				marks = false;
+			
 				break;
 			}
 
-			if( (newline - queryBuf) > ((signed)(recvBuf->readableBytes()) - 2))
+			if( (newline - queryBuf) > ((signed)recvBuf->readableBytes() - 2))
 			{
-				marks = false;
 				break;
 			}
 
 			if(queryBuf[pos] != '$')
 			{
-				assert(false);
 				addReplyErrorFormat(sendBuf,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
+				assert(false);
 				return REDIS_ERR;
 			}
 
@@ -183,14 +196,14 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			ok = string2ll(queryBuf + pos +  1,newline - (queryBuf + pos + 1),&ll);
 			if(!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
-				assert(false);
 				addReplyError(sendBuf,"Protocol error: invalid bulk length");
+				assert(false);
 				return REDIS_ERR;
 			}
 
 			pos += newline - (queryBuf + pos) + 2;
 			if(ll >= REDIS_MBULK_BIG_ARG)
-			{
+			{	
 				assert(false);
 				return REDIS_ERR;
 			}
@@ -210,8 +223,8 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			else
 			{
 				rObj * obj = (rObj*)createStringObject(queryBuf + pos,bulklen);
-				obj->calHash();
 				robjs.push_back(obj);
+				
 			}
 			
 			pos += bulklen+2;

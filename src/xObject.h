@@ -5,18 +5,21 @@
 #include "xSds.h"
 #include "xBuffer.h"
 
+unsigned int dictGenHashFunction(const void *key, int len) ;
+
+#define sdsEncodedObject(objptr) (objptr->encoding == REDIS_ENCODING_RAW || objptr->encoding == REDIS_ENCODING_EMBSTR)
 typedef struct redisObject 
-{	
+{		
 	void calHash()
 	{
-		hash = boost::hash_range(ptr,sdsllen(ptr) + ptr);
+		hash =boost::hash_range(ptr,sdsllen(ptr) + ptr);
 	}
-	
-    unsigned type:4;
-    unsigned encoding:4;
-    int refcount;
+
+	unsigned type:4;
+	unsigned encoding:4;
+	int refcount;
 	size_t hash;
-    const char *ptr;
+	const char *ptr;
 } rObj;
 
 
@@ -24,7 +27,7 @@ struct Hash
 {
 	size_t operator()(const rObj * x) const
 	{
- 		return x->hash;
+			return x->hash;
 	}
 };
 
@@ -32,11 +35,12 @@ struct Equal
 {
 	bool operator()(const rObj * x, const rObj * y) const
 	{
-		return ((sdsllen(x->ptr)== sdsllen(x->ptr)) &&
-	       (memcmp(x->ptr, y->ptr, sdsllen(x->ptr) ) == 0));
+		 return ((sdsllen(x->ptr) == sdsllen(y->ptr)) &&
+            (memcmp(x->ptr, y->ptr, sdsllen(y->ptr))== 0));
 	}
-	
+
 };
+
 
 struct sharedObjectsStruct
 {
@@ -54,11 +58,7 @@ struct sharedObjectsStruct
     *bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
 };
 
-extern struct sharedObjectsStruct shared;
-#define sdsEncodedObject(objptr) (objptr->encoding == REDIS_ENCODING_RAW || objptr->encoding == REDIS_ENCODING_EMBSTR)
-extern std::unordered_map<rObj*,rObj*,Hash,Equal> setMap;
-extern std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> hsetMap;
-
+extern sharedObjectsStruct shared;
 
 int ll2string(char *s, size_t len, long long value);
 int string2ll(const char * s,size_t slen, long long * value);

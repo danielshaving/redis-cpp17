@@ -27,6 +27,8 @@ xEventLoop::xEventLoop()
  eventHandling(false),
  callingPendingFunctors(false)
 {
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
 	wakeupChannel->setReadCallback(std::bind(&xEventLoop::handleRead, this));
 	wakeupChannel->enableReading();
 }
