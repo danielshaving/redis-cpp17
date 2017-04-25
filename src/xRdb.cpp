@@ -254,7 +254,7 @@ rObj *xRdb::rdbLoadLzfStringObject(xRio *rdb) {
     if (rioRead(rdb,c,clen) == 0) goto err;
     if (lzf_decompress(c,clen,val,len) == 0) goto err;
     zfree(c);
-    return createObject(REDIS_STRING,val);
+    return createStringObject(val,len);
 err:
     zfree(c);
     sdsfree(val);
@@ -497,7 +497,7 @@ int xRdb::rdbLoad(char *filename,xRedis * redis)
 	}
 	else
 	{
-		TRACE("load dump.rdb %ld\n",sb.st_size);
+		TRACE("load dump.rdb %ld",sb.st_size);
 	}
 
 	if(rdbLoadSet(&rdb,redis) != REDIS_OK )
