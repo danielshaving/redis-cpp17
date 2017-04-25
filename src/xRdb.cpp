@@ -12,11 +12,6 @@ xRdb::~xRdb()
 }
 
 
-int xRdb::rdbSaveLongLongAsStringObject(xRio *rdb, long long value)
-{
-	return 1;
-}
-
 
 int xRdb::rdbEncodeInteger(long long value, unsigned char *enc)
 {
@@ -313,6 +308,161 @@ rObj *xRdb::rdbLoadStringObject(xRio *rdb)
 
 
 
+
+int xRdb::rdbSaveSet(xRio *rdb,xRedis * redis)
+{
+	MutexLockGuard lk(mutex);
+	for(auto it = redis->setShards.begin(); it != redis->setShards.end(); it++)
+	{
+		auto &map = (*it).setMap;
+		for(auto iter = map.begin(); iter != map.end(); iter++)
+		{
+			 if (rdbSaveKeyValuePair(rdb,iter->first,iter->second,0) == -1)
+			 {
+			 	return REDIS_ERR;
+			 }
+		}
+	}
+	
+	if (rdbSaveType(rdb,REDIS_RDB_SET) == -1) return REDIS_ERR;
+
+	return REDIS_OK;
+}
+int xRdb::rdbSaveHset(xRio *rdb,xRedis * redis)
+{
+	MutexLockGuard lk(mutex);
+	for(auto it = redis->hsetShards.begin(); it != redis->hsetShards.end(); it++)
+	{
+		auto &map = (*it).hsetMap;
+		for(auto iter = map.begin(); iter != map.end(); iter++)
+		{
+			if (rdbSaveKey(rdb,iter->first,0) == -1)
+			{
+			 	return REDIS_ERR;
+			}
+
+			if((rdbSaveLen(rdb,iter->second.size()) == -1))
+			{
+				return REDIS_ERR;
+			}
+
+			for(auto iterr = iter->second.begin(); iterr != iter->second.end(); iterr++)
+			{	
+				 if (rdbSaveKeyValuePair(rdb,iterr->first,iterr->second,0) == -1)
+				 {
+				 	return REDIS_ERR;
+				 }
+			}
+			
+			
+		}
+	}
+	
+	if (rdbSaveType(rdb,REDIS_RDB_HSET) == -1) return REDIS_ERR;
+
+	return REDIS_OK;
+}
+
+
+int xRdb::rdbLoadSet(xRio *rdb,xRedis * redis)
+{
+	int type;
+	while(1)
+	{
+		rObj *key,*val;
+
+		if ((type = rdbLoadType(rdb)) == -1)
+		{
+			return  REDIS_ERR;
+		}
+
+		if (type == REDIS_RDB_SET)
+		{
+			return REDIS_OK;
+		}
+		  
+		if ((key = rdbLoadStringObject(rdb)) == nullptr)
+		{
+			return  REDIS_ERR;
+		}
+
+		if ((val = rdbLoadObject(type,rdb)) == nullptr)
+		{
+			return REDIS_ERR;
+		}
+
+		key->calHash();
+		size_t hash = key->hash;
+		MutexLock &mu = redis->setShards[hash% redis->kShards].mutex;
+		auto & setMap = redis->setShards[hash % redis->kShards].setMap;
+		{
+			MutexLockGuard lock(mu);
+			auto it = setMap.find(key);
+			if(it == setMap.end())
+			{
+				setMap.insert(std::make_pair(key,val));
+			}
+			else
+			{
+				assert(false);
+			}
+		}
+	}
+	
+	return REDIS_OK;
+}
+
+int xRdb::rdbLoadHset(xRio *rdb,xRedis * redis)
+{
+	int type,rdbver;
+	int len;
+	while(1)
+	{
+		rObj *key,*kkey,*val;
+		std::unordered_map<rObj*,rObj*,Hash,Equal> umap;
+		if ((type = rdbLoadType(rdb)) == -1)
+			return	REDIS_ERR;
+		
+		if (type == REDIS_RDB_HSET)
+			return REDIS_OK;
+		
+		if ((key = rdbLoadStringObject(rdb)) == nullptr)
+			return	REDIS_ERR;
+
+		if ((len = rdbLoadLen(rdb,nullptr)) == -1)
+			return	REDIS_ERR;
+		
+		
+		for(int i = 0 ; i < len; i ++)
+		{
+			if ((rdbver = rdbLoadType(rdb)) == -1)
+				return	REDIS_ERR;
+			
+			if(rdbver != REDIS_RDB_TYPE_STRING)
+				return REDIS_ERR;
+				
+			if ((kkey = rdbLoadStringObject(rdb)) == nullptr)
+				return	REDIS_ERR;
+	  
+			if ((val = rdbLoadObject(rdbver,rdb)) == nullptr)
+				return	REDIS_ERR;
+
+			kkey->calHash();
+			umap.insert(std::make_pair(kkey,val));
+		}
+
+		key->calHash();
+		size_t hash = key->hash;
+		MutexLock &mu = redis->hsetShards[hash% redis->kShards].mutex;
+		auto & hsetMap = redis->hsetShards[hash % redis->kShards].hsetMap;
+		MutexLockGuard lk(mutex);
+		hsetMap.insert(std::make_pair(key,std::move(umap)));
+	}
+
+	return REDIS_OK;
+}
+		
+
 int xRdb::rdbLoad(char *filename,xRedis * redis)
 {
 	uint32_t dbid;
@@ -350,49 +500,16 @@ int xRdb::rdbLoad(char *filename,xRedis * redis)
 		TRACE("load dump.rdb %ld\n",sb.st_size);
 	}
 
-
-	
-	while(1)
+	if(rdbLoadSet(&rdb,redis) != REDIS_OK )
 	{
-		rObj *key,*val;
-
-		if ((type = rdbLoadType(&rdb)) == -1)
-		{
-			return  REDIS_ERR;
-		}
-
-		if (type == REDIS_RDB_SET)
-		{
-			break;
-		}
-		  
-		if ((key = rdbLoadStringObject(&rdb)) == nullptr)
-		{
-			return  REDIS_ERR;
-		}
-
-		if ((val = rdbLoadObject(type,&rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
-
-		key->calHash();
-		size_t hash = key->hash;
-		MutexLock &mu = redis->setShards[hash% redis->kShards].mutex;
-		std::unordered_map<rObj*,rObj*,Hash,Equal> & setMap = redis->setShards[hash % redis->kShards].setMap;
-		{
-			MutexLockGuard lock(mu);
-			auto it = setMap.find(key);
-			if(it == setMap.end())
-			{
-				setMap.insert(std::make_pair(key,val));
-			}
-			else
-			{
-				assert(false);
-			}
-		}
+		return REDIS_ERR;
 	}
+	
+	if(rdbLoadHset(&rdb,redis) != REDIS_OK)
+	{
+		return REDIS_ERR;
+	}
+	
 
 	uint64_t cksum,expected = rdb.cksum;
 	if(rioRead(&rdb,&cksum,8) == 0)
@@ -434,7 +551,7 @@ uint32_t xRdb::rdbLoadUType(xRio *rdb)
 
 int xRdb::rdbSaveLen(xRio *rdb, uint32_t len)
 {
-	unsigned char buf[2];
+    unsigned char buf[2];
     size_t nwritten;
 
     if (len < (1<<6)) {
@@ -496,16 +613,16 @@ int xRdb::rdbSaveLzfStringObject(xRio *rdb, unsigned char *s, size_t len)
 	
 }
 
-int xRdb::rdbSaveRawString(xRio *rdb, const  char *s, size_t len)
+size_t xRdb::rdbSaveRawString(xRio *rdb, const  char *s, size_t len)
 {
 	int enclen;
 	int n,nwritten = 0;
 
-	if(len > 20)
+	if( len > 20)
 	{
 		n = rdbSaveLzfStringObject(rdb, (unsigned char*)s,len);
 		if (n == -1) return -1;
-        if (n > 0) return n;
+      	if (n > 0) return n;
 	}
 	
 	if((n = rdbSaveLen(rdb,len) == -1))
@@ -523,7 +640,7 @@ int xRdb::rdbSaveRawString(xRio *rdb, const  char *s, size_t len)
         nwritten += len;
 	}
 	
-	return 1;
+	return nwritten;
 	
 }
 
@@ -550,15 +667,7 @@ rObj *xRdb::rdbLoadObject(int rdbtype, xRio *rdb)
 
 int xRdb::rdbSaveStringObject(xRio *rdb, rObj *obj)
 {
-	if(obj->encoding == REDIS_ENCODING_INT)
-	{
-		return rdbSaveLongLongAsStringObject(rdb,(long)obj->ptr);
-	}
-	else
-	{
-		return rdbSaveRawString(rdb,obj->ptr,sdsllen(obj->ptr));
-	}
-	return 1;
+	return rdbSaveRawString(rdb,obj->ptr,sdsllen(obj->ptr));
 }
 
 
@@ -588,26 +697,21 @@ int xRdb::rdbSaveObject(xRio *rdb, rObj *o)
 
 	if (o->type == REDIS_STRING)
 	{
-        /* Save a string value */
-        if ((n = rdbSaveStringObject(rdb,o)) == -1)
+		if ((n = rdbSaveStringObject(rdb,o)) == -1)
 		{
 			return -1;
 		}
-        nwritten += n;
+		nwritten += n;
     } 
-	else if (o->type == REDIS_LIST)
-	{
-		
-	}
     
-	return nwritten;
+    return nwritten;
 }
 
 	
 
 int xRdb::rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long now)
 {
-	if (rdbSaveObjectType(rdb,val) == -1) return -1;
+    if (rdbSaveObjectType(rdb,val) == -1) return -1;
     if (rdbSaveStringObject(rdb,key) == -1) return -1;
     if (rdbSaveObject(rdb,val) == -1) return -1;
 	return 1;
@@ -616,7 +720,7 @@ int xRdb::rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long now)
 
 int xRdb::rdbSaveValue(xRio *rdb, rObj *value,long long now)
 {
-	if (rdbSaveObjectType(rdb,value) == -1) return -1;
+    if (rdbSaveObjectType(rdb,value) == -1) return -1;
     if (rdbSaveStringObject(rdb,value) == -1) return -1;
 
 	return 1;
@@ -626,7 +730,7 @@ int xRdb::rdbSaveValue(xRio *rdb, rObj *value,long long now)
 
 int xRdb::rdbSaveKey(xRio *rdb, rObj *key,long long now)
 {
-	if (rdbSaveObjectType(rdb,key) == -1) return -1;
+    if (rdbSaveObjectType(rdb,key) == -1) return -1;
     if (rdbSaveStringObject(rdb,key) == -1) return -1;
 	return 1;
 }
@@ -652,44 +756,8 @@ int xRdb::rdbSaveRio(xRio *rdb,int *error,xRedis * redis)
 	uint64_t cksum;
 	snprintf(magic,sizeof(magic),"REDIS%04d",REDIS_RDB_VERSION);
 	if (rdbWriteRaw(rdb,magic,9) == -1)   return REDIS_ERR;
-
-	{
-		MutexLockGuard lk(mutex);
-		for(auto it = redis->setShards.begin(); it != redis->setShards.end(); it++)
-		{
-			auto &map = (*it).setMap;
-			for(auto iter = map.begin(); iter != map.end(); iter++)
-			{
-				 if (rdbSaveKeyValuePair(rdb,iter->first,iter->second,now) == -1)
-				 {
-				 	return REDIS_ERR;
-				 }
-			}
-		}
-	}
-	if (rdbSaveType(rdb,REDIS_RDB_SET) == -1) return REDIS_ERR;
-
-	{
-		/*MutexLockGuard lk(mutex);
-		for(auto it = redis->hsetShards.begin(); it != redis->hsetShards.end(); it++)
-		{
-			auto &map = (*it).hsetMap;
-			for(auto iter = map.begin(); iter != map.end(); iter++)
-			{
-				 if (rdbSaveKeyValuePair(rdb,iter->first,iter->second,now) == -1)
-				 {
-				 	return REDIS_ERR;
-				 }
-			}
-		}
-		*/
-	}
-
-	if (rdbSaveType(rdb,REDIS_RDB_OPCODE_EOF) == -1)
-	{
-		return REDIS_ERR;
-	}
-
+	rdbSaveSet(rdb,redis);
+	rdbSaveHset(rdb,redis);
 	cksum = rdb->cksum;
 	if(rioWrite(rdb,&cksum,8) == 0)
 	{
@@ -726,7 +794,6 @@ int xRdb::rdbSave(char *filename,xRedis * redis)
 
 	if(rename(tmpfile,filename) == -1)
 	{
-		//_unlink(tmpfile);
 		return REDIS_ERR;
 	}
 	
