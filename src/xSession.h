@@ -1,7 +1,6 @@
 #ifndef _SESSION_H_
 #define _SESSION_H_
 #include "all.h"
-#include "xStringPiece.h"
 #include "xTcpconnection.h"
 #include "xObject.h"
 #include "xSds.h"

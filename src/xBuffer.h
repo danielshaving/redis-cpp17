@@ -2,8 +2,6 @@
 
 
 #include "all.h"
-#include "xStringPiece.h"
-
 using namespace std;
 
 class xBuffer
@@ -141,15 +139,6 @@ class xBuffer
     return result;
   }
 
-  xStringPiece toStringPiece() const
-  {
-    return xStringPiece(peek(), static_cast<int>(readableBytes()));
-  }
-
-  void append(const xStringPiece& str)
-  {
-    append(str.data(), str.size());
-  }
 
   void append(const char* /*restrict*/ data, size_t len)
   {
@@ -304,14 +293,6 @@ class xBuffer
     std::copy(d, d+len, begin()+readerIndex);
   }
 
-  void shrink(size_t reserve)
-  {
-    // FIXME: use vector::shrink_to_fit() in C++ 11 if possible.
-    xBuffer other;
-    other.ensureWritableBytes(readableBytes()+reserve);
-    other.append(toStringPiece());
-    swap(other);
-  }
 
   size_t internalCapacity() const
   {
