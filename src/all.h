@@ -61,7 +61,6 @@
 #include <stdint.h>
 #include <sys/stat.h>
 #include <sys/timerfd.h>
-#include "xHelp.h"
 
 
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
@@ -71,9 +70,9 @@
 /* Error codes */
 #define REDIS_OK                0
 #define REDIS_ERR               -1
-#define REDIS_INLINE_MAX_SIZE   (1024*64 *10) /* Max size of inline reads */
+#define REDIS_INLINE_MAX_SIZE   (4096*64 *10 * 10) /* Max size of inline reads */
 #define REDIS_LRU_BITS 24
-#define REDIS_MBULK_BIG_ARG     (4096*11)
+#define REDIS_MBULK_BIG_ARG     (4096*11 * 10 * 10)
 #define REDIS_STRING 0
 #define REDIS_LIST 1
 #define REDIS_SET 2

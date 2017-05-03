@@ -1,5 +1,4 @@
-#ifndef _XREDIS_H_
-#define _XREDIS_H_
+#pragma once
 #include "all.h"
 #include "xEventLoop.h"
 #include "xTcpconnection.h"
@@ -42,7 +41,7 @@ public:
 	std::unordered_map<std::string,commondFunction> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
-      typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
+    typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
 	  
 
 	struct SetMapLock
@@ -74,5 +73,4 @@ private:
 
 };
 
-#endif
 

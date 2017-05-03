@@ -1,5 +1,6 @@
 #pragma once
 #include "all.h"
+#include "xZmalloc.h"
 #include "xCallback.h"
 class xTimer
 {
@@ -15,5 +16,6 @@ public:
 	int8_t  type;
 	xTimerCallback callback;
 };
+
 
 

@@ -1,5 +1,7 @@
 #include "xRedis.h"
 
+
+
 xRedis::xRedis():timerQueue(&loop)
 {
 	
@@ -72,11 +74,11 @@ void xRedis::loadDataFromDisk()
 	char rdb_filename[] = "dump.rdb";
 	if(rdb.rdbLoad(rdb_filename,this) == REDIS_OK)
 	{
-		TRACE("load rdb success");
+		//TRACE("load rdb success");
 	}
 	else
 	{
-		TRACE("load rdb fail");
+		//TRACE("load rdb fail");
 	}
 }
 

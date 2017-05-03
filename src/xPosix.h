@@ -1,5 +1,5 @@
-#ifndef _XMUTEX_LOCK_H_
-#define _XMUTEX_LOCK_H_
+
+#pragma once
 #include "all.h"
 
 
@@ -33,7 +33,7 @@ class MutexLock : boost::noncopyable
     return &mutex;
   }
 
-private:
+public:
   pthread_mutex_t mutex;
  
 };
@@ -73,4 +73,32 @@ class MutexLockGuard : boost::noncopyable
 };
 
 
-#endif
+class CondVar
+{
+public:
+	explicit CondVar(MutexLock *mu): mu(mu)
+	{
+		pthread_cond_init(&cv, nullptr);
+	}
+	~CondVar()
+	{
+		pthread_cond_destroy(&cv); 
+	}
+	void Wait()
+	{
+		pthread_cond_wait(&cv, &mu->mutex);
+	}
+	void Signal()
+	{
+		pthread_cond_signal(&cv);
+	}
+	void SignalAll()
+	{
+		pthread_cond_broadcast(&cv);
+	}
+	
+private:
+	pthread_cond_t cv;
+	MutexLock *mu;	
+};
+

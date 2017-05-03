@@ -1,6 +1,131 @@
 #include "xRdb.h"
 #include "xRedis.h"
 
+xRio::xRio()
+{
+
+}
+
+xRio::~xRio()
+{
+
+}
+
+
+off_t rioTell(xRio *r)
+{
+	return r->tellFuc(r);
+}
+
+off_t rioFlush(xRio *r)
+{
+	return r->flushFuc(r);
+}
+
+size_t rioWrite(xRio *r,const void *buf,size_t len)
+{
+	while(len)
+	{
+		size_t bytesToWrite = (r->maxProcessingChunk && r->maxProcessingChunk < len)?r->maxProcessingChunk:len;
+		if(r->updateFuc)
+		{
+			r->updateFuc(r,buf,bytesToWrite);
+		}
+
+		if(r->writeFuc(r,buf,bytesToWrite) == 0)
+		{
+			return 0;
+		}
+
+		buf = (char*)buf + bytesToWrite;
+		len -= bytesToWrite;
+		r->processedBytes += bytesToWrite;
+	}
+
+	return 1;
+}
+
+size_t rioRead(xRio *r,void  *buf,size_t len)
+{
+	while(len)
+	{
+		size_t bytesToRead = (r->maxProcessingChunk && r->maxProcessingChunk <len)? r->maxProcessingChunk:len;
+		if(r->readFuc(r,buf,bytesToRead) == 0)
+		{
+			return 0;
+		}
+
+		if(r->updateFuc)
+		{
+			r->updateFuc(r,buf,bytesToRead);
+		}
+
+		buf = (char*)buf + bytesToRead;
+		len -= bytesToRead;
+		r->processedBytes += bytesToRead;
+	}
+
+	return 1;
+}
+
+size_t rioFileRead(xRio*r, void *buf, size_t len)
+{
+	return fread(buf,len,1,r->io.file.fp);
+}
+
+size_t rioFileWrite(xRio *r, const void *buf, size_t len)
+{
+	 size_t retval;
+	 retval = fwrite(buf,len,1,r->io.file.fp);
+	 r->io.file.buffered += len;
+
+	 if(r->io.file.autosync && r->io.file.buffered >= r->io.file.autosync)
+	 {
+	 	fflush(r->io.file.fp);
+	 }
+
+	 return retval;
+}
+
+off_t rioFileTell(xRio *r)
+{
+	return ftello(r->io.file.fp);
+}
+
+int rioFileFlush(xRio *r)
+{
+	return (fflush(r->io.file.fp) == 0) ? 1:0;
+}
+
+
+void rioGenericUpdateChecksum(xRio *r, const void *buf, size_t len)
+{
+	r->cksum = crc64(r->cksum,(const unsigned char*)buf,len);
+}
+
+void rioInitWithFile(xRio *r, FILE *fp)
+{
+	r->readFuc = rioFileRead;
+	r->writeFuc = rioFileWrite;
+	r->tellFuc = rioFileTell;
+	r->flushFuc =rioFileFlush;
+	r->updateFuc = rioGenericUpdateChecksum;
+	r->cksum = 0;
+	r->processedBytes = 0;
+	r->maxProcessingChunk = 0;
+	r->io.file.fp = fp;
+	r->io.file.buffered = 0;
+	r->io.file.autosync = 0;
+}
+
+void rioInitWithBuffer(xRio *r, sds s)
+{
+
+}
+
+
+
+
 xRdb::xRdb()
 {
 	
@@ -66,7 +191,7 @@ void xRdb::startLoading(FILE *fp)
 	}
 	else
 	{
-		TRACE("load dump.rdb %ld\n",sb.st_size);
+		//TRACE("load dump.rdb %ld\n",sb.st_size);
 	}
 }
 
@@ -224,7 +349,7 @@ rObj *xRdb::rdbLoadIntegerObject(xRio *rdb, int enctype, int encode)
 	else 
 	{
         val = 0; /* anti-warning */
-        TRACE("Unknown RDB integer encoding type");
+        //TRACE("Unknown RDB integer encoding type");
     }
 
 	if (encode)
@@ -280,7 +405,7 @@ rObj *xRdb::rdbGenericLoadStringObject(xRio *rdb, int encode)
         case REDIS_RDB_ENC_LZF:
            	return rdbLoadLzfStringObject(rdb);
         default:
-            TRACE("Unknown RDB encoding type");
+            //TRACE("Unknown RDB encoding type");
             break;
         }
     }
@@ -486,7 +611,7 @@ int xRdb::rdbLoad(char *filename,xRedis * redis)
 	if(memcmp(buf,"REDIS",5) !=0)
 	{
 		fclose(fp);
-		TRACE("Wrong signature trying to load DB from file");
+		//TRACE("Wrong signature trying to load DB from file");
 		return REDIS_ERR;
 	}
 
@@ -497,7 +622,7 @@ int xRdb::rdbLoad(char *filename,xRedis * redis)
 	}
 	else
 	{
-		TRACE("load dump.rdb %ld",sb.st_size);
+		//TRACE("load dump.rdb %ld",sb.st_size);
 	}
 
 	if(rdbLoadSet(&rdb,redis) != REDIS_OK )
@@ -519,11 +644,11 @@ int xRdb::rdbLoad(char *filename,xRedis * redis)
 	
 	if (cksum == 0)
 	{
-		TRACE("RDB file was saved with checksum disabled: no check performed");
+		//TRACE("RDB file was saved with checksum disabled: no check performed");
 	}
 	else if(cksum != expected)
 	{
-		TRACE("Wrong RDB checksum. Aborting now");
+		//TRACE("Wrong RDB checksum. Aborting now");
 	}
 
 	fclose(fp);
@@ -660,7 +785,7 @@ rObj *xRdb::rdbLoadObject(int rdbtype, xRio *rdb)
 	}
 	else
 	{
-		TRACE("rdbLoadObject type error\n");
+		//TRACE("rdbLoadObject type error\n");
 	}
 	return o;
 }
@@ -777,7 +902,7 @@ int xRdb::rdbSave(char *filename,xRedis * redis)
 	fp = fopen(tmpfile,"w");
 	if(!fp)
 	{
-		 TRACE("Failed opening .rdb for saving: %s",strerror(errno));
+		 //TRACE("Failed opening .rdb for saving: %s",strerror(errno));
 		 return REDIS_ERR;
 	}
 

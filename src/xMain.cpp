@@ -1,8 +1,14 @@
 #include "xRedis.h"
-#include "xLzf.h"
+#include "xCurrentThread.h"
+#include "xLog.h"
+#include <stdio.h>
 
 
-
+xAsyncLogging *g_asyncLog = nullptr;
+void asyncOutput(const char* msg, int len)
+{
+	g_asyncLog->append(msg, len);
+}
 
 char *ascii_logo =
 "                _._                                                  \n"
@@ -24,7 +30,10 @@ char *ascii_logo =
 "              `-.__.-'                                               \n";
 int main()
 {	
-	printf("%s",ascii_logo);
+	xLogger::setOutput(asyncOutput);
+	xAsyncLogging log("libredis", 2000);
+	log.start();
+	g_asyncLog = &log;
 	xRedis redis;
 	redis.run();
 	return 0;
