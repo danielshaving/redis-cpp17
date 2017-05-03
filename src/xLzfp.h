@@ -34,8 +34,8 @@
  * either the BSD or the GPL.
  */
 
-#ifndef LZFP_h
-#define LZFP_h
+
+#pragma once
 
 #define STANDALONE 1 /* at the moment, this is ok. */
 
@@ -181,5 +181,4 @@ typedef LZF_HSLOT LZF_STATE[1 << (HLOG)];
 # undef VERY_FAST
 #endif
 
-#endif
 

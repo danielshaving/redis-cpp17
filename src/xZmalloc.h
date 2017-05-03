@@ -28,8 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __ZMALLOC_H
-#define __ZMALLOC_H
+#pragma once
 #include "all.h"
 /* Double expansion needed for stringification of macro values. */
 #define __xstr(s) __str(s)
@@ -79,4 +78,3 @@ size_t zmalloc_get_rss(void);
 size_t zmalloc_size(void *ptr);
 #endif
 
-#endif /* __ZMALLOC_H */

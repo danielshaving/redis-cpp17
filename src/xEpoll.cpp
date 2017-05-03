@@ -29,7 +29,7 @@ bool xEpoll::init(int fdCount)
 
     if (epollFd < 0)
     {
-        TRACE("create epollFd Failed! <epollFd:%d>! error:%s", epollFd, strerror(errno));
+        //TRACE("create epollFd Failed! <epollFd:%d>! error:%s", epollFd, strerror(errno));
         return false;
     }
 
@@ -59,7 +59,7 @@ void  xEpoll::epollWait(ChannelList* activeChannels,int msTime)
 		if (savedErrno != EINTR)
 		{
 		  errno = savedErrno;
-		  TRACE("wait error %d",errno);
+		  //TRACE("wait error %d",errno);
 		}
 	}
 
@@ -149,7 +149,7 @@ void xEpoll::update(int operation, xChannel* channel)
   int fd = channel->getfd();
   if (::epoll_ctl(epollFd, operation, fd, &event) < 0)
   {
-	  TRACE("epoll_ctl op %d\n",fd );
+	  //TRACE("epoll_ctl op %d\n",fd );
   }
 }
 

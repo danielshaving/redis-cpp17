@@ -68,34 +68,34 @@ bool xSocket::createTcpListenSocket()
 
     if (listenSocketFd < 0)
     {
-        TRACE("Create Tcp Socket Failed! <%s>", strerror(errno));
+        //TRACE("Create Tcp Socket Failed! <%s>", strerror(errno));
         return false;
     }
 
     if (!setSocketNonBlock(listenSocketFd))
     {
-        TRACE("Set listen socket <%d> to non-block failed!", listenSocketFd);
+        //TRACE("Set listen socket <%d> to non-block failed!", listenSocketFd);
         return false;
     }
 
     int optval = 1;
     if (setsockopt(listenSocketFd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
     {
-        TRACE("Set listen socket<%d> failed! error:%s", listenSocketFd, strerror(errno));
+        //TRACE("Set listen socket<%d> failed! error:%s", listenSocketFd, strerror(errno));
         close(listenSocketFd);
         return false;
     }
 
     if (bind(listenSocketFd, (struct sockaddr*)&serverAdress, sizeof(serverAdress)) < 0 )
     {
-        TRACE("Bind listen socket<%d> failed! error:%s", listenSocketFd, strerror(errno));
+        //TRACE("Bind listen socket<%d> failed! error:%s", listenSocketFd, strerror(errno));
         close(listenSocketFd);
         return false;
     }
 
     if (listen(listenSocketFd, SOMAXCONN))
     {
-        TRACE("Listen listen socket<%d> failed! error:%s", listenSocketFd, strerror(errno));
+        //TRACE("Listen listen socket<%d> failed! error:%s", listenSocketFd, strerror(errno));
         close(listenSocketFd);
         return false;
     }
@@ -113,14 +113,14 @@ bool xSocket::setSocketNonBlock(int socketFd)
     int opt = fcntl(socketFd, F_GETFL);
     if (opt < 0)
     {
-        TRACE("fcntl(%d, F_GETFL) failed! error:%s", socketFd, strerror(errno));
+        //TRACE("fcntl(%d, F_GETFL) failed! error:%s", socketFd, strerror(errno));
         return false;
     }
 
     opt = opt | O_NONBLOCK | O_NDELAY;
     if (fcntl(socketFd, F_SETFL, opt) < 0)
     {
-        TRACE("fcntl(%d, F_GETFL, %d) failed! error:%s", socketFd, opt, strerror(errno));
+        //TRACE("fcntl(%d, F_GETFL, %d) failed! error:%s", socketFd, opt, strerror(errno));
         return false;
     }
 

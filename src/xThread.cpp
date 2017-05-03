@@ -35,7 +35,6 @@ xThread::~xThread()
 xEventLoop *xThread::startLoop()
 {
 	xthread = new std::thread(std::bind(&xThread::threadFunc,this));
-
 	{
 		std::unique_lock<std::mutex> lk(mutex);
 		while (loop == nullptr)

@@ -37,13 +37,13 @@
 		else
 		{
 		  ::close(connfd);
-		  TRACE("xAcceptor::handleRead");
+		  //TRACE("xAcceptor::handleRead");
 		}
 	}
 	else
 	{
 		int savedErrno = errno;
-		TRACE("errno %d",errno);
+		//TRACE("errno %d",errno);
 	}
  }
 

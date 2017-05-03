@@ -1,22 +1,15 @@
 #pragma once
-
-
-
 #define SDS_MAX_PREALLOC (1024*1024)
-
 #include <sys/types.h>
 #include <stdarg.h>
 #include "xZmalloc.h"
 typedef char *sds;
 
 
-struct sdshdr {
-    
+struct sdshdr
+{
     int len;
-
     int free;
-
-  
     char buf[];
 };
 

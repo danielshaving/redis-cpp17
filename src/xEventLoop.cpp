@@ -91,7 +91,7 @@ void  xEventLoop::handleRead()
 	ssize_t n = ::read(wakeupFd, &one, sizeof one);
 	if (n != sizeof one)
 	{
-		TRACE("xEventLoop::handleRead() reads error");
+		//TRACE("xEventLoop::handleRead() reads error");
 	}
 }
 
@@ -113,7 +113,7 @@ void xEventLoop::wakeup()
   ssize_t n = ::write(wakeupFd, &one, sizeof one);
   if (n != sizeof one)
   {
-    TRACE("EventLoop::wakeup() wrties error");
+    //TRACE("EventLoop::wakeup() wrties error");
   }
 }
 

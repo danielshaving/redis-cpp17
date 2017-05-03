@@ -67,7 +67,7 @@ void xTcpconnection::shutdownInLoop()
   {
 	if (::shutdown(sockfd, SHUT_WR) < 0)
 	{
-		TRACE_ERR("sockets::shutdownWrite");
+		//TRACE_ERR("sockets::shutdownWrite");
 	}
   }
 }
@@ -213,7 +213,7 @@ void xTcpconnection::sendInLoop(const void* data, size_t len)
   bool faultError = false;
   if (state == kDisconnected)
   {
-    TRACE("disconnected, give up writing");
+    //TRACE("disconnected, give up writing");
     return;
   }
   // if no thing in output queue, try writing directly
