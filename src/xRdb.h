@@ -102,13 +102,9 @@ public:
 	int rdbSaveValue(xRio *rdb, rObj *value,long long now);
 	int rdbSaveKey(xRio *rdb, rObj *value,long long now);
 	rObj *rdbLoadLzfStringObject(xRio *rdb);
-
 	int rdbLoadSet(xRio *rdb,xRedis * redis);
 	int rdbLoadHset(xRio *rdb,xRedis * redis);
-
 	int rdbSaveSet(xRio *rdb,xRedis * redis);
 	int rdbSaveHset(xRio *rdb,xRedis * redis);
-	
-private:
-	mutable MutexLock mutex;
+
 };

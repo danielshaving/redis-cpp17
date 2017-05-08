@@ -2,7 +2,7 @@
 
 
 
-xRedis::xRedis():timerQueue(&loop)
+xRedis::xRedis()
 {
 	
 #define REGISTER_REDIS_HANDLER(table, func) \
@@ -18,25 +18,64 @@ xRedis::xRedis():timerQueue(&loop)
 	REGISTER_REDIS_HANDLER("ping",pingCommond);
 	REGISTER_REDIS_HANDLER("save",saveCommond);
 	createSharedObjects();
-	//timerQueue.addTimer(time(0) + 40 ,-1,-1,std::bind(&xRedis::handleTimeout,this));
 	loadDataFromDisk();
 	server.init(&loop,"0.0.0.0",6379,this);
-	server.setConnectionCallback(
-	      std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	server.setThreadNum(0);
+	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
+	server.setThreadNum(4);
 	server.start();
-	
+	loop.runAfter(1,true,std::bind(&xRedis::handleTimeout,this));
+	loop.runAfter(5,false,std::bind(&xRedis::handleTimeout,this));
+
 }
 
 xRedis::~xRedis()
 {
+	destorySharedObjects();
+	MutexLockGuard lk(mutex);
+
+	{
+		for(auto it = setShards.begin(); it != setShards.end(); it++)
+		{
+			auto &map = (*it).setMap;
+			for(auto sit = map.begin(); sit !=map.end(); sit++)
+			{
+				zfree(sit->first);
+				zfree(sit->second);
+			}
+			map.clear();
+		}
+
+	}
+
+	{
+		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
+		{
+			auto &map = (*it).hsetMap;
+			for(auto sit = map.begin(); sit!=map.end(); sit++)
+			{
+				zfree(sit->first);
+				auto  &mmap = sit->second;
+				for(auto ssit = mmap.begin(); ssit!=mmap.end(); ssit++)
+				{
+					zfree(ssit->first);
+					zfree(ssit->second);
+				}
+				mmap.clear();
+			}
+			map.clear();
+
+		}
+	}
+
 
 }
 
 void xRedis::handleTimeout()
 {
-	loop.quit();
+	printf("hahaha\n");
+
 }
+
 void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
@@ -45,13 +84,13 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
 
-		//TRACE("redis client connect success\n");
+		LOG_INFO<<"redis client connect success";
 	}
 	else
 	{
 		MutexLockGuard mu(mutex);
 		sessions.erase(conn->getSockfd());
-		//TRACE("redis client disconnect\n");
+		LOG_INFO<<"redis client disconnect";
 	}
 }
 
@@ -74,11 +113,11 @@ void xRedis::loadDataFromDisk()
 	char rdb_filename[] = "dump.rdb";
 	if(rdb.rdbLoad(rdb_filename,this) == REDIS_OK)
 	{
-		//TRACE("load rdb success");
+		LOG_INFO<<"load rdb success";
 	}
 	else
 	{
-		//TRACE("load rdb fail");
+		LOG_INFO<<"load rdb fail";
 	}
 }
 
@@ -114,7 +153,7 @@ bool xRedis::dbsizeCommond(const std::vector<rObj*> & obj,xSession * session)
 
 	int64_t size = 0;
 	{
-		MutexLockGuard lk(fmutex);
+		MutexLockGuard lk(mutex);
 		for(auto it = setShards.begin(); it != setShards.end(); it++)
 		{
 			size+=(*it).setMap.size();
@@ -122,7 +161,7 @@ bool xRedis::dbsizeCommond(const std::vector<rObj*> & obj,xSession * session)
 	}
 
 	{
-		MutexLockGuard lk(fmutex);
+		MutexLockGuard lk(mutex);
 		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
 		{
 			size+=(*it).hsetMap.size();
@@ -275,6 +314,7 @@ bool xRedis::hgetCommond(const std::vector<rObj*> & obj,xSession * session)
 }
 
 
+
 bool xRedis::flushdbCommond(const std::vector<rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 0)
@@ -283,7 +323,7 @@ bool xRedis::flushdbCommond(const std::vector<rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	MutexLockGuard lk(fmutex);
+	MutexLockGuard lk(mutex);
 	
 	{
 		for(auto it = setShards.begin(); it != setShards.end(); it++)

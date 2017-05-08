@@ -65,7 +65,7 @@ bool   xPriorityQueue::erase(xTimer *e)
 	{
 		xTimer *last = p[--n];
 		int parent = (*(int *)e - 1) / 2;
-		if (*(int *)e > 0 && (p[parent]->when  >  last->when) > 0)
+		if (*(int *)e > 0 && (p[parent]->getWhen()  >  last->getWhen()) > 0)
 			shiftUp(*(int *)e, last);
 		else
 			shiftDown(*(int *)e, last);
@@ -101,10 +101,8 @@ void  xPriorityQueue::reserve()
 		pp[i] = new xTimer();
 		pp[i]->callback = std::move(p[i]->callback);
 		pp[i]->index = p[i]->index;
-		pp[i]->key = p[i]->key;
-		pp[i]->when = p[i]->when;
 		pp[i]->type = p[i]->type;
-
+		pp[i]->expiration = std::move(p[i]->expiration);
 	}
 
 	if(p)
@@ -126,7 +124,7 @@ void  xPriorityQueue::reserve()
 void xPriorityQueue::shiftUp(int hole_index, xTimer *e)
 {
 	int parent = (hole_index - 1) / 2;
-	while (hole_index && ((p[parent])->when >  e->when) > 0)
+	while (hole_index && ((p[parent])->getWhen() >  e->getWhen()) > 0)
 	{
 		*(int *)(p[hole_index] = p[parent]) = hole_index;
 		hole_index = parent;
@@ -141,8 +139,8 @@ void xPriorityQueue::shiftDown(int hole_index, xTimer *e)
 	int min_child = 2 * (hole_index + 1);
 	while (min_child <= n)
 	{
-		min_child -= min_child == n || (p[min_child]->when  >  p[min_child - 1]->when) > 0;
-		if (!((e->when >  p[min_child]->when ) > 0))
+		min_child -= min_child == n || (p[min_child]->getWhen()  >  p[min_child - 1]->getWhen()) > 0;
+		if (!((e->getWhen() >  p[min_child]->getWhen() ) > 0))
 			break;
 		*(int *)(p[hole_index] = p[min_child]) = hole_index;
 		hole_index = min_child;
@@ -155,7 +153,7 @@ void xPriorityQueue::shiftDown(int hole_index, xTimer *e)
 
 int createTimerfd()
 {
-  int timerfd = ::timerfd_create(CLOCK_REALTIME,
+  int timerfd = ::timerfd_create(CLOCK_MONOTONIC,
                                  TFD_NONBLOCK | TFD_CLOEXEC);
   if (timerfd < 0)
   {	
@@ -164,22 +162,35 @@ int createTimerfd()
   return timerfd;
 }
 
-struct timespec howMuchTimeFromNow(int64_t when)
+struct timespec howMuchTimeFromNow(xTimestamp when)
 {
-  struct timespec ts;
-  ts.tv_sec = when;
-  ts.tv_nsec = 0;
-  return ts;
+	int64_t  microseconds = when.getMicroSecondsSinceEpoch()
+						 - xTimestamp::now().getMicroSecondsSinceEpoch();
+	if (microseconds < 100)
+	{
+		microseconds = 100;
+	}
+
+	struct timespec ts;
+	ts.tv_sec = static_cast<time_t>(
+	  microseconds / xTimestamp::kMicroSecondsPerSecond);
+	ts.tv_nsec = static_cast<long>(
+	  (microseconds % xTimestamp::kMicroSecondsPerSecond) * 1000);
+	return ts;
 }
 
-void resetTimerfd(int timerfd, int64_t when)
+
+
+
+
+void resetTimerfd(int timerfd, xTimestamp expiration)
 {
 	struct itimerspec newValue;
 	struct itimerspec oldValue;
 	bzero(&newValue, sizeof newValue);
 	bzero(&oldValue, sizeof oldValue);
-	newValue.it_value = howMuchTimeFromNow(when);
-	int net = ::timerfd_settime(timerfd, 1, &newValue, &oldValue);
+	newValue.it_value = howMuchTimeFromNow(expiration);
+	int net = ::timerfd_settime(timerfd, 0, &newValue, &oldValue);
 	if(net < 0 )
 	{
 		assert(false);
@@ -190,7 +201,7 @@ void resetTimerfd(int timerfd, int64_t when)
 
 
 
-void readTimerfd(int timerfd, int64_t  now)
+void readTimerfd(int timerfd,xTimestamp now)
 {
   uint64_t howmany;
   ssize_t n = ::read(timerfd, &howmany, sizeof howmany);
@@ -218,9 +229,10 @@ xTimerQueue::~xTimerQueue()
 	::close(timerfd);
 }
 
-void  xTimerQueue::addTimer(int64_t when,int64_t key,int8_t type, xTimerCallback&& cb)
+void  xTimerQueue::addTimer(double when, bool type,xTimerCallback&& cb)
 {
-	xTimer * timer = new xTimer(std::move(cb),when,key,type);
+	xTimestamp time(addTime(xTimestamp::now(), when));
+	xTimer * timer = new xTimer(std::move(cb),std::move(time),type);
 	loop->runInLoop(std::bind(&xTimerQueue::addTimerInLoop,this,timer));
 }
 
@@ -236,45 +248,46 @@ void   xTimerQueue::addTimerInLoop(xTimer* timer)
 	}
 	else
 	{
-		if(timer->when < pqueue.head()->when)
+		if(timer->getWhen() < pqueue.head()->getWhen())
 		{
-			earliestChanged = true;	
+			earliestChanged = true;
 		}
 	}
-	
+
 	pqueue.push(timer);
 
 	if(earliestChanged)
 	{
-		resetTimerfd(timerfd,timer->when);	
+		resetTimerfd(timerfd,timer->getExpiration());
 	}
-	
+
 }
 
 void  xTimerQueue::handleRead()
 {
 	loop->assertInLoopThread();
-	int64_t curTime = time(0);
-	readTimerfd(timerfd,curTime);
+	xTimestamp now(xTimestamp::now());
+	readTimerfd(timerfd,now);
 	while(pqueue.size() > 0 )
 	{
-		if(curTime >= pqueue.head()->when )
-		{	
+		if(now.getMicroSecondsSinceEpoch() >= pqueue.head()->getWhen())
+		{
 			xTimer *timer = pqueue.pop();
 			if(timer == nullptr)
 			{
 				assert(false);
 			}
-			
+
 			timer->run();
 			delete timer;
 			timer = nullptr;
 		}
 		else
 		{
-			resetTimerfd(timerfd,pqueue.head()->when);
+			resetTimerfd(timerfd,pqueue.head()->getExpiration());
 			break;
 		}
+
 	}
 	
 }

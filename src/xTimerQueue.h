@@ -28,8 +28,6 @@ public:
 	int n,a;
 };
 
-
-
 class xTimerQueue
 {
 public:
@@ -37,11 +35,13 @@ public:
 	~xTimerQueue();
 	void handleRead();
 	void addTimerInLoop(xTimer* timer);
-  	void addTimer(int64_t when,int64_t key,int8_t type,xTimerCallback&& cb);
+  	void addTimer(double  when,bool type,xTimerCallback&& cb);
 
+  	static const int kMicroSecondsPerSecond = 1000 * 1000;
 private:
 	xEventLoop *loop;
 	xPriorityQueue pqueue;
 	const int timerfd;
 	xChannel timerfdChannel;
+
 };

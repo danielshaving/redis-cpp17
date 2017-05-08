@@ -436,10 +436,11 @@ rObj *xRdb::rdbLoadStringObject(xRio *rdb)
 
 int xRdb::rdbSaveSet(xRio *rdb,xRedis * redis)
 {
-	MutexLockGuard lk(mutex);
 	for(auto it = redis->setShards.begin(); it != redis->setShards.end(); it++)
 	{
 		auto &map = (*it).setMap;
+		MutexLock & mu = (*it).mutex;
+		MutexLockGuard lock(mu);
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			 if (rdbSaveKeyValuePair(rdb,iter->first,iter->second,0) == -1)
@@ -455,10 +456,11 @@ int xRdb::rdbSaveSet(xRio *rdb,xRedis * redis)
 }
 int xRdb::rdbSaveHset(xRio *rdb,xRedis * redis)
 {
-	MutexLockGuard lk(mutex);
 	for(auto it = redis->hsetShards.begin(); it != redis->hsetShards.end(); it++)
 	{
 		auto &map = (*it).hsetMap;
+		MutexLock & mu = (*it).mutex;
+		MutexLockGuard lock(mu);
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)

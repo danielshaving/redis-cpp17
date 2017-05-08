@@ -9,6 +9,8 @@
 #include "xObject.h"
 #include "xRdb.h"
 #include "xPosix.h"
+#include "xLog.h"
+
 
 class xRedis : boost::noncopyable
 {
@@ -35,6 +37,9 @@ public:
 	bool hsetCommond(const std::vector<rObj*> & obj,xSession * session);
 	bool hgetCommond(const std::vector<rObj*> & obj,xSession * session);
 	bool hgetallCommond(const std::vector<rObj*> & obj,xSession * session);
+	bool slaveofCommond(const std::vector<rObj*> & obj,xSession * session);
+	bool syncCommond(const std::vector<rObj*> & obj,xSession * session);
+	bool psyncCommond(const std::vector<rObj*> & obj,xSession * session);
 
 public:
 	typedef std::function<bool (const std::vector<rObj*> &,xSession *)> commondFunction;
@@ -64,11 +69,9 @@ public:
 	xEventLoop loop;
 	xTcpServer server;
 	mutable MutexLock mutex;
-	mutable MutexLock fmutex;
 
 private:
 	xRdb rdb;
-	xTimerQueue timerQueue;
 	
 
 };

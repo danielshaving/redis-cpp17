@@ -1,15 +1,9 @@
 #include "xTimer.h"
 
-xTimer::xTimer()
-{
-	
-}
-
-xTimer::xTimer(xTimerCallback && cb,int64_t when,int64_t key,int8_t type)
+xTimer::xTimer(xTimerCallback && cb,xTimestamp && expiration,bool type)
 :index(-1),
-when(when),
-key(key),
-type(type),
+ type(type),
+ expiration(std::move(expiration)),
 callback(std::move(cb))
 {
 	
