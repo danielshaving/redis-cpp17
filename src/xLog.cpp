@@ -455,7 +455,7 @@ xLogger::xImpl::xImpl(LogLevel level, int savedErrno, const xSourceFile& file, i
     line(line),
     baseName(file)
 {
-	//formatTime();
+	formatTime();
 }
 
 void xLogger::xImpl::formatTime()
