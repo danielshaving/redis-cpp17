@@ -27,6 +27,12 @@ public:
 		int64_t seconds = tv.tv_sec;
 		return xTimestamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
 	}
+
+	  static xTimestamp invalid()
+	  {
+	    return xTimestamp();
+	  }
+
 	static const int kMicroSecondsPerSecond = 1000 * 1000;
 private:
 	int64_t microSecondsSinceEpoch;
@@ -38,20 +44,20 @@ inline xTimestamp addTime(xTimestamp timestamp, double seconds)
   return xTimestamp(timestamp.getMicroSecondsSinceEpoch() + delta);
 }
 
-
-
 class xTimer
 {
 public:
 	xTimer(){}
-	xTimer(xTimerCallback && cb, xTimestamp && expiration,bool	type);
+	xTimer(xTimerCallback && cb, xTimestamp && expiration,bool	repeat,double interval);
 	xTimestamp getExpiration() const  { return expiration;}
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
+	void restart(xTimestamp now);
 	~xTimer();
 	void run();
 public:	
 	int32_t index;
-	bool	type;
+	bool	repeat;
+	double interval;
 	xTimestamp expiration;
 	xTimerCallback callback;
 };

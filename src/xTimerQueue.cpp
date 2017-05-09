@@ -101,7 +101,8 @@ void  xPriorityQueue::reserve()
 		pp[i] = new xTimer();
 		pp[i]->callback = std::move(p[i]->callback);
 		pp[i]->index = p[i]->index;
-		pp[i]->type = p[i]->type;
+		pp[i]->repeat = p[i]->repeat;
+		pp[i]->interval = p[i]->interval;
 		pp[i]->expiration = std::move(p[i]->expiration);
 	}
 
@@ -229,10 +230,10 @@ xTimerQueue::~xTimerQueue()
 	::close(timerfd);
 }
 
-void  xTimerQueue::addTimer(double when, bool type,xTimerCallback&& cb)
+void  xTimerQueue::addTimer(double when, bool repeat,xTimerCallback&& cb)
 {
 	xTimestamp time(addTime(xTimestamp::now(), when));
-	xTimer * timer = new xTimer(std::move(cb),std::move(time),type);
+	xTimer * timer = new xTimer(std::move(cb),std::move(time),repeat,when);
 	loop->runInLoop(std::bind(&xTimerQueue::addTimerInLoop,this,timer));
 }
 
@@ -268,6 +269,7 @@ void  xTimerQueue::handleRead()
 	loop->assertInLoopThread();
 	xTimestamp now(xTimestamp::now());
 	readTimerfd(timerfd,now);
+	std::vector<xTimer *> vectors;
 	while(pqueue.size() > 0 )
 	{
 		if(now.getMicroSecondsSinceEpoch() >= pqueue.head()->getWhen())
@@ -279,16 +281,31 @@ void  xTimerQueue::handleRead()
 			}
 
 			timer->run();
-			delete timer;
-			timer = nullptr;
+			vectors.push_back(timer);
 		}
 		else
 		{
 			resetTimerfd(timerfd,pqueue.head()->getExpiration());
 			break;
 		}
-
 	}
 	
+
+	for(auto it = vectors.begin(); it != vectors.end(); it ++)
+	{
+		if( (*it)->repeat)
+		{
+			(*it)->restart(now);
+			resetTimerfd(timerfd, now);
+			pqueue.push(*it);
+		}
+		else
+		{
+			delete *it;
+			*it = nullptr;
+		}
+	}
+
+
 }
 

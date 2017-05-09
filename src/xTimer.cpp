@@ -1,8 +1,9 @@
 #include "xTimer.h"
 
-xTimer::xTimer(xTimerCallback && cb,xTimestamp && expiration,bool type)
+xTimer::xTimer(xTimerCallback && cb, xTimestamp && expiration,bool	repeat,double interval)
 :index(-1),
- type(type),
+ repeat(repeat),
+ interval(interval),
  expiration(std::move(expiration)),
 callback(std::move(cb))
 {
@@ -25,3 +26,19 @@ void xTimer::run()
 	
 	
 }
+
+
+void xTimer::restart(xTimestamp now)
+{
+  if (repeat)
+  {
+    expiration = addTime(now, interval);
+  }
+  else
+  {
+    expiration = xTimestamp::invalid();
+  }
+}
+
+
+

@@ -35,7 +35,7 @@ public:
 	~xTimerQueue();
 	void handleRead();
 	void addTimerInLoop(xTimer* timer);
-  	void addTimer(double  when,bool type,xTimerCallback&& cb);
+  	void addTimer(double  when,bool repeat,xTimerCallback&& cb);
 
   	static const int kMicroSecondsPerSecond = 1000 * 1000;
 private:
