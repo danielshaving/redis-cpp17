@@ -17,26 +17,32 @@ xRedis::xRedis()
 	REGISTER_REDIS_HANDLER("hgetall",hgetallCommond);
 	REGISTER_REDIS_HANDLER("ping",pingCommond);
 	REGISTER_REDIS_HANDLER("save",saveCommond);
+	REGISTER_REDIS_HANDLER("slaveof",slaveofCommond);
 	createSharedObjects();
 	loadDataFromDisk();
-	server.init(&loop,"0.0.0.0",6379,this);
+	host = masterHost = "0.0.0.0";
+	port = 6379;
+	masterPort = 6380;
+	server.init(&loop, masterHost, masterPort,this);
 	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
 	server.setThreadNum(4);
 	server.start();
-	loop.runAfter(1,true,std::bind(&xRedis::handleTimeout,this));
-	loop.runAfter(5,false,std::bind(&xRedis::handleTimeout,this));
 
+//	loop.runAfter(10,true,std::bind(&xRedis::handleTimeout,this));
+//	loop.runAfter(5,true,std::bind(&xRedis::handleTimeout,this));
+// loop.runAfter(1,true,std::bind(&xRedis::handleTimeout,this));
 }
 
 xRedis::~xRedis()
 {
 	destorySharedObjects();
-	MutexLockGuard lk(mutex);
 
 	{
 		for(auto it = setShards.begin(); it != setShards.end(); it++)
 		{
 			auto &map = (*it).setMap;
+			MutexLock &mu = (*it).mutex;
+			MutexLockGuard lock(mu);
 			for(auto sit = map.begin(); sit !=map.end(); sit++)
 			{
 				zfree(sit->first);
@@ -51,6 +57,8 @@ xRedis::~xRedis()
 		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
 		{
 			auto &map = (*it).hsetMap;
+			MutexLock &mu = (*it).mutex;
+			MutexLockGuard lock(mu);
 			for(auto sit = map.begin(); sit!=map.end(); sit++)
 			{
 				zfree(sit->first);
@@ -72,7 +80,7 @@ xRedis::~xRedis()
 
 void xRedis::handleTimeout()
 {
-	printf("hahaha\n");
+	loop.quit();
 
 }
 
@@ -142,6 +150,46 @@ bool xRedis::saveCommond(const std::vector<rObj*> & obj,xSession * session)
 
 	return true;
 }
+
+
+bool xRedis::slaveofCommond(const std::vector<rObj*> & obj,xSession * session)
+{
+	if(obj.size() !=  2)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown slaveof error");
+		return false;
+	}
+
+
+	long port;
+
+	if ((getLongFromObjectOrReply(session->sendBuf, obj[1], &port, nullptr) != REDIS_OK))
+		return false;
+
+	if (masterHost.c_str() && !memcmp(masterHost.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
+		&& masterPort == port)
+	{
+		return false;
+	}
+
+
+
+	return true;
+}
+
+
+bool xRedis::syncCommond(const std::vector<rObj*> & obj,xSession * session)
+{
+	return true;
+}
+
+
+
+bool xRedis::psyncCommond(const std::vector<rObj*> & obj,xSession * session)
+{
+	return true;
+}
+
 
 bool xRedis::dbsizeCommond(const std::vector<rObj*> & obj,xSession * session)
 {
