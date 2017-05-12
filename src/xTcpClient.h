@@ -23,7 +23,7 @@ public:
 	void setWriteCompleteCallback(WriteCompleteCallback&& cb) { writeCompleteCallback = std::move(cb); }
 
 
-private:
+public:
 
 	void errorConnection();
 	void newConnection(int sockfd);

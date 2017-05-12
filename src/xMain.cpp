@@ -7,6 +7,7 @@
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char* msg, int len)
 {
+	printf("%s\n",msg);
 	g_asyncLog->append(msg, len);
 }
 
@@ -28,13 +29,25 @@ char *ascii_logo =
 "      `-._    `-.__.-'    _.-'                                       \n"
 "          `-._        _.-'                                           \n"
 "              `-.__.-'                                               \n";
-int main()
+int main(int argc, char* argv[])
 {	
-	xLogger::setOutput(asyncOutput);
-	xAsyncLogging log("libredis", 2000);
-	log.start();
-	g_asyncLog = &log;
-	xRedis redis;
-	redis.run();
+	if (argc < 4)
+	{
+		fprintf(stderr, "Usage: server <address> <port> <threads>\n");
+	}
+	else
+	{		
+		const char* ip = argv[1];
+		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
+		int32_t threadCount =  atoi(argv[3]);
+		
+		xLogger::setOutput(asyncOutput);
+	    
+		xAsyncLogging log("libredis", 2000);
+		log.start();
+		g_asyncLog = &log;
+		xRedis redis(ip,port,threadCount);
+		redis.run();
+	}
 	return 0;
 }

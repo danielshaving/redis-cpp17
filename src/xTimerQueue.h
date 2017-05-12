@@ -34,6 +34,7 @@ public:
 	xTimerQueue(xEventLoop *loop);
 	~xTimerQueue();
 	void handleRead();
+	void cancelInloop(xTimer *timer);
 	void addTimerInLoop(xTimer* timer);
   	void addTimer(double  when,bool repeat,xTimerCallback&& cb);
 

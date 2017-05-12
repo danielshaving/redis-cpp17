@@ -71,9 +71,9 @@ void xEventLoop::removeChannel(xChannel* channel)
 
 
 
-void xEventLoop::runAfter(int64_t value,int64_t key,int8_t type, xTimerCallback&& cb)
+void xEventLoop::runAfter(double  when, bool repeat,xTimerCallback&& cb)
 {
-	timerQueue->addTimer(value,key,type,std::move(cb));
+	timerQueue->addTimer(when,repeat,std::move(cb));
 }
 
 

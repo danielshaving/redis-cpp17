@@ -239,6 +239,12 @@ void  xTimerQueue::addTimer(double when, bool repeat,xTimerCallback&& cb)
 
 
 
+void xTimerQueue::cancelInloop(xTimer *timer)
+{
+	
+}
+
+
 void   xTimerQueue::addTimerInLoop(xTimer* timer)
 {
 	bool earliestChanged = false;

@@ -34,32 +34,39 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 			}
 		}
 
-		if(reqtype == REDIS_REQ_INLINE )
+		if(reqtype == REDIS_REQ_MULTIBULK)
 		{
-			addReplyError(sendBuf,"Unknown request type");
-			conn->send(&sendBuf);
-			recvBuf->retrieveAll();
-			break;
+			if(processMultibulkBuffer(recvBuf)!= REDIS_OK)
+			{
+				break;
+			}
 		}
-
-		if(processMultibulkBuffer(recvBuf)!= REDIS_OK)
+		else if(reqtype == REDIS_REQ_INLINE)
 		{
-			break;
+			if(processInlineBuffer(recvBuf)!= REDIS_OK)
+			{
+				break;
+			}
 		}
 		else
 		{
-			if (argc == 0)
-			{
-				reset();
-			}
-			else
-			{
-				processCommand();
-				reset();
-			}
-			
+			LOG_WARN<<"Unknown request type";
 		}
+		
+		
+		if (argc == 0)
+		{
+			reset();
+		}
+		else
+		{
+			processCommand();
+			reset();
+		}
+			
+		
 	}
+	
 	if(sendBuf.readableBytes() > 0 )
 	{
 		conn->send(&sendBuf);	
@@ -69,6 +76,7 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 int xSession::processCommand()
 {
+
 	auto iter = redis->handlerCommondMap.find(commond);
 	if(iter == redis->handlerCommondMap.end() )
 	{
@@ -77,11 +85,20 @@ int xSession::processCommand()
 		return REDIS_ERR;
 	}
 
+	for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
+	{
+		replicationFeedSlaves(commond,redis,robjs,it->second);
+	}
+	
+	
+
 	if(!iter->second(robjs,this))
 	{
 		clearObj();
 		return REDIS_ERR;
 	}
+	
+	
 	return REDIS_OK;
 }
 
@@ -111,6 +128,62 @@ void xSession::reset()
 
 
 
+int xSession::processInlineBuffer(xBuffer *recvBuf)
+{
+    const char *newline;
+    const char *queryBuf = recvBuf->peek();
+    int  j;
+    size_t queryLen;
+    sds *argv, aux;
+	  
+    /* Search for end of line */
+    newline = strchr(queryBuf,'\n');
+    if(newline == nullptr)
+    {
+    	 if(recvBuf->readableBytes() > PROTO_INLINE_MAX_SIZE)
+    	 {
+    	 	  addReplyError(sendBuf,"Protocol error: too big inline request");
+	        return REDIS_ERR;
+    	 }
+		 
+    }
+
+	if (newline && newline != queryBuf && *(newline-1) == '\r')
+	newline--;
+	  
+	queryLen = newline-(queryBuf);
+	aux = sdsnewlen(queryBuf,queryLen);
+	argv = sdssplitargs(aux,&argc);
+	sdsfree(aux);
+
+
+	recvBuf->retrieve(queryLen + 2);
+	  
+	if (argv == nullptr) 
+	{
+		addReplyError(sendBuf,"Protocol error: unbalanced quotes in request");
+		return REDIS_ERR;
+       }
+
+	for (j = 0; j  < argc; )
+	{
+		if(j == 0)
+		{
+			commond = argv[j];
+		}
+		else
+		{
+			rObj * obj = (rObj*)createStringObject(argv[j],sdslen(argv[j]));
+			robjs.push_back(obj);
+		}
+		j++;
+	}
+	
+	zfree(argv);
+	return REDIS_OK;
+   
+}
+
 int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 {
 	const char * newline = nullptr;
@@ -125,7 +198,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 			{
 				addReplyError(sendBuf,"Protocol error: too big mbulk count string");
-				assert(false);
+				
 			}
 			return REDIS_ERR;
 		}
@@ -134,14 +207,13 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 
 		  if (newline-(queryBuf) > ((signed)recvBuf->readableBytes()-2))
 		  {
-		  	assert(false);
 		  	return REDIS_ERR;
 		  }
      
 
 		if(queryBuf[0] != '*')
 		{
-			assert(false);
+			
 			return REDIS_ERR;
 		}
 
@@ -149,7 +221,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		if(!ok || ll > 1024 * 1024)
 		{
 			addReplyError(sendBuf,"Protocol error: invalid multibulk length");
-			assert(false);
+			
 			return REDIS_ERR;
 		}
 
@@ -188,7 +260,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			if(queryBuf[pos] != '$')
 			{
 				addReplyErrorFormat(sendBuf,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
-				assert(false);
+				
 				return REDIS_ERR;
 			}
 
@@ -197,14 +269,14 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			if(!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
 				addReplyError(sendBuf,"Protocol error: invalid bulk length");
-				assert(false);
+				
 				return REDIS_ERR;
 			}
 
 			pos += newline - (queryBuf + pos) + 2;
 			if(ll >= REDIS_MBULK_BIG_ARG)
 			{	
-				assert(false);
+				
 				return REDIS_ERR;
 			}
 			bulklen = ll;

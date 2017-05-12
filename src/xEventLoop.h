@@ -24,7 +24,7 @@ public:
 	void updateChannel(xChannel* channel);
 	void removeChannel(xChannel* channel);
 	bool hasChannel(xChannel* channel);
-	void runAfter(int64_t value,int64_t key,int8_t type,xTimerCallback&& cb);
+	void runAfter(double  when,bool repeat,xTimerCallback&& cb);
     void assertInLoopThread()
     {
       if (!isInLoopThread())

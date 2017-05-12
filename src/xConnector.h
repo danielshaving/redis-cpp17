@@ -3,6 +3,7 @@
 #include "xEventLoop.h"
 #include "xChannel.h"
 #include "xSocket.h"
+#include "xLog.h"
 
 class xConnector
 {

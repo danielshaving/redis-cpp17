@@ -10,22 +10,22 @@
 #include "xRdb.h"
 #include "xPosix.h"
 #include "xLog.h"
+#include "xReplication.h"
 
 
 class xRedis : boost::noncopyable
 {
 public:
-	xRedis();
+	xRedis(const char * ip,int32_t port,int32_t threadCount);
 	~xRedis();
 	void handleTimeout();
 	void run();
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 	bool deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf,void  *data);
 
 	void loadDataFromDisk();
 	void flush();
-	void disconnect();
+
 	bool saveCommond(const std::vector<rObj*> & obj,xSession * session);
 	bool pingCommond(const std::vector<rObj*> & obj,xSession * session);
 	bool flushdbCommond(const std::vector<rObj*> & obj,xSession * session);
@@ -46,7 +46,7 @@ public:
 	std::unordered_map<std::string,commondFunction> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
-    typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
+      typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
 	  
 
 	struct SetMapLock
@@ -70,8 +70,15 @@ public:
 	xTcpServer server;
 	mutable MutexLock mutex;
 
-private:
-	xRdb rdb;
+	std::string host;
+	int32_t port;
+	int32_t threadCount;
+	std::string masterHost;
+	int32_t masterPort;
+	bool clusterEnabled;
+	bool slaveEnabled;
+	std::vector<std::shared_ptr<xReplication>> vectors;
+	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
 	
 
 };

@@ -44,7 +44,7 @@ public:
 	void handleError();
 
 	void sendInLoop(const void* message, size_t len);
-    void sendInLoop(std::string & message);
+      void sendInLoop(std::string & message);
 	void send(xBuffer* message);
 	void send(std::string && message);
 

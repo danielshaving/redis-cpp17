@@ -2,7 +2,10 @@
 
 
 
-xRedis::xRedis()
+xRedis::xRedis(const char * ip,int32_t port,int32_t threadCount)
+:host(ip),
+port(port),
+threadCount(threadCount)
 {
 	
 #define REGISTER_REDIS_HANDLER(table, func) \
@@ -18,19 +21,17 @@ xRedis::xRedis()
 	REGISTER_REDIS_HANDLER("ping",pingCommond);
 	REGISTER_REDIS_HANDLER("save",saveCommond);
 	REGISTER_REDIS_HANDLER("slaveof",slaveofCommond);
+	REGISTER_REDIS_HANDLER("sync",syncCommond);
 	createSharedObjects();
 	loadDataFromDisk();
-	host = masterHost = "0.0.0.0";
-	port = 6379;
-	masterPort = 6380;
-	server.init(&loop, masterHost, masterPort,this);
+	server.init(&loop, host, port,this);
 	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	server.setThreadNum(4);
+	server.setThreadNum(threadCount);
 	server.start();
 
 //	loop.runAfter(10,true,std::bind(&xRedis::handleTimeout,this));
 //	loop.runAfter(5,true,std::bind(&xRedis::handleTimeout,this));
-// loop.runAfter(1,true,std::bind(&xRedis::handleTimeout,this));
+//   loop.runAfter(1,true,std::bind(&xRedis::handleTimeout,this));
 }
 
 xRedis::~xRedis()
@@ -84,6 +85,10 @@ void xRedis::handleTimeout()
 
 }
 
+
+
+
+
 void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
@@ -91,14 +96,19 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-
-		LOG_INFO<<"redis client connect success";
+		LOG_INFO<<"Client connect success";
 	}
 	else
 	{
 		MutexLockGuard mu(mutex);
 		sessions.erase(conn->getSockfd());
-		LOG_INFO<<"redis client disconnect";
+		auto it = tcpconnMaps.find(conn->getSockfd());
+		if(it != tcpconnMaps.end())
+		{
+			tcpconnMaps.erase(conn->getSockfd());
+		}
+		
+		LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -117,9 +127,9 @@ void xRedis::run()
 
 void xRedis::loadDataFromDisk()
 {
-	long long start = ustime();
 	char rdb_filename[] = "dump.rdb";
-	if(rdb.rdbLoad(rdb_filename,this) == REDIS_OK)
+	  
+	if(rdbLoad(rdb_filename,this) == REDIS_OK)
 	{
 		LOG_INFO<<"load rdb success";
 	}
@@ -138,13 +148,15 @@ bool xRedis::saveCommond(const std::vector<rObj*> & obj,xSession * session)
 	}
 
 	char filename[] = "dump.rdb";
-	if(rdb.rdbSave(filename,this) == REDIS_OK)
+	if(rdbSave(filename,this) == REDIS_OK)
 	{
 		addReply(session->sendBuf,shared.ok);
+		LOG_INFO<<"Save rdb success";
 	}
 	else
 	{
 		addReply(session->sendBuf,shared.err);
+		LOG_INFO<<"Save rdb failure";
 	}
 
 
@@ -160,26 +172,87 @@ bool xRedis::slaveofCommond(const std::vector<rObj*> & obj,xSession * session)
 		return false;
 	}
 
+	 if (!strcasecmp(obj[0]->ptr,"no") &&!strcasecmp(obj[1]->ptr,"one")) 
+	 {
+		if (masterHost.c_str()) 
+		{
+			LOG_WARN<<"MASTER MODE enabled (user request from "<<masterHost.c_str()<<":"<<masterPort;
+			vectors.clear();	
+		}
+	 }
+	 else
+	 {
+		long   port;
+		if ((getLongFromObjectOrReply(session->sendBuf, obj[1], &port, nullptr) != REDIS_OK))
+			return false;
 
-	long port;
+		if (host.c_str() && !memcmp(host.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
+			&& this->port == port)
+		{
+			LOG_WARN<<"SLAVE OF connect self error .";
+			addReplySds(session->sendBuf,sdsnew("Don't connect master self \r\n"));
+			return false;
+		}
 
-	if ((getLongFromObjectOrReply(session->sendBuf, obj[1], &port, nullptr) != REDIS_OK))
-		return false;
+		if (masterHost.c_str() && !memcmp(masterHost.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
+			&& masterPort == port)
+		{
+			LOG_WARN<<"SLAVE OF would result into synchronization with the master we are already connected with. No operation performed.";
+			addReplySds(session->sendBuf,sdsnew("+OK Already connected to specified master\r\n"));
+			return false;
+		}
 
-	if (masterHost.c_str() && !memcmp(masterHost.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
-		&& masterPort == port)
-	{
-		return false;
-	}
-
-
-
+		vectors.clear();
+		std::shared_ptr<xReplication> re = std::shared_ptr<xReplication>(new xReplication());
+		re->replicationSetMaster(this,obj[0],port);
+		vectors.push_back(re);
+	      LOG_INFO<<"SLAVE OF "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
+	 }
+	 
+	addReply(session->sendBuf,shared.ok);
 	return true;
 }
 
 
 bool xRedis::syncCommond(const std::vector<rObj*> & obj,xSession * session)
 {
+	if(obj.size() >  0)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown sync  error");
+		return false;
+	}
+
+	{
+		struct sockaddr_in sa;
+		socklen_t len = sizeof(sa);
+		if(!getpeername(session->conn->getSockfd(), (struct sockaddr *)&sa, &len))
+		{
+			LOG_INFO<<"from slave:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
+		}
+	}
+	
+	saveCommond(obj,session);
+	char rdb_filename[] = "dump.rdb";
+	size_t len = 0;
+
+	rObj * buf = rdbLoad(rdb_filename,len);
+	if(buf != nullptr)
+	{
+		LOG_INFO<<"sync load rdb success";
+		char * str = (char*)zmalloc(4);
+		int * sendLen = (int*)str;
+		*sendLen = len;
+		session->sendBuf.append((const char*)str,4);
+		session->sendBuf.append(buf->ptr,len);
+		zfree(str);
+		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
+	}
+	else
+	{
+		LOG_INFO<<"sync load rdb fail";
+	}
+	
+	zfree(buf);
 	return true;
 }
 
@@ -201,17 +274,20 @@ bool xRedis::dbsizeCommond(const std::vector<rObj*> & obj,xSession * session)
 
 	int64_t size = 0;
 	{
-		MutexLockGuard lk(mutex);
+	
 		for(auto it = setShards.begin(); it != setShards.end(); it++)
-		{
+		{	
+			MutexLock &mu = (*it).mutex;
+			MutexLockGuard lk(mu);
 			size+=(*it).setMap.size();
 		}
 	}
 
 	{
-		MutexLockGuard lk(mutex);
 		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
 		{
+			MutexLock &mu = (*it).mutex;
+			MutexLockGuard lk(mu);
 			size+=(*it).hsetMap.size();
 		}
 	}
@@ -370,13 +446,13 @@ bool xRedis::flushdbCommond(const std::vector<rObj*> & obj,xSession * session)
 		addReplyErrorFormat(session->sendBuf,"unknown  flushdb error");
 		return false;
 	}
-
-	MutexLockGuard lk(mutex);
 	
 	{
 		for(auto it = setShards.begin(); it != setShards.end(); it++)
 		{
 			auto &map = (*it).setMap;
+			MutexLock &mu =  (*it).mutex;
+			MutexLockGuard lock(mu);
 			for(auto sit = map.begin(); sit !=map.end(); sit++)
 			{
 				zfree(sit->first);
@@ -391,6 +467,8 @@ bool xRedis::flushdbCommond(const std::vector<rObj*> & obj,xSession * session)
 		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
 		{
 			auto &map = (*it).hsetMap;
+			MutexLock &mu =  (*it).mutex;
+			MutexLockGuard lock(mu);
 			for(auto sit = map.begin(); sit!=map.end(); sit++)
 			{
 				zfree(sit->first);
@@ -438,6 +516,7 @@ bool xRedis::setCommond(const std::vector<rObj*> & obj,xSession * session)
 	SetMap & setMap = setShards[hash % kShards].setMap;
 	{
 		MutexLockGuard lock(mu);
+		rObj * obj1 = obj[0];
 		auto it = setMap.find(obj[0]);
 		if(it == setMap.end())
 		{

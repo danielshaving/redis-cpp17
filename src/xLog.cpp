@@ -119,7 +119,7 @@ xLogFile::~xLogFile()
 void xLogFile::append(const char* logline, int len)
 {
 	std::unique_lock<std::mutex> lk(mutex);
-    append_unlocked(logline, len);
+	append_unlocked(logline, len);
 }
 
 void xLogFile::flush()

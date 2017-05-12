@@ -4,6 +4,7 @@
 #include "xZmalloc.h"
 #include "xSds.h"
 #include "xBuffer.h"
+#include "xLog.h"
 
 unsigned int dictGenHashFunction(const void *key, int len) ;
 
@@ -51,7 +52,7 @@ struct sharedObjectsStruct
     *masterdownerr, *roslaveerr, *execaborterr, *noautherr, *noreplicaserr,
     *busykeyerr, *oomerr, *plus, *messagebulk, *pmessagebulk, *subscribebulk,
     *unsubscribebulk, *psubscribebulk, *punsubscribebulk, *del, *rpop, *lpop,
-    *lpush, *emptyscan, *minstring, *maxstring,
+    *lpush, *emptyscan, *minstring, *maxstring,*sync,
     *select[REDIS_SHARED_SELECT_CMDS],
     *integers[REDIS_SHARED_INTEGERS],
     *mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
@@ -63,11 +64,14 @@ extern sharedObjectsStruct shared;
 int ll2string(char *s, size_t len, long long value);
 int string2ll(const char * s,size_t slen, long long * value);
 rObj *createRawStringObject(const char *ptr, size_t len);
-rObj * createObject(int type, const void *ptr);
-rObj * createStringObject(const char *ptr, size_t len);
-rObj * createEmbeddedStringObject(const char *ptr, size_t len);
+rObj *createObject(int type, const void *ptr);
+rObj *createStringObject(const char *ptr, size_t len);
+rObj *createEmbeddedStringObject(const char *ptr, size_t len);
 void createSharedObjects();
+void destorySharedObjects();
 rObj *createStringObjectFromLongLong(long long value);
+int getLongLongFromObject(rObj *o, long long   *target);
+int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg);
 
 void addReplyMultiBulkLen(xBuffer &sendBuf,long length);
 void addReply(xBuffer &sendBuf,rObj *obj);
@@ -80,6 +84,7 @@ void addReplyBulk(xBuffer &sendBuf,rObj *obj);
 void addReplyErrorFormat(xBuffer &sendBuf,const char *fmt, ...);
 void addReplyBulkCBuffer(xBuffer &sendBuf,const char *p, size_t len);
 void addReplyLongLong(xBuffer &sendBuf,size_t len);
+void addReplySds(xBuffer &sendBuf,sds s);
 
 long long ustime(void);
 long long mstime(void);

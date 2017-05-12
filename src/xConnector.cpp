@@ -35,7 +35,7 @@ void xConnector::startInLoop()
   }
   else
   {
-    //TRACE("do not connect");
+    LOG_WARN<<"do not connect";
   }
 }
 
@@ -103,7 +103,7 @@ void xConnector::connect()
 //    case EBADF:
 //    case EFAULT:
 //    case ENOTSOCK:
-      //TRACE("Connect savedErrno %d",savedErrno);
+      LOG_WARN<<"Connect savedErrno "<<savedErrno;
       ::close(sockfd);
       setState(kDisconnected);
       errorConnectionCallback();

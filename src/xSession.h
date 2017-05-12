@@ -1,5 +1,4 @@
-#ifndef _SESSION_H_
-#define _SESSION_H_
+#pragma once
 #include "all.h"
 #include "xTcpconnection.h"
 #include "xObject.h"
@@ -17,17 +16,18 @@ public:
 	 void reset();
 	 void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	 int processMultibulkBuffer(xBuffer *recvBuf);
+	 int processInlineBuffer(xBuffer *recvBuf);
 	 int processCommand();
 
 public:
 	int32_t 			reqtype;
 	int32_t 			multibulklen;
 	int64_t 			bulklen;
-	int32_t 		    argc;
+	int32_t 		      argc;
 	xTcpconnectionPtr 	conn;
 	xBuffer 			sendBuf;
 	std::vector<rObj*>  robjs;
 	std::string commond;
 	xRedis *redis;
 };
-#endif
+

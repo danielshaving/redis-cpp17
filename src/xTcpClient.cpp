@@ -21,19 +21,28 @@ loop(loop),
 }
 
 
+namespace detail
+{
+
+	void removeConnection(xEventLoop* loop, const xTcpconnectionPtr& conn)
+	{
+	  loop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
+	}
+
+}
 xTcpClient::~xTcpClient()
 {
 	  xTcpconnectionPtr conn;
 	  bool unique = false;
 	  {
 		std::unique_lock<std::mutex> lk(mutex);
-	    unique = connection.unique();
-	    conn = connection;
+		unique = connection.unique();
+		conn = connection;
 	  }
 	  if (conn)
 	  {
 	    assert(loop == conn->getLoop());
-	    CloseCallback cb = std::bind(&xTcpClient::removeConnection, this, std::placeholders::_1);
+	    CloseCallback cb = std::bind(&detail::removeConnection, loop, conn);
 	    loop->runInLoop(std::bind(&xTcpconnection::setCloseCallback, conn, cb));
 	    if (unique)
 	    {
@@ -92,7 +101,7 @@ void xTcpClient::newConnection(int sockfd)
 	  conn->setCloseCallback(std::bind(&xTcpClient::removeConnection, this,std::placeholders::_1));
 	  {
 		std::unique_lock<std::mutex> lk(mutex);
-	    connection = conn;
+	      connection = conn;
 	  }
 	  conn->connectEstablished();
 }
@@ -100,14 +109,14 @@ void xTcpClient::newConnection(int sockfd)
 
 void xTcpClient::removeConnection(const xTcpconnectionPtr& conn)
 {
-	 loop->assertInLoopThread();
-	 assert(loop == conn->getLoop());
-	  {
+	loop->assertInLoopThread();
+	assert(loop == conn->getLoop());
+	{
 		std::unique_lock<std::mutex> lk(mutex);
-	    assert(connection == conn);
-	    connection.reset();
-	  }
+		assert(connection == conn);
+		connection.reset();
+	}
 
-	  loop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
-	  connectionErrorCallBack(data);
+	loop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
+	connectionErrorCallBack(data);
 }

@@ -67,7 +67,7 @@ class MutexLockGuard : boost::noncopyable
  }
  
 
- private:
+private:
 
   MutexLock& mutex;
 };

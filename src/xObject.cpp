@@ -68,7 +68,7 @@ int string2ll(const char * s,size_t slen, long long * value)
 
 int ll2string(char *s, size_t len, long long value)
 {
-	char buf[32], *p;
+    char buf[32], *p;
     unsigned long long v;
     size_t l;
 
@@ -102,6 +102,47 @@ rObj * createObject(int type, const void *ptr)
 }
 
 
+int getLongLongFromObject(rObj *o, long long   *target) {
+	long long   value;
+
+	if (o == nullptr) {
+		value = 0;
+	}
+	else {
+
+		if (sdsEncodedObject(o)) {
+			if (string2ll(o->ptr, sdsllen(o->ptr), &value) == 0) return REDIS_ERR;
+		}
+		else {
+			LOG_ERROR << "Unknown string encoding";
+		}
+	}
+	if (target) *target = value;
+	return REDIS_OK;
+
+}
+
+
+int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg)
+{
+	long  long value;
+	if (getLongLongFromObject(o, &value) != REDIS_OK)
+	{
+		if (msg != nullptr) 
+		{
+			addReplyError(sendBuf, (char*)msg);
+		}
+		else 
+		{
+			addReplyError(sendBuf, "value is not an integer or out of range");
+		}
+		return REDIS_ERR;
+	}
+	*target = value;
+	
+	return REDIS_OK;
+}
+
 rObj *createStringObjectFromLongLong(long long value)
 {
 	rObj *o;
@@ -125,6 +166,59 @@ rObj *createStringObjectFromLongLong(long long value)
 	return o;
 }
 
+void destorySharedObjects()
+{
+	zfree(shared.crlf);
+	zfree(shared.ok);
+	zfree(shared.err);
+	zfree(shared.emptybulk);
+	zfree(shared.czero);
+	zfree(shared.cone);
+	zfree(shared.cnegone);
+	zfree(shared.nullbulk);
+	zfree(shared.nullmultibulk);
+	zfree(shared.emptymultibulk);
+	zfree(shared.pong);
+	zfree(shared.queued);
+	zfree(shared.emptyscan);
+	zfree(shared.wrongtypeerr);
+	zfree(shared.nokeyerr);
+	zfree(shared.syntaxerr);
+	zfree(shared.sameobjecterr);
+	zfree(shared.outofrangeerr);
+	zfree(shared.noscripterr);
+	zfree(shared.loadingerr);
+	zfree(shared.slowscripterr);
+	zfree(shared.masterdownerr);
+	zfree(shared.bgsaveerr);
+	zfree(shared.roslaveerr);
+	zfree(shared.noautherr);
+	zfree(shared.oomerr);
+	zfree(shared.execaborterr);
+	zfree(shared.noreplicaserr);
+	zfree(shared.busykeyerr);
+	zfree(shared.space);
+	zfree(shared.colon);
+	zfree(shared.plus);
+	zfree(shared.messagebulk);
+	zfree(shared.pmessagebulk);
+	zfree(shared.subscribebulk);
+	zfree(shared.unsubscribebulk);
+	zfree(shared.psubscribebulk);
+	zfree(shared.punsubscribebulk);
+
+	
+	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
+	{
+		zfree(shared.mbulkhdr[j]);
+		zfree(shared.bulkhdr[j]);
+	}
+
+	zfree(shared.sync);
+
+}
+
+
 void createSharedObjects()
 {
 	 int j;
@@ -142,7 +236,7 @@ void createSharedObjects()
     shared.pong = createObject(REDIS_STRING,sdsnew("+PONG\r\n"));
     shared.queued = createObject(REDIS_STRING,sdsnew("+QUEUED\r\n"));
     shared.emptyscan = createObject(REDIS_STRING,sdsnew("*2\r\n$1\r\n0\r\n*0\r\n"));
-
+  
     shared.wrongtypeerr = createObject(REDIS_STRING,sdsnew(
         "-WRONGTYPE Operation against a key holding the wrong kind of value\r\n"));
     shared.nokeyerr = createObject(REDIS_STRING,sdsnew(
@@ -181,7 +275,7 @@ void createSharedObjects()
     shared.plus = createObject(REDIS_STRING,sdsnew("+"));
 
 
-    for (j = 0; j < REDIS_SHARED_SELECT_CMDS; j++) {
+    /*for (j = 0; j < REDIS_SHARED_SELECT_CMDS; j++) {
         char dictid_str[64];
         int dictid_len;
 
@@ -192,6 +286,8 @@ void createSharedObjects()
                 dictid_len, dictid_str));
     }
 
+    */
+
     shared.messagebulk = createStringObject("$7\r\nmessage\r\n",13);
     shared.pmessagebulk = createStringObject("$8\r\npmessage\r\n",14);
     shared.subscribebulk = createStringObject("$9\r\nsubscribe\r\n",15);
@@ -200,15 +296,17 @@ void createSharedObjects()
     shared.punsubscribebulk = createStringObject("$12\r\npunsubscribe\r\n",19);
 
 
-    shared.del = createStringObject("DEL",3);
+  /*  shared.del = createStringObject("DEL",3);
     shared.rpop = createStringObject("RPOP",4);
     shared.lpop = createStringObject("LPOP",4);
     shared.lpush = createStringObject("LPUSH",5);
+    */
 
-    for (j = 0; j < REDIS_SHARED_INTEGERS; j++) {
+  /*  for (j = 0; j < REDIS_SHARED_INTEGERS; j++) {
         shared.integers[j] = createObject(REDIS_STRING,(void*)(long)j);
         shared.integers[j]->encoding = REDIS_ENCODING_INT;
     }
+    */
 
 
 
@@ -219,8 +317,9 @@ void createSharedObjects()
             sdscatprintf(sdsempty(),"$%d\r\n",j));
     }
 
-	shared.minstring = createStringObject("minstring",9);
-    shared.maxstring = createStringObject("maxstring",9);
+	//shared.minstring = createStringObject("minstring",9);
+    //shared.maxstring = createStringObject("maxstring",9);
+    shared.sync = createObject(REDIS_STRING,sdsnew("sync\r\n"));
 
 
 }
@@ -384,6 +483,15 @@ void addReplyString(xBuffer & sendBuf,const char *s, size_t len)
 {
 	sendBuf.append(s,len);
 }
+
+
+
+void addReplySds(xBuffer &sendBuf, sds s)
+{
+	sendBuf.append(s, sdslen(s));
+	
+}
+
 
 void addReplyErrorLength(xBuffer & sendBuf,const char *s,size_t len)
 {
