@@ -194,8 +194,7 @@ void xTcpconnection::send(xBuffer* buf)
     {
       loop->runInLoop(
           boost::bind(&xTcpconnection::sendInLoop,
-                      this,
-					  std::move(buf->retrieveAllAsString())));
+                      this, buf->retrieveAllAsString()));
     }
   }
 }

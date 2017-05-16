@@ -18,6 +18,7 @@ public:
 	 int processMultibulkBuffer(xBuffer *recvBuf);
 	 int processInlineBuffer(xBuffer *recvBuf);
 	 int processCommand();
+	 bool checkCommond(std::string & commond,std::vector<rObj*>  &robjs);
 
 public:
 	int32_t 			reqtype;
@@ -26,6 +27,7 @@ public:
 	int32_t 		      argc;
 	xTcpconnectionPtr 	conn;
 	xBuffer 			sendBuf;
+	xBuffer 			sendSlaveBuf;
 	std::vector<rObj*>  robjs;
 	std::string commond;
 	xRedis *redis;

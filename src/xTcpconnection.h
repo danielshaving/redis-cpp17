@@ -62,6 +62,9 @@ public:
 	void forceClose();
 	xBuffer * getSendBuff(){ return &sendBuff; }
 
+	std::string			host;
+	int32_t 			port;
+	
 public:
 	xEventLoop 			  *loop;
 	int 				  sockfd;

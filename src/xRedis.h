@@ -40,8 +40,10 @@ public:
 	bool slaveofCommond(const std::vector<rObj*> & obj,xSession * session);
 	bool syncCommond(const std::vector<rObj*> & obj,xSession * session);
 	bool psyncCommond(const std::vector<rObj*> & obj,xSession * session);
+	bool commandCommond(const std::vector<rObj*> & obj,xSession * session);
 
 public:
+	std::map<std::string,int> vectorCommonds;
 	typedef std::function<bool (const std::vector<rObj*> &,xSession *)> commondFunction;
 	std::unordered_map<std::string,commondFunction> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
@@ -77,6 +79,7 @@ public:
 	int32_t masterPort;
 	bool clusterEnabled;
 	bool slaveEnabled;
+	
 	std::vector<std::shared_ptr<xReplication>> vectors;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
 	

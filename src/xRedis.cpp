@@ -22,6 +22,12 @@ threadCount(threadCount)
 	REGISTER_REDIS_HANDLER("save",saveCommond);
 	REGISTER_REDIS_HANDLER("slaveof",slaveofCommond);
 	REGISTER_REDIS_HANDLER("sync",syncCommond);
+	REGISTER_REDIS_HANDLER("COMMAND",commandCommond);
+	
+	vectorCommonds.insert(std::make_pair("set",2));
+	vectorCommonds.insert(std::make_pair("hset",3));
+	
+	slaveEnabled = false;
 	createSharedObjects();
 	loadDataFromDisk();
 	server.init(&loop, host, port,this);
@@ -93,10 +99,20 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
 	{
+		struct sockaddr_in sa;
+		socklen_t len = sizeof(sa);
+		if(!getpeername(conn->getSockfd(), (struct sockaddr *)&sa, &len))
+		{
+			//LOG_INFO<<"From slave:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
+		}
+		
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
+		conn->host = inet_ntoa(sa.sin_addr);
+		conn->port = ntohs(sa.sin_port);
 		LOG_INFO<<"Client connect success";
+		
 	}
 	else
 	{
@@ -214,6 +230,14 @@ bool xRedis::slaveofCommond(const std::vector<rObj*> & obj,xSession * session)
 }
 
 
+
+bool xRedis::commandCommond(const std::vector<rObj*> & obj,xSession * session)
+{
+	addReply(session->sendBuf,shared.ok);	
+	return true;
+}
+
+
 bool xRedis::syncCommond(const std::vector<rObj*> & obj,xSession * session)
 {
 	if(obj.size() >  0)
@@ -227,7 +251,7 @@ bool xRedis::syncCommond(const std::vector<rObj*> & obj,xSession * session)
 		socklen_t len = sizeof(sa);
 		if(!getpeername(session->conn->getSockfd(), (struct sockaddr *)&sa, &len))
 		{
-			LOG_INFO<<"from slave:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
+			LOG_INFO<<"From slave:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
 		}
 	}
 	
@@ -352,6 +376,7 @@ bool xRedis::hsetCommond(const std::vector<rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 3)
 	{
+		if(!slaveEnabled)
 		addReplyErrorFormat(session->sendBuf,"unknown  hset error");
 		return false;
 	}
@@ -391,6 +416,7 @@ bool xRedis::hsetCommond(const std::vector<rObj*> & obj,xSession * session)
 		}
 	}
 	
+	if(!slaveEnabled)
 	addReply(session->sendBuf,update ? shared.czero : shared.cone);
 
 	return true;
@@ -506,6 +532,7 @@ bool xRedis::setCommond(const std::vector<rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 2)
 	{
+		if(!slaveEnabled)
 		addReplyErrorFormat(session->sendBuf,"unknown  param error");
 		return false;
 	}
@@ -530,6 +557,8 @@ bool xRedis::setCommond(const std::vector<rObj*> & obj,xSession * session)
 			setMap.insert(std::make_pair(obj[0],obj[1]));
 		}
 	}
+	
+	if(!slaveEnabled)
 	addReply(session->sendBuf,shared.ok);
 	return true;
 }
@@ -555,7 +584,7 @@ bool xRedis::getCommond(const std::vector<rObj*> & obj,xSession * session)
 			addReply(session->sendBuf,shared.nullbulk);
 			return true;
 		}
-	
+		
 		addReplyBulk(session->sendBuf,it->second);
 	}
 	zfree(obj[0]);

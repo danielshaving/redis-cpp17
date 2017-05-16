@@ -110,7 +110,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		std::shared_ptr<xSession> session (new xSession(redis,conn));
 		MutexLockGuard mu(redis->mutex);
 		redis->sessions[conn->getSockfd()] = session;
-		recvBuf->retrieve(len);
+		recvBuf->retrieveAll();
 		
 	}
 	
@@ -120,9 +120,19 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
-	{
-		redis->masterHost = client->ip;
-		redis->masterPort = client->port;
+	{	
+		struct sockaddr_in sa;
+		socklen_t len = sizeof(sa);
+		if(!getpeername(conn->getSockfd(), (struct sockaddr *)&sa, &len))
+		{
+			//LOG_INFO<<"From slave:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
+		}
+		
+		conn->host = inet_ntoa(sa.sin_addr);
+		conn->port = ntohs(sa.sin_port);
+		redis->masterHost = conn->host;
+		redis->masterPort = conn->port ;
+		redis->slaveEnabled =  true;
 		LOG_INFO<<"Connect master success";
 		syncWithMaster(conn);
 		if(sendBuf.readableBytes() > 0 )
@@ -133,6 +143,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	}
 	else
 	{
+		redis->slaveEnabled =  false;
 		MutexLockGuard mu(redis->mutex);
 		redis->sessions.erase(conn->getSockfd());
 		LOG_INFO<<"Connect  master disconnect";
@@ -162,32 +173,38 @@ void xReplication::replicationSetMaster(xRedis * redis,rObj* obj, long  port)
 }
 
 
-void replicationFeedSlaves(std::string &commond,xRedis * redis ,std::vector<rObj*> robjs,xTcpconnectionPtr & conn)
+void replicationFeedSlaves(xBuffer &  sendBuf,std::string &commond,xRedis * redis ,std::vector<rObj*>  &robjs,xTcpconnectionPtr & conn)
 {
+	int len, j;
+	char buf[32];
+	buf[0] = '*';
+	len = 1 + ll2string(buf+1,sizeof(buf)-1,robjs.size() + 1);
+	buf[len++] = '\r';
+	buf[len++] = '\n';
+	sendBuf.append(buf,len);
 
-	xBuffer sendBuf;
-	{
-		std::string str = "*" + std::to_string(robjs.size() + 1) + "\r\n";
-		sendBuf.append(str.c_str(),str.length());
-		std::string str1 = "$" + std::to_string(commond.length()) + "\r\n";
-		sendBuf.append(str1.c_str(),str.length());
-		std::string str2  = commond + "\r\n";
-		sendBuf.append(str2.c_str(),str2.length());
-	}
+	buf[0] = '$';
+	len =1 +  ll2string(buf+1,sizeof(buf)-1,commond.length());
+	buf[len++] = '\r';
+	buf[len++] = '\n';
+	sendBuf.append(buf,len);
+	sendBuf.append(commond.c_str(),commond.length());
+	sendBuf.append("\r\n",2);
 
+	
 	for(auto it = robjs.begin(); it != robjs.end(); it++)
 	{
-		std::string str = "$" + std::to_string(sdsllen((*it)->ptr)) + "\r\n";
-		sendBuf.append(str.c_str(),str.length());
-		std::string str1 = (*it)->ptr;
-		str1 += "\r\n";
-		sendBuf.append(str1.c_str(),str1.length());
+		buf[0] = '$';
+		len = 1 + ll2string(buf+1,sizeof(buf)-1,sdsllen((*it)->ptr));
+		buf[len++] = '\r';
+		buf[len++] = '\n';
+		sendBuf.append(buf,len);
+		sendBuf.append((*it)->ptr,sdsllen((*it)->ptr));
+		sendBuf.append("\r\n",2);
 	}
-	
-	if(sendBuf.readableBytes() > 0)
-	{
-		conn->send(&sendBuf);	
-	}
+
+	//conn->send(&sendBuf);
+
 	
 }
 

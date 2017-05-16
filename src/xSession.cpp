@@ -62,15 +62,45 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 		{
 			processCommand();
 			reset();
-		}
-			
-		
+		}	
 	}
-	
+
+
 	if(sendBuf.readableBytes() > 0 )
 	{
 		conn->send(&sendBuf);	
 	}
+	
+
+	for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
+	{
+		if(sendSlaveBuf.readableBytes() > 0 )
+		{
+			it->second->send(&sendSlaveBuf);
+		}
+	}
+	
+	
+	
+	
+}
+
+
+
+bool xSession::checkCommond(std::string & commond,std::vector<rObj*>  &robjs)
+{
+	auto it = redis->vectorCommonds.find(commond);
+	if(it == redis->vectorCommonds.end())
+	{
+		return true;
+	}
+
+	if(it->second !=  robjs.size())
+	{
+		return true;
+	}
+		
+	return false;
 }
 
 
@@ -81,23 +111,41 @@ int xSession::processCommand()
 	if(iter == redis->handlerCommondMap.end() )
 	{
 		clearObj();
-		addReplyErrorFormat(sendBuf,"unknown command '%s'",commond.c_str());
+		addReplyErrorFormat(sendBuf,"command unknown eror");
 		return REDIS_ERR;
 	}
 
-	for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
+	bool flag = checkCommond(commond,robjs);
+	if(!flag)
 	{
-		replicationFeedSlaves(commond,redis,robjs,it->second);
+		for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
+		{
+			replicationFeedSlaves(sendSlaveBuf,commond,redis,robjs,it->second);
+		}
+
+		if(  (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
+		{
+		
+		}
+		else
+		{
+			if(redis->slaveEnabled)
+			{
+				clearObj();
+				addReplyErrorFormat(sendBuf,"slavef mode commond unknown ");
+				return REDIS_ERR;
+			}
+		}
+
+
+			
 	}
 	
-	
-
 	if(!iter->second(robjs,this))
 	{
 		clearObj();
 		return REDIS_ERR;
 	}
-	
 	
 	return REDIS_OK;
 }
@@ -198,11 +246,10 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 			{
 				addReplyError(sendBuf,"Protocol error: too big mbulk count string");
-				
+				LOG_INFO<<"Protocol error: too big mbulk count string";
 			}
 			return REDIS_ERR;
 		}
-
 
 
 		  if (newline-(queryBuf) > ((signed)recvBuf->readableBytes()-2))
@@ -213,7 +260,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 
 		if(queryBuf[0] != '*')
 		{
-			
+			LOG_WARN<<"Protocol error: *";
 			return REDIS_ERR;
 		}
 
@@ -221,7 +268,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		if(!ok || ll > 1024 * 1024)
 		{
 			addReplyError(sendBuf,"Protocol error: invalid multibulk length");
-			
+			LOG_INFO<<"Protocol error: invalid multibulk length";
 			return REDIS_ERR;
 		}
 
@@ -246,6 +293,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 				if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 				{
 					addReplyError(sendBuf,"Protocol error: too big bulk count string");
+					LOG_INFO<<"Protocol error: too big bulk count string";
 					return REDIS_ERR;
 				}
 			
@@ -260,7 +308,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			if(queryBuf[pos] != '$')
 			{
 				addReplyErrorFormat(sendBuf,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
-				
+				LOG_INFO<<"Protocol error: &";
 				return REDIS_ERR;
 			}
 
@@ -269,14 +317,13 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			if(!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
 				addReplyError(sendBuf,"Protocol error: invalid bulk length");
-				
+				LOG_INFO<<"Protocol error: invalid bulk length";
 				return REDIS_ERR;
 			}
 
 			pos += newline - (queryBuf + pos) + 2;
 			if(ll >= REDIS_MBULK_BIG_ARG)
 			{	
-				
 				return REDIS_ERR;
 			}
 			bulklen = ll;
