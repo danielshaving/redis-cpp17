@@ -26,26 +26,26 @@ public:
 	void loadDataFromDisk();
 	void flush();
 
-	bool saveCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool pingCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool flushdbCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool dbsizeCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool quitCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool delCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool setCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool getCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool hsetCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool hgetCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool hgetallCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool slaveofCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool syncCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool psyncCommond(const std::vector<rObj*> & obj,xSession * session);
-	bool commandCommond(const std::vector<rObj*> & obj,xSession * session);
+	bool saveCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool pingCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool flushdbCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool dbsizeCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool quitCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool delCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool setCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool getCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool hsetCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool hgetCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool hgetallCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool slaveofCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool syncCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool psyncCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool commandCommond(const std::deque <rObj*> & obj,xSession * session);
 
 public:
-	std::map<std::string,int> vectorCommonds;
-	typedef std::function<bool (const std::vector<rObj*> &,xSession *)> commondFunction;
-	std::unordered_map<std::string,commondFunction> handlerCommondMap;
+	std::unordered_map<rObj*,int,Hash,EEqual>  unorderedmapCommonds;
+	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commondFunction;
+	std::unordered_map<rObj*,commondFunction,Hash,EEqual> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
       typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;

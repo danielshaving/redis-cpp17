@@ -18,6 +18,7 @@ typedef struct redisObject
 
 	unsigned type:4;
 	unsigned encoding:4;
+	int cas;
 	int refcount;
 	size_t hash;
 	const char *ptr;
@@ -42,6 +43,15 @@ struct Equal
 
 };
 
+
+struct EEqual
+{
+	bool operator()(const rObj * x, const rObj * y) const
+	{
+		 return  (strcasecmp(x->ptr, y->ptr) == 0);
+	}
+
+};
 
 struct sharedObjectsStruct
 {

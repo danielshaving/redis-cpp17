@@ -458,8 +458,8 @@ void addReplyMultiBulkLen(xBuffer & sendBuf,long length)
 void addReplyBulkCBuffer(xBuffer & sendBuf,const char *p, size_t len)
 {
 	addReplyLongLongWithPrefix(sendBuf,len,'$');
-    addReplyString(sendBuf,p,len);
-    addReply(sendBuf,shared.crlf);
+	addReplyString(sendBuf,p,len);
+	addReply(sendBuf,shared.crlf);
 }
 
 void addReplyErrorFormat(xBuffer & sendBuf,const char *fmt, ...)

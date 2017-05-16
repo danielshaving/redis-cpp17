@@ -33,5 +33,5 @@ private:
 };
 
 
-void replicationFeedSlaves(xBuffer &  sendBuf,std::string &commond,xRedis * redis ,std::vector<rObj*> &robjs,xTcpconnectionPtr & conn);
+void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond ,xRedis * redis ,std::deque<rObj*> &robjs,xTcpconnectionPtr & conn);
 

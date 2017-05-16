@@ -53,16 +53,10 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 			LOG_WARN<<"Unknown request type";
 		}
 		
-		
-		if (argc == 0)
-		{
-			reset();
-		}
-		else
-		{
-			processCommand();
-			reset();
-		}	
+
+		processCommand();
+		reset();
+			
 	}
 
 
@@ -87,15 +81,15 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 
 
-bool xSession::checkCommond(std::string & commond,std::vector<rObj*>  &robjs)
+bool xSession::checkCommond(rObj*  robjs,int size)
 {
-	auto it = redis->vectorCommonds.find(commond);
-	if(it == redis->vectorCommonds.end())
+	auto it = redis->unorderedmapCommonds.find(robjs);
+	if(it == redis->unorderedmapCommonds.end())
 	{
 		return true;
 	}
 
-	if(it->second !=  robjs.size())
+	if(it->second !=  size)
 	{
 		return true;
 	}
@@ -106,8 +100,8 @@ bool xSession::checkCommond(std::string & commond,std::vector<rObj*>  &robjs)
 
 int xSession::processCommand()
 {
-
-	auto iter = redis->handlerCommondMap.find(commond);
+	assert(robjs.size());
+	auto iter = redis->handlerCommondMap.find(robjs[0]);
 	if(iter == redis->handlerCommondMap.end() )
 	{
 		clearObj();
@@ -115,12 +109,14 @@ int xSession::processCommand()
 		return REDIS_ERR;
 	}
 
-	bool flag = checkCommond(commond,robjs);
+	rObj * obj = robjs[0];
+	robjs.pop_front();
+	bool flag = checkCommond(obj,robjs.size());
 	if(!flag)
 	{
 		for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
 		{
-			replicationFeedSlaves(sendSlaveBuf,commond,redis,robjs,it->second);
+			replicationFeedSlaves(sendSlaveBuf,obj,redis,robjs,it->second);
 		}
 
 		if(  (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
@@ -140,6 +136,8 @@ int xSession::processCommand()
 
 			
 	}
+	
+	zfree(obj);
 	
 	if(!iter->second(robjs,this))
 	{
@@ -170,7 +168,6 @@ void xSession::reset()
 	 argc = 0;
 	 multibulklen = 0;
 	 bulklen = -1;
-	 commond.clear();
 	 robjs.clear();
 }
 
@@ -213,18 +210,10 @@ int xSession::processInlineBuffer(xBuffer *recvBuf)
 		return REDIS_ERR;
        }
 
-	for (j = 0; j  < argc; )
+	for (j = 0; j  < argc; j++)
 	{
-		if(j == 0)
-		{
-			commond = argv[j];
-		}
-		else
-		{
-			rObj * obj = (rObj*)createStringObject(argv[j],sdslen(argv[j]));
-			robjs.push_back(obj);
-		}
-		j++;
+		rObj * obj = (rObj*)createStringObject(argv[j],sdslen(argv[j]));
+		robjs.push_back(obj);
 	}
 	
 	zfree(argv);
@@ -335,17 +324,8 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		}
 		else
 		{
-			if(argc++ == 0)
-			{
-				commond.append(queryBuf + pos,bulklen);
-			}
-			else
-			{
-				rObj * obj = (rObj*)createStringObject(queryBuf + pos,bulklen);
-				robjs.push_back(obj);
-				
-			}
-			
+			rObj * obj = (rObj*)createStringObject(queryBuf + pos,bulklen);
+			robjs.push_back(obj);
 			pos += bulklen+2;
 			bulklen = -1;
 			multibulklen --;

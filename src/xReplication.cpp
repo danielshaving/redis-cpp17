@@ -173,7 +173,7 @@ void xReplication::replicationSetMaster(xRedis * redis,rObj* obj, long  port)
 }
 
 
-void replicationFeedSlaves(xBuffer &  sendBuf,std::string &commond,xRedis * redis ,std::vector<rObj*>  &robjs,xTcpconnectionPtr & conn)
+void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond ,xRedis * redis ,std::deque<rObj*>  &robjs,xTcpconnectionPtr & conn)
 {
 	int len, j;
 	char buf[32];
@@ -184,11 +184,11 @@ void replicationFeedSlaves(xBuffer &  sendBuf,std::string &commond,xRedis * redi
 	sendBuf.append(buf,len);
 
 	buf[0] = '$';
-	len =1 +  ll2string(buf+1,sizeof(buf)-1,commond.length());
+	len =1 +  ll2string(buf+1,sizeof(buf)-1,sdsllen(commond->ptr));
 	buf[len++] = '\r';
 	buf[len++] = '\n';
 	sendBuf.append(buf,len);
-	sendBuf.append(commond.c_str(),commond.length());
+	sendBuf.append(commond->ptr,sdsllen(commond->ptr));
 	sendBuf.append("\r\n",2);
 
 	
