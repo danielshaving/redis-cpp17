@@ -88,6 +88,7 @@ void xConnector::connect()
       setState(kConnecting);
       connecting(sockfd);
       socket.setSocketNonBlock(sockfd);
+	socket.setkeepAlive(sockfd,1);
       break;
     default:
 //

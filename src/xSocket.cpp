@@ -1,5 +1,6 @@
 #include "all.h"
 #include "xSocket.h"
+#include "xLog.h"
 
 
 xSocket::xSocket(xEventLoop *loop,std::string ip,int32_t port)
@@ -47,6 +48,36 @@ int xSocket::connect(int sockfd,std::string ip,int port)
 
 	int ret = ::connect(sockfd, (struct sockaddr *)&sin, sizeof(sin));
 	return ret;
+}
+
+
+void  xSocket::setkeepAlive(int fd,int idle)
+{
+	int keepalive = 1;
+	int keepidle = idle;
+	int keepintvl = 2;
+	int keepcnt = 3;
+	int err = 0;
+
+	if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char*)&keepalive, sizeof(keepalive)) < 0)
+	{
+		LOG_DEBUG<<"SOL_SOCKET";
+	}
+
+	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, (char *)&keepidle, sizeof(keepidle)) < 0)
+	{
+		LOG_DEBUG<<"TCP_KEEPIDLE";
+	}
+
+	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL,(char *)&keepintvl, sizeof(keepintvl)) < 0)
+	{
+		LOG_DEBUG<<"TCP_KEEPINTVL";
+	}
+
+	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,(char *)&keepcnt, sizeof(keepcnt)) < 0)
+	{
+		LOG_DEBUG<<"TCP_KEEPCNT";
+	}
 }
 
 bool xSocket::createTcpListenSocket()

@@ -25,8 +25,9 @@ public:
 
     bool  initialize();
     int   getListenFd();
-
+    void  setkeepAlive(int fd,int idle);
     bool  createTcpListenSocket();
     bool  setSocketNonBlock(int socketFd);
+
 };
 

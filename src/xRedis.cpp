@@ -194,6 +194,7 @@ bool xRedis::slaveofCommond(const std::vector<rObj*> & obj,xSession * session)
 		{
 			LOG_WARN<<"MASTER MODE enabled (user request from "<<masterHost.c_str()<<":"<<masterPort;
 			vectors.clear();	
+			slaveEnabled =  false;
 		}
 	 }
 	 else
@@ -511,7 +512,6 @@ bool xRedis::flushdbCommond(const std::vector<rObj*> & obj,xSession * session)
 		}
 	}
 	
-
 	
 	addReply(session->sendBuf,shared.ok);	
 	return true;

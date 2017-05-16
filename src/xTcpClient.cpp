@@ -66,14 +66,14 @@ void xTcpClient::connect()
 
 void xTcpClient::disconnect()
 {
-	 isconnect = false;
-	  {
+	isconnect = false;
+	{
 		std::unique_lock<std::mutex> lk(mutex);
-	    if (connection)
-	    {
-	      connection->shutdown();
-	    }
-	  }
+		if (connection)
+		{
+		  	connection->shutdown();
+		}
+	}
 }
 
 
@@ -81,7 +81,7 @@ void xTcpClient::disconnect()
 void xTcpClient::stop()
 {
 	isconnect = false;
-    connector->stop();
+	connector->stop();
 }
 
 
