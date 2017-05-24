@@ -7,11 +7,9 @@ xTcpClient::xTcpClient()
 
 }
 
-xTcpClient::xTcpClient(xEventLoop *loop,std::string ip,int port,void *data)
-: connector(new xConnector(loop,ip,port)),
+xTcpClient::xTcpClient(xEventLoop *loop,void *data)
+: connector(new xConnector(loop)),
 loop(loop),
- ip(ip),
- port(port),
  isconnect(false),
  nextConnId(0),
  data(data)
@@ -56,10 +54,10 @@ xTcpClient::~xTcpClient()
 }
 
 
-void xTcpClient::connect()
+void xTcpClient::connect(const char *ip,int32_t port)
 {
 	 isconnect = true;
-	 connector->start();
+	 connector->start(ip,port);
 }
 
 

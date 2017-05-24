@@ -9,11 +9,11 @@ class xTcpClient
 {
 public:
 	xTcpClient();
-	xTcpClient(xEventLoop *loop,std::string ip,int port,void *data);
+	xTcpClient(xEventLoop *loop,void *data);
 	~xTcpClient();
 
 
-	void connect();
+	void connect(const char * ip,int32_t port);
 	void disconnect();
 	void stop();
 
@@ -31,8 +31,7 @@ public:
 
 	xConnectorPtr connector;
 	xEventLoop *loop;
-	std::string ip;
-	int port;
+
 
 	bool isconnect;
 	int nextConnId;

@@ -3,35 +3,43 @@
 #include "xLog.h"
 
 
-xReplication::~xReplication()
+xReplication::xReplication()
 {
-	redis->masterHost.clear();
-	redis->masterPort = 0;
-	client->disconnect();
-	loop->quit();
-	threads->join();
+	threads  = new std::thread(std::bind(&xReplication::connectMaster,this));
+	std::unique_lock<std::mutex> lk(mutex);
+	while (start == false)
+	{
+		condition.wait(lk);
+	}
 }
 
-void xReplication::connectMaster(const char * str,long port)
+xReplication::~xReplication()
+{
+	client->disconnect();
+	loop->quit();
+	if(threads != nullptr)
+	delete threads;
+}
+
+void xReplication::connectMaster()
 {
 	pid = getpid();
 	start = true;
 	condition.notify_one();
 	xEventLoop loop;
-	xTcpClient client(&loop,str,port,this);
+	xTcpClient client(&loop,this);
 	client.setConnectionCallback(std::bind(&xReplication::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
 	client.setMessageCallback( std::bind(&xReplication::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
 	client.setConnectionErrorCallBack(std::bind(&xReplication::connErrorCallBack, this));
 	this->client = & client;
 	this->loop = &loop;
-	client.connect();
 	loop.run();
 }
 
 
 void xReplication::replicationCron()
 {
-	
+
 }
 
 
@@ -125,14 +133,17 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		socklen_t len = sizeof(sa);
 		if(!getpeername(conn->getSockfd(), (struct sockaddr *)&sa, &len))
 		{
-			//LOG_INFO<<"From slave:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
+			LOG_INFO<<"connCallBack error";
+			return ;
 		}
 		
+		LOG_INFO<<"From master:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
 		conn->host = inet_ntoa(sa.sin_addr);
 		conn->port = ntohs(sa.sin_port);
 		redis->masterHost = conn->host;
 		redis->masterPort = conn->port ;
 		redis->slaveEnabled =  true;
+		isreconnect = true;
 		LOG_INFO<<"Connect master success";
 		syncWithMaster(conn);
 		if(sendBuf.readableBytes() > 0 )
@@ -143,6 +154,8 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	}
 	else
 	{
+		redis->masterHost.clear();
+		redis->masterPort = 0;
 		redis->slaveEnabled =  false;
 		MutexLockGuard mu(redis->mutex);
 		redis->sessions.erase(conn->getSockfd());
@@ -152,24 +165,35 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 
 
 
-void xReplication::connErrorCallBack()
+void xReplication::reconnectTimer()
 {
-	sleep(2);
-	LOG_WARN<<"reconnecting master";
-	client->connect();
-	
+	LOG_INFO<<"Reconnect..........";
+	client->connect(ip.c_str(),port);
 }
 
-void xReplication::replicationSetMaster(xRedis * redis,rObj* obj, long  port)
+void xReplication::connErrorCallBack()
 {
-	this->redis = redis;
-	threads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,this,obj->ptr,port)));
-	std::unique_lock<std::mutex> lk(mutex);
-	while (start == false)
+	if(!isreconnect)
 	{
-		condition.wait(lk);
+		return ;
 	}
-		
+	
+	if(connectCount >= maxConnectCount)
+	{
+		LOG_WARN<<"Reconnect failure";
+		return ;
+	}
+	
+	++connectCount;
+	loop->runAfter(5,false,std::bind(&xReplication::reconnectTimer,this));
+}
+
+void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)
+{
+	this->ip = obj->ptr;
+	this->port = port;
+	this->redis = redis;
+	client->connect(this->ip.c_str(),this->port);
 }
 
 

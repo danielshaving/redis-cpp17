@@ -128,7 +128,7 @@ int xSession::processCommand()
 			if(redis->slaveEnabled)
 			{
 				clearObj();
-				addReplyErrorFormat(sendBuf,"slavef mode commond unknown ");
+				addReplyErrorFormat(sendBuf,"slaveof mode commond unknown ");
 				return REDIS_ERR;
 			}
 		}
@@ -138,6 +138,7 @@ int xSession::processCommand()
 	}
 	
 	zfree(obj);
+
 	
 	if(!iter->second(robjs,this))
 	{
