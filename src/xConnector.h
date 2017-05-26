@@ -11,7 +11,7 @@ public:
   typedef std::function<void (int sockfd)> NewConnectionCallback;
   typedef std::function<void()> ErrorConnectionCallback;
 
-  xConnector(xEventLoop* loop, std::string ip,int port);
+  xConnector(xEventLoop* loop);
   ~xConnector();
 
   void setNewConnectionCallback(const NewConnectionCallback& cb)
@@ -24,13 +24,13 @@ public:
 	  errorConnectionCallback = cb;
   }
 
-  void start();
+  void start(const char *ip,int32_t port);
   void restart();
   void stop();
 
-  void startInLoop();
+  void startInLoop(const char *ip,int32_t port);
   void stopInLoop();
-  void connect();
+  void connect(const char *ip,int32_t port);
   void connecting(int sockfd);
   void resetChannel();
   int  removeAndResetChannel();

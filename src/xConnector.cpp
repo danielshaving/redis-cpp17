@@ -1,9 +1,7 @@
 #include "xConnector.h"
 
-xConnector::xConnector(xEventLoop *loop,std::string ip,int port)
+xConnector::xConnector(xEventLoop *loop)
  :loop(loop),
-  ip(ip),
-  port(port),
   state(kDisconnected),
   isconnect(false)
 {
@@ -17,26 +15,26 @@ xConnector::~xConnector()
 }
 
 
-void xConnector::start()
+void xConnector::start(const char *ip,int32_t port)
 {
-  isconnect = true;
-  loop->runInLoop(std::bind(&xConnector::startInLoop, this));
+	isconnect = true;
+	loop->runInLoop(std::bind(&xConnector::startInLoop, this,ip,port));
 }
 
 
 
-void xConnector::startInLoop()
+void xConnector::startInLoop(const char *ip,int32_t port)
 {
-  loop->assertInLoopThread();
-  //assert(state == kDisconnected);
-  if (isconnect)
-  {
-    connect();
-  }
-  else
-  {
-    LOG_WARN<<"do not connect";
-  }
+	loop->assertInLoopThread();
+	//assert(state == kDisconnected);
+	if (isconnect)
+	{
+		connect(ip,port);
+	}
+	else
+	{
+		LOG_WARN<<"do not connect";
+	}
 }
 
 void xConnector::stop()
@@ -47,13 +45,13 @@ void xConnector::stop()
 
 void xConnector::stopInLoop()
 {
-  loop->assertInLoopThread();
-  if (state == kConnecting)
-  {
-    setState(kDisconnected);
-    int sockfd = removeAndResetChannel();
-    //retry(sockfd);
-  }
+	loop->assertInLoopThread();
+	if (state == kConnecting)
+	{
+		setState(kDisconnected);
+		int sockfd = removeAndResetChannel();
+		//retry(sockfd);
+	}
 }
 
 int  xConnector::removeAndResetChannel()
@@ -74,7 +72,7 @@ void xConnector::connecting(int sockfd)
 }
 
 
-void xConnector::connect()
+void xConnector::connect(const char *ip,int32_t port)
 {
   int sockfd = socket.createNonBloackSocket();
   int ret = socket.connect(sockfd, ip,port);
@@ -88,7 +86,7 @@ void xConnector::connect()
       setState(kConnecting);
       connecting(sockfd);
       socket.setSocketNonBlock(sockfd);
-	socket.setkeepAlive(sockfd,1);
+	socket.setkeepAlive(sockfd,3);
       break;
     default:
 //
