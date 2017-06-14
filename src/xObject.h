@@ -15,11 +15,8 @@ typedef struct redisObject
 	{
 		hash =boost::hash_range(ptr,sdsllen(ptr) + ptr);
 	}
-
 	unsigned type:4;
 	unsigned encoding:4;
-	int cas;
-	int refcount;
 	size_t hash;
 	const char *ptr;
 } rObj;

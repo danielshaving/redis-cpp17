@@ -7,37 +7,52 @@ xRedis::xRedis(const char * ip,int32_t port,int32_t threadCount)
 port(port),
 threadCount(threadCount),
 masterPort(0),
-slaveEnabled(false)
+clusterEnabled(false),
+slaveEnabled(false),
+repliEnabled(false)
 {
 	
 	rObj * obj = createStringObject("set",3);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("get",3);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::getCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::getCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("flushdb",7);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::flushdbCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::flushdbCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("dbsize",6);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::dbsizeCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::dbsizeCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("hset",4);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::hsetCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::hsetCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("hget",4);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::hgetCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::hgetCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("hgetall",7);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::hgetallCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::hgetallCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("ping",4);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::pingCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::pingCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("save",4);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::saveCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::saveCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("slaveof",7);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::slaveofCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::slaveofCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("sync",4);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::syncCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::syncCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("command",7);
-	handlerCommondMap.insert(std::make_pair(obj, std::bind(&xRedis::commandCommond, this, std::placeholders::_1, std::placeholders::_2)));
+	handlerCommondMap[obj] =std::bind(&xRedis::commandCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("set",3);
-	unorderedmapCommonds.insert(std::make_pair(obj,2));
+	unorderedmapCommonds[obj] = 2;
+
 	obj = createStringObject("hset",4);
-	unorderedmapCommonds.insert(std::make_pair(obj,3));
+	unorderedmapCommonds[obj] = 3;
 
 	createSharedObjects();
 	loadDataFromDisk();
@@ -125,7 +140,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		socklen_t len = sizeof(sa);
 		if(!getpeername(conn->getSockfd(), (struct sockaddr *)&sa, &len))
 		{
-			//LOG_INFO<<"From slave:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
+			LOG_INFO<<"From slave:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
 		}
 		
 		std::shared_ptr<xSession> session (new xSession(this,conn));
@@ -140,12 +155,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	{
 		MutexLockGuard mu(mutex);
 		sessions.erase(conn->getSockfd());
-		auto it = tcpconnMaps.find(conn->getSockfd());
-		if(it != tcpconnMaps.end())
-		{
-			tcpconnMaps.erase(conn->getSockfd());
-		}
-		
+		tcpconnMaps.erase(conn->getSockfd());
 		LOG_INFO<<"Client disconnect";
 	}
 }
@@ -186,7 +196,6 @@ bool xRedis::saveCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	int64_t start =  mstime();
-	
 	MutexLockGuard lk(mutex);
 	char filename[] = "dump.rdb";
 	if(rdbSave(filename,this) == REDIS_OK)
@@ -282,19 +291,10 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	{
-		struct sockaddr_in sa;
-		socklen_t len = sizeof(sa);
-		if(!getpeername(session->conn->getSockfd(), (struct sockaddr *)&sa, &len))
-		{
-			LOG_ERROR<<"syncCommond error";
-			return false;
-		}
-	}
-
+	tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
+	repliEnabled = true;
 
 	saveCommond(obj,session);
-
 	char rdb_filename[] = "dump.rdb";
 	size_t len = 0;
 
@@ -307,11 +307,11 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 		*sendLen = len;
 		session->sendBuf.append((const char*)str,4);
 		session->sendBuf.append(buf->ptr,len);
-		tcpconnMaps.erase(session->conn->getSockfd());
 	}
 	else
 	{
-		LOG_INFO<<"sync load rdb fail";
+		assert(false);
+		LOG_INFO<<"sync load rdb failure";
 	}
 	
 	zfree(buf);
@@ -322,6 +322,12 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::psyncCommond(const std::deque <rObj*> & obj,xSession * session)
 {
+	if(obj.size() >  0)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown psync  error");
+		return false;
+	}
+
 	return true;
 }
 

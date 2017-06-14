@@ -99,7 +99,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		}
 		else
 		{
-			LOG_INFO<<"Replication save rdb failure";
+			assert(false);
 			recvBuf->retrieve(len);
 			break;
 		}
@@ -110,16 +110,19 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		}
 		else
 		{
-			LOG_INFO<<"Replication load rdb failure";
+			assert(false);
 			recvBuf->retrieve(len);
 			break;
 		}
-			
+
+		xBuffer sendbuffer;
+		sendbuffer.append(shared.ok->ptr,sdsllen(shared.ok->ptr));
+		conn->send(&sendbuffer);
 		std::shared_ptr<xSession> session (new xSession(redis,conn));
 		MutexLockGuard mu(redis->mutex);
 		redis->sessions[conn->getSockfd()] = session;
 		recvBuf->retrieveAll();
-		
+
 	}
 	
 }
@@ -128,16 +131,14 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
-	{	
+	{
 		struct sockaddr_in sa;
 		socklen_t len = sizeof(sa);
 		if(!getpeername(conn->getSockfd(), (struct sockaddr *)&sa, &len))
 		{
-			LOG_INFO<<"connCallBack error";
-			return ;
+			LOG_INFO<<"From master:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
 		}
-		
-		LOG_INFO<<"From master:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
+
 		conn->host = inet_ntoa(sa.sin_addr);
 		conn->port = ntohs(sa.sin_port);
 		redis->masterHost = conn->host;
@@ -162,8 +163,6 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		LOG_INFO<<"Connect  master disconnect";
 	}
 }
-
-
 
 void xReplication::reconnectTimer()
 {
@@ -196,8 +195,7 @@ void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)
 	client->connect(this->ip.c_str(),this->port);
 }
 
-
-void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond ,xRedis * redis ,std::deque<rObj*>  &robjs,xTcpconnectionPtr & conn)
+void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*>  &robjs)
 {
 	int len, j;
 	char buf[32];
@@ -214,7 +212,6 @@ void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond ,xRedis * redis ,st
 	sendBuf.append(buf,len);
 	sendBuf.append(commond->ptr,sdsllen(commond->ptr));
 	sendBuf.append("\r\n",2);
-
 	
 	for(auto it = robjs.begin(); it != robjs.end(); it++)
 	{
@@ -226,10 +223,6 @@ void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond ,xRedis * redis ,st
 		sendBuf.append((*it)->ptr,sdsllen((*it)->ptr));
 		sendBuf.append("\r\n",2);
 	}
-
-	//conn->send(&sendBuf);
-
-	
 }
 
 

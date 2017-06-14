@@ -48,8 +48,9 @@ public:
 	std::unordered_map<rObj*,commondFunction,Hash,EEqual> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
-      typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
-	  
+    typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
+
+
 
 	struct SetLock
 	{
@@ -77,12 +78,13 @@ public:
 	int32_t threadCount;
 	std::string masterHost;
 	int32_t masterPort ;
-	bool clusterEnabled;
-	bool slaveEnabled;
+
+	std::atomic<bool>  clusterEnabled;
+	std::atomic<bool>  slaveEnabled;
+	std::atomic<bool>  repliEnabled;
 	
 	xReplication  repli;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
-	
 
 };
 

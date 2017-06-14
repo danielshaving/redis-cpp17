@@ -97,7 +97,6 @@ rObj * createObject(int type, const void *ptr)
 	o->type = type;
 	o->type = REDIS_ENCODING_RAW;
 	o->ptr  = (const char*)ptr;
-	o->refcount = 1;
 	return o;
 }
 
@@ -346,15 +345,17 @@ rObj * createEmbeddedStringObject(const char *ptr, size_t len)
     o->type = REDIS_STRING;
     o->encoding = REDIS_ENCODING_EMBSTR;
     o->ptr = (const char*)(sh+1);
-    o->refcount = 1;
     o->hash = 0;
     //o->lru = LRU_CLOCK();
     sh->len = len;
     sh->free = 0;
-    if (ptr) {
+    if (ptr)
+    {
         memcpy(sh->buf,ptr,len);
         sh->buf[len] = '\0';
-    } else {
+    }
+    else
+    {
         memset(sh->buf,0,len+1);
     }
     return o;

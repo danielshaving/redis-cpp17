@@ -38,6 +38,5 @@ public:
 	static const int maxConnectCount = 3;
 };
 
-
-void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond ,xRedis * redis ,std::deque<rObj*> &robjs,xTcpconnectionPtr & conn);
+void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*> &robjs);
 
