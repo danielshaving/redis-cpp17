@@ -3,6 +3,7 @@
 #include "all.h"
 #include "xObject.h"
 #include "xTcpClient.h"
+#include "xSocket.h"
 
 class xRedis;
 class xReplication
@@ -36,6 +37,7 @@ public:
 	xBuffer sendBuf;
 	int connectCount = 0;
 	static const int maxConnectCount = 3;
+	xSocket socket;
 };
 
 void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*> &robjs);

@@ -1,6 +1,6 @@
 TARGET= ./redis-server
 
-CFLAGS := -Wall -Wno-unused -Wno-sign-compare -g -O0  -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++11
+CFLAGS := -Wall -Wno-unused -Wno-sign-compare -g -O3  -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++11
 
 cppfiles := $(shell ls *.cpp)
 cfiles := $(-shell ls *.c)

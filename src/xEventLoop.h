@@ -24,7 +24,8 @@ public:
 	void updateChannel(xChannel* channel);
 	void removeChannel(xChannel* channel);
 	bool hasChannel(xChannel* channel);
-	void runAfter(double  when,bool repeat,xTimerCallback&& cb);
+	void cancelAfter(xTimer * timer);
+	xTimer  *runAfter(double  when,bool repeat,xTimerCallback&& cb);
     void assertInLoopThread()
     {
       if (!isInLoopThread())

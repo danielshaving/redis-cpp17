@@ -24,7 +24,7 @@ public:
 	int32_t 			reqtype;
 	int32_t 			multibulklen;
 	int64_t 			bulklen;
-	int32_t 		      argc;
+	int32_t 		    argc;
 	xTcpconnectionPtr 	conn;
 	xBuffer 			sendBuf;
 	xBuffer 			sendSlaveBuf;

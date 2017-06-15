@@ -52,7 +52,6 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 		{
 			LOG_WARN<<"Unknown request type";
 		}
-		
 
 		processCommand();
 		reset();
@@ -74,11 +73,7 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 		}
 	}
 	
-	
-	
-	
 }
-
 
 
 bool xSession::checkCommond(rObj*  robjs,int size)
@@ -101,6 +96,41 @@ bool xSession::checkCommond(rObj*  robjs,int size)
 int xSession::processCommand()
 {
 	assert(robjs.size());
+	if(redis->repliEnabled)
+	{
+		auto it = redis->tcpconnMaps.find(conn->getSockfd());
+		if(it !=  redis->tcpconnMaps.end())
+		{
+			if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
+			{
+				LOG_INFO<<"slaveof sync success";
+				if(redis->slaveCached.readableBytes() > 0)
+				{
+					conn->send(&redis->slaveCached);
+				}
+
+				if( redis->tcpconnMaps.size() == 1)
+				{
+					if(redis->timer != nullptr)
+					{
+						redis->loop.cancelAfter(redis->timer);
+					}
+
+					redis->repliEnabled = false;
+					redis->slaveCached.retrieveAll();
+					LOG_INFO<<"close repli cacahed";
+				}
+
+				clearObj();
+				return REDIS_OK;
+			}
+		}
+
+		MutexLockGuard mu(redis->mutex);
+		replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
+	}
+
+
 	auto iter = redis->handlerCommondMap.find(robjs[0]);
 	if(iter == redis->handlerCommondMap.end() )
 	{
@@ -116,7 +146,7 @@ int xSession::processCommand()
 	{
 		for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
 		{
-			replicationFeedSlaves(sendSlaveBuf,obj,redis,robjs,it->second);
+			replicationFeedSlaves(sendSlaveBuf,obj,robjs);
 		}
 
 		if(  (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
@@ -132,14 +162,10 @@ int xSession::processCommand()
 				return REDIS_ERR;
 			}
 		}
-
-
-			
 	}
 	
-	zfree(obj);
 
-	
+	zfree(obj);
 	if(!iter->second(robjs,this))
 	{
 		clearObj();
@@ -148,8 +174,6 @@ int xSession::processCommand()
 	
 	return REDIS_OK;
 }
-
-
 
 void xSession::resetVlaue()
 {
@@ -171,8 +195,6 @@ void xSession::reset()
 	 bulklen = -1;
 	 robjs.clear();
 }
-
-
 
 int xSession::processInlineBuffer(xBuffer *recvBuf)
 {

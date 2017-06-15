@@ -64,7 +64,7 @@
 #include<sys/socket.h>
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <atomic>
 
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
 /* Client request types */
@@ -220,7 +220,7 @@
 #define AOF_AUTOSYNC_BYTES (1024*1024*32) /* fdatasync every 32MB */
 
 
-
+#define REPLI_TIME_OUT	10
 
 
 

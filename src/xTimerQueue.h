@@ -34,9 +34,10 @@ public:
 	xTimerQueue(xEventLoop *loop);
 	~xTimerQueue();
 	void handleRead();
+	void cancelTimer(xTimer *timer);
 	void cancelInloop(xTimer *timer);
 	void addTimerInLoop(xTimer* timer);
-  	void addTimer(double  when,bool repeat,xTimerCallback&& cb);
+  	xTimer  *addTimer(double  when,bool repeat,xTimerCallback&& cb);
 
   	static const int kMicroSecondsPerSecond = 1000 * 1000;
 private:

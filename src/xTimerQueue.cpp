@@ -230,18 +230,31 @@ xTimerQueue::~xTimerQueue()
 	::close(timerfd);
 }
 
-void  xTimerQueue::addTimer(double when, bool repeat,xTimerCallback&& cb)
+xTimer  * xTimerQueue::addTimer(double when, bool repeat,xTimerCallback&& cb)
 {
 	xTimestamp time(addTime(xTimestamp::now(), when));
 	xTimer * timer = new xTimer(std::move(cb),std::move(time),repeat,when);
 	loop->runInLoop(std::bind(&xTimerQueue::addTimerInLoop,this,timer));
+	return timer;
 }
 
-
+void xTimerQueue::cancelTimer(xTimer *timer)
+{
+	loop->runInLoop(std::bind(&xTimerQueue::cancelInloop,this,timer));
+}
 
 void xTimerQueue::cancelInloop(xTimer *timer)
 {
-	
+	if(pqueue.size() == 0 )
+	{
+		return ;
+	}
+
+	if(pqueue.size()  == 1)
+	{
+		pqueue.erase(timer);
+		resetTimerfd(timerfd,pqueue.head()->getExpiration());
+	}
 }
 
 

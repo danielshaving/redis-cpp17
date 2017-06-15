@@ -9,7 +9,8 @@ threadCount(threadCount),
 masterPort(0),
 clusterEnabled(false),
 slaveEnabled(false),
-repliEnabled(false)
+repliEnabled(false),
+timer(nullptr)
 {
 	
 	rObj * obj = createStringObject("set",3);
@@ -61,10 +62,6 @@ repliEnabled(false)
 	server.setThreadNum(threadCount);
 	server.start();
 
-	//xTimer * timer = loop.runAfter(1,true,std::bind(&xRedis::handleTimeout,this));
-	//loop.cancelAfter(timer);
-	//timer = loop.runAfter(1,true,std::bind(&xRedis::handleTimeout,this));
-	//loop.runAfter(10,true,std::bind(&xRedis::handleTimeout,this));
 }
 
 xRedis::~xRedis()
@@ -129,33 +126,38 @@ xRedis::~xRedis()
 
 void xRedis::handleTimeout()
 {
-	loop.quit();
+	repliEnabled = false;
+	slaveCached.retrieveAll();
+	LOG_INFO<<"handler repli timeout ";
 }
+
 
 void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
 	{
-		struct sockaddr_in sa;
-		socklen_t len = sizeof(sa);
-		if(!getpeername(conn->getSockfd(), (struct sockaddr *)&sa, &len))
-		{
-			LOG_INFO<<"From slave:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
-		}
-		
+		socket.getpeerName(conn->getSockfd(),conn->host,conn->port);
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		conn->host = inet_ntoa(sa.sin_addr);
-		conn->port = ntohs(sa.sin_port);
 		LOG_INFO<<"Client connect success";
-		
 	}
 	else
 	{
 		MutexLockGuard mu(mutex);
 		sessions.erase(conn->getSockfd());
-		tcpconnMaps.erase(conn->getSockfd());
+		auto it = tcpconnMaps.find(conn->getSockfd());
+		if(it !=  tcpconnMaps.end())
+		{
+			if(timer != nullptr)
+			{
+				loop.cancelAfter(timer);
+			}
+			timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleTimeout,this));
+			tcpconnMaps.erase(it);
+			repliEnabled = true;
+		}
+
 		LOG_INFO<<"Client disconnect";
 	}
 }
@@ -221,8 +223,8 @@ bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() !=  2)
 	{
-	addReplyErrorFormat(session->sendBuf,"unknown slaveof error");
-	return false;
+		addReplyErrorFormat(session->sendBuf,"unknown slaveof error");
+		return false;
 	}
 
 	MutexLockGuard lk(mutex);
@@ -291,13 +293,26 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
 	repliEnabled = true;
+
+	{
+		MutexLockGuard lk(mutex);
+		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
+
+
+		if(timer != nullptr)
+		{
+			loop.cancelAfter(timer);
+		}
+
+		timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleTimeout,this));
+	}
 
 	saveCommond(obj,session);
 	char rdb_filename[] = "dump.rdb";
 	size_t len = 0;
 
+	MutexLockGuard lk(mutex);
 	rObj * buf = rdbLoad(rdb_filename,len);
 	if(buf != nullptr)
 	{
@@ -319,13 +334,19 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-
 bool xRedis::psyncCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() >  0)
 	{
+		LOG_WARN<<"unknown psync  error";
 		addReplyErrorFormat(session->sendBuf,"unknown psync  error");
 		return false;
+	}
+
+	MutexLockGuard lk(mutex);
+	if(!repliEnabled)
+	{
+		//send slave sync
 	}
 
 	return true;

@@ -10,8 +10,8 @@
 #include "xRdb.h"
 #include "xPosix.h"
 #include "xLog.h"
+#include "xSocket.h"
 #include "xReplication.h"
-
 
 class xRedis : boost::noncopyable
 {
@@ -72,7 +72,6 @@ public:
 	xEventLoop loop;
 	xTcpServer server;
 	mutable MutexLock mutex;
-
 	std::string host;
 	int32_t port;
 	int32_t threadCount;
@@ -82,9 +81,13 @@ public:
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  repliEnabled;
-	
+
+	std::atomic<xTimer*> timer;
+	xBuffer		slaveCached;
+
 	xReplication  repli;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
+	xSocket socket;
 
 };
 

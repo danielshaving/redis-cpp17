@@ -33,6 +33,24 @@ int  xSocket::getListenFd()
 }
 
 
+bool xSocket::getpeerName(int32_t fd,std::string ip,int32_t &port)
+{
+	struct sockaddr_in sa;
+	socklen_t len = sizeof(sa);
+	if(!getpeername(fd, (struct sockaddr *)&sa, &len))
+	{
+		ip = inet_ntoa(sa.sin_addr);
+		port = ntohs(sa.sin_port);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+
+}
+
+
 int  xSocket::createNonBloackSocket()
 {
 	return socket(AF_INET, SOCK_STREAM, 0);

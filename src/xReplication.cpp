@@ -47,6 +47,8 @@ void xReplication::replicationCron()
 void xReplication::syncWrite(const xTcpconnectionPtr& conn)
 {
 	sendBuf.append(shared.sync->ptr,sdsllen(shared.sync->ptr));
+	conn->send(&sendBuf);
+	sendBuf.retrieveAll();
 }
 
 void xReplication::syncWithMaster(const xTcpconnectionPtr& conn)
@@ -59,7 +61,7 @@ void xReplication::syncWithMaster(const xTcpconnectionPtr& conn)
 	if (sockerr) 
 	{
 	   LOG_WARN<<"Error condition on socket for SYNC"<< strerror(sockerr);
-	  return ;
+	   return ;
 	}
 	
 	syncWrite(conn);	
@@ -132,26 +134,13 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
 	{
-		struct sockaddr_in sa;
-		socklen_t len = sizeof(sa);
-		if(!getpeername(conn->getSockfd(), (struct sockaddr *)&sa, &len))
-		{
-			LOG_INFO<<"From master:"<<inet_ntoa(sa.sin_addr)<<":"<<ntohs(sa.sin_port);
-		}
-
-		conn->host = inet_ntoa(sa.sin_addr);
-		conn->port = ntohs(sa.sin_port);
+		socket.getpeerName(conn->getSockfd(),conn->host,conn->port);
 		redis->masterHost = conn->host;
 		redis->masterPort = conn->port ;
 		redis->slaveEnabled =  true;
 		isreconnect = true;
 		LOG_INFO<<"Connect master success";
 		syncWithMaster(conn);
-		if(sendBuf.readableBytes() > 0 )
-		{
-			conn->send(&sendBuf);	
-		}
-
 	}
 	else
 	{
