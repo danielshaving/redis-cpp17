@@ -472,9 +472,9 @@ bool xRedis::hsetCommond(const std::deque <rObj*> & obj,xSession * session)
 			}
 			else
 			{
-				it->second.erase(iter);
 				zfree(iter->first);
 				zfree(iter->second);
+				it->second.erase(iter);
 				it->second.insert(std::make_pair(obj[1],obj[2]));
 				update = true;
 			}
@@ -615,9 +615,9 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 		else
 		{
-			setMap.erase(it);
 			zfree(it->second);
 			zfree(it->first);
+			setMap.erase(it);
 			setMap.insert(std::make_pair(obj[0],obj[1]));
 		}
 	}
