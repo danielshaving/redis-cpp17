@@ -50,15 +50,12 @@ public:
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
     typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
 
-
-
 	struct SetLock
 	{
 		SetMap setMap;
 		mutable MutexLock mutex;
 	};
-	
-	
+
 	struct HsetLock
 	{
 		HsetMap hsetMap;
@@ -68,7 +65,6 @@ public:
 	const static int kShards = 4096;
 	std::array<SetLock, kShards> setShards;
 	std::array<HsetLock, kShards> hsetShards;
-	
 	xEventLoop loop;
 	xTcpServer server;
 	mutable MutexLock mutex;
@@ -77,18 +73,15 @@ public:
 	int32_t threadCount;
 	std::string masterHost;
 	int32_t masterPort ;
-
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  repliEnabled;
-
 	std::atomic<xTimer*> timer;
 	xBuffer		slaveCached;
-
 	xReplication  repli;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
 	xSocket socket;
-
+	int32_t count = 0;
 };
 
 

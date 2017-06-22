@@ -10,7 +10,7 @@ class xEpoll
 private:
     typedef std::vector<struct epoll_event> EventList;
     typedef std::vector<xChannel*>          ChannelList;
-    typedef std::map<int, xChannel*> 		ChannelMap;
+    typedef std::unordered_map<int, xChannel*> 		ChannelMap;
     ChannelMap 				channels;
     EventList 			    events;
     xEventLoop 				*loop;

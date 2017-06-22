@@ -126,6 +126,11 @@ class xBuffer
     writerIndex = kCheapPrepend;
   }
 
+  void resize()
+  {
+
+  }
+
   string retrieveAllAsString()
   {
     return retrieveAsString(readableBytes());;
@@ -326,14 +331,29 @@ class xBuffer
       assert(readable == readableBytes());
     }
   }
-
  private:
-  std::vector<char> buffer;
-  size_t readerIndex;
-  size_t writerIndex;
+	std::vector<char> buffer;
+	size_t readerIndex;
+	size_t writerIndex;
 
-  static const char kCRLF[];
-  static const char kCRLFCRLF[];
-  static const char CONTENT[];
+	static const char kCRLF[];
+	static const char kCRLFCRLF[];
+	static const char CONTENT[];
 };
+
+class stringPiepe
+{
+ public:
+	stringPiepe(const char* str)
+	: str(str), len(static_cast<int>(strlen(str))) { }
+	stringPiepe(const std::string& str)
+	:str(str.data()), len(static_cast<int>(str.size())) { }
+	stringPiepe(const char* str, size_t len)
+	:str(str),len(len) {}
+	std::string as_string() const { return std::string(str,len);}
+	const char* str;
+	const size_t len;
+};
+
+
 

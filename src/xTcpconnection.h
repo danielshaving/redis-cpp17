@@ -2,18 +2,14 @@
 
 #include "all.h"
 #include "xBuffer.h"
-
 #include "xCallback.h"
 #include "xChannel.h"
-
 
 class xEventLoop;
 class xTcpconnection:boost::noncopyable,public std::enable_shared_from_this<xTcpconnection>
 {
 public:
-
 	enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };
-
 	xTcpconnection(xEventLoop *loop,int sockfd,void *data);
 	~xTcpconnection();
 
@@ -44,9 +40,11 @@ public:
 	void handleError();
 
 	void sendInLoop(const void* message, size_t len);
-    void sendInLoop(std::string & message);
+	void sendInLoop(const stringPiepe & message);
+    //void sendInLoop(std::string & message);
 	void send(xBuffer* message);
-	void send(std::string && message);
+	//void send(std::string && message);
+	void send(const stringPiepe  &message);
 
 	bool disconnected() const { return state == kDisconnected; }
 	bool connected();
@@ -68,8 +66,6 @@ public:
 public:
 	xEventLoop 			  *loop;
 	int 				  sockfd;
-
-
 	xBuffer               recvBuff;
 	xBuffer               sendBuff;
 	ConnectionCallback    connectionCallback;
@@ -77,6 +73,7 @@ public:
 	WriteCompleteCallback writeCompleteCallback;
 	HighWaterMarkCallback highWaterMarkCallback;
 	CloseCallback 		  closeCallback;
+
 	size_t 				      highWaterMark;
 	StateE 				  state;
 	std::shared_ptr<xChannel> channel;

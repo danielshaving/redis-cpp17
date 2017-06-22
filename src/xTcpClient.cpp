@@ -37,6 +37,7 @@ xTcpClient::~xTcpClient()
 		unique = connection.unique();
 		conn = connection;
 	  }
+
 	  if (conn)
 	  {
 	    assert(loop == conn->getLoop());

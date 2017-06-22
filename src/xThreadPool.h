@@ -9,6 +9,7 @@ class xThreadPool : boost::noncopyable
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;
 	xThreadPool(xEventLoop *baseLoop);
+	xThreadPool() {}
 	~xThreadPool();
 
 	void setThreadNum(int numThreads) { this->numThreads = numThreads; }

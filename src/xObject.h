@@ -13,7 +13,7 @@ typedef struct redisObject
 {		
 	void calHash()
 	{
-		hash =boost::hash_range(ptr,sdsllen(ptr) + ptr);
+		hash = boost::hash_range(ptr,sdsllen(ptr) + ptr);
 	}
 	unsigned type:4;
 	unsigned encoding:4;

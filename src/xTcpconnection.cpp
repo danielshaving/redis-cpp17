@@ -163,22 +163,41 @@ int xTcpconnection::getSockfd()
 }
 
 
-void xTcpconnection::send(std::string&& message)
+//void xTcpconnection::send(std::string&& message)
+//{
+//	 if (state == kConnected)
+//	  {
+//	    if (loop->isInLoopThread())
+//	    {
+//	      sendInLoop(message);
+//	    }
+//	    else
+//	    {
+//	      loop->runInLoop(
+//	          boost::bind(&xTcpconnection::sendInLoop,
+//	                      this,
+//						  std::move(message)));
+//	    }
+//	  }
+//}
+
+
+
+void xTcpconnection::send(const stringPiepe & message)
 {
-	 if (state == kConnected)
-	  {
-	    if (loop->isInLoopThread())
-	    {
-	      sendInLoop(message);
-	    }
-	    else
-	    {
-	      loop->runInLoop(
-	          boost::bind(&xTcpconnection::sendInLoop,
-	                      this,
-						  message));
-	    }
-	  }
+	if (state == kConnected)
+	{
+		if (loop->isInLoopThread())
+		{
+		  sendInLoop(message.str,message.len);
+		}
+		else
+		{
+		  loop->runInLoop(
+			  boost::bind(&xTcpconnection::sendInLoop,
+						  this, message.as_string()));
+		}
+	}
 }
 
 void xTcpconnection::send(xBuffer* buf)
@@ -199,10 +218,15 @@ void xTcpconnection::send(xBuffer* buf)
   }
 }
 
-void xTcpconnection::sendInLoop(std::string & message)
+void xTcpconnection::sendInLoop(const stringPiepe & message)
 {
-	sendInLoop(message.data(),message.size());
+	sendInLoop(message.str,message.len);
 }
+
+//void xTcpconnection::sendInLoop(std::string & message)
+//{
+//	sendInLoop(message.data(),message.size());
+//}
 
 void xTcpconnection::sendInLoop(const void* data, size_t len)
 {
@@ -266,7 +290,6 @@ void xTcpconnection::connectEstablished()
 	setState(kConnected);
 	channel->setTie(shared_from_this());
 	channel->enableReading();
-
 	connectionCallback(shared_from_this(),data);
 }
 

@@ -299,14 +299,14 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 		MutexLockGuard lk(mutex);
 		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
 
-
-		if(timer != nullptr)
-		{
-			loop.cancelAfter(timer);
-		}
-
-		timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleTimeout,this));
 	}
+
+	if(timer != nullptr)
+	{
+		loop.cancelAfter(timer);
+	}
+
+	timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleTimeout,this));
 
 	saveCommond(obj,session);
 	char rdb_filename[] = "dump.rdb";
@@ -622,6 +622,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 	}
 	
+
 	if(!slaveEnabled)
 	addReply(session->sendBuf,shared.ok);
 	return true;
@@ -651,8 +652,8 @@ bool xRedis::getCommond(const std::deque <rObj*> & obj,xSession * session)
 		
 		addReplyBulk(session->sendBuf,it->second);
 	}
+
 	zfree(obj[0]);
-	
 	
 	return true;
 }

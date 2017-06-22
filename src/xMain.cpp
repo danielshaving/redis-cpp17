@@ -1,8 +1,9 @@
+
+//redis srever
 #include "xRedis.h"
 #include "xCurrentThread.h"
 #include "xLog.h"
 #include <stdio.h>
-
 
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char* msg, int len)
@@ -30,24 +31,81 @@ char *ascii_logo =
 "          `-._        _.-'                                           \n"
 "              `-.__.-'                                               \n";
 int main(int argc, char* argv[])
-{	
+{
 	if (argc < 4)
 	{
 		fprintf(stderr, "Usage: server <address> <port> <threads>\n");
 	}
 	else
-	{		
+	{
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int32_t threadCount =  atoi(argv[3]);
-		
+
 		xLogger::setOutput(asyncOutput);
-	    
+
 		xAsyncLogging log("libredis", 2000);
 		log.start();
 		g_asyncLog = &log;
 		xRedis redis(ip,port,threadCount);
 		redis.run();
+
+
 	}
-	return 0;
+
+		return 0;
 }
+
+
+
+//hiredis client test asyncbenchmark
+//#include "all.h"
+//#include "xEventLoop.h"
+//#include "xLog.h"
+//#include "xHiredis.h"
+//
+//
+//int main(int argc, char* argv[])
+//{
+//	 if (argc != 6)
+//	  {
+//	    fprintf(stderr, "Usage: client <host_ip> <port> <threads> <blocksize> ");
+//	    fprintf(stderr, "<sessions> \n");
+//	  }
+//	  else
+//	  {
+//	    const char* ip = argv[1];
+//	    uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
+//	    int threadCount = atoi(argv[3]);
+//	    int blockSize = atoi(argv[4]);
+//	    int sessionCount = atoi(argv[5]);
+//
+//	    xEventLoop loop;
+//	    xClient client(&loop, ip,port, blockSize, sessionCount, threadCount);
+//	    loop.run();
+//	  }
+//}
+
+//hiredis client test sync
+//#include "all.h"
+//#include "xLog.h"
+//#include "xHiredis.h"
+//
+//
+//int main(int argc, char* argv[])
+//{
+//	if (argc != 3)
+//	{
+//		fprintf(stderr, "Usage: client <host_ip> <port> \n ");
+//	}
+//	else
+//	{
+//		  const char* ip = argv[1];
+//		  uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
+//		  xClient client(ip,port);
+//	}
+//	return 0;
+//}
+
+
+
