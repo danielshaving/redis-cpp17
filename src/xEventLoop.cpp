@@ -159,8 +159,8 @@ void xEventLoop::doPendingFunctors()
 
 	{
 		std::unique_lock<std::mutex> lk(mutex);
-	//	functors.swap(pendingFunctors);
-		functors = std::move(pendingFunctors);
+		functors.swap(pendingFunctors);
+		//functors = std::move(pendingFunctors);
 	}
 
 	for (size_t i = 0; i < functors.size(); ++i)

@@ -1,7 +1,6 @@
 TARGET= ./redis-server
 
-CFLAGS := -Wall -Wno-unused -Wno-sign-compare -g -O3  -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++11
-
+CFLAGS := -Wall -Wno-unused -Wno-sign-compare   -O2  -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++11  
 cppfiles := $(shell ls *.cpp)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cpp,./%.o, $(cppfiles) $(cfiles))
@@ -10,14 +9,11 @@ CXXOBJS=${patsubst %.cpp,./%.o,$(cppfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB= -lpthread  
+LIB= 
 
 
 
-#LIB=/usr/libevent/lib/libevent.a /usr/libevent/lib/libevent_pthreads.a ../../Lib_3rd/lib/Engine.a
-
-
-SO_LIB=
+SO_LIB= 
 
 .PHONY: all clean
 

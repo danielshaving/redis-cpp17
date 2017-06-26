@@ -6,7 +6,7 @@
 #include "xChannel.h"
 
 class xEventLoop;
-class xTcpconnection:boost::noncopyable,public std::enable_shared_from_this<xTcpconnection>
+class xTcpconnection:noncopyable,public std::enable_shared_from_this<xTcpconnection>
 {
 public:
 	enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };
@@ -41,6 +41,9 @@ public:
 
 	void sendInLoop(const void* message, size_t len);
 	void sendInLoop(const stringPiepe & message);
+
+	static void bindSendInLoop(xTcpconnection* conn, const stringPiepe& message);
+
     //void sendInLoop(std::string & message);
 	void send(xBuffer* message);
 	//void send(std::string && message);

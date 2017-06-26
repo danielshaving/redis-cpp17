@@ -4,12 +4,11 @@
 class xThread;
 class xEventLoop;
 
-class xThreadPool : boost::noncopyable
+class xThreadPool :noncopyable
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;
 	xThreadPool(xEventLoop *baseLoop);
-	xThreadPool() {}
 	~xThreadPool();
 
 	void setThreadNum(int numThreads) { this->numThreads = numThreads; }
@@ -27,7 +26,7 @@ private:
 	int 		 numThreads;
 	int			 next;
 
-	std::vector<xThread*>    threads;
+	std::vector<std::shared_ptr<xThread>>    threads;
 	std::vector<xEventLoop*> loops;
 
 

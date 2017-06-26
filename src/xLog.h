@@ -4,7 +4,7 @@ const int kSmallBuffer = 4000;
 const int kLargeBuffer = 4000*1000;
 
 template<int SIZE>
-class xFixedBuffer:boost::noncopyable
+class xFixedBuffer:noncopyable
 {
 public:
 	xFixedBuffer():cur(data){}
@@ -36,7 +36,7 @@ private:
 };
 
 
-class AppendFile : boost::noncopyable
+class AppendFile : noncopyable
 {
  public:
   explicit AppendFile(std::string  &filename);
@@ -59,7 +59,7 @@ class AppendFile : boost::noncopyable
 };
 
 
-class xLogFile : boost::noncopyable
+class xLogFile :noncopyable
 {
  public:
 	xLogFile(const std::string& basename,
@@ -96,7 +96,7 @@ class xLogFile : boost::noncopyable
 
 
 
-class xAsyncLogging
+class xAsyncLogging:noncopyable
 {
 public:
 	xAsyncLogging(std::string baseName,size_t rollSize,int flushInterval = 3);
@@ -132,9 +132,9 @@ private:
 	void threadFunc();
 
 	typedef xFixedBuffer<kLargeBuffer> Buffer;
-	typedef boost::ptr_vector<Buffer> BufferVector;
-	typedef BufferVector::auto_type BufferPtr;
-
+	typedef std::vector<std::unique_ptr<Buffer>> BufferVector;
+	//typedef BufferVector::auto_type BufferPtr;
+	typedef std::unique_ptr<Buffer> BufferPtr;
 	std::string baseName;
 	const int flushInterval;
 	bool running;
@@ -164,7 +164,7 @@ class T
 
 
 
-class xLogStream : boost::noncopyable
+class xLogStream : noncopyable
 {
 public:
 	typedef xLogStream self;

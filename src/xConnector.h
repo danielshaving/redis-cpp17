@@ -46,7 +46,7 @@ public:
   int port;
 
   States state;
-  boost::scoped_ptr<xChannel> channel;
+  std::unique_ptr<xChannel> channel;
   bool isconnect;
   ErrorConnectionCallback	errorConnectionCallback;
   NewConnectionCallback newConnectionCallback;

@@ -2,7 +2,7 @@
 #include "all.h"
 
 class xEventLoop;
-class xSocket: boost::noncopyable
+class xSocket: noncopyable
 {
 private:
 

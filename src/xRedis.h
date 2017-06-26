@@ -13,10 +13,11 @@
 #include "xSocket.h"
 #include "xReplication.h"
 
-class xRedis : boost::noncopyable
+class xRedis : noncopyable
 {
 public:
-	xRedis(const char * ip,int32_t port,int32_t threadCount);
+	xRedis() {}
+	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster);
 	~xRedis();
 	void handleTimeout();
 	void run();
@@ -41,14 +42,17 @@ public:
 	bool syncCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool psyncCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool commandCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool clusterCommond(const std::deque <rObj*> & obj,xSession * session);
 
 public:
+
 	std::unordered_map<rObj*,int,Hash,EEqual>  unorderedmapCommonds;
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commondFunction;
 	std::unordered_map<rObj*,commondFunction,Hash,EEqual> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
-    typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
+	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
+
 
 	struct SetLock
 	{

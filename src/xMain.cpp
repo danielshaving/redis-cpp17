@@ -32,22 +32,22 @@ char *ascii_logo =
 "              `-.__.-'                                               \n";
 int main(int argc, char* argv[])
 {
-	if (argc < 4)
+	if (argc < 5)
 	{
-		fprintf(stderr, "Usage: server <address> <port> <threads>\n");
+		fprintf(stderr, "Usage: server <address> <port> <threads> <enabled cluster 1 true 0 false>\n");
 	}
 	else
 	{
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int32_t threadCount =  atoi(argv[3]);
-
+		bool 	enbaledCluster = argv[4];
 		xLogger::setOutput(asyncOutput);
 
 		xAsyncLogging log("libredis", 2000);
 		log.start();
 		g_asyncLog = &log;
-		xRedis redis(ip,port,threadCount);
+		xRedis redis(ip,port,threadCount,enbaledCluster);
 		redis.run();
 
 

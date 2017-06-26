@@ -85,8 +85,8 @@ void xConnector::connect(const char *ip,int32_t port)
     case EISCONN:
       setState(kConnecting);
       connecting(sockfd);
-      socket.setSocketNonBlock(sockfd);
-	socket.setkeepAlive(sockfd,3);
+      //socket.setSocketNonBlock(sockfd);
+	  socket.setkeepAlive(sockfd,3);
       break;
     default:
 //

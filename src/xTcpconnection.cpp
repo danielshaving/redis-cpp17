@@ -194,10 +194,16 @@ void xTcpconnection::send(const stringPiepe & message)
 		else
 		{
 		  loop->runInLoop(
-			  boost::bind(&xTcpconnection::sendInLoop,
+				  std::bind(&bindSendInLoop,
 						  this, message.as_string()));
 		}
 	}
+}
+
+
+void xTcpconnection::bindSendInLoop(xTcpconnection* conn, const stringPiepe& message)
+{
+	 conn->sendInLoop(message.str, message.len);
 }
 
 void xTcpconnection::send(xBuffer* buf)
@@ -212,7 +218,7 @@ void xTcpconnection::send(xBuffer* buf)
     else
     {
       loop->runInLoop(
-          boost::bind(&xTcpconnection::sendInLoop,
+          std::bind(&bindSendInLoop,
                       this, buf->retrieveAllAsString()));
     }
   }

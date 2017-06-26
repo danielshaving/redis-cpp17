@@ -4,7 +4,7 @@
 
 class xEventLoop;
 
-class xThread: boost::noncopyable
+class xThread: noncopyable
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;

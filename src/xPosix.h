@@ -3,7 +3,7 @@
 #include "all.h"
 
 
-class MutexLock : boost::noncopyable
+class MutexLock : noncopyable
 {
  public:
   MutexLock()
@@ -40,7 +40,7 @@ public:
 
 
 
-class MutexLockGuard : boost::noncopyable
+class MutexLockGuard : noncopyable
 {
  public:
   explicit MutexLockGuard(MutexLock& mutex)

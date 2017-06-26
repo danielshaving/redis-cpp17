@@ -266,7 +266,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 
 		  if (newline-(queryBuf) > ((signed)recvBuf->readableBytes()-2))
 		  {
-		  	return REDIS_ERR;
+		  	 return REDIS_ERR;
 		  }
      
 
@@ -281,6 +281,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		{
 			addReplyError(sendBuf,"Protocol error: invalid multibulk length");
 			LOG_INFO<<"Protocol error: invalid multibulk length";
+			assert(false);
 			return REDIS_ERR;
 		}
 
@@ -304,6 +305,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			{
 				if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 				{
+					assert(false);
 					addReplyError(sendBuf,"Protocol error: too big bulk count string");
 					LOG_INFO<<"Protocol error: too big bulk count string";
 					return REDIS_ERR;
@@ -319,6 +321,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 
 			if(queryBuf[pos] != '$')
 			{
+				assert(false);
 				addReplyErrorFormat(sendBuf,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
 				LOG_INFO<<"Protocol error: &";
 				return REDIS_ERR;
@@ -328,6 +331,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			ok = string2ll(queryBuf + pos +  1,newline - (queryBuf + pos + 1),&ll);
 			if(!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
+				assert(false);
 				addReplyError(sendBuf,"Protocol error: invalid bulk length");
 				LOG_INFO<<"Protocol error: invalid bulk length";
 				return REDIS_ERR;

@@ -42,19 +42,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/uio.h>
-#include <boost/static_assert.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/any.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/bind.hpp>
-#include <boost/function.hpp>
-#include <boost/ptr_container/ptr_vector.hpp>
-#include <boost/unordered_map.hpp>
 #include <array>
-#include <boost/array.hpp>
 #include <utility>
 #include <unistd.h>
 #include <limits.h>
@@ -66,6 +54,7 @@
 #include <stdio.h>
 #include <atomic>
 #include <stdarg.h>
+
 
 
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
@@ -267,6 +256,17 @@
 #define REDIS_ERR_PROTOCOL 4 /* Protocol error */
 #define REDIS_ERR_OOM 5 /* Out of memory */
 #define REDIS_ERR_OTHER 2 /* Everything else... */
+
+
+
+class noncopyable
+{
+ protected:
+  noncopyable(){}
+ private:
+  noncopyable(const noncopyable&);
+  noncopyable& operator =(const noncopyable&);
+};
 
 
 #endif

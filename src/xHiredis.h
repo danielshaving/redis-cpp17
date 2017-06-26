@@ -8,27 +8,27 @@
 #include "xLog.h"
 #include "xThreadPool.h"
 
-class xRedisAsyncContext; /* need forward declaration of redisAsyncContext */
+class xRedisAsyncContext;
 typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, void*, void*);
 
-/* This is the reply object returned by redisCommand() */
+
 typedef struct redisReply {
-    int type; /* REDIS_REPLY_* */
-    long long integer; /* The integer when type is REDIS_REPLY_INTEGER */
-    int len; /* Length of string */
-    char *str; /* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
-    size_t elements; /* number of elements, for REDIS_REPLY_ARRAY */
-    struct redisReply **element; /* elements vector for REDIS_REPLY_ARRAY */
+    int type;
+    long long integer;
+    int len;
+    char *str;
+    size_t elements;
+    struct redisReply **element;
 } redisReply;
 
 
 typedef struct redisReadTask {
     int type;
-    int elements; /* number of elements in multibulk container */
-    int idx; /* index in parent (array) object */
-    void *obj; /* holds user-generated value for a read task */
-    struct redisReadTask *parent; /* parent task */
-    void *privdata; /* user-settable arbitrary field */
+    int elements;
+    int idx;
+    void *obj;
+    struct redisReadTask *parent;
+    void *privdata;
 } redisReadTask;
 
 
@@ -43,18 +43,18 @@ typedef struct redisReplyObjectFunctions
 } redisReplyObjectFunctions;
 
 
-/* State for the protocol parser */
+
 class xRedisReader
 {
 public:
 	xRedisReader();
-    int err; /* Error flags, 0 when there is no error */
-    char errstr[128]; /* String representation of error when applicable */
-    size_t pos; /* Buffer cursor */
-    xBuffer *buf;
+    int err;
+    char errstr[128];
+    size_t pos;
+	xBuffer *buf;
     redisReadTask rstack[9];
-    int ridx; /* Index of current read task */
-    void *reply; /* Temporary reply pointer */
+    int ridx;
+    void *reply;
     redisReplyObjectFunctions *fn;
     void *privdata;
 };
@@ -77,12 +77,12 @@ public:
 		err				= 0;
 		errstr[0]		= '\0';
 	}
-	int err; /* Error flags, 0 when there is no error */
-	char errstr[128]; /* String representation of error when applicable */
+	int err;
+	char errstr[128];
 	int fd;
 	int flags;
 	xBuffer sender;
-	xRedisReaderPtr reader; /* Protocol reader */
+	xRedisReaderPtr reader;
 };
 
 class xRedisAsyncContext
@@ -104,7 +104,7 @@ public:
 
 class xClient;
 
-class xHiredis: boost::noncopyable
+class xHiredis:noncopyable
 {
 public:
 	xHiredis(xEventLoop *loop,xClient * owner);
@@ -128,7 +128,7 @@ private:
 };
 
 
-class xClient
+class xClient:noncopyable
 {
 public:
 	xClient(xEventLoop *loop,const char *ip,uint16_t port,int blockSize,int sessionCount,int threadCount)

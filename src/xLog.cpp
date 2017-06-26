@@ -219,10 +219,10 @@ void xAsyncLogging::append(const char * logline,int len)
 	}
 	else
 	{
-		buffers.push_back(currentBuffer.release());
+		buffers.push_back(std::unique_ptr<Buffer>(currentBuffer.release()));
 		if(nextBuffer)
 		{
-			currentBuffer = boost::ptr_container::move(nextBuffer);
+			currentBuffer = std::move(nextBuffer);
 		}
 		else
 		{
@@ -265,13 +265,13 @@ void xAsyncLogging::threadFunc()
 				condition.wait_for(lk,std::chrono::seconds(3));
 			}
 
-			buffers.push_back(currentBuffer.release());
-			currentBuffer  = boost::ptr_container::move(newBuffer1);
+			buffers.push_back(std::unique_ptr<Buffer>(currentBuffer.release()));
+			currentBuffer  = std::move(newBuffer1);
 			buffersToWrite.swap(buffers);
 
 			if(!nextBuffer)
 			{
-				nextBuffer = boost::ptr_container::move(newBuffer2);
+				nextBuffer = std::move(newBuffer2);
 			}
 		}
 
@@ -285,7 +285,7 @@ void xAsyncLogging::threadFunc()
 		for (size_t i = 0; i < buffersToWrite.size(); ++i)
 		{
 			// FIXME: use unbuffered stdio FILE ? or use ::writev ?
-			output.append(buffersToWrite[i].getData(), buffersToWrite[i].length());
+			output.append(buffersToWrite[i]->getData(), buffersToWrite[i]->length());
 		}
 
 		if (buffersToWrite.size() > 2)
@@ -297,14 +297,16 @@ void xAsyncLogging::threadFunc()
 		if (!newBuffer1)
 		{
 			assert(!buffersToWrite.empty());
-			newBuffer1 = buffersToWrite.pop_back();
+			newBuffer1 = std::move(buffersToWrite.back());
+			buffersToWrite.pop_back();
 			newBuffer1->reset();
 		}
 
 		if (!newBuffer2)
 		{
 			assert(!buffersToWrite.empty());
-			newBuffer2 = buffersToWrite.pop_back();
+			newBuffer2 = std::move(buffersToWrite.back());
+			buffersToWrite.pop_back();
 			newBuffer2->reset();
 		}
 
@@ -477,7 +479,7 @@ void xLogger::xImpl::formatTime()
 
 void xLogger::xImpl::finish()
 {
-	stream << "  " << T(baseName.data,baseName.size)<< ':' << line << '\n';
+	stream << "  " << T(baseName.data,baseName.size)<< ':' << line;
 }
 
 xLogger::xLogger(xSourceFile file, int line)

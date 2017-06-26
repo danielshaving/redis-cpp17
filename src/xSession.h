@@ -5,7 +5,7 @@
 #include "xSds.h"
 
 class xRedis;
-class xSession: boost::noncopyable, public boost::enable_shared_from_this<xSession>
+class xSession: noncopyable, public std::enable_shared_from_this<xSession>
 {
 public:
 	xSession(xRedis *redis,const xTcpconnectionPtr & conn);

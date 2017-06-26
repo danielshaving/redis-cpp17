@@ -8,9 +8,6 @@ static void * createNilObject(const redisReadTask * task);
 void freeReplyObject(void *reply);
 
 
-
-/* Default set of functions to build the reply. Keep in mind that such a
- * function returning NULL is interpreted as OOM. */
 static redisReplyObjectFunctions defaultFunctions =
 {
 	createStringObject,
@@ -757,7 +754,7 @@ int redisBufferWrite(const xRedisContextPtr & c, int * done)
 	if (done != NULL)
 		*done =( c->sender.readableBytes() == 0);
 
-		return REDIS_OK;
+	return REDIS_OK;
 }
 
 int redisBufferRead(const xRedisContextPtr & c)

@@ -12,7 +12,7 @@ xThreadPool::xThreadPool(xEventLoop *baseLoop)
 }
 xThreadPool::~xThreadPool()
 {
-
+	threads.clear();
 }
 
 void xThreadPool::start(const ThreadInitCallback& cb)
@@ -24,7 +24,7 @@ void xThreadPool::start(const ThreadInitCallback& cb)
 
 	for(int i = 0 ; i < numThreads; i++)
 	{
-		xThread * t = new xThread(cb);
+		std::shared_ptr<xThread>  t( new xThread(cb));
 		threads.push_back(t);
 		loops.push_back(t->startLoop());
 	}

@@ -5,7 +5,7 @@
 
 class xEventLoop;
 
-class xChannel: boost::noncopyable
+class xChannel: noncopyable
 {
 public:
 	typedef std::function<void()> EventCallback;
@@ -35,8 +35,6 @@ public:
 	int  getfd(){ return fd;}
 	void remove();
 	int  getIndex(){ return index; }
-
-
 	xEventLoop *ownerLoop() { return loop; }
 private:
 	void update();

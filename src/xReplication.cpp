@@ -4,8 +4,13 @@
 
 
 xReplication::xReplication()
+:start(false),
+ isreconnect(true),
+ threads(nullptr),
+ port(0),
+ connectCount(0)
 {
-	threads  = new std::thread(std::bind(&xReplication::connectMaster,this));
+	threads  = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,this)));
 	std::unique_lock<std::mutex> lk(mutex);
 	while (start == false)
 	{
@@ -17,8 +22,7 @@ xReplication::~xReplication()
 {
 	client->disconnect();
 	loop->quit();
-	if(threads != nullptr)
-	delete threads;
+
 }
 
 void xReplication::connectMaster()

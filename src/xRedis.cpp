@@ -2,12 +2,12 @@
 
 
 
-xRedis::xRedis(const char * ip,int32_t port,int32_t threadCount)
+xRedis::xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster)
 :host(ip),
 port(port),
 threadCount(threadCount),
 masterPort(0),
-clusterEnabled(false),
+clusterEnabled(enbaledCluster),
 slaveEnabled(false),
 repliEnabled(false),
 timer(nullptr)
@@ -189,6 +189,41 @@ void xRedis::loadDataFromDisk()
 	}
 }
 
+
+
+bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(!clusterEnabled)
+	{
+		addReplyError(session->sendBuf,"This instance has cluster support disabled");
+		return false;
+	}
+
+	if(obj.size() != 3)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown cluster  error");
+		return false;
+	}
+
+	if(!strcasecmp(obj[0]->ptr,"meet"))
+	{
+		long long port;
+		
+		if (getLongLongFromObject(obj[2], &port) != REDIS_OK)
+		{
+			 addReplyErrorFormat(session->sendBuf,"Invalid TCP port specified: %s",
+								 (char*)obj[2]->ptr);
+			 return false;
+		}
+		
+
+	}
+	
+	return  true;
+}
+
+
+
 bool xRedis::saveCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 0)
@@ -280,7 +315,7 @@ bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::commandCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	addReply(session->sendBuf,shared.ok);	
+	addReply(session->sendBuf,shared.ok);
 	return true;
 }
 

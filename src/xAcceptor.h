@@ -4,7 +4,7 @@
 #include "xEventLoop.h"
 #include "xSocket.h"
 
-class xAcceptor : boost::noncopyable
+class xAcceptor : noncopyable
 {
 public:
 

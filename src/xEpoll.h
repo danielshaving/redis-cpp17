@@ -11,11 +11,11 @@ private:
     typedef std::vector<struct epoll_event> EventList;
     typedef std::vector<xChannel*>          ChannelList;
     typedef std::unordered_map<int, xChannel*> 		ChannelMap;
-    ChannelMap 				channels;
-    EventList 			    events;
-    xEventLoop 				*loop;
-    int                    		maxFd;;
-    int                     		epollFd;
+	ChannelMap 				channels;
+	EventList 			    events;
+	xEventLoop 				*loop;
+	int                    		maxFd;;
+	int                     		epollFd;
 
 public:
 	xEpoll(xEventLoop * loop);
