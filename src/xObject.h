@@ -81,6 +81,8 @@ rObj *createStringObjectFromLongLong(long long value);
 int getLongLongFromObject(rObj *o, long long   *target);
 int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg);
 
+
+void addReplyBulkSds(xBuffer &sendBuf, sds s);
 void addReplyMultiBulkLen(xBuffer &sendBuf,long length);
 void addReply(xBuffer &sendBuf,rObj *obj);
 void addReplyString(xBuffer & sendBuf,const char *s, size_t len);
@@ -101,6 +103,5 @@ long long mstime(void);
 #define memrev32ifbe(p) memrev32(p)
 #define memrev64ifbe(p) memrev64(p)
 
-
-
+void bytesToHuman(char *s, unsigned long long n);
 

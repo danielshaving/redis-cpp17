@@ -244,7 +244,58 @@ void xRedis::loadDataFromDisk()
 
 bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	addReply(session->sendBuf,shared.ok);
+	if(obj.size() > 1)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown info  error");
+		return REDIS_ERR;
+	}
+
+	sds info = sdsempty();
+
+	char hmem[64];
+	char peak_hmem[64];
+	char total_system_hmem[64];
+	char used_memory_rss_hmem[64];
+	char maxmemory_hmem[64];
+	size_t zmalloc_used = zmalloc_used_memory();
+	size_t total_system_mem =  zmalloc_get_memory_size();
+
+	bytesToHuman(hmem,zmalloc_used);
+	bytesToHuman(peak_hmem,zmalloc_used);
+	bytesToHuman(total_system_hmem,total_system_mem);
+	bytesToHuman(used_memory_rss_hmem,zmalloc_get_rss());
+	bytesToHuman(maxmemory_hmem, 8);
+
+
+	info = sdscat(info,"\r\n");
+	info = sdscatprintf(info,
+	"# Memory\r\n"
+	"used_memory:%zu\r\n"
+	"used_memory_human:%s\r\n"
+	"used_memory_rss:%zu\r\n"
+	"used_memory_rss_human:%s\r\n"
+	"used_memory_peak:%zu\r\n"
+	"used_memory_peak_human:%s\r\n"
+	"total_system_memory:%lu\r\n"
+	"total_system_memory_human:%s\r\n"
+	"maxmemory_human:%s\r\n"
+	"mem_fragmentation_ratio:%.2f\r\n"
+	"mem_allocator:%s\r\n",
+	zmalloc_used,
+	hmem,
+	zmalloc_get_rss(),
+	used_memory_rss_hmem,
+	zmalloc_used,
+	peak_hmem,
+	(unsigned long)total_system_mem,
+	total_system_hmem,
+	maxmemory_hmem,
+	zmalloc_get_fragmentation_ratio(zmalloc_get_rss()),
+	ZMALLOC_LIB
+	);
+
+
+	addReplyBulkSds(session->sendBuf, info);
 	return true;
 }
 
