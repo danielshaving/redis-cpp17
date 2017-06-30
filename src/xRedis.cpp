@@ -10,6 +10,8 @@ masterPort(0),
 clusterEnabled(enbaledCluster),
 slaveEnabled(false),
 repliEnabled(false),
+authEnabled(false),
+salveCount(0),
 timer(nullptr)
 {
 	
@@ -49,12 +51,31 @@ timer(nullptr)
 	obj = createStringObject("command",7);
 	handlerCommondMap[obj] =std::bind(&xRedis::commandCommond, this, std::placeholders::_1, std::placeholders::_2);
 
+	obj = createStringObject("config",6);
+    handlerCommondMap[obj] = std::bind(&xRedis::configCommond, this, std::placeholders::_1, std::placeholders::_2);
+
+	obj = createStringObject("auth",4);
+    handlerCommondMap[obj] = std::bind(&xRedis::authCommond, this, std::placeholders::_1, std::placeholders::_2);
+
+	obj = createStringObject("info",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::infoCommond, this, std::placeholders::_1, std::placeholders::_2);
+
+	obj = createStringObject("echo",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::echoCommond, this, std::placeholders::_1, std::placeholders::_2);
+
+	obj = createStringObject("client",5);
+	handlerCommondMap[obj] = std::bind(&xRedis::clientCommond, this, std::placeholders::_1, std::placeholders::_2);
+
+	obj = createStringObject("subscribe",9);
+	handlerCommondMap[obj] = std::bind(&xRedis::subscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
+
 	obj = createStringObject("set",3);
 	unorderedmapCommonds[obj] = 2;
 
 	obj = createStringObject("hset",4);
 	unorderedmapCommonds[obj] = 3;
 
+	password.clear();
 	createSharedObjects();
 	loadDataFromDisk();
 	server.init(&loop, host, port,this);
@@ -66,6 +87,16 @@ timer(nullptr)
 
 xRedis::~xRedis()
 {
+	char filename[] = "dump.rdb";
+	if(rdbSave(filename,this) == REDIS_OK)
+	{
+		LOG_INFO<<"Save rdb success";
+	}
+	else
+	{
+		LOG_INFO<<"Save rdb failure";
+	}
+
 	destorySharedObjects();
 	{
 		for(auto it = handlerCommondMap.begin(); it!= handlerCommondMap.end(); it++)
@@ -124,11 +155,27 @@ xRedis::~xRedis()
 
 }
 
-void xRedis::handleTimeout()
+
+void xRedis::handleSalveRepliTimeOut()
 {
 	repliEnabled = false;
-	slaveCached.retrieveAll();
-	LOG_INFO<<"handler repli timeout ";
+	--salveCount;
+	{
+		MutexLockGuard mu(slaveMutex);
+		slaveCached.retrieveAll();
+	}
+	LOG_INFO<<"handler handleSalveRepliTimeOut timeout ";
+}
+
+
+void xRedis::handleRepliCacheTimeOut()
+{
+	repliEnabled = false;
+	{
+		MutexLockGuard mu(slaveMutex);
+		slaveCached.retrieveAll();
+	}
+	LOG_INFO<<"handler handleRepliCacheTimeOut timeout ";
 }
 
 
@@ -153,7 +200,9 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			{
 				loop.cancelAfter(timer);
 			}
-			timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleTimeout,this));
+
+			--salveCount;
+			timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleRepliCacheTimeOut,this));
 			tcpconnMaps.erase(it);
 			repliEnabled = true;
 		}
@@ -191,6 +240,98 @@ void xRedis::loadDataFromDisk()
 
 
 
+
+bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	addReply(session->sendBuf,shared.ok);
+	return true;
+}
+
+
+bool xRedis::clientCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	addReply(session->sendBuf,shared.ok);
+	return true;
+}
+
+bool xRedis::echoCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	addReply(session->sendBuf,shared.ok);
+	return true;
+}
+
+bool xRedis::subscribeCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	addReply(session->sendBuf,shared.ok);
+	return true;
+}
+
+bool xRedis::authCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size() > 1)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown auth  error");
+	}
+
+	if(password.c_str() == nullptr)
+	{
+		addReplyError(session->sendBuf,"Client sent AUTH, but no password is set");
+		return false;
+	}
+
+	if (!strcasecmp(obj[0]->ptr,password.c_str()))
+	{
+		session->authEnabled = true;
+		addReply(session->sendBuf,shared.ok);
+	}
+	else
+	{
+		addReplyError(session->sendBuf,"invalid password");
+	}
+
+	return true;
+}
+
+bool xRedis::configCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+
+	if(obj.size() > 3)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown config  error");
+	}
+
+	if (!strcasecmp(obj[0]->ptr,"set"))
+	{
+		if(obj.size() != 3)
+		{
+			addReplyErrorFormat(session->sendBuf,"Wrong number of arguments for CONFIG %s",
+			        (char*)obj[0]->ptr);
+			return false;
+		}
+
+		if (!strcasecmp(obj[1]->ptr,"requirepass"))
+		{
+			password = obj[2]->ptr;
+			authEnabled = true;
+			session->authEnabled = false;
+			addReply(session->sendBuf,shared.ok);
+		}
+		else
+		{
+			addReplyErrorFormat(session->sendBuf,"Invalid argument  for CONFIG SET '%s'",
+						            (char*)obj[1]->ptr);
+		}
+
+	}
+	else
+	{
+		addReplyError(session->sendBuf, "CONFIG subcommand must be one of GET, SET, RESETSTAT, REWRITE");
+	}
+
+
+	return true;
+}
+
 bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(!clusterEnabled)
@@ -215,7 +356,6 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
 								 (char*)obj[2]->ptr);
 			 return false;
 		}
-		
 
 	}
 	
@@ -333,15 +473,15 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 	{
 		MutexLockGuard lk(mutex);
 		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
-
 	}
 
+	salveCount++;
 	if(timer != nullptr)
 	{
 		loop.cancelAfter(timer);
 	}
 
-	timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleTimeout,this));
+	timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleSalveRepliTimeOut,this));
 
 	saveCommond(obj,session);
 	char rdb_filename[] = "dump.rdb";
@@ -360,7 +500,11 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 	else
 	{
-		assert(false);
+		salveCount--;
+		tcpconnMaps.erase(session->conn->getSockfd());
+		repliEnabled = false;
+		slaveCached.retrieveAll();
+		loop.cancelAfter(timer);
 		LOG_INFO<<"sync load rdb failure";
 	}
 	

@@ -7,7 +7,8 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
  bulklen(-1),
  argc(0),
  conn(conn),
- redis(redis)
+ redis(redis),
+ authEnabled(false)
 {
 	 conn->setMessageCallback(
 	        std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
@@ -96,6 +97,20 @@ bool xSession::checkCommond(rObj*  robjs,int size)
 int xSession::processCommand()
 {
 	assert(robjs.size());
+	if(redis->authEnabled)
+	{
+		if(!authEnabled)
+		{
+			if (strcasecmp(robjs[0]->ptr,"auth") != 0)
+			{
+				clearObj();
+				addReplyErrorFormat(sendBuf,"NOAUTH Authentication required");
+				return REDIS_ERR;
+			}
+		}
+	}
+
+
 	if(redis->repliEnabled)
 	{
 		auto it = redis->tcpconnMaps.find(conn->getSockfd());
@@ -109,7 +124,7 @@ int xSession::processCommand()
 					conn->send(&redis->slaveCached);
 				}
 
-				if( redis->tcpconnMaps.size() == 1)
+				if(--redis->salveCount <= 0)
 				{
 					if(redis->timer != nullptr)
 					{
@@ -126,10 +141,10 @@ int xSession::processCommand()
 			}
 		}
 
-		MutexLockGuard mu(redis->mutex);
+		assert(redis->salveCount > 0);
+		MutexLockGuard mu(redis->slaveMutex);
 		replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
 	}
-
 
 	auto iter = redis->handlerCommondMap.find(robjs[0]);
 	if(iter == redis->handlerCommondMap.end() )

@@ -38,6 +38,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
+		printf("%s\n",ascii_logo);
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int32_t threadCount =  atoi(argv[3]);

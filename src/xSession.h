@@ -31,5 +31,6 @@ public:
 	std::deque<rObj*>  robjs;
 	std::string commond;
 	xRedis *redis;
+	bool authEnabled;
 };
 

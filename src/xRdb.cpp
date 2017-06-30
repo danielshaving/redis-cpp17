@@ -375,8 +375,6 @@ err:
 }
 
 
-
-
 rObj *rdbGenericLoadStringObject(xRio *rdb, int encode)
 {
     int isencoded;
@@ -845,7 +843,7 @@ size_t rdbSaveRawString(xRio *rdb, const  char *s, size_t len)
 
 rObj *rdbLoadObject(int rdbtype, xRio *rdb) 
 {
-	rObj *o, *ele, *dec;
+	rObj *o = nullptr;
 	size_t len;
 	unsigned int i;
 	if(rdbtype == REDIS_RDB_TYPE_STRING)
@@ -857,7 +855,7 @@ rObj *rdbLoadObject(int rdbtype, xRio *rdb)
 	}
 	else
 	{
-		//TRACE("rdbLoadObject type error\n");
+		LOG_WARN<<"rdbLoadObject type error";
 	}
 	return o;
 }

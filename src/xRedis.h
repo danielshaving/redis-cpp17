@@ -19,7 +19,8 @@ public:
 	xRedis() {}
 	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster);
 	~xRedis();
-	void handleTimeout();
+	void handleRepliCacheTimeOut();
+	void handleSalveRepliTimeOut();
 	void run();
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 	bool deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf,void  *data);
@@ -43,6 +44,12 @@ public:
 	bool psyncCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool commandCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool clusterCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool authCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool configCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool infoCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool clientCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool echoCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool subscribeCommond(const std::deque <rObj*> & obj,xSession * session);
 
 public:
 
@@ -72,6 +79,7 @@ public:
 	xEventLoop loop;
 	xTcpServer server;
 	mutable MutexLock mutex;
+	mutable MutexLock slaveMutex;
 	std::string host;
 	int32_t port;
 	int32_t threadCount;
@@ -80,11 +88,14 @@ public:
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  repliEnabled;
+	std::atomic<bool>  authEnabled;
+	std::atomic<int>	salveCount;
 	std::atomic<xTimer*> timer;
 	xBuffer		slaveCached;
 	xReplication  repli;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
 	xSocket socket;
+	std::string password;
 	int32_t count = 0;
 };
 
