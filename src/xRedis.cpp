@@ -12,7 +12,8 @@ slaveEnabled(false),
 repliEnabled(false),
 authEnabled(false),
 salveCount(0),
-timer(nullptr)
+slaveRepliTimer(nullptr),
+slaveRepliCacheTimer(nullptr)
 {
 	
 	rObj * obj = createStringObject("set",3);
@@ -196,13 +197,13 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		auto it = tcpconnMaps.find(conn->getSockfd());
 		if(it !=  tcpconnMaps.end())
 		{
-			if(timer != nullptr)
+			if(slaveRepliCacheTimer != nullptr)
 			{
-				loop.cancelAfter(timer);
+				loop.cancelAfter(slaveRepliCacheTimer);
 			}
 
 			--salveCount;
-			timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleRepliCacheTimeOut,this));
+			slaveRepliCacheTimer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleRepliCacheTimeOut,this));
 			tcpconnMaps.erase(it);
 			repliEnabled = true;
 		}
@@ -476,12 +477,12 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	salveCount++;
-	if(timer != nullptr)
+	if(slaveRepliTimer != nullptr)
 	{
-		loop.cancelAfter(timer);
+		loop.cancelAfter(slaveRepliTimer);
 	}
 
-	timer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleSalveRepliTimeOut,this));
+	slaveRepliTimer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleSalveRepliTimeOut,this));
 
 	saveCommond(obj,session);
 	char rdb_filename[] = "dump.rdb";
@@ -504,7 +505,7 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 		tcpconnMaps.erase(session->conn->getSockfd());
 		repliEnabled = false;
 		slaveCached.retrieveAll();
-		loop.cancelAfter(timer);
+		loop.cancelAfter(slaveRepliTimer);
 		LOG_INFO<<"sync load rdb failure";
 	}
 	

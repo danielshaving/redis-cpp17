@@ -90,7 +90,8 @@ public:
 	std::atomic<bool>  repliEnabled;
 	std::atomic<bool>  authEnabled;
 	std::atomic<int>	salveCount;
-	std::atomic<xTimer*> timer;
+	std::atomic<xTimer*> slaveRepliTimer;
+	std::atomic<xTimer*> slaveRepliCacheTimer;
 	xBuffer		slaveCached;
 	xReplication  repli;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;

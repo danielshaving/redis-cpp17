@@ -126,9 +126,14 @@ int xSession::processCommand()
 
 				if(--redis->salveCount <= 0)
 				{
-					if(redis->timer != nullptr)
+					if(redis->slaveRepliTimer != nullptr)
 					{
-						redis->loop.cancelAfter(redis->timer);
+						redis->loop.cancelAfter(redis->slaveRepliTimer);
+					}
+
+					if(redis->slaveRepliCacheTimer != nullptr)
+					{
+						redis->loop.cancelAfter(redis->slaveRepliCacheTimer);
 					}
 
 					redis->repliEnabled = false;
