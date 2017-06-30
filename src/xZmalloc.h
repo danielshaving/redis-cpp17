@@ -42,9 +42,9 @@ void zfree(void *ptr);
 char *zstrdup(const char *s);
 size_t zmalloc_used_memory(void);
 void zmalloc_enable_thread_safeness(void);
-float zmalloc_get_fragmentation_ratio(void);
+float zmalloc_get_fragmentation_ratio(size_t rss);
 size_t zmalloc_get_rss(void);
-
+size_t zmalloc_get_memory_size(void);
 #ifndef HAVE_MALLOC_SIZE
 size_t zmalloc_size(void *ptr);
 #endif

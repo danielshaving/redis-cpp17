@@ -302,13 +302,26 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::clientCommond(const std::deque <rObj*> & obj,xSession * session)
 {
+	if(obj.size() > 1)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown client  error");
+		return REDIS_ERR;
+	}
+
 	addReply(session->sendBuf,shared.ok);
 	return true;
 }
 
+
 bool xRedis::echoCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	addReply(session->sendBuf,shared.ok);
+	if(obj.size() > 1)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown echo  error");
+		return REDIS_ERR;
+	}
+
+	addReplyBulk(session->sendBuf,obj[0]);
 	return true;
 }
 

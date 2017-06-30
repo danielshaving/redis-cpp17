@@ -26,7 +26,6 @@ void xConnector::start(const char *ip,int32_t port)
 void xConnector::startInLoop(const char *ip,int32_t port)
 {
 	loop->assertInLoopThread();
-	//assert(state == kDisconnected);
 	if (isconnect)
 	{
 		connect(ip,port);
@@ -50,7 +49,7 @@ void xConnector::stopInLoop()
 	{
 		setState(kDisconnected);
 		int sockfd = removeAndResetChannel();
-		//retry(sockfd);
+
 	}
 }
 
@@ -85,7 +84,7 @@ void xConnector::connect(const char *ip,int32_t port)
     case EISCONN:
       setState(kConnecting);
       connecting(sockfd);
-      //socket.setSocketNonBlock(sockfd);
+      socket.setSocketNonBlock(sockfd);
 	  socket.setkeepAlive(sockfd,3);
       break;
     default:
