@@ -950,12 +950,18 @@ int rdbSaveRio(xRio *rdb,int *error,xRedis * redis)
 	long long now = time(0);
 	uint64_t cksum;
 	snprintf(magic,sizeof(magic),"REDIS%04d",REDIS_RDB_VERSION);
-	if (rdbWriteRaw(rdb,magic,9) == -1)   return REDIS_ERR;
+	if (rdbWriteRaw(rdb,magic,9) == -1)
+	{
+		*error = errno;
+		return REDIS_ERR;
+	}
+
 	rdbSaveSet(rdb,redis);
 	rdbSaveHset(rdb,redis);
 	cksum = rdb->cksum;
 	if(rioWrite(rdb,&cksum,8) == 0)
 	{
+		*error = errno;
 		return REDIS_ERR;
 	}
 	
@@ -980,17 +986,23 @@ int rdbSave(char *filename,xRedis * redis)
 	if(rdbSaveRio(&rdb,&error,redis) == REDIS_ERR)
 	{
 		errno = error;
-		return REDIS_ERR;
+		goto werr;
 	}
 
-	if (fflush(fp) == EOF) return REDIS_ERR;
-	if (fsync(fileno(fp)) == -1) return REDIS_ERR;
-	if (fclose(fp) == EOF) return REDIS_ERR;
+	if (fflush(fp) == EOF) goto werr;
+	if (fsync(fileno(fp)) == -1) goto werr;
+	if (fclose(fp) == EOF) goto werr;
 
 	if(rename(tmpfile,filename) == -1)
 	{
+		LOG_TRACE<<"Error moving temp DB file  on the final:"<<strerror(errno);
+		unlink(tmpfile);
 		return REDIS_ERR;
 	}
 	
+werr:
+	 LOG_WARN<<"Write error saving DB on disk:" <<strerror(errno);
+	 fclose(fp);
+	 unlink(tmpfile);
 	return REDIS_OK;
 }
