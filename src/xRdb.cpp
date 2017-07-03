@@ -111,7 +111,7 @@ void rioInitWithFile(xRio *r, FILE *fp)
 	r->updateFuc = rioGenericUpdateChecksum;
 	r->cksum = 0;
 	r->processedBytes = 0;
-	r->maxProcessingChunk = 4096;
+	r->maxProcessingChunk = 65536;
 	r->io.file.fp = fp;
 	r->io.file.buffered = 0;
 	r->io.file.autosync = 0;
@@ -367,6 +367,7 @@ rObj *rdbLoadLzfStringObject(xRio *rdb) {
     if (rioRead(rdb,c,clen) == 0) goto err;
     if (lzf_decompress(c,clen,val,len) == 0) goto err;
     zfree(c);
+    zfree(val);
     return createStringObject(val,len);
 err:
     zfree(c);
@@ -519,7 +520,7 @@ int rdbLoadSet(xRio *rdb,xRedis * redis)
 			{
 				zfree(it->first);
 				zfree(it->second);
-				setMap.erase(it++);
+				setMap.erase(it);
 				setMap.insert(std::make_pair(key,val));
 			}
 		}
@@ -587,7 +588,7 @@ int rdbLoadHset(xRio *rdb,xRedis * redis)
 				zfree(iter->second);
 			}
 			it->second.clear();
-			hsetMap.erase(it++);
+			hsetMap.erase(it);
 			hsetMap.insert(std::make_pair(key,std::move(umap)));
 		}
 		
@@ -721,6 +722,8 @@ int rdbLoad(char *filename,xRedis * redis)
 		//TRACE("Wrong RDB checksum. Aborting now");
 	}
 
+
+	LOG_INFO<<"user Memory:"<<zmalloc_used_memory();
 	fclose(fp);
 	return REDIS_OK;
 }
@@ -999,10 +1002,11 @@ int rdbSave(char *filename,xRedis * redis)
 		unlink(tmpfile);
 		return REDIS_ERR;
 	}
-	
+
+	return REDIS_OK;
 werr:
 	 LOG_WARN<<"Write error saving DB on disk:" <<strerror(errno);
 	 fclose(fp);
 	 unlink(tmpfile);
-	return REDIS_OK;
+	 return REDIS_ERR;
 }
