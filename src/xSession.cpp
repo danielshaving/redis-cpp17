@@ -111,45 +111,49 @@ int xSession::processCommand()
 	}
 
 
-	if(redis->repliEnabled)
+	MutexLockGuard mu(redis->slaveMutex);
+	auto it = redis->tcpconnMaps.find(conn->getSockfd());
+	if(it !=  redis->tcpconnMaps.end())
 	{
-		auto it = redis->tcpconnMaps.find(conn->getSockfd());
-		if(it !=  redis->tcpconnMaps.end())
+		if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
 		{
-			if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
+			LOG_INFO<<"slaveof sync success";
+			if(redis->slaveCached.readableBytes() > 0)
 			{
-				LOG_INFO<<"slaveof sync success";
-				if(redis->slaveCached.readableBytes() > 0)
-				{
-					conn->send(&redis->slaveCached);
-				}
-
-				if(--redis->salveCount <= 0)
-				{
-					if(redis->slaveRepliTimer != nullptr)
-					{
-						redis->loop.cancelAfter(redis->slaveRepliTimer);
-					}
-
-					if(redis->slaveRepliCacheTimer != nullptr)
-					{
-						redis->loop.cancelAfter(redis->slaveRepliCacheTimer);
-					}
-
-					redis->repliEnabled = false;
-					redis->slaveCached.retrieveAll();
-					LOG_INFO<<"close repli cacahed";
-				}
-
-				clearObj();
-				return REDIS_OK;
+				conn->send(&redis->slaveCached);
+				redis->tcpconnMaps.erase(conn->getSockfd());
 			}
-		}
 
-		assert(redis->salveCount > 0);
-		MutexLockGuard mu(redis->slaveMutex);
-		replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
+			auto iter = redis->repliTimers.find(conn->getSockfd());
+			if(iter == redis->repliTimers.end())
+			{
+				assert(false);
+			}
+
+			if(iter->second)
+			{
+				conn->getLoop()->cancelAfter(iter->second);
+			}
+
+			redis->repliTimers.erase(conn->getSockfd());
+
+			if(redis->tcpconnMaps.size() == 0)
+			{
+				xBuffer buffer;
+				buffer.swap(redis->slaveCached);
+				LOG_INFO<<"swap buffer";
+			}
+
+			clearObj();
+			return REDIS_OK;
+		}
+		else
+		{
+			replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
+		}
 	}
+
+	mu.unlock();
 
 	auto iter = redis->handlerCommondMap.find(robjs[0]);
 	if(iter == redis->handlerCommondMap.end() )

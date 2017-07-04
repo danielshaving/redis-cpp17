@@ -14,7 +14,7 @@ typedef std::shared_ptr<xRedisAsyncContext> xRedisAsyncContextPtr;
 
 typedef std::shared_ptr<xTcpconnection> xTcpconnectionPtr;
 typedef std::shared_ptr<xConnector> xConnectorPtr;
-typedef std::function<void()> xTimerCallback;
+typedef std::function<void(void *)> xTimerCallback;
 typedef std::function<int(void *,void *)> xCmpCallback;
 
 typedef std::function<void (const xTcpconnectionPtr&,void *)> ConnectionCallback;

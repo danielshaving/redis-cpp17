@@ -217,7 +217,7 @@
 #define REDIS_REPLY_STATUS 5
 #define REDIS_REPLY_ERROR 6
 
-#define REPLI_TIME_OUT	10
+#define REPLI_TIME_OUT	60
 
 /* Connection type can be blocking or non-blocking and is set in the
  * least significant bit of the flags field in redisContext. */

@@ -19,7 +19,7 @@ public:
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 
-	void reconnectTimer();
+	void reconnectTimer(void * data);
 	void syncWithMaster(const xTcpconnectionPtr& conn);
 	void replicationCron();
 	void syncWrite(const xTcpconnectionPtr& conn);

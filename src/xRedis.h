@@ -20,7 +20,7 @@ public:
 	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster);
 	~xRedis();
 	void handleRepliCacheTimeOut();
-	void handleSalveRepliTimeOut();
+	void handleSalveRepliTimeOut(void * data);
 	void run();
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 	bool deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf,void  *data);
@@ -87,14 +87,13 @@ public:
 	int32_t masterPort ;
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
-	std::atomic<bool>  repliEnabled;
 	std::atomic<bool>  authEnabled;
-	std::atomic<int>	salveCount;
-	std::atomic<xTimer*> slaveRepliTimer;
-	std::atomic<xTimer*> slaveRepliCacheTimer;
+	std::atomic<int>	   salveCount;
+
 	xBuffer		slaveCached;
 	xReplication  repli;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
+	std::map<int32_t,xTimer*> repliTimers;
 	xSocket socket;
 	std::string password;
 	int32_t count = 0;

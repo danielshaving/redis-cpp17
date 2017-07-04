@@ -9,11 +9,8 @@ threadCount(threadCount),
 masterPort(0),
 clusterEnabled(enbaledCluster),
 slaveEnabled(false),
-repliEnabled(false),
 authEnabled(false),
-salveCount(0),
-slaveRepliTimer(nullptr),
-slaveRepliCacheTimer(nullptr)
+salveCount(0)
 {
 	
 	rObj * obj = createStringObject("set",3);
@@ -157,26 +154,25 @@ xRedis::~xRedis()
 }
 
 
-void xRedis::handleSalveRepliTimeOut()
+void xRedis::handleSalveRepliTimeOut(void * data)
 {
-	repliEnabled = false;
-	--salveCount;
+	int32_t *sockfd = (int32_t *)data;
 	{
 		MutexLockGuard mu(slaveMutex);
-		slaveCached.retrieveAll();
+
+		tcpconnMaps.erase(*sockfd);
+		if(tcpconnMaps.size() == 0)
+		{
+			slaveCached.retrieveAll();
+		}
 	}
-	LOG_INFO<<"handler handleSalveRepliTimeOut timeout ";
+	LOG_INFO<<"sync connect repli  timeout ";
 }
 
 
 void xRedis::handleRepliCacheTimeOut()
 {
-	repliEnabled = false;
-	{
-		MutexLockGuard mu(slaveMutex);
-		slaveCached.retrieveAll();
-	}
-	LOG_INFO<<"handler handleRepliCacheTimeOut timeout ";
+	LOG_INFO<<"disconnect salve repli  timeout ";
 }
 
 
@@ -192,22 +188,20 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	}
 	else
 	{
-		MutexLockGuard mu(mutex);
-		sessions.erase(conn->getSockfd());
-		auto it = tcpconnMaps.find(conn->getSockfd());
-		if(it !=  tcpconnMaps.end())
 		{
-			if(slaveRepliCacheTimer != nullptr)
-			{
-				loop.cancelAfter(slaveRepliCacheTimer);
-			}
-
-			--salveCount;
-			slaveRepliCacheTimer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleRepliCacheTimeOut,this));
-			tcpconnMaps.erase(it);
-			repliEnabled = true;
+			MutexLockGuard mu(mutex);
+			sessions.erase(conn->getSockfd());
 		}
 
+		{
+			MutexLockGuard mu(slaveMutex);
+			auto it =  tcpconnMaps.find(conn->getSockfd());
+			if(it != tcpconnMaps.end())
+			{
+				tcpconnMaps.erase(conn->getSockfd());
+			}
+
+		}
 		LOG_INFO<<"Client disconnect";
 	}
 }
@@ -238,8 +232,6 @@ void xRedis::loadDataFromDisk()
 		LOG_INFO<<"load rdb fail";
 	}
 }
-
-
 
 
 bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
@@ -533,27 +525,35 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	repliEnabled = true;
-
+	xTimer * timer = nullptr;
+	rObj * buf  = nullptr;
 	{
-		MutexLockGuard lk(mutex);
+		MutexLockGuard lk(slaveMutex);
+		auto it = repliTimers.find(session->conn->getSockfd());
+		if(it != repliTimers.end())
+		{
+			LOG_WARN<<"client repeat send sync ";
+			session->conn->forceClose();
+			return false;
+		}
+
+		void *data = (void *)session->conn->getSockfd();
+		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,data,
+				true,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
+		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
 		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
 	}
 
-	salveCount++;
-	if(slaveRepliTimer != nullptr)
-	{
-		loop.cancelAfter(slaveRepliTimer);
-	}
-
-	slaveRepliTimer = loop.runAfter(REPLI_TIME_OUT,true,std::bind(&xRedis::handleSalveRepliTimeOut,this));
 
 	saveCommond(obj,session);
 	char rdb_filename[] = "dump.rdb";
 	size_t len = 0;
 
-	MutexLockGuard lk(mutex);
-	rObj * buf = rdbLoad(rdb_filename,len);
+	{
+		MutexLockGuard lk(mutex);
+		buf = rdbLoad(rdb_filename,len);
+	}
+
 	if(buf != nullptr)
 	{
 		LOG_INFO<<"sync load rdb success";
@@ -565,14 +565,19 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 	else
 	{
-		salveCount--;
-		tcpconnMaps.erase(session->conn->getSockfd());
-		repliEnabled = false;
-		slaveCached.retrieveAll();
-		loop.cancelAfter(slaveRepliTimer);
+		{
+			MutexLockGuard lk(slaveMutex);
+			if(timer)
+			{
+				session->conn->getLoop()->cancelAfter(timer);
+			}
+			repliTimers.erase(session->conn->getSockfd());
+			tcpconnMaps.erase(session->conn->getSockfd());
+		}
+
 		LOG_INFO<<"sync load rdb failure";
 	}
-	
+
 	zfree(buf);
 	return true;
 }
@@ -585,12 +590,6 @@ bool xRedis::psyncCommond(const std::deque <rObj*> & obj,xSession * session)
 		LOG_WARN<<"unknown psync  error";
 		addReplyErrorFormat(session->sendBuf,"unknown psync  error");
 		return false;
-	}
-
-	MutexLockGuard lk(mutex);
-	if(!repliEnabled)
-	{
-		//send slave sync
 	}
 
 	return true;

@@ -157,7 +157,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	}
 }
 
-void xReplication::reconnectTimer()
+void xReplication::reconnectTimer(void * data)
 {
 	LOG_INFO<<"Reconnect..........";
 	client->connect(ip.c_str(),port);
@@ -177,7 +177,7 @@ void xReplication::connErrorCallBack()
 	}
 	
 	++connectCount;
-	loop->runAfter(5,false,std::bind(&xReplication::reconnectTimer,this));
+	loop->runAfter(5,nullptr,false,std::bind(&xReplication::reconnectTimer,this,std::placeholders::_1));
 }
 
 void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)

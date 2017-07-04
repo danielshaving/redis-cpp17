@@ -76,9 +76,9 @@ void xEventLoop::cancelAfter(xTimer * timer)
 	timerQueue->cancelTimer(timer);
 }
 
-xTimer * xEventLoop::runAfter(double  when, bool repeat,xTimerCallback&& cb)
+xTimer * xEventLoop::runAfter(double  when, void * data,bool repeat,xTimerCallback&& cb)
 {
-	return timerQueue->addTimer(when,repeat,std::move(cb));
+	return timerQueue->addTimer(when,data,repeat,std::move(cb));
 }
 
 

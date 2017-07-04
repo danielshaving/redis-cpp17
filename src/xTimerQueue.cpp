@@ -230,10 +230,10 @@ xTimerQueue::~xTimerQueue()
 	::close(timerfd);
 }
 
-xTimer  * xTimerQueue::addTimer(double when, bool repeat,xTimerCallback&& cb)
+xTimer  * xTimerQueue::addTimer(double when, void * data,bool repeat,xTimerCallback&& cb)
 {
 	xTimestamp time(addTime(xTimestamp::now(), when));
-	xTimer * timer = new xTimer(std::move(cb),std::move(time),repeat,when);
+	xTimer * timer = new xTimer(std::move(cb),std::move(time),repeat,when,data);
 	loop->runInLoop(std::bind(&xTimerQueue::addTimerInLoop,this,timer));
 	return timer;
 }

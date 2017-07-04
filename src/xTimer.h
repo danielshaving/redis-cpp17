@@ -47,8 +47,8 @@ inline xTimestamp addTime(xTimestamp timestamp, double seconds)
 class xTimer
 {
 public:
-	xTimer(){}
-	xTimer(xTimerCallback && cb, xTimestamp && expiration,bool	repeat,double interval);
+	xTimer() {}
+	xTimer(xTimerCallback && cb, xTimestamp && expiration,bool	repeat,double interval,void * data);
 	xTimestamp getExpiration() const  { return expiration;}
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
 	void restart(xTimestamp now);
@@ -60,6 +60,7 @@ public:
 	double interval;
 	xTimestamp expiration;
 	xTimerCallback callback;
+	void * data = nullptr;
 };
 
 
