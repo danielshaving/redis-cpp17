@@ -7,7 +7,7 @@
 #include "xLog.h"
 
 unsigned int dictGenHashFunction(const void *key, int len) ;
-
+unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len);
 #define sdsEncodedObject(objptr) (objptr->encoding == REDIS_ENCODING_RAW || objptr->encoding == REDIS_ENCODING_EMBSTR)
 typedef struct redisObject 
 {		

@@ -29,7 +29,6 @@ public:
 	bool start;
 	bool isreconnect;
 	pid_t pid;
-	std::shared_ptr<std::thread > threads;
 	xEventLoop *loop;
 	xTcpClient *client;
 	mutable std::mutex mutex;

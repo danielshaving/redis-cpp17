@@ -613,7 +613,7 @@ rObj  * rdbLoad(char *filename,size_t &len)
 	}
 	else
 	{
-		LOG_INFO<<"load dump.rdb:"<<sb.st_size;
+		LOG_INFO<<"load dump.rdb size :"<<sb.st_size;
 	}
 
 	rObj * o = createStringObject(NULL,sb.st_size);
@@ -715,15 +715,15 @@ int rdbLoad(char *filename,xRedis * redis)
 	
 	if (cksum == 0)
 	{
-		//TRACE("RDB file was saved with checksum disabled: no check performed");
+		LOG_WARN<<"RDB file was saved with checksum disabled: no check performed";
+		return REDIS_ERR;
 	}
 	else if(cksum != expected)
 	{
-		//TRACE("Wrong RDB checksum. Aborting now");
+		LOG_WARN<<"Wrong RDB checksum. Aborting now";
+		return REDIS_ERR;
 	}
 
-
-	LOG_INFO<<"user Memory:"<<zmalloc_used_memory();
 	fclose(fp);
 	return REDIS_OK;
 }

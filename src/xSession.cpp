@@ -56,24 +56,24 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 		processCommand();
 		reset();
-			
 	}
 
 
 	if(sendBuf.readableBytes() > 0 )
 	{
-		conn->send(&sendBuf);	
+		conn->send(&sendBuf);
 	}
-	
 
-	for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
-	{
-		if(sendSlaveBuf.readableBytes() > 0 )
-		{
-			it->second->send(&sendSlaveBuf);
-		}
-	}
-	
+
+//	for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
+//	{
+//		if(sendSlaveBuf.readableBytes() > 0 )
+//		{
+//			it->second->send(&sendSlaveBuf);
+//		}
+//	}
+
+
 }
 
 
@@ -110,50 +110,49 @@ int xSession::processCommand()
 		}
 	}
 
-
-	MutexLockGuard mu(redis->slaveMutex);
-	auto it = redis->tcpconnMaps.find(conn->getSockfd());
-	if(it !=  redis->tcpconnMaps.end())
 	{
-		if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
+		MutexLockGuard mu(redis->slaveMutex);
+		auto it = redis->tcpconnMaps.find(conn->getSockfd());
+		if(it !=  redis->tcpconnMaps.end())
 		{
-			LOG_INFO<<"slaveof sync success";
-			if(redis->slaveCached.readableBytes() > 0)
+			if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
 			{
-				conn->send(&redis->slaveCached);
-				redis->tcpconnMaps.erase(conn->getSockfd());
-			}
+				LOG_INFO<<"slaveof sync success";
+				if(redis->slaveCached.readableBytes() > 0)
+				{
+					conn->send(&redis->slaveCached);
+					redis->tcpconnMaps.erase(conn->getSockfd());
+				}
 
-			auto iter = redis->repliTimers.find(conn->getSockfd());
-			if(iter == redis->repliTimers.end())
+				auto iter = redis->repliTimers.find(conn->getSockfd());
+				if(iter == redis->repliTimers.end())
+				{
+					assert(false);
+				}
+
+				if(iter->second)
+				{
+					conn->getLoop()->cancelAfter(iter->second);
+				}
+
+				redis->repliTimers.erase(conn->getSockfd());
+
+				if(redis->tcpconnMaps.size() == 0)
+				{
+					xBuffer buffer;
+					buffer.swap(redis->slaveCached);
+					LOG_INFO<<"swap buffer";
+				}
+
+				clearObj();
+				return REDIS_OK;
+			}
+			else
 			{
-				assert(false);
+				replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
 			}
-
-			if(iter->second)
-			{
-				conn->getLoop()->cancelAfter(iter->second);
-			}
-
-			redis->repliTimers.erase(conn->getSockfd());
-
-			if(redis->tcpconnMaps.size() == 0)
-			{
-				xBuffer buffer;
-				buffer.swap(redis->slaveCached);
-				LOG_INFO<<"swap buffer";
-			}
-
-			clearObj();
-			return REDIS_OK;
-		}
-		else
-		{
-			replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
 		}
 	}
-
-	mu.unlock();
 
 	auto iter = redis->handlerCommondMap.find(robjs[0]);
 	if(iter == redis->handlerCommondMap.end() )
@@ -175,7 +174,7 @@ int xSession::processCommand()
 
 		if(  (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
 		{
-		
+
 		}
 		else
 		{

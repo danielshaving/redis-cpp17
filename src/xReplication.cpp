@@ -6,16 +6,10 @@
 xReplication::xReplication()
 :start(false),
  isreconnect(true),
- threads(nullptr),
  port(0),
  connectCount(0)
 {
-	threads  = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,this)));
-	std::unique_lock<std::mutex> lk(mutex);
-	while (start == false)
-	{
-		condition.wait(lk);
-	}
+
 }
 
 xReplication::~xReplication()
@@ -29,7 +23,6 @@ void xReplication::connectMaster()
 {
 	pid = getpid();
 	start = true;
-	condition.notify_one();
 	xEventLoop loop;
 	xTcpClient client(&loop,this);
 	client.setConnectionCallback(std::bind(&xReplication::connCallBack, this, std::placeholders::_1,std::placeholders::_2));

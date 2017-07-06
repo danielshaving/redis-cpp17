@@ -94,7 +94,6 @@ int ll2string(char *s, size_t len, long long value)
 rObj * createObject(int type, const void *ptr)
 {
 	rObj * o = (rObj*)zmalloc(sizeof(rObj));
-	o->type = type;
 	o->type = REDIS_ENCODING_RAW;
 	o->ptr  = (const char*)ptr;
 	return o;
@@ -573,6 +572,19 @@ void memrev64(void *p) {
 
 
 const uint32_t dict_hash_function_seed = 5381;
+
+
+/* And a case insensitive hash function (based on djb hash) */
+unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len) {
+    unsigned int hash = (unsigned int)dict_hash_function_seed;
+
+    while (len--)
+        hash = ((hash << 5) + hash) + (tolower(*buf++)); /* hash * 33 + c */
+    return hash;
+}
+
+
+
 unsigned int dictGenHashFunction(const void *key, int len) {
 	/* 'm' and 'r' are mixing constants generated offline.
 	 They're not really 'magic', they just happen to work well.  */

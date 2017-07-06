@@ -19,6 +19,7 @@ public:
 	xRedis() {}
 	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster);
 	~xRedis();
+	void handleTimeOut(void * data);
 	void handleRepliCacheTimeOut();
 	void handleSalveRepliTimeOut(void * data);
 	void run();
@@ -73,6 +74,7 @@ public:
 		mutable MutexLock mutex;
 	};
 
+
 	const static int kShards = 4096;
 	std::array<SetLock, kShards> setShards;
 	std::array<HsetLock, kShards> hsetShards;
@@ -92,6 +94,7 @@ public:
 
 	xBuffer		slaveCached;
 	xReplication  repli;
+	std::shared_ptr<std::thread > threads;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
 	std::map<int32_t,xTimer*> repliTimers;
 	xSocket socket;

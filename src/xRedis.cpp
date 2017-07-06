@@ -10,9 +10,11 @@ masterPort(0),
 clusterEnabled(enbaledCluster),
 slaveEnabled(false),
 authEnabled(false),
-salveCount(0)
+salveCount(0),
+threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
 {
-	
+	threads->detach();
+	//loop.runAfter(10,nullptr,true,std::bind(&xRedis::handleTimeOut,this,std::placeholders::_1));
 	rObj * obj = createStringObject("set",3);
 	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
 
@@ -85,16 +87,6 @@ salveCount(0)
 
 xRedis::~xRedis()
 {
-	char filename[] = "dump.rdb";
-	if(rdbSave(filename,this) == REDIS_OK)
-	{
-		LOG_INFO<<"Save rdb success";
-	}
-	else
-	{
-		LOG_INFO<<"Save rdb failure";
-	}
-
 	destorySharedObjects();
 	{
 		for(auto it = handlerCommondMap.begin(); it!= handlerCommondMap.end(); it++)
@@ -150,9 +142,12 @@ xRedis::~xRedis()
 		}
 	}
 
-
 }
 
+void xRedis::handleTimeOut(void * data)
+{
+	loop.quit();
+}
 
 void xRedis::handleSalveRepliTimeOut(void * data)
 {
@@ -184,7 +179,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		LOG_INFO<<"Client connect success";
+		//LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -202,7 +197,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			}
 
 		}
-		LOG_INFO<<"Client disconnect";
+		//LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -227,10 +222,11 @@ void xRedis::loadDataFromDisk()
 	{
 		LOG_INFO<<"load rdb success";
 	}
-	else
+	else if (errno != ENOENT)
 	{
-		LOG_INFO<<"load rdb fail";
-	}
+        LOG_WARN<<"Fatal error loading the DB:  Exiting."<<strerror(errno);
+    }
+
 }
 
 
@@ -430,19 +426,22 @@ bool xRedis::saveCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	int64_t start =  mstime();
-	MutexLockGuard lk(mutex);
-	char filename[] = "dump.rdb";
-	if(rdbSave(filename,this) == REDIS_OK)
 	{
-		addReply(session->sendBuf,shared.ok);
-		LOG_INFO<<"Save rdb success";
+		MutexLockGuard lk(mutex);
+		char filename[] = "dump.rdb";
+		if(rdbSave(filename,this) == REDIS_OK)
+		{
+			addReply(session->sendBuf,shared.ok);
+			LOG_INFO<<"Save rdb success";
+		}
+		else
+		{
+			addReply(session->sendBuf,shared.err);
+			LOG_INFO<<"Save rdb failure";
+		}
 	}
-	else
-	{
-		addReply(session->sendBuf,shared.err);
-		LOG_INFO<<"Save rdb failure";
-	}
-	
+
+
 	printf("use mem %ld\n",zmalloc_used_memory());
 	float dt = (float)(mstime() - start)/1000.0;
 	printf("saveCommond :%.2f\n", dt);
@@ -532,12 +531,12 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 		auto it = repliTimers.find(session->conn->getSockfd());
 		if(it != repliTimers.end())
 		{
-			LOG_WARN<<"client repeat send sync ";
+			LOG_WARN<<"Client repeat send sync ";
 			session->conn->forceClose();
 			return false;
 		}
 
-		void *data = (void *)session->conn->getSockfd();
+		void *data = (void *)(int)session->conn->getSockfd();
 		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,data,
 				true,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
@@ -556,14 +555,15 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 
 	if(buf != nullptr)
 	{
-		LOG_INFO<<"sync load rdb success";
 		char str[4];
 		int * sendLen = (int*)str;
 		*sendLen = len;
 		session->sendBuf.append((const char*)str,4);
 		session->sendBuf.append(buf->ptr,len);
+		zfree(buf);
+		LOG_INFO<<"Sync load rdb success";
 	}
-	else
+	else if (errno != ENOENT)
 	{
 		{
 			MutexLockGuard lk(slaveMutex);
@@ -574,11 +574,8 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 			repliTimers.erase(session->conn->getSockfd());
 			tcpconnMaps.erase(session->conn->getSockfd());
 		}
-
-		LOG_INFO<<"sync load rdb failure";
+	    LOG_WARN<<"Fatal error loading the DB:  Exiting."<<strerror(errno);
 	}
-
-	zfree(buf);
 	return true;
 }
 
@@ -850,7 +847,6 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 	SetMap & setMap = setShards[hash % kShards].setMap;
 	{
 		MutexLockGuard lock(mu);
-		rObj * obj1 = obj[0];
 		auto it = setMap.find(obj[0]);
 		if(it == setMap.end())
 		{
