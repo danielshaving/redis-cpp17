@@ -31,8 +31,6 @@ public:
 	pid_t pid;
 	xEventLoop *loop;
 	xTcpClient *client;
-	mutable std::mutex mutex;
-	std::condition_variable condition;
 	xRedis *redis;
 	std::string ip;
 	int32_t port;

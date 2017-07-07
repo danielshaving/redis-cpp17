@@ -22,6 +22,7 @@
 #include <sys/eventfd.h>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 #include <deque>
 #include <functional>
 #include <algorithm>

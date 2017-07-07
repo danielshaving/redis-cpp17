@@ -96,6 +96,7 @@ bool xSession::checkCommond(rObj*  robjs,int size)
 
 int xSession::processCommand()
 {
+	LOG_INFO<<robjs[0]->ptr;
 	assert(robjs.size());
 	if(redis->authEnabled)
 	{

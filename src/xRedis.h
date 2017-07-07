@@ -51,6 +51,10 @@ public:
 	bool clientCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool echoCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool subscribeCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool selectCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool hkeysCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool scardCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool saddCommond(const std::deque <rObj*> & obj,xSession * session);
 
 public:
 
@@ -60,24 +64,29 @@ public:
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
+	typedef std::unordered_map<rObj*,std::unordered_set<rObj*>,Hash,Equal> Set;
 
-
-	struct SetLock
+	struct SetMapLock
 	{
 		SetMap setMap;
 		mutable MutexLock mutex;
 	};
 
-	struct HsetLock
+	struct HsetMapLock
 	{
 		HsetMap hsetMap;
 		mutable MutexLock mutex;
 	};
 
+	struct SetLock
+	{
+		Set set;
+		mutable MutexLock mutex;
+	};
 
 	const static int kShards = 4096;
-	std::array<SetLock, kShards> setShards;
-	std::array<HsetLock, kShards> hsetShards;
+	std::array<SetMapLock, kShards> setShards;
+	std::array<HsetMapLock, kShards> hsetShards;
 	xEventLoop loop;
 	xTcpServer server;
 	mutable MutexLock mutex;

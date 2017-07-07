@@ -17,61 +17,50 @@ threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
 	//loop.runAfter(10,nullptr,true,std::bind(&xRedis::handleTimeOut,this,std::placeholders::_1));
 	rObj * obj = createStringObject("set",3);
 	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("get",3);
 	handlerCommondMap[obj] =std::bind(&xRedis::getCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("flushdb",7);
 	handlerCommondMap[obj] =std::bind(&xRedis::flushdbCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("dbsize",6);
 	handlerCommondMap[obj] =std::bind(&xRedis::dbsizeCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("hset",4);
 	handlerCommondMap[obj] =std::bind(&xRedis::hsetCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("hget",4);
 	handlerCommondMap[obj] =std::bind(&xRedis::hgetCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("hgetall",7);
 	handlerCommondMap[obj] =std::bind(&xRedis::hgetallCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("ping",4);
 	handlerCommondMap[obj] =std::bind(&xRedis::pingCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("save",4);
 	handlerCommondMap[obj] =std::bind(&xRedis::saveCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("slaveof",7);
 	handlerCommondMap[obj] =std::bind(&xRedis::slaveofCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("sync",4);
 	handlerCommondMap[obj] =std::bind(&xRedis::syncCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("command",7);
 	handlerCommondMap[obj] =std::bind(&xRedis::commandCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("config",6);
     handlerCommondMap[obj] = std::bind(&xRedis::configCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("auth",4);
     handlerCommondMap[obj] = std::bind(&xRedis::authCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("info",4);
 	handlerCommondMap[obj] = std::bind(&xRedis::infoCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("echo",4);
 	handlerCommondMap[obj] = std::bind(&xRedis::echoCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("client",5);
 	handlerCommondMap[obj] = std::bind(&xRedis::clientCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("subscribe",9);
 	handlerCommondMap[obj] = std::bind(&xRedis::subscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
-
+	obj = createStringObject("hkeys",5);
+    handlerCommondMap[obj] = std::bind(&xRedis::hkeysCommond, this, std::placeholders::_1, std::placeholders::_2);
+    obj = createStringObject("select",6);
+    handlerCommondMap[obj] = std::bind(&xRedis::selectCommond, this, std::placeholders::_1, std::placeholders::_2);
+    obj = createStringObject("sadd",4);
+    handlerCommondMap[obj] = std::bind(&xRedis::saddCommond, this, std::placeholders::_1, std::placeholders::_2);
+    obj = createStringObject("scard",6);
+    handlerCommondMap[obj] = std::bind(&xRedis::scardCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("set",3);
 	unorderedmapCommonds[obj] = 2;
-
 	obj = createStringObject("hset",4);
 	unorderedmapCommonds[obj] = 3;
 
@@ -179,7 +168,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		//LOG_INFO<<"Client connect success";
+		LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -197,7 +186,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			}
 
 		}
-		//LOG_INFO<<"Client disconnect";
+		LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -315,7 +304,22 @@ bool xRedis::echoCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::subscribeCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	addReply(session->sendBuf,shared.ok);
+	if(obj.size()  < 1)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown subscribe  error");
+		return REDIS_ERR;
+	}
+
+	int count = 0;
+	for(int i= 0; i < obj.size(); i ++)
+	{
+		addReply(session->sendBuf,shared.mbulkhdr[3]);
+		addReply(session->sendBuf,shared.subscribebulk);
+		addReplyBulk(session->sendBuf,obj[i]);
+		addReplyLongLong(session->sendBuf,++count);
+	}
+
+
 	return true;
 }
 
@@ -387,6 +391,9 @@ bool xRedis::configCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
 {
+
+	addReply(session->sendBuf,shared.ok);
+	return true;
 	if(!clusterEnabled)
 	{
 		addReplyError(session->sendBuf,"This instance has cluster support disabled");
@@ -622,6 +629,66 @@ bool xRedis::dbsizeCommond(const std::deque <rObj*> & obj,xSession * session)
 	
 	addReplyLongLong(session->sendBuf,size);
 	
+	return true;
+}
+
+
+bool xRedis::scardCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	return true;
+}
+
+bool xRedis::saddCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	return true;
+}
+
+bool xRedis::selectCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size() != 1)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown  select error");
+		return false;
+	}
+
+	addReply(session->sendBuf,shared.ok);
+	return true;
+}
+
+bool xRedis::hkeysCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size() != 1)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown  hkeys error");
+		return false;
+	}
+
+	obj[0]->calHash();
+    size_t hash= obj[0]->hash;
+
+
+    MutexLock &mu = hsetShards[hash% kShards].mutex;
+	auto &hsetMap = hsetShards[hash% kShards].hsetMap;
+	{
+		MutexLockGuard lock(mu);
+
+		auto it = hsetMap.find(obj[0]);
+		if(it == hsetMap.end())
+		{
+			addReply(session->sendBuf,shared.emptymultibulk);
+			return true;
+		}
+
+		addReplyMultiBulkLen(session->sendBuf,it->second.size());
+
+		for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+		{
+			addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdsllen(iter->first->ptr));
+		}
+	}
+
+   zfree(obj[0]);
+
 	return true;
 }
 
