@@ -1,6 +1,6 @@
 TARGET= ./redis-server
 
-CFLAGS := -Wall -Wint-to-pointer-cast -Wno-unused -Wno-sign-compare -O2  -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++11 -DUSE_JEMALLOC
+CFLAGS := -Wall  -O2  -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++11 -DUSE_JEMALLOC
 cppfiles := $(shell ls *.cpp)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cpp,./%.o, $(cppfiles) $(cfiles))

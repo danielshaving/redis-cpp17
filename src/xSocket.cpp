@@ -117,37 +117,38 @@ bool xSocket::createTcpListenSocket()
 
     if (listenSocketFd < 0)
     {
-        //TRACE("Create Tcp Socket Failed! <%s>", strerror(errno));
+        LOG_WARN<<"Create Tcp Socket Failed! "<< strerror(errno);
         return false;
     }
 
     if (!setSocketNonBlock(listenSocketFd))
     {
-        //TRACE("Set listen socket <%d> to non-block failed!", listenSocketFd);
+    	LOG_WARN<<"Set listen socket <%d> to non-block failed!";
         return false;
     }
 
     int optval = 1;
     if (setsockopt(listenSocketFd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
     {
-        //TRACE("Set listen socket<%d> failed! error:%s", listenSocketFd, strerror(errno));
+    	LOG_WARN<<"Set listen socket<%d> failed! error "<<strerror(errno);
         close(listenSocketFd);
         return false;
     }
 
     if (bind(listenSocketFd, (struct sockaddr*)&serverAdress, sizeof(serverAdress)) < 0 )
     {
-        //TRACE("Bind listen socket<%d> failed! error:%s", listenSocketFd, strerror(errno));
+        LOG_WARN<<"Bind listen socket<%d> failed! error "<<strerror(errno);
         close(listenSocketFd);
         return false;
     }
 
     if (listen(listenSocketFd, SOMAXCONN))
     {
-        //TRACE("Listen listen socket<%d> failed! error:%s", listenSocketFd, strerror(errno));
+        LOG_WARN<<"Listen listen socket<%d> failed! error "<<strerror(errno);
         close(listenSocketFd);
         return false;
     }
+
     setsockopt(listenSocketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
 
     int len = 65536;
@@ -162,14 +163,14 @@ bool xSocket::setSocketNonBlock(int socketFd)
     int opt = fcntl(socketFd, F_GETFL);
     if (opt < 0)
     {
-        //TRACE("fcntl(%d, F_GETFL) failed! error:%s", socketFd, strerror(errno));
+        LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
 
     opt = opt | O_NONBLOCK | O_NDELAY;
     if (fcntl(socketFd, F_SETFL, opt) < 0)
     {
-        //TRACE("fcntl(%d, F_GETFL, %d) failed! error:%s", socketFd, opt, strerror(errno));
+    	 LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
 

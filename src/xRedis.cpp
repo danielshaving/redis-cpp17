@@ -536,8 +536,7 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 			return false;
 		}
 
-		void *data = (void *)(int)session->conn->getSockfd();
-		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,data,
+		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,reinterpret_cast<void *>(session->conn->getSockfd()),
 				true,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
 		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
