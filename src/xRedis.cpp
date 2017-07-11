@@ -59,6 +59,12 @@ threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
     handlerCommondMap[obj] = std::bind(&xRedis::saddCommond, this, std::placeholders::_1, std::placeholders::_2);
     obj = createStringObject("scard",6);
     handlerCommondMap[obj] = std::bind(&xRedis::scardCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("publish",7);
+	handlerCommondMap[obj] = std::bind(&xRedis::publishCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("del",3);
+	handlerCommondMap[obj] = std::bind(&xRedis::delCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("unsubscribe",11);
+	handlerCommondMap[obj] = std::bind(&xRedis::unsubscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("set",3);
 	unorderedmapCommonds[obj] = 2;
 	obj = createStringObject("hset",4);
@@ -94,7 +100,7 @@ xRedis::~xRedis()
 	}
 	
 	{
-		for(auto it = setShards.begin(); it != setShards.end(); it++)
+		for(auto it = setMapShards.begin(); it != setMapShards.end(); it++)
 		{
 			auto &map = (*it).setMap;
 			MutexLock &mu = (*it).mutex;
@@ -110,7 +116,7 @@ xRedis::~xRedis()
 	}
 
 	{
-		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
+		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); it++)
 		{
 			auto &map = (*it).hsetMap;
 			MutexLock &mu = (*it).mutex;
@@ -143,7 +149,6 @@ void xRedis::handleSalveRepliTimeOut(void * data)
 	int32_t *sockfd = (int32_t *)data;
 	{
 		MutexLockGuard mu(slaveMutex);
-
 		tcpconnMaps.erase(*sockfd);
 		if(tcpconnMaps.size() == 0)
 		{
@@ -184,7 +189,27 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			{
 				tcpconnMaps.erase(conn->getSockfd());
 			}
+		}
 
+		{
+			for(auto it = pubSubShards.begin(); it != pubSubShards.end(); it++)
+			{
+				MutexLockGuard lock((*it).mutex);
+				auto pubSub = (*it).pubSub;
+				for(auto iter = pubSub.begin(); iter != pubSub.end(); iter++)
+				{
+					for(auto item  = iter->second.begin();  item != iter->second.end();)
+					{
+						if((*item)->getSockfd() == conn->getSockfd())
+						{
+							item = iter->second.erase(item);
+							continue;
+						}
+
+						item++;
+					}
+				}
+			}
 		}
 		LOG_INFO<<"Client disconnect";
 	}
@@ -219,13 +244,50 @@ void xRedis::loadDataFromDisk()
 }
 
 
+
+bool xRedis::unsubscribeCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size() != 1)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown unsubscribe  error");
+		return REDIS_ERR;
+	}
+
+	obj[0]->calHash();
+	size_t hash = obj[0]->hash;
+	MutexLock &mu = pubSubShards[hash% kShards].mutex;
+	auto &pubSub = pubSubShards[hash% kShards].pubSub;
+	{
+		MutexLockGuard lock(mu);
+		auto iter = pubSub.find(obj[0]);
+		if(iter == pubSub.end())
+		{
+			addReply(session->sendBuf,shared.czero);
+		}
+		else
+		{
+			pubSub.erase(iter);
+			zfree(iter->first);
+			addReply(session->sendBuf,shared.ok);
+		}
+	}
+
+	for(auto it = obj.begin(); it != obj.end(); it ++)
+	{
+		zfree(*it);
+	}
+
+	return true;
+}
+
 bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	if(obj.size() > 1)
+	if(obj.size()  < 0)
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown info  error");
 		return REDIS_ERR;
 	}
+
 
 	sds info = sdsempty();
 
@@ -236,15 +298,12 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 	char maxmemory_hmem[64];
 	size_t zmalloc_used = zmalloc_used_memory();
 	size_t total_system_mem =  zmalloc_get_memory_size();
-
 	bytesToHuman(hmem,zmalloc_used);
 	bytesToHuman(peak_hmem,zmalloc_used);
 	bytesToHuman(total_system_hmem,total_system_mem);
 	bytesToHuman(used_memory_rss_hmem,zmalloc_get_rss());
 	bytesToHuman(maxmemory_hmem, 8);
 
-
-	info = sdscat(info,"\r\n");
 	info = sdscatprintf(info,
 	"# Memory\r\n"
 	"used_memory:%zu\r\n"
@@ -271,8 +330,13 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 	ZMALLOC_LIB
 	);
 
-
 	addReplyBulkSds(session->sendBuf, info);
+
+	for(auto it = obj.begin(); it != obj.end(); it++)
+	{
+		zfree(*it);
+	}
+
 	return true;
 }
 
@@ -302,6 +366,49 @@ bool xRedis::echoCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
+bool xRedis::publishCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size()  != 2)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown publish  error");
+		return REDIS_ERR;
+	}
+
+	obj[0]->calHash();
+	size_t hash = obj[0]->hash;
+	MutexLock &mu = pubSubShards[hash% kShards].mutex;
+	auto &pubSub = pubSubShards[hash% kShards].pubSub;
+	{
+		MutexLockGuard lock(mu);
+		auto iter = pubSub.find(obj[0]);
+		if(iter != pubSub.end())
+		{
+			for(auto list = iter->second.begin(); list != iter->second.end(); list ++)
+			{
+				session->pubSubTcpconn.push_back(*list);
+			}
+
+			addReply(session->sendPubSub,shared.mbulkhdr[3]);
+			addReply(session->sendPubSub,shared.messagebulk);
+			addReplyBulk(session->sendPubSub,obj[0]);
+			addReplyBulk(session->sendPubSub,obj[1]);
+			addReplyLongLong(session->sendPubSub,iter->second.size());
+			addReply(session->sendBuf,shared.ok);
+		}
+		else
+		{
+			addReply(session->sendBuf,shared.czero);
+		}
+	}
+
+	for(auto it = obj.begin(); it != obj.end(); it ++)
+	{
+		zfree(*it);
+	}
+
+	return true;
+}
+
 bool xRedis::subscribeCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size()  < 1)
@@ -311,11 +418,33 @@ bool xRedis::subscribeCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	int count = 0;
-	for(int i= 0; i < obj.size(); i ++)
+
+	for(auto it = obj.begin(); it != obj.end(); it++)
 	{
+		(*it)->calHash();
+	    size_t hash = (*it)->hash;
+
+	    MutexLock &mu = pubSubShards[hash% kShards].mutex;
+		auto &pubSub = pubSubShards[hash% kShards].pubSub;
+		{
+			MutexLockGuard lock(mu);
+			auto iter = pubSub.find(*it);
+			if(iter != pubSub.end())
+			{
+				iter->second.push_back(session->conn);
+			}
+			else
+			{
+				std::list<xTcpconnectionPtr> list;
+				list.push_back(session->conn);
+				pubSub.insert(std::make_pair(*it,std::move(list)));
+			}
+
+		}
+
 		addReply(session->sendBuf,shared.mbulkhdr[3]);
 		addReply(session->sendBuf,shared.subscribebulk);
-		addReplyBulk(session->sendBuf,obj[i]);
+		addReplyBulk(session->sendBuf,*it);
 		addReplyLongLong(session->sendBuf,++count);
 	}
 
@@ -610,7 +739,7 @@ bool xRedis::dbsizeCommond(const std::deque <rObj*> & obj,xSession * session)
 	int64_t size = 0;
 	{
 	
-		for(auto it = setShards.begin(); it != setShards.end(); it++)
+		for(auto it = setMapShards.begin(); it != setMapShards.end(); it++)
 		{	
 			MutexLock &mu = (*it).mutex;
 			MutexLockGuard lk(mu);
@@ -619,7 +748,7 @@ bool xRedis::dbsizeCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	{
-		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
+		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); it++)
 		{
 			MutexLock &mu = (*it).mutex;
 			MutexLockGuard lk(mu);
@@ -633,13 +762,161 @@ bool xRedis::dbsizeCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
+bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size() > 1)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown  del error");
+	}
+
+	obj[0]->calHash();
+	size_t hash= obj[0]->hash;
+
+
+	{
+		MutexLock &mu = setMapShards[hash% kShards].mutex;
+		auto &setMap = setMapShards[hash% kShards].setMap;
+		{
+			MutexLockGuard lock(mu);
+
+			auto it = setMap.find(obj[0]);
+			if(it != setMap.end())
+			{
+				setMap.erase(it);
+				zfree(it->first);
+				zfree(it->second);
+			}
+
+		}
+	}
+
+	{
+		MutexLock &mu = hsetMapShards[hash% kShards].mutex;
+		auto &hsetMap = hsetMapShards[hash% kShards].hsetMap;
+		{
+			MutexLockGuard lock(mu);
+			auto hmap = hsetMap.find(obj[0]);
+			if(hmap != hsetMap.end())
+			{
+				for(auto iter = hmap->second.begin(); iter != hmap->second.end(); iter++)
+				{
+					zfree(iter->first);
+					zfree(iter->second);
+				}
+			}
+			hsetMap.erase(obj[0]);
+		}
+	}
+
+	{
+		MutexLock &mu = pubSubShards[hash% kShards].mutex;
+		auto &pubSub = pubSubShards[hash% kShards].pubSub;
+		{
+			MutexLockGuard lock(mu);
+			auto it = pubSub.find(obj[0]);
+			if(it != pubSub.end())
+			{
+				pubSub.erase(it);
+				zfree(it->first);
+			}
+		}
+	}
+
+
+	for(auto it = obj.begin(); it != obj.end(); it ++)
+	{
+		zfree(*it);
+	}
+
+	addReply(session->sendBuf,shared.ok);
+	return true;
+}
+
+
 bool xRedis::scardCommond(const std::deque <rObj*> & obj,xSession * session)
 {
+	if(obj.size() != 1 )
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown  scard error");
+		return false;
+	}
+
+	obj[0]->calHash();
+	size_t hash= obj[0]->hash;
+	int count = 0;
+	MutexLock &mu = setShards[hash% kShards].mutex;
+	auto &set = setShards[hash% kShards].set;
+	{
+		MutexLockGuard lock(mu);
+		auto it = set.find(obj[0]);
+		if(it != set.end())
+		{
+			count = it->second.size();
+		}
+	}
+
+	 addReplyLongLong(session->sendBuf,count);
+
+	 zfree(obj[0]);
 	return true;
 }
 
 bool xRedis::saddCommond(const std::deque <rObj*> & obj,xSession * session)
 {
+	if(obj.size() < 2)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown  sadd error");
+		return false;
+	}
+
+	obj[0]->calHash();
+	size_t hash= obj[0]->hash;
+
+	int count = 0;
+	MutexLock &mu = setShards[hash% kShards].mutex;
+	auto &set = setShards[hash% kShards].set;
+	{
+
+		MutexLockGuard lock(mu);
+		auto iter = obj.begin();
+		iter++;
+		auto it = set.find(obj[0]);
+		if(it == set.end())
+		{
+			std::unordered_set<rObj*,Hash,Equal> uSet;
+			for( ;iter != obj.end(); iter ++)
+			{
+				(*iter)->calHash();
+				count++;
+				uSet.insert(*iter);
+			}
+
+			set.insert(std::make_pair(obj[0],std::move(uSet)));
+		}
+		else
+		{
+			for( ;iter != obj.end(); iter ++)
+			{
+				(*iter)->calHash();
+				auto item = it->second.find(*iter);
+				if(item == it->second.end())
+				{
+					count++;
+					it->second.insert(*iter);
+				}
+				else
+				{
+					zfree(*iter);
+				}
+			}
+
+			zfree(obj[0]);
+		}
+	}
+
+
+	addReplyLongLong(session->sendBuf,count);
+
 	return true;
 }
 
@@ -667,8 +944,8 @@ bool xRedis::hkeysCommond(const std::deque <rObj*> & obj,xSession * session)
     size_t hash= obj[0]->hash;
 
 
-    MutexLock &mu = hsetShards[hash% kShards].mutex;
-	auto &hsetMap = hsetShards[hash% kShards].hsetMap;
+    MutexLock &mu = hsetMapShards[hash% kShards].mutex;
+	auto &hsetMap = hsetMapShards[hash% kShards].hsetMap;
 	{
 		MutexLockGuard lock(mu);
 
@@ -687,7 +964,11 @@ bool xRedis::hkeysCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 	}
 
-   zfree(obj[0]);
+	for(auto it = obj.begin(); it != obj.end(); it ++)
+	{
+		zfree(*it);
+	}
+
 
 	return true;
 }
@@ -716,8 +997,8 @@ bool xRedis::hgetallCommond(const std::deque <rObj*> & obj,xSession * session)
 	obj[0]->calHash();
 	size_t hash= obj[0]->hash;
 	
-	MutexLock &mu = hsetShards[hash% kShards].mutex;
-	auto &hsetMap = hsetShards[hash% kShards].hsetMap;
+	MutexLock &mu = hsetMapShards[hash% kShards].mutex;
+	auto &hsetMap = hsetMapShards[hash% kShards].hsetMap;
 	{
 		MutexLockGuard lock(mu);
 		
@@ -757,8 +1038,8 @@ bool xRedis::hsetCommond(const std::deque <rObj*> & obj,xSession * session)
 	size_t hash= obj[0]->hash;
 	bool update = false;
 	
-	MutexLock &mu = hsetShards[hash% kShards].mutex;
-	auto &hsetMap = hsetShards[hash% kShards].hsetMap;
+	MutexLock &mu = hsetMapShards[hash% kShards].mutex;
+	auto &hsetMap = hsetMapShards[hash% kShards].hsetMap;
 	{
 		MutexLockGuard lock(mu);
 		auto it = hsetMap.find(obj[0]);
@@ -804,8 +1085,8 @@ bool xRedis::hgetCommond(const std::deque <rObj*> & obj,xSession * session)
 	obj[0]->calHash();
 	obj[1]->calHash();
 	size_t hash= obj[0]->hash;
-	MutexLock &mu = hsetShards[hash% kShards].mutex;
-	auto &hsetMap = hsetShards[hash% kShards].hsetMap;
+	MutexLock &mu = hsetMapShards[hash% kShards].mutex;
+	auto &hsetMap = hsetMapShards[hash% kShards].hsetMap;
 	{
 		MutexLockGuard lock(mu);
 		auto it = hsetMap.find(obj[0]);
@@ -827,7 +1108,7 @@ bool xRedis::hgetCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 		addReplyBulk(session->sendBuf,iter->second);
 	}
-	
+
 	zfree(obj[0]);
 	zfree(obj[1]);
 			
@@ -845,7 +1126,7 @@ bool xRedis::flushdbCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 	
 	{
-		for(auto it = setShards.begin(); it != setShards.end(); it++)
+		for(auto it = setMapShards.begin(); it != setMapShards.end(); it++)
 		{
 			auto &map = (*it).setMap;
 			MutexLock &mu =  (*it).mutex;
@@ -861,7 +1142,7 @@ bool xRedis::flushdbCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	{
-		for(auto it = hsetShards.begin(); it != hsetShards.end(); it++)
+		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); it++)
 		{
 			auto &map = (*it).hsetMap;
 			MutexLock &mu =  (*it).mutex;
@@ -893,10 +1174,6 @@ bool xRedis::quitCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
-{
-	return true;
-}
 
 bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 {
@@ -909,8 +1186,8 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 
 	obj[0]->calHash();
 	size_t hash= obj[0]->hash;
-	MutexLock &mu = setShards[hash% kShards].mutex;
-	SetMap & setMap = setShards[hash % kShards].setMap;
+	MutexLock &mu = setMapShards[hash% kShards].mutex;
+	SetMap & setMap = setMapShards[hash % kShards].setMap;
 	{
 		MutexLockGuard lock(mu);
 		auto it = setMap.find(obj[0]);
@@ -943,8 +1220,8 @@ bool xRedis::getCommond(const std::deque <rObj*> & obj,xSession * session)
 	
 	obj[0]->calHash();
 	size_t hash = obj[0]->hash;
-	MutexLock &mu = setShards[hash  % kShards].mutex;
-	SetMap & setMap = setShards[hash  % kShards].setMap;
+	MutexLock &mu = setMapShards[hash  % kShards].mutex;
+	SetMap & setMap = setMapShards[hash  % kShards].setMap;
 	{
 		MutexLockGuard lock(mu);
 		auto it = setMap.find(obj[0]);

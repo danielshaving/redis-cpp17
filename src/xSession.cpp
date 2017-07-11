@@ -62,9 +62,22 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 	if(sendBuf.readableBytes() > 0 )
 	{
 		conn->send(&sendBuf);
+		sendBuf.retrieveAll();
 	}
 
 
+	if(sendPubSub.readableBytes() > 0 )
+	{
+		for(auto iter = pubSubTcpconn.begin(); iter != pubSubTcpconn.end(); iter ++)
+		{
+			(*iter)->send(&sendPubSub);
+		}
+
+		pubSubTcpconn.clear();
+		sendPubSub.retrieveAll();
+	}
+
+	MutexLockGuard mu(redis->slaveMutex);
 	for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
 	{
 		if(sendSlaveBuf.readableBytes() > 0 )
@@ -122,6 +135,8 @@ int xSession::processCommand()
 				if(redis->slaveCached.readableBytes() > 0)
 				{
 					conn->send(&redis->slaveCached);
+					redis->slaveCached.retrieveAll();
+
 					redis->tcpconnMaps.erase(conn->getSockfd());
 				}
 

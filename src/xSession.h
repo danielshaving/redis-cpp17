@@ -25,9 +25,11 @@ public:
 	int32_t 			multibulklen;
 	int64_t 			bulklen;
 	int32_t 		    argc;
-	xTcpconnectionPtr 	conn;
 	xBuffer 			sendBuf;
 	xBuffer 			sendSlaveBuf;
+	xBuffer 			sendPubSub;
+	xTcpconnectionPtr 	conn;
+	std::vector<xTcpconnectionPtr> pubSubTcpconn;
 	std::deque<rObj*>  robjs;
 	std::string commond;
 	xRedis *redis;

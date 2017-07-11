@@ -30,6 +30,15 @@ struct Hash
 	}
 };
 
+struct Cmp
+{
+	bool operator () (const rObj * x,const rObj * y ) const
+	{
+		 return ((sdsllen(x->ptr) == sdsllen(y->ptr)) &&
+		            (memcmp(x->ptr, y->ptr, sdsllen(y->ptr))== 0));
+	}
+};
+
 struct Equal
 {
 	bool operator()(const rObj * x, const rObj * y) const

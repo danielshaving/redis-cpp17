@@ -498,7 +498,7 @@ void addReplyString(xBuffer & sendBuf,const char *s, size_t len)
 void addReplySds(xBuffer &sendBuf, sds s)
 {
 	sendBuf.append(s, sdslen(s));
-	
+	sdsfree(s);
 }
 
 

@@ -423,7 +423,7 @@ rObj *rdbLoadStringObject(xRio *rdb)
 
 int rdbSaveSet(xRio *rdb,xRedis * redis)
 {
-	for(auto it = redis->setShards.begin(); it != redis->setShards.end(); it++)
+	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); it++)
 	{
 		auto &map = (*it).setMap;
 		MutexLock & mu = (*it).mutex;
@@ -443,7 +443,7 @@ int rdbSaveSet(xRio *rdb,xRedis * redis)
 }
 int rdbSaveHset(xRio *rdb,xRedis * redis)
 {
-	for(auto it = redis->hsetShards.begin(); it != redis->hsetShards.end(); it++)
+	for(auto it = redis->hsetMapShards.begin(); it != redis->hsetMapShards.end(); it++)
 	{
 		auto &map = (*it).hsetMap;
 		MutexLock & mu = (*it).mutex;
@@ -507,8 +507,8 @@ int rdbLoadSet(xRio *rdb,xRedis * redis)
 
 		key->calHash();
 		size_t hash = key->hash;
-		MutexLock &mu = redis->setShards[hash% redis->kShards].mutex;
-		auto & setMap = redis->setShards[hash % redis->kShards].setMap;
+		MutexLock &mu = redis->setMapShards[hash% redis->kShards].mutex;
+		auto & setMap = redis->setMapShards[hash % redis->kShards].setMap;
 		{
 			MutexLockGuard lock(mu);
 			auto it = setMap.find(key);
@@ -570,9 +570,8 @@ int rdbLoadHset(xRio *rdb,xRedis * redis)
 
 		key->calHash();
 		size_t hash = key->hash;
-		MutexLock &mu = redis->hsetShards[hash% redis->kShards].mutex;
-		auto & hsetMap = redis->hsetShards[hash % redis->kShards].hsetMap;
-		MutexLockGuard lk(mu);
+		MutexLock &mu = redis->hsetMapShards[hash% redis->kShards].mutex;
+		auto & hsetMap = redis->hsetMapShards[hash % redis->kShards].hsetMap;
 		MutexLockGuard lock(mu);
 		auto it = hsetMap.find(key);
 		if(it == hsetMap.end())
