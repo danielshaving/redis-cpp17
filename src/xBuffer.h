@@ -152,6 +152,11 @@ class xBuffer
     hasWritten(len);
   }
 
+  void append(const stringPiepe & str)
+  {
+	 append(str.str, str.len);
+  }
+
   void append(const void* /*restrict*/ data, size_t len)
   {
     append(static_cast<const char*>(data), len);
@@ -341,19 +346,6 @@ class xBuffer
 	static const char CONTENT[];
 };
 
-class stringPiepe
-{
- public:
-	stringPiepe(const char* str)
-	: str(str), len(static_cast<int>(strlen(str))) { }
-	stringPiepe(const std::string& str)
-	:str(str.data()), len(static_cast<int>(str.size())) { }
-	stringPiepe(const char* str, size_t len)
-	:str(str),len(len) {}
-	std::string as_string() const { return std::string(str,len);}
-	const char* str;
-	const size_t len;
-};
 
 
 

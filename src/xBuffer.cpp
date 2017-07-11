@@ -5,7 +5,6 @@
 const char xBuffer::kCRLF[] = "\r\n";
 const char xBuffer::kCRLFCRLF[] = "\r\n\r\n";
 const char xBuffer::CONTENT[] = "Content-Length";
-
 const size_t xBuffer::kCheapPrepend;
 const size_t xBuffer::kInitialSize;
 
