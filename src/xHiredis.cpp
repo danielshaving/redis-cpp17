@@ -1301,13 +1301,13 @@ void xHiredis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			redisAsyncs.insert(std::make_pair(conn->getSockfd(),ac));
 		}
 
-		for(int i = 0 ; i < 200;i++)
-		{
-			std::string str = "set test" + std::to_string(i) + " "  + " %b";
-			redisAsyncCommand(ac, nullptr, nullptr, str.c_str(), owner->message.c_str(), owner->message.length());
-			std::string str1 = "get test" + std::to_string(i);
-			redisAsyncCommand(ac, getCallback, nullptr,str1.c_str());
-		}
+//		for(int i = 0 ; i < 200;i++)
+//		{
+//			std::string str = "set test" + std::to_string(i) + " "  + " %b";
+//			redisAsyncCommand(ac, nullptr, nullptr, str.c_str(), owner->message.c_str(), owner->message.length());
+//			std::string str1 = "get test" + std::to_string(i);
+//			redisAsyncCommand(ac, getCallback, nullptr,str1.c_str());
+//		}
 
 
 	}

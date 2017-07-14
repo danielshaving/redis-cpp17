@@ -15,11 +15,35 @@ typedef struct redisObject
 	{
 		hash = dictGenHashFunction(ptr,sdsllen(ptr));
 	}
+
 	unsigned type:4;
 	unsigned encoding:4;
 	size_t hash;
 	const char *ptr;
 } rObj;
+
+typedef struct redisSortObject
+{
+	bool operator <(const redisSortObject & r) const
+	{
+		int cmp = memcmp(key->ptr,r.key->ptr,sdsllen(key->ptr));
+		if( cmp < 0)
+		{
+			return true;
+		}
+		else if(cmp == 0)
+		{
+			return memcmp(value->ptr,r.value->ptr,sdsllen(value->ptr));
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	rObj * key;
+	rObj * value;
+}rSObj;
 
 
 struct Hash

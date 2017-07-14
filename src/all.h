@@ -40,6 +40,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <set>
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/uio.h>
@@ -267,6 +268,22 @@ class noncopyable
  private:
   noncopyable(const noncopyable&);
   noncopyable& operator =(const noncopyable&);
+};
+
+
+
+class stringPiepe
+{
+ public:
+	stringPiepe(const char* str)
+	: str(str), len(static_cast<int>(strlen(str))) { }
+	stringPiepe(const std::string& str)
+	:str(str.data()), len(static_cast<int>(str.size())) { }
+	stringPiepe(const char* str, size_t len)
+	:str(str),len(len) {}
+	std::string as_string() const { return std::string(str,len);}
+	const char* str;
+	const size_t len;
 };
 
 

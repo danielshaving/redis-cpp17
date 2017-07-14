@@ -40,6 +40,7 @@ public:
 	bool hsetCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool hgetCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool hgetallCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool hlenCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool slaveofCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool syncCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool psyncCommond(const std::deque <rObj*> & obj,xSession * session);
@@ -62,7 +63,7 @@ public:
 	bool zcountCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool zrangeCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool zrankCommond(const std::deque <rObj*> & obj,xSession * session);
-
+	bool zrevrangeCommond(const std::deque <rObj*> & obj,xSession * session);
 public:
 	std::unordered_map<rObj*,int,Hash,EEqual>  unorderedmapCommonds;
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commondFunction;
@@ -71,9 +72,9 @@ public:
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
-	typedef std::unordered_map<rObj*,std::map<rObj*,rObj*>,Hash,Equal> SortSet;
+	typedef std::unordered_map<rObj*,std::unordered_map<rObj *,rObj *,Hash,Equal>,Hash,Equal> SortSet;
+	typedef std::set<rSObj> SSet;
 	typedef std::unordered_map<rObj*,std::list<xTcpconnectionPtr>,Hash,Equal> PubSub;
-
 
 	struct SetMapLock
 	{
@@ -95,8 +96,9 @@ public:
 
 	struct SortSetLock
 	{
-		SortSet sortSet;
-	    mutable MutexLock mutex;
+		SortSet set;
+		SSet sset;
+		mutable MutexLock mutex;
 	};
 
 	struct PubSubLock
@@ -109,7 +111,7 @@ public:
 	std::array<SetMapLock, kShards> setMapShards;
 	std::array<HsetMapLock, kShards> hsetMapShards;
 	std::array<SetLock, kShards> setShards;
-	std::array<HsetMapLock, kShards> sortSetShards;
+	std::array<SortSetLock,kShards> sortSetShards;
 	std::array<PubSubLock, kShards> pubSubShards;
 
 	xEventLoop loop;
