@@ -438,6 +438,9 @@ bool xRedis::keysCommond(const std::deque <rObj*> & obj,xSession * session)
 		return REDIS_ERR;
 	}
 
+	std::string des  = "*";
+	std::string src = obj[0]->ptr;
+
 
 	return true;
 }
@@ -1497,23 +1500,71 @@ bool xRedis::flushdbCommond(const std::deque <rObj*> & obj,xSession * session)
 			auto &map = (*it).hsetMap;
 			MutexLock &mu =  (*it).mutex;
 			MutexLockGuard lock(mu);
-			for(auto sit = map.begin(); sit!=map.end(); sit++)
+			for(auto iter = map.begin(); iter!=map.end(); iter++)
 			{
-				zfree(sit->first);
-				auto  &mmap = sit->second;
-				for(auto ssit = mmap.begin(); ssit!=mmap.end(); ssit++)
+				zfree(iter->first);
+				auto  &mmap = iter->second;
+				for(auto iterr = mmap.begin(); iterr!=mmap.end(); iterr++)
 				{
-					zfree(ssit->first);
-					zfree(ssit->second);
+					zfree(iterr->first);
+					zfree(iterr->second);
 				}
 				mmap.clear();
 			}
 			map.clear();
 			
 		}
+
 	}
 	
-	
+	{
+		for(auto it = setShards.begin(); it != setShards.end(); it++)
+		{
+			auto &map = (*it).set;
+			MutexLock &mu =  (*it).mutex;
+			MutexLockGuard lock(mu);
+			for(auto iter = map.begin(); iter != map.end(); iter ++)
+			{
+				for(auto iterr = iter->second.begin(); iterr != iter->second.end() ;iterr ++)
+				{
+						zfree(*iterr);
+				}
+
+				iter->second.clear();
+				zfree(iter->first);
+			}
+			map.clear();
+
+		}
+	}
+
+
+
+	{
+		for(auto it = sortSetShards.begin(); it != sortSetShards.end(); it++)
+		{
+			auto &map = (*it).set;
+			auto &mmap = (*it).sset;
+			MutexLock &mu =  (*it).mutex;
+			MutexLockGuard lock(mu);
+			for(auto iter = map.begin(); iter != map.end(); iter ++)
+			{
+				for(auto iterr = iter->second.begin(); iterr != iter->second.end() ;iterr ++)
+				{
+						zfree(iterr->first);
+						zfree(iterr->second);
+				}
+
+				iter->second.clear();
+				zfree(iter->first);
+			}
+
+			mmap.clear();
+			map.clear();
+
+		}
+	}
+
 	addReply(session->sendBuf,shared.ok);	
 	return true;
 }
