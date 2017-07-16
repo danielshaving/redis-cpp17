@@ -40,6 +40,7 @@ public:
 	bool hsetCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool hgetCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool hgetallCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool hlenCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool slaveofCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool syncCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool psyncCommond(const std::deque <rObj*> & obj,xSession * session);
@@ -51,21 +52,31 @@ public:
 	bool clientCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool echoCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool subscribeCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool publishCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool selectCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool hkeysCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool scardCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool saddCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool unsubscribeCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool zaddCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool zcardCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool zcountCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool zrangeCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool zrankCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool zrevrangeCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool keysCommond(const std::deque <rObj*> & obj,xSession * session);
 
 public:
-
 	std::unordered_map<rObj*,int,Hash,EEqual>  unorderedmapCommonds;
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commondFunction;
 	std::unordered_map<rObj*,commondFunction,Hash,EEqual> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
-	typedef std::unordered_map<rObj*,std::unordered_set<rObj*>,Hash,Equal> Set;
-	typedef std::unordered_map<rObj*,std::map<rObj*,rObj*>,Hash,Equal> SortSet;
+	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
+	typedef std::unordered_map<rObj*,std::unordered_map<rObj *,rObj *,Hash,Equal>,Hash,Equal> SortSet;
+	typedef std::set<rSObj> SSet;
+	typedef std::unordered_map<rObj*,std::list<xTcpconnectionPtr>,Hash,Equal> PubSub;
 
 	struct SetMapLock
 	{
@@ -88,14 +99,23 @@ public:
 	struct SortSetLock
 	{
 		SortSet set;
+		SSet sset;
 		mutable MutexLock mutex;
 	};
 
+	struct PubSubLock
+	{
+		PubSub pubSub;
+		mutable MutexLock mutex;
+	};
 
 	const static int kShards = 4096;
 	std::array<SetMapLock, kShards> setMapShards;
 	std::array<HsetMapLock, kShards> hsetMapShards;
-	std::array<HsetMapLock, kShards> SetShards;
+	std::array<SetLock, kShards> setShards;
+	std::array<SortSetLock,kShards> sortSetShards;
+	std::array<PubSubLock, kShards> pubSubShards;
+
 	xEventLoop loop;
 	xTcpServer server;
 	mutable MutexLock mutex;
@@ -108,6 +128,7 @@ public:
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  authEnabled;
+	std::atomic<bool>  repliEnabled;
 	std::atomic<int>	   salveCount;
 
 	xBuffer		slaveCached;
