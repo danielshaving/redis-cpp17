@@ -40,6 +40,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <set>
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/uio.h>
@@ -201,6 +202,8 @@
 
 #define REDIS_RDB_SET 100
 #define REDIS_RDB_HSET 101
+#define REDIS_RDB_SSET 102
+#define REDIS_RDB_SORT_SET 103
 
 /* Protocol and I/O related defines */
 #define PROTO_MAX_QUERYBUF_LEN  (1024*1024*1024) /* 1GB max query buffer. */
@@ -267,6 +270,22 @@ class noncopyable
  private:
   noncopyable(const noncopyable&);
   noncopyable& operator =(const noncopyable&);
+};
+
+
+
+class stringPiepe
+{
+ public:
+	stringPiepe(const char* str)
+	: str(str), len(static_cast<int>(strlen(str))) { }
+	stringPiepe(const std::string& str)
+	:str(str.data()), len(static_cast<int>(str.size())) { }
+	stringPiepe(const char* str, size_t len)
+	:str(str),len(len) {}
+	std::string as_string() const { return std::string(str,len);}
+	const char* str;
+	const size_t len;
 };
 
 

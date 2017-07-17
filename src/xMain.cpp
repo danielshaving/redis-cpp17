@@ -4,7 +4,7 @@
 #include "xCurrentThread.h"
 #include "xLog.h"
 #include <stdio.h>
-#include <gperftools/profiler.h>
+//#include <gperftools/profiler.h>
 
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char* msg, int len)

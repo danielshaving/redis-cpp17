@@ -170,95 +170,6 @@ int rdbTryIntegerEncoding(char *s, size_t len, unsigned char *enc)
 	
 }
 
-void startLoading(FILE *fp)
-{
-	struct stat sb;
-	if(fstat(fileno(fp),&sb) == -1)
-	{
-	
-	}
-	else
-	{
-		//TRACE("load dump.rdb %ld\n",sb.st_size);
-	}
-}
-
-uint32_t digits10(uint64_t v)
-{
-	if (v < 10) return 1;
-    if (v < 100) return 2;
-    if (v < 1000) return 3;
-    if (v < 1000000000000UL) {
-        if (v < 100000000UL) {
-            if (v < 1000000) {
-                if (v < 10000) return 4;
-                return 5 + (v >= 100000);
-            }
-            return 7 + (v >= 10000000UL);
-        }
-        if (v < 10000000000UL) {
-            return 9 + (v >= 1000000000UL);
-        }
-        return 11 + (v >= 100000000000UL);
-    }
-    return 12 + digits10(v / 1000000000000UL);
-}
-
-int lll2string(char* dst, size_t dstlen, long long svalue)
-{
-	static const char digits[201] =
-	    "0001020304050607080910111213141516171819"
-	    "2021222324252627282930313233343536373839"
-	    "4041424344454647484950515253545556575859"
-	    "6061626364656667686970717273747576777879"
-	    "8081828384858687888990919293949596979899";
-	int negative;
-	unsigned long long value;
-
-	/* The main loop works with 64bit unsigned integers for simplicity, so
-	 * we convert the number here and remember if it is negative. */
-	if (svalue < 0) {
-	    if (svalue != LLONG_MIN) {
-	        value = -svalue;
-	    } else {
-	        value = ((unsigned long long) LLONG_MAX)+1;
-	    }
-	    negative = 1;
-	} else {
-	    value = svalue;
-	    negative = 0;
-	}
-
-	/* Check length. */
-	uint32_t const length = digits10(value)+negative;
-	if (length >= dstlen) return 0;
-
-	/* Null term. */
-	uint32_t next = length;
-	dst[next] = '\0';
-	next--;
-	while (value >= 100) {
-	    int const i = (value % 100) * 2;
-	    value /= 100;
-	    dst[next] = digits[i + 1];
-	    dst[next - 1] = digits[i];
-	    next -= 2;
-	}
-
-	/* Handle last 1-2 digits. */
-	if (value < 10) {
-	    dst[next] = '0' + (uint32_t) value;
-	} else {
-	    int i = (uint32_t) value * 2;
-	    dst[next] = digits[i + 1];
-	    dst[next - 1] = digits[i];
-	}
-
-	/* Add sign. */
-	if (negative) dst[0] = '-';
-	return length;
-}
-
 
 uint32_t rdbLoadLen(xRio *rdb, int *isencoded)
 {
@@ -274,6 +185,7 @@ uint32_t rdbLoadLen(xRio *rdb, int *isencoded)
 	{
 		return REDIS_RDB_LENERR;
 	}
+
 	type = (buf[0]&0xC0)>>6;
 
 	if(type == REDIS_RDB_ENCVAL)
@@ -383,8 +295,10 @@ rObj *rdbGenericLoadStringObject(xRio *rdb, int encode)
     rObj *o;
 
     len = rdbLoadLen(rdb,&isencoded);
-    if (isencoded) {
-        switch(len) {
+    if (isencoded)
+    {
+        switch(len)
+        {
         case REDIS_RDB_ENC_INT8:
         case REDIS_RDB_ENC_INT16:
         case REDIS_RDB_ENC_INT32:
@@ -392,7 +306,7 @@ rObj *rdbGenericLoadStringObject(xRio *rdb, int encode)
         case REDIS_RDB_ENC_LZF:
            	return rdbLoadLzfStringObject(rdb);
         default:
-            //TRACE("Unknown RDB encoding type");
+            LOG_WARN<<"Unknown RDB encoding type";
             break;
         }
     }
@@ -401,6 +315,7 @@ rObj *rdbGenericLoadStringObject(xRio *rdb, int encode)
 	{
 		return nullptr;
     }
+
     o = createStringObject(NULL,len);
     if (len && rioRead(rdb,(void*)o->ptr,len) == 0) 
 	{
@@ -419,11 +334,79 @@ rObj *rdbLoadStringObject(xRio *rdb)
 }
 
 
+int rdbSaveSSet(xRio *rdb,xRedis * redis)
+{
+	for(auto it = redis->setShards.begin(); it != redis->setShards.end(); it++)
+	{
+		auto &map = (*it).set;
+		MutexLock & mu = (*it).mutex;
+		MutexLockGuard lock(mu);
+		for(auto iter = map.begin(); iter != map.end(); iter++)
+		{
+			if (rdbSaveKey(rdb,iter->first,0) == -1)
+			{
+				return REDIS_ERR;
+			}
+
+			if((rdbSaveLen(rdb,iter->second.size()) == -1))
+			{
+				return REDIS_ERR;
+			}
+
+			for(auto iterr = iter->second.begin(); iterr != iter->second.end(); iterr++)
+			{
+				 if (rdbSaveValue(rdb,*iterr,0) == -1)
+				 {
+					return REDIS_ERR;
+				 }
+			}
+		}
+	}
+
+	if (rdbSaveType(rdb,REDIS_RDB_SSET) == -1) return REDIS_ERR;
+
+	return REDIS_OK;
+}
+
+int rdbSaveSortSet(xRio *rdb,xRedis * redis)
+{
+	for(auto it = redis->sortSetShards.begin(); it != redis->sortSetShards.end(); it++)
+	{
+		auto &map = (*it).set;
+		MutexLock & mu = (*it).mutex;
+		MutexLockGuard lock(mu);
+		for(auto iter = map.begin(); iter != map.end(); iter++)
+		{
+			if (rdbSaveKey(rdb,iter->first,0) == -1)
+			{
+				return REDIS_ERR;
+			}
+
+			if((rdbSaveLen(rdb,iter->second.size()) == -1))
+			{
+				return REDIS_ERR;
+			}
+
+			for(auto iterr = iter->second.begin(); iterr != iter->second.end(); iterr++)
+			{
+				 if (rdbSaveKeyValuePair(rdb,iterr->first,iterr->second,0) == -1)
+				 {
+					return REDIS_ERR;
+				 }
+			}
+		}
+
+	}
+
+	if (rdbSaveType(rdb,REDIS_RDB_SORT_SET) == -1) return REDIS_ERR;
+
+	return REDIS_OK;
+}
 
 
 int rdbSaveSet(xRio *rdb,xRedis * redis)
 {
-	for(auto it = redis->setShards.begin(); it != redis->setShards.end(); it++)
+	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); it++)
 	{
 		auto &map = (*it).setMap;
 		MutexLock & mu = (*it).mutex;
@@ -441,9 +424,10 @@ int rdbSaveSet(xRio *rdb,xRedis * redis)
 
 	return REDIS_OK;
 }
+
 int rdbSaveHset(xRio *rdb,xRedis * redis)
 {
-	for(auto it = redis->hsetShards.begin(); it != redis->hsetShards.end(); it++)
+	for(auto it = redis->hsetMapShards.begin(); it != redis->hsetMapShards.end(); it++)
 	{
 		auto &map = (*it).hsetMap;
 		MutexLock & mu = (*it).mutex;
@@ -507,8 +491,8 @@ int rdbLoadSet(xRio *rdb,xRedis * redis)
 
 		key->calHash();
 		size_t hash = key->hash;
-		MutexLock &mu = redis->setShards[hash% redis->kShards].mutex;
-		auto & setMap = redis->setShards[hash % redis->kShards].setMap;
+		MutexLock &mu = redis->setMapShards[hash% redis->kShards].mutex;
+		auto & setMap = redis->setMapShards[hash % redis->kShards].setMap;
 		{
 			MutexLockGuard lock(mu);
 			auto it = setMap.find(key);
@@ -570,9 +554,8 @@ int rdbLoadHset(xRio *rdb,xRedis * redis)
 
 		key->calHash();
 		size_t hash = key->hash;
-		MutexLock &mu = redis->hsetShards[hash% redis->kShards].mutex;
-		auto & hsetMap = redis->hsetShards[hash % redis->kShards].hsetMap;
-		MutexLockGuard lk(mu);
+		MutexLock &mu = redis->hsetMapShards[hash% redis->kShards].mutex;
+		auto & hsetMap = redis->hsetMapShards[hash % redis->kShards].hsetMap;
 		MutexLockGuard lock(mu);
 		auto it = hsetMap.find(key);
 		if(it == hsetMap.end())
@@ -597,6 +580,164 @@ int rdbLoadHset(xRio *rdb,xRedis * redis)
 	return REDIS_OK;
 }
 
+
+int rdbLoadSSet(xRio * rdb,xRedis * redis)
+{
+	int type,rdbver;
+	int len;
+
+	while(1)
+	{
+		rObj *key,*val;
+
+		std::unordered_set<rObj*,Hash,Equal> umap;
+		if ((type = rdbLoadType(rdb)) == -1)
+		{
+			return  REDIS_ERR;
+		}
+
+		if (type == REDIS_RDB_SSET)
+		{
+			return REDIS_OK;
+		}
+
+		if ((key = rdbLoadStringObject(rdb)) == nullptr)
+			return	REDIS_ERR;
+
+		if ((len = rdbLoadLen(rdb,nullptr)) == -1)
+			return	REDIS_ERR;
+
+		for(int i = 0 ; i < len; i ++)
+		{
+			if ((rdbver = rdbLoadType(rdb)) == -1)
+				return	REDIS_ERR;
+
+			if(rdbver != REDIS_RDB_TYPE_STRING)
+				return REDIS_ERR;
+
+			if ((val = rdbLoadObject(rdbver,rdb)) == nullptr)
+				return	REDIS_ERR;
+
+			val->calHash();
+			umap.insert(val);
+
+		}
+
+		key->calHash();
+		size_t hash = key->hash;
+		MutexLock &mu = redis->setShards[hash% redis->kShards].mutex;
+		auto & set = redis->setShards[hash % redis->kShards].set;
+		MutexLockGuard lock(mu);
+		auto it = set.find(key);
+		if(it == set.end())
+		{
+			set.insert(std::make_pair(key,std::move(umap)));
+		}
+		else
+		{
+
+			for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+			{
+				zfree(*iter);
+			}
+
+			set.erase(it);
+			zfree(it->first);
+			set.insert(std::make_pair(key,std::move(umap)));
+		}
+
+
+	}
+
+}
+
+
+int rdbLoadSortSet(xRio * rdb,xRedis * redis)
+{
+	int type,rdbver;
+	int len;
+	while(1)
+	{
+		rObj *key,*kkey,*val;
+		std::unordered_map<rObj*,rObj*,Hash,Equal> umap;
+		std::set<rSObj> smap;
+		if ((type = rdbLoadType(rdb)) == -1)
+			return	REDIS_ERR;
+
+		if (type == REDIS_RDB_SORT_SET)
+			return REDIS_OK;
+
+		if ((key = rdbLoadStringObject(rdb)) == nullptr)
+			return	REDIS_ERR;
+
+		if ((len = rdbLoadLen(rdb,nullptr)) == -1)
+			return	REDIS_ERR;
+
+		key->calHash();
+		size_t hash = key->hash;
+		MutexLock &mu = redis->sortSetShards[hash% redis->kShards].mutex;
+		auto & set = redis->sortSetShards[hash % redis->kShards].set;
+		auto &sset =  redis->sortSetShards[hash % redis->kShards].sset;
+		{
+			MutexLockGuard lock(mu);
+			for(int i = 0 ; i < len; i ++)
+			{
+				if ((rdbver = rdbLoadType(rdb)) == -1)
+					return	REDIS_ERR;
+
+				if(rdbver != REDIS_RDB_TYPE_STRING)
+					return REDIS_ERR;
+
+				if ((kkey = rdbLoadStringObject(rdb)) == nullptr)
+					return	REDIS_ERR;
+
+				if ((val = rdbLoadObject(rdbver,rdb)) == nullptr)
+					return	REDIS_ERR;
+
+				kkey->calHash();
+				umap.insert(std::make_pair(kkey,val));
+
+				rSObj obj;
+				obj.key = val;
+				obj.value = kkey;
+				auto it = sset.find(obj);
+				if(it == sset.end())
+				{
+					sset.insert(std::move(obj));
+				}
+				else
+				{
+					zfree((*it).key);
+					zfree((*it).value);
+					sset.erase(it);
+					sset.insert(std::move(obj));
+				}
+			}
+
+			auto it = set.find(key);
+			if(it == set.end())
+			{
+				set.insert(std::make_pair(key,std::move(umap)));
+			}
+			else
+			{
+
+				for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+				{
+					zfree(iter->first);
+					zfree(iter->second);
+				}
+
+				set.erase(it);
+				zfree(it->first);
+				set.insert(std::make_pair(key,std::move(umap)));
+
+			}
+		}
+
+	}
+	return REDIS_OK;
+}
 rObj  * rdbLoad(char *filename,size_t &len)
 {
 	xRio rdb;
@@ -706,6 +847,16 @@ int rdbLoad(char *filename,xRedis * redis)
 		return REDIS_ERR;
 	}
 	
+	if(rdbLoadSSet(&rdb,redis) != REDIS_OK)
+	{
+		return REDIS_ERR;
+	}
+
+	if(rdbLoadSortSet(&rdb,redis) != REDIS_OK)
+	{
+		return REDIS_ERR;
+	}
+
 
 	uint64_t cksum,expected = rdb.cksum;
 	if(rioRead(&rdb,&cksum,8) == 0)
@@ -961,6 +1112,9 @@ int rdbSaveRio(xRio *rdb,int *error,xRedis * redis)
 
 	rdbSaveSet(rdb,redis);
 	rdbSaveHset(rdb,redis);
+	rdbSaveSSet(rdb,redis);
+	rdbSaveSortSet(rdb,redis);
+
 	cksum = rdb->cksum;
 	if(rioWrite(rdb,&cksum,8) == 0)
 	{
