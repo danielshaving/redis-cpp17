@@ -267,7 +267,9 @@ rObj *rdbLoadEncodedStringObject(xRio *rdb)
 }
 
 
-rObj *rdbLoadLzfStringObject(xRio *rdb) {
+rObj *rdbLoadLzfStringObject(xRio *rdb)
+{
+	rObj * obj = nullptr;
     unsigned int len, clen;
     unsigned char *c = NULL;
     sds val = NULL;
@@ -278,9 +280,11 @@ rObj *rdbLoadLzfStringObject(xRio *rdb) {
     if ((val = sdsnewlen(NULL,len)) == NULL) goto err;
     if (rioRead(rdb,c,clen) == 0) goto err;
     if (lzf_decompress(c,clen,val,len) == 0) goto err;
+
+    obj =  createStringObject(val,len);
+    sdsfree(val);
     zfree(c);
-    zfree(val);
-    return createStringObject(val,len);
+    return obj;
 err:
     zfree(c);
     sdsfree(val);
