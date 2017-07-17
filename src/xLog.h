@@ -1,7 +1,7 @@
 #pragma once
 #include "all.h"
 const int kSmallBuffer = 4000;
-const int kLargeBuffer = 4000*1000;
+const int kLargeBuffer = 4000*10;
 
 template<int SIZE>
 class xFixedBuffer:noncopyable

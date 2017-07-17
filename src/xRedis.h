@@ -66,6 +66,10 @@ public:
 	bool zrevrangeCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool keysCommond(const std::deque <rObj*> & obj,xSession * session);
 
+
+	void clearCommond();
+	size_t getDbsize();
+
 public:
 	std::unordered_map<rObj*,int,Hash,EEqual>  unorderedmapCommonds;
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commondFunction;

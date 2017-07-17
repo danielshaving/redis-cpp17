@@ -64,8 +64,8 @@
 #define REDIS_REQ_INLINE 1
 #define REDIS_REQ_MULTIBULK 2
 /* Error codes */
-#define REDIS_OK                0
-#define REDIS_ERR               -1
+#define REDIS_OK                1
+#define REDIS_ERR               0
 #define REDIS_INLINE_MAX_SIZE   (4096*64 *10 * 10) /* Max size of inline reads */
 #define REDIS_LRU_BITS 24
 #define REDIS_MBULK_BIG_ARG     (4096*11 * 10 * 10)
