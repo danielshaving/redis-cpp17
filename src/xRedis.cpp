@@ -1828,7 +1828,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 		
 		if (expire) 
 		{
-			xTimer * timer = loop.runAfter(milliseconds / 1000,reinterpret_cast<void *>(obj[0]),true,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
+			xTimer * timer = loop.runAfter(milliseconds / 1000,reinterpret_cast<void *>(obj[0]),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
 			expireTimers.insert(std::make_pair(obj[0],timer));
 		}
 	}
