@@ -117,6 +117,19 @@ int xSession::processCommand()
 //	}
 
 	assert(robjs.size());
+	auto iter = redis->handlerCommondMap.find(robjs[0]);
+	if(iter == redis->handlerCommondMap.end() )
+	{
+		clearObj();
+		addReplyErrorFormat(sendBuf,"command unknown eror");
+		return REDIS_ERR;
+	}
+
+
+	rObj * obj = robjs[0];
+	robjs.pop_front();
+
+
 	if(redis->authEnabled)
 	{
 		if(!authEnabled)
@@ -130,85 +143,76 @@ int xSession::processCommand()
 		}
 	}
 
+	if(redis->repliEnabled)
 	{
-		MutexLockGuard mu(redis->slaveMutex);
-		auto it = redis->tcpconnMaps.find(conn->getSockfd());
-		if(it !=  redis->tcpconnMaps.end())
+		bool flag = checkCommond(obj,robjs.size());
+		if(!flag)
 		{
-			if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
+			MutexLockGuard mu(redis->slaveMutex);
+			auto it = redis->tcpconnMaps.find(conn->getSockfd());
+			if(it !=  redis->tcpconnMaps.end())
 			{
-				LOG_INFO<<"slaveof sync success";
-				if(redis->slaveCached.readableBytes() > 0)
+				if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
 				{
-					conn->send(&redis->slaveCached);
-					redis->slaveCached.retrieveAll();
+					LOG_INFO<<"slaveof sync success";
+					if(redis->slaveCached.readableBytes() > 0)
+					{
+						conn->send(&redis->slaveCached);
+						redis->slaveCached.retrieveAll();
 
-					redis->tcpconnMaps.erase(conn->getSockfd());
+						redis->tcpconnMaps.erase(conn->getSockfd());
+					}
+
+					auto iter = redis->repliTimers.find(conn->getSockfd());
+					if(iter == redis->repliTimers.end())
+					{
+						assert(false);
+					}
+
+					if(iter->second)
+					{
+						conn->getLoop()->cancelAfter(iter->second);
+					}
+
+					redis->repliTimers.erase(conn->getSockfd());
+
+					if(redis->tcpconnMaps.size() == 0)
+					{
+						xBuffer buffer;
+						buffer.swap(redis->slaveCached);
+						LOG_INFO<<"swap buffer";
+						redis->repliEnabled = false;
+					}
+
+					clearObj();
+					return REDIS_OK;
 				}
-
-				auto iter = redis->repliTimers.find(conn->getSockfd());
-				if(iter == redis->repliTimers.end())
+				else
 				{
-					assert(false);
+					replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
 				}
+			}
 
-				if(iter->second)
-				{
-					conn->getLoop()->cancelAfter(iter->second);
-				}
+			mu.unlock();
 
-				redis->repliTimers.erase(conn->getSockfd());
+			if(  (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
+			{
 
-				if(redis->tcpconnMaps.size() == 0)
-				{
-					xBuffer buffer;
-					buffer.swap(redis->slaveCached);
-					LOG_INFO<<"swap buffer";
-				}
-
-				clearObj();
-				return REDIS_OK;
 			}
 			else
 			{
-				replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
+				if(redis->slaveEnabled)
+				{
+					clearObj();
+					addReplyErrorFormat(sendBuf,"slaveof mode commond unknown ");
+					return REDIS_ERR;
+				}
 			}
+
 		}
+
 	}
 
-	auto iter = redis->handlerCommondMap.find(robjs[0]);
-	if(iter == redis->handlerCommondMap.end() )
-	{
-		clearObj();
-		addReplyErrorFormat(sendBuf,"command unknown eror");
-		return REDIS_ERR;
-	}
-
-	rObj * obj = robjs[0];
-	robjs.pop_front();
-	bool flag = checkCommond(obj,robjs.size());
-	if(!flag)
-	{
-		for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
-		{
-			replicationFeedSlaves(sendSlaveBuf,obj,robjs);
-		}
-
-		if(  (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
-		{
-
-		}
-		else
-		{
-			if(redis->slaveEnabled)
-			{
-				clearObj();
-				addReplyErrorFormat(sendBuf,"slaveof mode commond unknown ");
-				return REDIS_ERR;
-			}
-		}
-	}
-	
 
 	zfree(obj);
 	if(!iter->second(robjs,this))

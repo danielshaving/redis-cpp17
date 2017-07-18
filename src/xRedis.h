@@ -132,7 +132,7 @@ public:
 	int32_t port;
 	int32_t threadCount;
 	std::string masterHost;
-	int32_t masterPort ;
+	int32_t  masterPort ;
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  authEnabled;

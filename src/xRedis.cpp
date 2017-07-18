@@ -10,6 +10,7 @@ masterPort(0),
 clusterEnabled(enbaledCluster),
 slaveEnabled(false),
 authEnabled(false),
+repliEnabled(false),
 salveCount(0),
 threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
 {
@@ -1011,6 +1012,8 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 			return false;
 		}
 
+		repliEnabled = true;
+
 		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,reinterpret_cast<void *>(session->conn->getSockfd()),
 				true,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
@@ -1047,6 +1050,8 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 			}
 			repliTimers.erase(session->conn->getSockfd());
 			tcpconnMaps.erase(session->conn->getSockfd());
+			repliEnabled = false;
+			slaveCached.retrieveAll();
 		}
 	    LOG_WARN<<"Fatal error loading the DB:  Exiting."<<strerror(errno);
 	}
