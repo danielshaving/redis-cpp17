@@ -104,6 +104,7 @@ void destorySharedObjects();
 rObj *createStringObjectFromLongLong(long long value);
 int getLongLongFromObject(rObj *o, long long   *target);
 int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg);
+int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg) ;
 
 
 void addReplyBulkSds(xBuffer &sendBuf, sds s);
@@ -122,6 +123,7 @@ void addReplySds(xBuffer &sendBuf,sds s);
 
 long long ustime(void);
 long long mstime(void);
+long long setime(void) ;
 
 #define memrev16ifbe(p) memrev16(p)
 #define memrev32ifbe(p) memrev32(p)

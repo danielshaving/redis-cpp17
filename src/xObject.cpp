@@ -121,6 +121,23 @@ int getLongLongFromObject(rObj *o, long long   *target) {
 }
 
 
+
+int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg) 
+{
+    long long value;
+    if (getLongLongFromObject(o, &value) != REDIS_OK) {
+        if (msg != NULL) {
+            addReplyError(sendBuf,(char*)msg);
+        } else {
+            addReplyError(sendBuf,"value is not an integer or out of range");
+        }
+        return REDIS_ERR;
+    }
+    *target = value;
+    return REDIS_OK;
+}
+
+
 int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg)
 {
 	long  long value;
@@ -345,7 +362,6 @@ rObj * createEmbeddedStringObject(const char *ptr, size_t len)
     o->encoding = REDIS_ENCODING_EMBSTR;
     o->ptr = (const char*)(sh+1);
     o->hash = 0;
-    //o->lru = LRU_CLOCK();
     sh->len = len;
     sh->free = 0;
     if (ptr)
@@ -525,6 +541,14 @@ long long ustime(void)
 long long mstime(void) {
     return ustime()/1000;
 }
+
+
+/* Return the UNIX time in seconds */
+long long setime(void) 
+{
+    return ustime()/1000/1000;
+}
+
 
 
 /* Toggle the 16 bit unsigned integer pointed by *p from little endian to

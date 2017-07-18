@@ -109,12 +109,12 @@ bool xSession::checkCommond(rObj*  robjs,int size)
 
 int xSession::processCommand()
 {
-	std::string str = "HSET";
-	std::string str1 = robjs[0]->ptr;
-	if(str != str1)
-	{
-		LOG_INFO<<robjs[0]->ptr;
-	}
+//	std::string str = "HSET";
+//	std::string str1 = robjs[0]->ptr;
+//	if(str != str1)
+//	{
+//		LOG_INFO<<robjs[0]->ptr;
+//	}
 
 	assert(robjs.size());
 	if(redis->authEnabled)

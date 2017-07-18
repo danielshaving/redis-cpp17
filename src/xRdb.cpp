@@ -1039,8 +1039,33 @@ int rdbSaveObjectType(xRio *rdb, rObj *o)
 		{
 			return rdbSaveType(rdb,REDIS_RDB_TYPE_STRING);
 		}
+		case REDIS_LIST:
+		{
+			return rdbSaveType(rdb,REDIS_RDB_TYPE_LIST);
+		}
+		
+		case REDIS_SET:
+		{
+			return rdbSaveType(rdb,REDIS_RDB_TYPE_SET);
+		}
+		
+		case REDIS_ZSET:
+		{
+			return rdbSaveType(rdb,REDIS_RDB_TYPE_ZSET);
+		}
+		
+		case REDIS_HASH:
+		{
+			return rdbSaveType(rdb,REDIS_RDB_TYPE_HASH);
+		}
+		default:
+        	{
+			LOG_WARN<<"Unknown object type";
+		}
+		
 	}
-	return 1;
+	
+	return  -1;
 }	
 
 
@@ -1048,7 +1073,7 @@ int rdbSaveObject(xRio *rdb, rObj *o)
 {
 	int n, nwritten = 0;
 
-	if (o->type == REDIS_STRING)
+	if (o->type == OBJ_STRING)
 	{
 		if ((n = rdbSaveStringObject(rdb,o)) == -1)
 		{
@@ -1056,6 +1081,10 @@ int rdbSaveObject(xRio *rdb, rObj *o)
 		}
 		nwritten += n;
     } 
+    else if (o->type == OBJ_LIST)
+    {
+    	
+    }
     
     return nwritten;
 }

@@ -133,7 +133,6 @@ private:
 
 	typedef xFixedBuffer<kLargeBuffer> Buffer;
 	typedef std::vector<std::unique_ptr<Buffer>> BufferVector;
-	//typedef BufferVector::auto_type BufferPtr;
 	typedef std::unique_ptr<Buffer> BufferPtr;
 	std::string baseName;
 	const int flushInterval;

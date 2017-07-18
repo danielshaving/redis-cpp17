@@ -22,6 +22,8 @@ public:
 	void handleTimeOut(void * data);
 	void handleRepliCacheTimeOut();
 	void handleSalveRepliTimeOut(void * data);
+	void handleSetExpire(void * data);
+	
 	void run();
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 	bool deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf,void  *data);
@@ -67,6 +69,7 @@ public:
 	bool keysCommond(const std::deque <rObj*> & obj,xSession * session);
 
 
+	int removeCommond(rObj * obj);
 	void clearCommond();
 	size_t getDbsize();
 
@@ -124,6 +127,7 @@ public:
 	xTcpServer server;
 	mutable MutexLock mutex;
 	mutable MutexLock slaveMutex;
+	mutable MutexLock expireMutex;
 	std::string host;
 	int32_t port;
 	int32_t threadCount;
@@ -140,6 +144,7 @@ public:
 	std::shared_ptr<std::thread > threads;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
 	std::map<int32_t,xTimer*> repliTimers;
+	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
 	xSocket socket;
 	std::string password;
 	int32_t count = 0;

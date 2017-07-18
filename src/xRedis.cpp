@@ -40,9 +40,9 @@ threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
 	obj = createStringObject("command",7);
 	handlerCommondMap[obj] =std::bind(&xRedis::commandCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("config",6);
-    handlerCommondMap[obj] = std::bind(&xRedis::configCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommondMap[obj] = std::bind(&xRedis::configCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("auth",4);
-    handlerCommondMap[obj] = std::bind(&xRedis::authCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommondMap[obj] = std::bind(&xRedis::authCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("info",4);
 	handlerCommondMap[obj] = std::bind(&xRedis::infoCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("echo",4);
@@ -52,13 +52,13 @@ threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
 	obj = createStringObject("subscribe",9);
 	handlerCommondMap[obj] = std::bind(&xRedis::subscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("hkeys",5);
-    handlerCommondMap[obj] = std::bind(&xRedis::hkeysCommond, this, std::placeholders::_1, std::placeholders::_2);
-    obj = createStringObject("select",6);
-    handlerCommondMap[obj] = std::bind(&xRedis::selectCommond, this, std::placeholders::_1, std::placeholders::_2);
-    obj = createStringObject("sadd",4);
-    handlerCommondMap[obj] = std::bind(&xRedis::saddCommond, this, std::placeholders::_1, std::placeholders::_2);
-    obj = createStringObject("scard",6);
-    handlerCommondMap[obj] = std::bind(&xRedis::scardCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommondMap[obj] = std::bind(&xRedis::hkeysCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("select",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::selectCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("sadd",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::saddCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("scard",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::scardCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("publish",7);
 	handlerCommondMap[obj] = std::bind(&xRedis::publishCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("del",3);
@@ -109,6 +109,13 @@ void xRedis::handleTimeOut(void * data)
 	loop.quit();
 }
 
+void xRedis::handleSetExpire(void * data)
+{
+	rObj * obj = (rObj*) data;
+	removeCommond(obj);
+}
+
+
 void xRedis::handleSalveRepliTimeOut(void * data)
 {
 	int32_t *sockfd = (int32_t *)data;
@@ -138,7 +145,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		//LOG_INFO<<"Client connect success";
+		LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -176,7 +183,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 				}
 			}
 		}
-		//LOG_INFO<<"Client disconnect";
+		LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -1130,24 +1137,18 @@ bool xRedis::dbsizeCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
+
+int  xRedis::removeCommond(rObj * obj)
 {
-	if(obj.size() > 1)
-	{
-		addReplyErrorFormat(session->sendBuf,"unknown  del error");
-	}
-
-	obj[0]->calHash();
-	size_t hash= obj[0]->hash;
-
+	
 	int count = 0;
 	{
-		MutexLock &mu = setMapShards[hash% kShards].mutex;
-		auto &setMap = setMapShards[hash% kShards].setMap;
+		MutexLock &mu = setMapShards[obj->hash% kShards].mutex;
+		auto &setMap = setMapShards[obj->hash% kShards].setMap;
 		{
 			MutexLockGuard lock(mu);
 
-			auto it = setMap.find(obj[0]);
+			auto it = setMap.find(obj);
 			if(it != setMap.end())
 			{
 				count++;
@@ -1160,11 +1161,11 @@ bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	{
-		MutexLock &mu = hsetMapShards[hash% kShards].mutex;
-		auto &hsetMap = hsetMapShards[hash% kShards].hsetMap;
+		MutexLock &mu = hsetMapShards[obj->hash% kShards].mutex;
+		auto &hsetMap = hsetMapShards[obj->hash% kShards].hsetMap;
 		{
 			MutexLockGuard lock(mu);
-			auto hmap = hsetMap.find(obj[0]);
+			auto hmap = hsetMap.find(obj);
 			if(hmap != hsetMap.end())
 			{
 				count++;
@@ -1183,11 +1184,11 @@ bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	{
-		MutexLock &mu = setShards[hash% kShards].mutex;
-		auto &set = setShards[hash% kShards].set;
+		MutexLock &mu = setShards[obj->hash% kShards].mutex;
+		auto &set = setShards[obj->hash% kShards].set;
 		{
 			MutexLockGuard lock(mu);
-			auto it = set.find(obj[0]);
+			auto it = set.find(obj);
 			if(it != set.end())
 			{
 				count++;
@@ -1205,12 +1206,12 @@ bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 	{
-		MutexLock &mu = sortSetShards[hash% kShards].mutex;
-		auto &set = sortSetShards[hash% kShards].set;
-		auto &sset = sortSetShards[hash% kShards].sset;
+		MutexLock &mu = sortSetShards[obj->hash% kShards].mutex;
+		auto &set = sortSetShards[obj->hash% kShards].set;
+		auto &sset = sortSetShards[obj->hash% kShards].sset;
 		{
 			MutexLockGuard lock(mu);
-			auto it = set.find(obj[0]);
+			auto it = set.find(obj);
 			if(it != set.end())
 			{
 				count ++;
@@ -1233,11 +1234,11 @@ bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 	{
-		MutexLock &mu = pubSubShards[hash% kShards].mutex;
-		auto &pubSub = pubSubShards[hash% kShards].pubSub;
+		MutexLock &mu = pubSubShards[obj->hash% kShards].mutex;
+		auto &pubSub = pubSubShards[obj->hash% kShards].pubSub;
 		{
 			MutexLockGuard lock(mu);
-			auto it = pubSub.find(obj[0]);
+			auto it = pubSub.find(obj);
 			if(it != pubSub.end())
 			{
 				count ++;
@@ -1247,13 +1248,19 @@ bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 	}
 
+	return  count;
+}
 
 
-	for(auto it = obj.begin(); it != obj.end(); it ++)
+bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size() != 1)
 	{
-		zfree(*it);
+		addReplyErrorFormat(session->sendBuf,"unknown  del error");
 	}
 
+	obj[0]->calHash();
+	removeCommond(obj[0]);
 	addReplyLongLong(session->sendBuf,count);
 	return true;
 }
@@ -1711,34 +1718,126 @@ bool xRedis::quitCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	if(obj.size() != 2)
+	if(obj.size() <  2 || obj.size() > 8 )
 	{
 		if(!slaveEnabled)
 		addReplyErrorFormat(session->sendBuf,"unknown  param error");
 		return false;
 	}
 
+    int j;
+    rObj *expire = NULL;
+    int unit = UNIT_SECONDS;	
+    int flags = OBJ_SET_NO_FLAGS;
+
+	for (j = 2; j < obj.size();j++) 
+	{
+		const char *a = obj[j]->ptr;
+		rObj *next = (j == obj.size() - 2) ? NULL : obj[j + 1];
+
+		if ((a[0] == 'n' || a[0] == 'N') &&
+		(a[1] == 'x' || a[1] == 'X') && a[2] == '\0' &&
+		!(flags & OBJ_SET_XX))
+		{
+			flags |= OBJ_SET_NX;
+		}
+		else if ((a[0] == 'x' || a[0] == 'X') &&
+		       (a[1] == 'x' || a[1] == 'X') && a[2] == '\0' &&
+		       !(flags & OBJ_SET_NX))
+		{
+			flags |= OBJ_SET_XX;
+		} 
+		else if ((a[0] == 'e' || a[0] == 'E') &&
+		       (a[1] == 'x' || a[1] == 'X') && a[2] == '\0' &&
+		       !(flags & OBJ_SET_PX) && next)
+		{
+			flags |= OBJ_SET_EX;
+			unit = UNIT_SECONDS;
+			expire = next;
+			j++;
+		} 
+		else if ((a[0] == 'p' || a[0] == 'P') &&
+		       (a[1] == 'x' || a[1] == 'X') && a[2] == '\0' &&
+		       !(flags & OBJ_SET_EX) && next)
+		{
+			flags |= OBJ_SET_PX;
+			unit = UNIT_MILLISECONDS;
+			expire = next;
+			j++;
+		} 
+		else 
+		{
+			addReply(session->sendBuf,shared.syntaxerr);
+			return false;
+		}
+	}
+	
+
+	long long milliseconds = 0; /* initialized to avoid any harmness warning */
+
+	if (expire) 
+	{
+		if (getLongLongFromObjectOrReply(session->sendBuf, expire, &milliseconds, NULL) != REDIS_OK)
+		   return false;
+		if (milliseconds <= 0) 
+		{
+		    addReplyErrorFormat(session->sendBuf,"invalid expire time in");
+		    return false;
+		}
+		if (unit == UNIT_SECONDS) milliseconds *= 1000;
+	}
+    
 	obj[0]->calHash();
 	size_t hash= obj[0]->hash;
 	MutexLock &mu = setMapShards[hash% kShards].mutex;
 	SetMap & setMap = setMapShards[hash % kShards].setMap;
 	{
 		MutexLockGuard lock(mu);
-		auto it = setMap.find(obj[0]);
+		auto it = setMap.find(obj[0]);		
 		if(it == setMap.end())
 		{
+			if(flags & OBJ_SET_XX)
+			{
+				addReply(session->sendBuf,shared.nullbulk);
+				return false;
+			}
 			setMap.insert(std::make_pair(obj[0],obj[1]));
 		}
 		else
 		{
+			if(flags & OBJ_SET_NX)
+			{
+				addReply(session->sendBuf,shared.nullbulk);
+				return false;
+			}
+
+			auto iter = expireTimers.find(obj[0]);
+			if(iter != expireTimers.end())
+			{
+				expireTimers.erase(iter);
+			}
+			
+			loop.cancelAfter(iter->second);
+			
+			setMap.erase(it);
 			zfree(it->second);
 			zfree(it->first);
-			setMap.erase(it);
 			setMap.insert(std::make_pair(obj[0],obj[1]));
+			
+		}
+		
+		if (expire) 
+		{
+			xTimer * timer = loop.runAfter(milliseconds / 1000,reinterpret_cast<void *>(obj[0]),true,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
+			expireTimers.insert(std::make_pair(obj[0],timer));
 		}
 	}
-	
 
+	for(int i = 2; i < obj.size(); i ++)
+	{
+		zfree(obj[i]);
+	}
+	
 	if(!slaveEnabled)
 	addReply(session->sendBuf,shared.ok);
 	return true;
