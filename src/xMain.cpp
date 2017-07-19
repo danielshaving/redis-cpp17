@@ -9,7 +9,7 @@
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char* msg, int len)
 {
-	printf("%s\n",msg);
+	//printf("%s\n",msg);
 	g_asyncLog->append(msg, len);
 }
 

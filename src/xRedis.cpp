@@ -125,6 +125,7 @@ void xRedis::handleSalveRepliTimeOut(void * data)
 		tcpconnMaps.erase(*sockfd);
 		if(tcpconnMaps.size() == 0)
 		{
+			repliEnabled = false;
 			slaveCached.retrieveAll();
 		}
 	}
@@ -146,7 +147,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		LOG_INFO<<"Client connect success";
+		//LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -161,6 +162,10 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			if(it != tcpconnMaps.end())
 			{
 				tcpconnMaps.erase(conn->getSockfd());
+				if(tcpconnMaps.size() == 0)
+				{
+					repliEnabled = false;
+				}
 			}
 		}
 
@@ -184,7 +189,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 				}
 			}
 		}
-		LOG_INFO<<"Client disconnect";
+		//LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -1015,7 +1020,7 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 		repliEnabled = true;
 
 		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,reinterpret_cast<void *>(session->conn->getSockfd()),
-				true,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
+				false,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
 		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
 	}
@@ -1814,15 +1819,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 			{
 				addReply(session->sendBuf,shared.nullbulk);
 				return false;
-			}
-
-			auto iter = expireTimers.find(obj[0]);
-			if(iter != expireTimers.end())
-			{
-				expireTimers.erase(iter);
-			}
-			
-			loop.cancelAfter(iter->second);
+			}			
 			
 			setMap.erase(it);
 			zfree(it->second);
@@ -1833,6 +1830,13 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 		
 		if (expire) 
 		{
+			auto iter = expireTimers.find(obj[0]);
+			if(iter != expireTimers.end())
+			{
+				expireTimers.erase(iter);
+				loop.cancelAfter(iter->second);
+			}
+			
 			xTimer * timer = loop.runAfter(milliseconds / 1000,reinterpret_cast<void *>(obj[0]),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
 			expireTimers.insert(std::make_pair(obj[0],timer));
 		}
