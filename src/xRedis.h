@@ -17,7 +17,7 @@ class xRedis : noncopyable
 {
 public:
 	xRedis() {}
-	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster);
+	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster = false);
 	~xRedis();
 	void handleTimeOut(void * data);
 	void handleRepliCacheTimeOut();
@@ -69,7 +69,7 @@ public:
 	bool keysCommond(const std::deque <rObj*> & obj,xSession * session);
 
 
-	int removeCommond(rObj * obj);
+	int removeCommond(rObj * obj,int &count);
 	void clearCommond();
 	size_t getDbsize();
 
@@ -86,7 +86,7 @@ public:
 	typedef std::unordered_map<rObj*,std::list<xTcpconnectionPtr>,Hash,Equal> PubSub;
 
 	struct SetMapLock
-	{
+	{		
 		SetMap setMap;
 		mutable MutexLock mutex;
 	};

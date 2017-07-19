@@ -113,7 +113,8 @@ void xRedis::handleTimeOut(void * data)
 void xRedis::handleSetExpire(void * data)
 {
 	rObj * obj = (rObj*) data;
-	removeCommond(obj);
+	int count = 0 ;
+	removeCommond(obj,count);
 }
 
 
@@ -147,7 +148,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		//LOG_INFO<<"Client connect success";
+		LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -189,7 +190,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 				}
 			}
 		}
-		//LOG_INFO<<"Client disconnect";
+		LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -226,7 +227,7 @@ bool xRedis::zrevrangeCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size()  < 3  || obj.size() > 4)
 	{
-		addReplyErrorFormat(session->sendBuf,"unknown zrange  error");
+		addReplyErrorFormat(session->sendBuf,"unknown zrevrange  error");
 		return false;
 	}
 
@@ -1148,20 +1149,25 @@ bool xRedis::dbsizeCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 
-int  xRedis::removeCommond(rObj * obj)
+int  xRedis::removeCommond(rObj * obj,int &count)
 {
 	
-	int count = 0;
 	{
 		MutexLock &mu = setMapShards[obj->hash% kShards].mutex;
 		auto &setMap = setMapShards[obj->hash% kShards].setMap;
 		{
 			MutexLockGuard lock(mu);
-
 			auto it = setMap.find(obj);
 			if(it != setMap.end())
 			{
-				count++;
+				auto iter = expireTimers.find(obj);
+				if(iter != expireTimers.end())
+				{
+					expireTimers.erase(iter);
+					loop.cancelAfter(iter->second);
+				}
+
+				count ++;
 				setMap.erase(it);
 				zfree(it->first);
 				zfree(it->second);
@@ -1178,7 +1184,7 @@ int  xRedis::removeCommond(rObj * obj)
 			auto hmap = hsetMap.find(obj);
 			if(hmap != hsetMap.end())
 			{
-				count++;
+				count ++;
 				for(auto iter = hmap->second.begin(); iter != hmap->second.end(); iter++)
 				{
 					zfree(iter->first);
@@ -1201,7 +1207,7 @@ int  xRedis::removeCommond(rObj * obj)
 			auto it = set.find(obj);
 			if(it != set.end())
 			{
-				count++;
+				count ++;
 				for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
 				{
 					zfree(*iter);
@@ -1224,7 +1230,7 @@ int  xRedis::removeCommond(rObj * obj)
 			auto it = set.find(obj);
 			if(it != set.end())
 			{
-				count ++;
+				count  ++;
 				for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
 				{
 					rSObj sobj;
@@ -1251,7 +1257,7 @@ int  xRedis::removeCommond(rObj * obj)
 			auto it = pubSub.find(obj);
 			if(it != pubSub.end())
 			{
-				count ++;
+				count  ++;
 				pubSub.erase(it);
 				zfree(it->first);
 			}
@@ -1269,9 +1275,16 @@ bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
 		addReplyErrorFormat(session->sendBuf,"unknown  del error");
 	}
 
-	obj[0]->calHash();
-	removeCommond(obj[0]);
+	int count = 0;
+	for(int i = 0 ; i < obj.size(); i ++)
+	{
+		obj[i]->calHash();		
+		removeCommond(obj[i],count);
+		zfree(obj[i]);
+	}
+
 	addReplyLongLong(session->sendBuf,count);
+	
 	return true;
 }
 
@@ -1611,6 +1624,14 @@ void xRedis::clearCommond()
 			MutexLockGuard lock(mu);
 			for(auto iter = map.begin(); iter !=map.end(); iter++)
 			{
+
+				auto iterr = expireTimers.find(iter->first);
+				if(iterr != expireTimers.end())
+				{
+					expireTimers.erase(iterr);
+					loop.cancelAfter(iterr->second);
+				}
+			
 				zfree(iter->first);
 				zfree(iter->second);
 			}
@@ -1728,6 +1749,7 @@ bool xRedis::quitCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 {
+	count++;
 	if(obj.size() <  2 || obj.size() > 8 )
 	{
 		if(!slaveEnabled)
@@ -1799,8 +1821,9 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
     
 	obj[0]->calHash();
 	size_t hash= obj[0]->hash;
-	MutexLock &mu = setMapShards[hash% kShards].mutex;
-	SetMap & setMap = setMapShards[hash % kShards].setMap;
+	int index = hash  % kShards;
+	MutexLock &mu = setMapShards[index].mutex;
+	SetMap & setMap = setMapShards[index].setMap;
 	{
 		MutexLockGuard lock(mu);
 		auto it = setMap.find(obj[0]);		
@@ -1809,6 +1832,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 			if(flags & OBJ_SET_XX)
 			{
 				addReply(session->sendBuf,shared.nullbulk);
+			
 				return false;
 			}
 			setMap.insert(std::make_pair(obj[0],obj[1]));
@@ -1818,14 +1842,13 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 			if(flags & OBJ_SET_NX)
 			{
 				addReply(session->sendBuf,shared.nullbulk);
+
 				return false;
-			}			
+			}
 			
-			setMap.erase(it);
 			zfree(it->second);
-			zfree(it->first);
-			setMap.insert(std::make_pair(obj[0],obj[1]));
-			
+			it->second = obj[1];
+			zfree(obj[0]);
 		}
 		
 		if (expire) 
@@ -1862,8 +1885,9 @@ bool xRedis::getCommond(const std::deque <rObj*> & obj,xSession * session)
 	
 	obj[0]->calHash();
 	size_t hash = obj[0]->hash;
-	MutexLock &mu = setMapShards[hash  % kShards].mutex;
-	SetMap & setMap = setMapShards[hash  % kShards].setMap;
+	int index = hash  % kShards;
+	MutexLock &mu = setMapShards[index].mutex;
+	SetMap & setMap = setMapShards[index].setMap;
 	{
 		MutexLockGuard lock(mu);
 		auto it = setMap.find(obj[0]);

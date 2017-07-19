@@ -4,12 +4,12 @@
 #include "xCurrentThread.h"
 #include "xLog.h"
 #include <stdio.h>
-//#include <gperftools/profiler.h>
+#include <gperftools/profiler.h>
 
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char* msg, int len)
 {
-	//printf("%s\n",msg);
+	printf("%s\n",msg);
 	g_asyncLog->append(msg, len);
 }
 
@@ -34,9 +34,9 @@ char *ascii_logo =
 
 int main(int argc, char* argv[])
 {
-	if (argc < 5)
+	if (argc < 4)
 	{
-		fprintf(stderr, "Usage: server <address> <port> <threads> <enabled cluster 1 true 0 false>\n");
+		fprintf(stderr, "Usage: server <address> <port> <threads>\n");
 	}
 	else
 	{
@@ -45,13 +45,12 @@ int main(int argc, char* argv[])
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int32_t threadCount =  atoi(argv[3]);
-		bool 	enbaledCluster = argv[4];
 		xLogger::setOutput(asyncOutput);
 
 		xAsyncLogging log("libredis", 2000);
 		log.start();
 		g_asyncLog = &log;
-		xRedis redis(ip,port,threadCount,enbaledCluster);
+		xRedis redis(ip,port,threadCount);
 		redis.run();
 		//ProfilerStop();
 

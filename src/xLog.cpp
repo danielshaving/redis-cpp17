@@ -479,7 +479,7 @@ void xLogger::xImpl::formatTime()
 
 void xLogger::xImpl::finish()
 {
-	stream << "  " << T(baseName.data,baseName.size)<< ':' << line;
+	stream << "  " << T(baseName.data,baseName.size)<< ':' << line <<"\r\n";
 }
 
 xLogger::xLogger(xSourceFile file, int line)

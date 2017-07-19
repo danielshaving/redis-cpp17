@@ -77,12 +77,15 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 		sendPubSub.retrieveAll();
 	}
 
-	MutexLockGuard mu(redis->slaveMutex);
-	for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
+	if(redis->repliEnabled)
 	{
-		if(sendSlaveBuf.readableBytes() > 0 )
+		MutexLockGuard mu(redis->slaveMutex);
+		for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
 		{
-			it->second->send(&sendSlaveBuf);
+			if(sendSlaveBuf.readableBytes() > 0 )
+			{
+				it->second->send(&sendSlaveBuf);
+			}
 		}
 	}
 
@@ -109,12 +112,13 @@ bool xSession::checkCommond(rObj*  robjs,int size)
 
 int xSession::processCommand()
 {
-//	std::string str = "HSET";
-//	std::string str1 = robjs[0]->ptr;
-//	if(str != str1)
-//	{
-//		LOG_INFO<<robjs[0]->ptr;
-//	}
+	std::string str = "HSET";
+	std::string str1 = robjs[0]->ptr;
+	if(str != str1)
+	{
+		LOG_INFO<<robjs[0]->ptr;
+	}
+	
 
 	assert(robjs.size());
 	auto iter = redis->handlerCommondMap.find(robjs[0]);
