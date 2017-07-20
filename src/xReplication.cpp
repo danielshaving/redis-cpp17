@@ -137,6 +137,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		redis->masterHost = conn->host;
 		redis->masterPort = conn->port ;
 		redis->slaveEnabled =  true;
+		redis->repliEnabled = true;
 		isreconnect = true;
 		LOG_INFO<<"Connect master success";
 		syncWithMaster(conn);
@@ -146,6 +147,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		redis->masterHost.clear();
 		redis->masterPort = 0;
 		redis->slaveEnabled =  false;
+		redis->repliEnabled = false;
 		MutexLockGuard mu(redis->mutex);
 		redis->sessions.erase(conn->getSockfd());
 		LOG_INFO<<"Connect  master disconnect";
@@ -168,6 +170,9 @@ void xReplication::connErrorCallBack()
 	if(connectCount >= maxConnectCount)
 	{
 		LOG_WARN<<"Reconnect failure";
+		ip.clear();
+		port = 0;
+		isreconnect = true;
 		return ;
 	}
 	
@@ -188,7 +193,7 @@ void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*>
 	int len, j;
 	char buf[32];
 	buf[0] = '*';
-	len = 1 + ll2string(buf+1,sizeof(buf)-1,robjs.size());
+	len =1 +  ll2string(buf+1,sizeof(buf)-1,robjs.size());
 	buf[len++] = '\r';
 	buf[len++] = '\n';
 	sendBuf.append(buf,len);
@@ -201,7 +206,7 @@ void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*>
 	sendBuf.append(commond->ptr,sdsllen(commond->ptr));
 	sendBuf.append("\r\n",2);
 	
-	for(int i = 1;   i < robjs.size() ; i ++)
+	for(int i = 1;  i < robjs.size() ; i ++)
 	{
 		buf[0] = '$';
 		len = 1 + ll2string(buf+1,sizeof(buf)-1,sdsllen(robjs[i]->ptr));

@@ -85,10 +85,18 @@ threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
 
 
 	obj = createStringObject("set",3);
-	unorderedmapCommonds[obj] = 2;
+	unorderedmapCommonds.insert(obj);
 	obj = createStringObject("hset",4);
-	unorderedmapCommonds[obj] = 3;
-
+	unorderedmapCommonds.insert(obj);
+	obj = createStringObject("zadd",4);
+	unorderedmapCommonds.insert(obj);
+	obj = createStringObject("sadd",4);
+	unorderedmapCommonds.insert(obj);
+	obj = createStringObject("del",3);
+	unorderedmapCommonds.insert(obj);
+	obj = createStringObject("flushdb",7);
+	unorderedmapCommonds.insert(obj);
+	
 	password.clear();
 	createSharedObjects();
 	loadDataFromDisk();
@@ -1002,7 +1010,7 @@ bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
 	{
 		long   port;
 		if ((getLongFromObjectOrReply(session->sendBuf, obj[1], &port, nullptr) != REDIS_OK))
-		return false;
+			return false;
 
 		if (host.c_str() && !memcmp(host.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
 		&& this->port == port)
@@ -1012,19 +1020,13 @@ bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
 			return false;
 		}
 
-		if (masterHost.c_str() && !memcmp(masterHost.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
-		&& masterPort == port)
+		if (masterPort > 0)
 		{
 			LOG_WARN<<"SLAVE OF would result into synchronization with the master we are already connected with. No operation performed.";
 			addReplySds(session->sendBuf,sdsnew("+OK Already connected to specified master\r\n"));
 			return false;
 		}
-
-		if(masterPort)
-		{
-			repli.client->disconnect();
-			repli.isreconnect = false;
-		}
+		
 
 		repli.replicationSetMaster(this,obj[0],port);
 		LOG_INFO<<"SLAVE OF "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
@@ -1093,8 +1095,11 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 			
 			repliTimers.erase(session->conn->getSockfd());
 			tcpconnMaps.erase(session->conn->getSockfd());
-			repliEnabled = false;
-			slaveCached.retrieveAll();
+			if(tcpconnMaps.size() == 0)
+			{
+				repliEnabled = false;
+				slaveCached.retrieveAll();	
+			}
 			session->conn->forceClose();
 			LOG_INFO<<"master sync send failure";
 		}

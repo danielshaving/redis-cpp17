@@ -87,21 +87,17 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 				it->second->send(&sendSlaveBuf);
 			}
 		}
+		sendSlaveBuf.retrieveAll();
 	}
 
 
 }
 
 
-bool xSession::checkCommond(rObj*  robjs,int size)
+bool xSession::checkCommond(rObj*  robjs)
 {
 	auto it = redis->unorderedmapCommonds.find(robjs);
 	if(it == redis->unorderedmapCommonds.end())
-	{
-		return true;
-	}
-
-	if(it->second !=  size)
 	{
 		return true;
 	}
@@ -169,25 +165,32 @@ int xSession::processCommand()
 					clearObj();
 					return REDIS_OK;
 				}
-				else
-				{
-					replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
-				}
 			}
+			
 		}
 
-
-		if(  (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
+		if( (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
 		{
-
+			
 		}
 		else
 		{
-			if(redis->slaveEnabled)
+			if( redis->masterPort == 0 )
 			{
-				clearObj();
-				addReplyErrorFormat(sendBuf,"slaveof mode commond unknown ");
-				return REDIS_ERR;
+				replicationFeedSlaves(sendSlaveBuf,robjs[0],robjs);
+			}
+			else
+			{
+				if(!checkCommond(robjs[0]))
+				{
+					if(redis->slaveEnabled)
+					{
+						clearObj();
+						addReplyErrorFormat(sendBuf,"slaveof mode commond unknown ");
+						return REDIS_ERR;
+					}	
+				}
+				
 			}
 		}
 

@@ -74,7 +74,7 @@ public:
 	size_t getDbsize();
 
 public:
-	std::unordered_map<rObj*,int,Hash,EEqual>  unorderedmapCommonds;
+	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommonds;
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commondFunction;
 	std::unordered_map<rObj*,commondFunction,Hash,EEqual> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
@@ -132,7 +132,7 @@ public:
 	int32_t port;
 	int32_t threadCount;
 	std::string masterHost;
-	int32_t  masterPort ;
+	std::atomic<int>    masterPort ;
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  authEnabled;

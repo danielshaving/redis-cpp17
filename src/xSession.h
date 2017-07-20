@@ -18,7 +18,7 @@ public:
 	 int processMultibulkBuffer(xBuffer *recvBuf);
 	 int processInlineBuffer(xBuffer *recvBuf);
 	 int processCommand();
-	 bool checkCommond(rObj*  robjs,int size);
+	 bool checkCommond(rObj*  robjs);
 
 public:
 	int32_t 			reqtype;
