@@ -67,16 +67,9 @@ void xReplication::syncWithMaster(const xTcpconnectionPtr& conn)
 
 void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
 {
-	while(recvBuf->readableBytes() > 0 && recvBuf->readableBytes()  >= 5)
+	while(recvBuf->readableBytes() >= 4)
 	{
-		if(memcmp(recvBuf->peek(),shared.ok->ptr,sdsllen(shared.ok->ptr)) != 0)
-		{
-			LOG_WARN<<"OK\r\n error";
-			conn->forceClose();
-			break;
-		}
-		
-		int32_t  len = *(int32_t*)(recvBuf->peek() + 5);
+		int32_t  len = *(int32_t*)(recvBuf->peek());
 		if(len >= 4096  * 4096 * 100 || len <=0)
 		{
 			LOG_WARN<<"Length is too large";
@@ -84,12 +77,21 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 			break;
 		}
 		
-		if(len > recvBuf->readableBytes() - 9)
+		//LOG_INFO<<recvBuf->readableBytes();
+		
+		if(len > recvBuf->readableBytes() - 4)
 		{
 			break;
 		}
 
-		recvBuf->retrieve(9);
+		recvBuf->retrieve(4);
+
+		if(recvBuf->readableBytes() > len + 4)
+		{	
+			conn->forceClose();
+			LOG_WARN<<"Slave recv data error";
+			return ;
+		}
 		
 		char rdb_filename[] = "dump.rdb";
 		if(rdbWrite(rdb_filename,recvBuf->peek(), len) == REDIS_OK)
@@ -98,9 +100,9 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		}
 		else
 		{
-			assert(false);
-			recvBuf->retrieve(len);
-			break;
+			LOG_INFO<<"Replication save  rdb failure";
+			conn->forceClose();
+			return ;
 		}
 		
 		if(rdbLoad(rdb_filename,redis) == REDIS_OK)
@@ -109,18 +111,18 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		}
 		else
 		{
-			assert(false);
-			recvBuf->retrieve(len);
-			break;
+			conn->forceClose();
+			LOG_INFO<<"Replication load rdb failure";
+			return ;
 		}
 
 		xBuffer sendbuffer;
 		sendbuffer.append(shared.ok->ptr,sdsllen(shared.ok->ptr));
 		conn->send(&sendbuffer);
+		recvBuf->retrieveAll();
 		std::shared_ptr<xSession> session (new xSession(redis,conn));
 		MutexLockGuard mu(redis->mutex);
 		redis->sessions[conn->getSockfd()] = session;
-		recvBuf->retrieveAll();
 
 	}
 	
@@ -186,7 +188,7 @@ void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*>
 	int len, j;
 	char buf[32];
 	buf[0] = '*';
-	len = 1 + ll2string(buf+1,sizeof(buf)-1,robjs.size() + 1);
+	len = 1 + ll2string(buf+1,sizeof(buf)-1,robjs.size());
 	buf[len++] = '\r';
 	buf[len++] = '\n';
 	sendBuf.append(buf,len);
@@ -199,14 +201,14 @@ void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*>
 	sendBuf.append(commond->ptr,sdsllen(commond->ptr));
 	sendBuf.append("\r\n",2);
 	
-	for(auto it = robjs.begin(); it != robjs.end(); it++)
+	for(int i = 1;   i < robjs.size() ; i ++)
 	{
 		buf[0] = '$';
-		len = 1 + ll2string(buf+1,sizeof(buf)-1,sdsllen((*it)->ptr));
+		len = 1 + ll2string(buf+1,sizeof(buf)-1,sdsllen(robjs[i]->ptr));
 		buf[len++] = '\r';
 		buf[len++] = '\n';
 		sendBuf.append(buf,len);
-		sendBuf.append((*it)->ptr,sdsllen((*it)->ptr));
+		sendBuf.append(robjs[i]->ptr,sdsllen(robjs[i]->ptr));
 		sendBuf.append("\r\n",2);
 	}
 }

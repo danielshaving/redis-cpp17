@@ -80,6 +80,8 @@ threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
 	handlerCommondMap[obj] = std::bind(&xRedis::zrevrangeCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("keys",4);
 	handlerCommondMap[obj] = std::bind(&xRedis::keysCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("bgsave",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::bgsaveCommond, this, std::placeholders::_1, std::placeholders::_2);
 
 
 	obj = createStringObject("set",3);
@@ -124,21 +126,22 @@ void xRedis::handleSalveRepliTimeOut(void * data)
 	{
 		MutexLockGuard mu(slaveMutex);
 		tcpconnMaps.erase(*sockfd);
+		auto it = tcpconnMaps.find(*sockfd);
+		if(it != tcpconnMaps.end())
+		{
+			it->second->forceClose();
+			tcpconnMaps.erase(it);
+		}
+
 		if(tcpconnMaps.size() == 0)
 		{
 			repliEnabled = false;
 			slaveCached.retrieveAll();
 		}
+			
 	}
 	LOG_INFO<<"sync connect repli  timeout ";
 }
-
-
-void xRedis::handleRepliCacheTimeOut()
-{
-	LOG_INFO<<"disconnect salve repli  timeout ";
-}
-
 
 void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
@@ -166,8 +169,18 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 				if(tcpconnMaps.size() == 0)
 				{
 					repliEnabled = false;
+					xBuffer buffer;
+					slaveCached.swap(buffer);
 				}
 			}
+
+			auto iter = repliTimers.find(conn->getSockfd());
+			if(iter != repliTimers.end())
+			{
+				loop.cancelAfter(iter->second);
+				repliTimers.erase(iter);
+			}
+
 		}
 
 		{
@@ -900,6 +913,51 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 
+
+bool  xRedis::save(xSession * session)
+{
+	int64_t start =  mstime();
+	{
+		MutexLockGuard lk(mutex);
+		char filename[] = "dump.rdb";
+		if(rdbSave(filename,this) == REDIS_OK)
+		{
+			LOG_INFO<<"Save rdb success";
+		}
+		else
+		{
+			LOG_INFO<<"Save rdb failure";
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+bool xRedis::bgsaveCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	
+	if(obj.size() > 0)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown bgsave error");
+		return false;
+	}
+	
+	if(save(session))
+	{
+		addReply(session->sendBuf,shared.ok);
+			
+	}
+	else
+	{
+		addReply(session->sendBuf,shared.err);
+	}
+
+	return true;
+	
+}
+
 bool xRedis::saveCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 0)
@@ -908,20 +966,13 @@ bool xRedis::saveCommond(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	int64_t start =  mstime();
+	if(save(session))
 	{
-		MutexLockGuard lk(mutex);
-		char filename[] = "dump.rdb";
-		if(rdbSave(filename,this) == REDIS_OK)
-		{
-			addReply(session->sendBuf,shared.ok);
-			LOG_INFO<<"Save rdb success";
-		}
-		else
-		{
-			addReply(session->sendBuf,shared.err);
-			LOG_INFO<<"Save rdb failure";
-		}
+		addReply(session->sendBuf,shared.ok);
+	}
+	else
+	{
+		addReply(session->sendBuf,shared.err);
 	}
 
 	return true;
@@ -1007,7 +1058,6 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	xTimer * timer = nullptr;
-	rObj * buf  = nullptr;
 	{
 		MutexLockGuard lk(slaveMutex);
 		auto it = repliTimers.find(session->conn->getSockfd());
@@ -1018,49 +1068,39 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 			return false;
 		}
 
-		repliEnabled = true;
-
 		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,reinterpret_cast<void *>(session->conn->getSockfd()),
 				false,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
 		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
+		repliEnabled = true;
 	}
 
+	if(!save(session))
+	{
+		session->conn->forceClose();
+		return false;
+	}
 
-	saveCommond(obj,session);
 	char rdb_filename[] = "dump.rdb";
-	size_t len = 0;
-
 	{
-		MutexLockGuard lk(mutex);
-		buf = rdbLoad(rdb_filename,len);
-	}
-
-	if(buf != nullptr)
-	{
-		char str[4];
-		int * sendLen = (int*)str;
-		*sendLen = len;
-		session->sendBuf.append((const char*)str,4);
-		session->sendBuf.append(buf->ptr,len);
-		zfree(buf);
-		LOG_INFO<<"Sync load rdb success";
-	}
-	else if (errno != ENOENT)
-	{
+		MutexLockGuard lk(slaveMutex);
+		if(!rdbReplication(rdb_filename,session))
 		{
-			MutexLockGuard lk(slaveMutex);
 			if(timer)
 			{
 				session->conn->getLoop()->cancelAfter(timer);
 			}
+			
 			repliTimers.erase(session->conn->getSockfd());
 			tcpconnMaps.erase(session->conn->getSockfd());
 			repliEnabled = false;
 			slaveCached.retrieveAll();
+			session->conn->forceClose();
+			LOG_INFO<<"master sync send failure";
 		}
-	    LOG_WARN<<"Fatal error loading the DB:  Exiting."<<strerror(errno);
 	}
+
+	LOG_INFO<<"master sync send success ";
 	return true;
 }
 

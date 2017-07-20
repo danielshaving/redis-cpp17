@@ -44,6 +44,25 @@ size_t rioWrite(xRio *r,const void *buf,size_t len)
 	return 1;
 }
 
+
+size_t rioRepliRead(xRio * r,void * buf,size_t len)
+{
+	fseek(r->io.file.fp,r->processedBytes ,SEEK_SET);
+	size_t readBytes = ::fread(buf,1,len,r->io.file.fp);
+	if(readBytes == 0)
+	{
+		return 0;
+	}
+
+	if(r->updateFuc)
+	{
+		r->updateFuc(r,buf,readBytes);
+	}
+
+	r->processedBytes += readBytes;
+	return readBytes;
+}
+
 size_t rioRead(xRio *r,void  *buf,size_t len)
 {
 	while(len)
@@ -742,35 +761,58 @@ int rdbLoadSortSet(xRio * rdb,xRedis * redis)
 	}
 	return REDIS_OK;
 }
-rObj  * rdbLoad(char *filename,size_t &len)
+
+
+bool   rdbReplication(char *filename,xSession *session)
 {
 	xRio rdb;
 	FILE *fp ;
 	if((fp = fopen(filename,"r")) == nullptr)
 	{
-		return nullptr;
+		return false;
 	}
+	
 	rioInitWithFile(&rdb,fp);
 	struct stat sb;
 	if(fstat(fileno(fp),&sb) == -1)
 	{
-		return nullptr;
+		return false;
 	}
 	else
 	{
 		LOG_INFO<<"load dump.rdb size :"<<sb.st_size;
 	}
 
-	rObj * o = createStringObject(NULL,sb.st_size);
-	len = sdsllen(o->ptr);
-	if(rioRead(&rdb,(void*)o->ptr,sb.st_size) == 0)
+	size_t len = 65536;
+	
+	char str[4];
+	int32_t * sendLen = (int32_t*)str;
+	*sendLen = sb.st_size;
+	int32_t sendBytes  = * sendLen ;
+	session->sendBuf.append((const char*)str,4);
+	
+	while(sendBytes)
 	{
-		zfree(o);
-		return nullptr;
-	}
-		
-	return o;
+		if(sendBytes <  len)
+		{
+			len = sendBytes;
+		}
+	
+		char buf[len ];
+		size_t readBytes = rioRepliRead(&rdb,(void*)buf,len);
+		if(readBytes == 0)
+		{
+			return false;
+		}
+		session->sendBuf.append((const char *)buf,readBytes);
+		session->conn->send(&session->sendBuf);
+		session->sendBuf.retrieveAll();
 
+		sendBytes -=readBytes;
+	}
+
+	fclose(fp);
+	return true;
 }
 
 int  rdbWrite(char *filename,const char *buf, size_t len)

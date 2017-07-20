@@ -12,7 +12,8 @@ class xRedisAsyncContext;
 typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, void*, void*);
 
 
-typedef struct redisReply {
+typedef struct redisReply 
+{
     int type;
     long long integer;
     int len;
@@ -68,7 +69,7 @@ typedef struct redisCallback
 
 typedef std::list<redisCallback> RedisCallbackList;
 
-class xRedisContext
+class xRedisContext: noncopyable
 {
 public:
 	xRedisContext():reader(new xRedisReader())
@@ -85,7 +86,7 @@ public:
 	xRedisReaderPtr reader;
 };
 
-class xRedisAsyncContext
+class xRedisAsyncContext: noncopyable
 {
 public:
 	xRedisAsyncContext():c(new (xRedisContext))

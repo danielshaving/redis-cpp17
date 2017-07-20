@@ -20,7 +20,6 @@ public:
 	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster = false);
 	~xRedis();
 	void handleTimeOut(void * data);
-	void handleRepliCacheTimeOut();
 	void handleSalveRepliTimeOut(void * data);
 	void handleSetExpire(void * data);
 	
@@ -67,8 +66,9 @@ public:
 	bool zrankCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool zrevrangeCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool keysCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool bgsaveCommond(const std::deque <rObj*> & obj,xSession * session);
 
-
+	bool save(xSession * session);
 	int removeCommond(rObj * obj,int &count);
 	void clearCommond();
 	size_t getDbsize();

@@ -112,28 +112,17 @@ bool xSession::checkCommond(rObj*  robjs,int size)
 
 int xSession::processCommand()
 {
-	std::string str = "HSET";
+	/*std::string str = "HSET";
 	std::string str1 = robjs[0]->ptr;
 	if(str != str1)
 	{
 		LOG_INFO<<robjs[0]->ptr;
 	}
-	
+	*/
+
 
 	assert(robjs.size());
-	auto iter = redis->handlerCommondMap.find(robjs[0]);
-	if(iter == redis->handlerCommondMap.end() )
-	{
-		clearObj();
-		addReplyErrorFormat(sendBuf,"command unknown eror");
-		return REDIS_ERR;
-	}
-
-
-	rObj * obj = robjs[0];
-	robjs.pop_front();
-
-
+	
 	if(redis->authEnabled)
 	{
 		if(!authEnabled)
@@ -149,8 +138,6 @@ int xSession::processCommand()
 
 	if(redis->repliEnabled)
 	{
-		bool flag = checkCommond(obj,robjs.size());
-		if(!flag)
 		{
 			MutexLockGuard mu(redis->slaveMutex);
 			auto it = redis->tcpconnMaps.find(conn->getSockfd());
@@ -163,8 +150,8 @@ int xSession::processCommand()
 					{
 						conn->send(&redis->slaveCached);
 						redis->slaveCached.retrieveAll();
-
-						redis->tcpconnMaps.erase(conn->getSockfd());
+						xBuffer buffer;
+						redis->slaveCached.swap(buffer);
 					}
 
 					auto iter = redis->repliTimers.find(conn->getSockfd());
@@ -179,15 +166,6 @@ int xSession::processCommand()
 					}
 
 					redis->repliTimers.erase(conn->getSockfd());
-
-					if(redis->tcpconnMaps.size() == 0)
-					{
-						xBuffer buffer;
-						buffer.swap(redis->slaveCached);
-						LOG_INFO<<"swap buffer";
-						redis->repliEnabled = false;
-					}
-
 					clearObj();
 					return REDIS_OK;
 				}
@@ -196,29 +174,38 @@ int xSession::processCommand()
 					replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
 				}
 			}
+		}
 
-			mu.unlock();
 
-			if(  (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
-			{
-
-			}
-			else
-			{
-				if(redis->slaveEnabled)
-				{
-					clearObj();
-					addReplyErrorFormat(sendBuf,"slaveof mode commond unknown ");
-					return REDIS_ERR;
-				}
-			}
+		if(  (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
+		{
 
 		}
+		else
+		{
+			if(redis->slaveEnabled)
+			{
+				clearObj();
+				addReplyErrorFormat(sendBuf,"slaveof mode commond unknown ");
+				return REDIS_ERR;
+			}
+		}
+
 
 	}
 
+	auto iter = redis->handlerCommondMap.find(robjs[0]);
+	if(iter == redis->handlerCommondMap.end() )
+	{
+		clearObj();
+		addReplyErrorFormat(sendBuf,"command unknown eror");
+		return REDIS_ERR;
+	}
 
+	rObj * obj = robjs.front();
+	robjs.pop_front();
 	zfree(obj);
+
 	if(!iter->second(robjs,this))
 	{
 		clearObj();

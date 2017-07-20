@@ -51,9 +51,11 @@ public:
 };
 
 
+
 off_t  rioTell(xRio *r);
 size_t rioWrite(xRio *r,const void *buf,size_t len);
 size_t rioRead(xRio *r,void *buf,size_t len);
+size_t rioRepliRead(xRio * r,void *buf,size_t len);
 off_t  rioFlush(xRio *r);
 
 
@@ -97,7 +99,7 @@ int rdbLoadSSet(xRio * rdb,xRedis * redis);
 int rdbLoadSortSet(xRio * rdb,xRedis * redis);
 uint32_t rdbLoadLen(xRio *rdb, int *isencoded);
 int rdbLoad(char *filename,xRedis * redis);
-rObj  *rdbLoad(char *filename,size_t &len);
+bool  rdbReplication(char *filename,xSession *session);
 rObj *rdbLoadObject(int type, xRio *rdb);
 rObj *rdbLoadStringObject(xRio *rdb);
 
