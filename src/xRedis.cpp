@@ -12,10 +12,10 @@ slaveEnabled(false),
 authEnabled(false),
 repliEnabled(false),
 salveCount(0),
+count(0),
 threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
 {
 	threads->detach();
-	//loop.runAfter(10,nullptr,true,std::bind(&xRedis::handleTimeOut,this,std::placeholders::_1));
 	rObj * obj = createStringObject("set",3);
 	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("get",3);
@@ -114,6 +114,11 @@ xRedis::~xRedis()
 }
 
 
+
+void xRedis::test(void * data)
+{
+	count++;
+}
 
 void xRedis::handleTimeOut(void * data)
 {
@@ -627,7 +632,10 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-
+	LOG_INFO<<count;
+	struct rusage self_ru, c_ru;
+	getrusage(RUSAGE_SELF, &self_ru);
+	getrusage(RUSAGE_CHILDREN, &c_ru);
 	sds info = sdsempty();
 
 	char hmem[64];
@@ -668,6 +676,18 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 	zmalloc_get_fragmentation_ratio(zmalloc_get_rss()),
 	ZMALLOC_LIB
 	);
+
+	info = sdscat(info,"\r\n");
+	info = sdscatprintf(info,
+	"# CPU\r\n"
+	"used_cpu_sys:%.2f\r\n"
+	"used_cpu_user:%.2f\r\n"
+	"used_cpu_sys_children:%.2f\r\n"
+	"used_cpu_user_children:%.2f\r\n",
+	(float)self_ru.ru_stime.tv_sec+(float)self_ru.ru_stime.tv_usec/1000000,
+	(float)self_ru.ru_utime.tv_sec+(float)self_ru.ru_utime.tv_usec/1000000,
+	(float)c_ru.ru_stime.tv_sec+(float)c_ru.ru_stime.tv_usec/1000000,
+	(float)c_ru.ru_utime.tv_sec+(float)c_ru.ru_utime.tv_usec/1000000);
 
 	addReplyBulkSds(session->sendBuf, info);
 
@@ -1102,6 +1122,7 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 			}
 			session->conn->forceClose();
 			LOG_INFO<<"master sync send failure";
+			return false;
 		}
 	}
 

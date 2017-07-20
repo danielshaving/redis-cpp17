@@ -77,8 +77,6 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 			break;
 		}
 		
-		//LOG_INFO<<recvBuf->readableBytes();
-		
 		if(len > recvBuf->readableBytes() - 4)
 		{
 			break;
@@ -120,6 +118,8 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		sendbuffer.append(shared.ok->ptr,sdsllen(shared.ok->ptr));
 		conn->send(&sendbuffer);
 		recvBuf->retrieveAll();
+		xBuffer buffer;
+		recvBuf->swap(buffer);
 		std::shared_ptr<xSession> session (new xSession(redis,conn));
 		MutexLockGuard mu(redis->mutex);
 		redis->sessions[conn->getSockfd()] = session;

@@ -56,7 +56,7 @@
 #include <stdio.h>
 #include <atomic>
 #include <stdarg.h>
-
+#include <sys/resource.h>
 
 
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39

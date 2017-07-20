@@ -98,21 +98,11 @@ void  xPriorityQueue::reserve()
 
 	for(int i = 0; i < a; i++)
 	{
-		pp[i] = new xTimer();
-		pp[i]->callback = std::move(p[i]->callback);
-		pp[i]->index = p[i]->index;
-		pp[i]->repeat = p[i]->repeat;
-		pp[i]->interval = p[i]->interval;
-		pp[i]->expiration = std::move(p[i]->expiration);
+		pp[i] = p[i];
 	}
 
 	if(p)
 	{
-		for(int i = 0 ; i < a; i ++)
-		{
-			delete p[i];
-			p[i] = nullptr;
-		}
 		delete []p;
 	}
 

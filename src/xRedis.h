@@ -19,6 +19,7 @@ public:
 	xRedis() {}
 	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster = false);
 	~xRedis();
+	void test(void * data);
 	void handleTimeOut(void * data);
 	void handleSalveRepliTimeOut(void * data);
 	void handleSetExpire(void * data);
@@ -147,7 +148,7 @@ public:
 	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
 	xSocket socket;
 	std::string password;
-	int32_t count = 0;
+	std::atomic<int64_t >  count ;
 };
 
 
