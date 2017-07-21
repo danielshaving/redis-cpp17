@@ -12,10 +12,12 @@ slaveEnabled(false),
 authEnabled(false),
 repliEnabled(false),
 salveCount(0),
-count(0),
-threads(new std::thread(std::bind(&xReplication::connectMaster,&repli)))
+count(0)
 {
-	threads->detach();
+	repliThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
+	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
+	repliThreads->detach();
+	sentiThreads->detach();
 	rObj * obj = createStringObject("set",3);
 	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("get",3);
@@ -268,28 +270,20 @@ bool xRedis::zrevrangeCommond(const std::deque <rObj*> & obj,xSession * session)
 	auto &sset = sortSetShards[hash% kShards].sset;
 	{
 		MutexLockGuard lock(mu);
-		for(int i = 0 ; i < begin; i ++)
+		auto it = sset.find(obj[0]);
+		if(it != sset.end())
 		{
-			auto iter = sset.rbegin();
-			iter++;
-		}
-
-		if(end == -1)
-		{
-			end = sset.size();
-		}
-
-		addReplyMultiBulkLen(session->sendBuf,sset.size() * 2);
-		int i  = 0 ;
-		for(auto iter = sset.rbegin(); iter != sset.rend(); iter ++)
-		{
-			addReplyBulkCBuffer(session->sendBuf,(*iter).value->ptr,sdsllen((*iter).value->ptr));
-			addReplyBulkCBuffer(session->sendBuf,(*iter).key->ptr,sdsllen((*iter).key->ptr));
-
-			if(++i >= end)
+			addReplyMultiBulkLen(session->sendBuf,sset.size() * 2);
+			int i  = 0 ;
+			for(auto iter = it->second.rbegin(); iter != it->second.rend(); iter ++)
 			{
-				break;
+				addReplyBulkCBuffer(session->sendBuf,(*iter).value->ptr,sdsllen((*iter).value->ptr));
+				addReplyBulkCBuffer(session->sendBuf,(*iter).key->ptr,sdsllen((*iter).key->ptr));
 			}
+		}
+		else
+		{
+			addReplyMultiBulkLen(session->sendBuf,0);
 		}
 	}
 
@@ -318,86 +312,95 @@ bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
 	auto &sset = sortSetShards[hash% kShards].sset;
 	{
 		MutexLockGuard lock(mu);
-		auto  iter = set.find(obj[0]);
-		if(iter ==  set.end())
+		auto it = set.find(obj[0]);
+		if(it == set.end())
 		{
 			SetMap setMap;
+			std::set<rSObj> sObj;
+		
 			for(int i = 1; i < obj.size(); i +=2)
 			{
-				obj[i + 1]->calHash();
-				auto it = setMap.find(obj[i + 1]);
-				if(it  == setMap.end())
+				auto iter = setMap.find(obj[i + 1]);
+				if(iter == setMap.end())
 				{
+					rSObj robj;
+					robj.key = obj[i];
+					robj.value = obj[i + 1];
+					sObj.insert(std::move(robj));
 					setMap.insert(std::make_pair(obj[i + 1],obj[i]));
-					rSObj sobj;
-					sobj.key = obj[i];
-					sobj.value = obj[i + 1];
-					sset.insert(std::move(sobj));
 					count++;
-					set.insert(std::make_pair(obj[0],std::move(setMap)));
 				}
 				else
 				{
+					zfree(obj [i + 1]);
 					{
-						rSObj sobj;
-						sobj.key = it->second;
-						sobj.value =  it->first;
-						sset.erase(std::move(sobj));
-						setMap.erase(it);
-						zfree(it->first);
-						zfree(it->second);
+						rSObj  robj;
+						robj.key = iter->second;
+						robj.value = iter->first;
+						sObj.erase(std::move(robj));
 					}
-
+					
+					zfree(iter->second);
+					iter->second = obj[i];
+					
 					{
-						rSObj sobj;
-						sobj.key = obj[i];
-						sobj.value = obj[i + 1];
-						sset.insert(std::move(sobj));
-						setMap.insert(std::make_pair(obj[i],obj[i+1]));
+						rSObj  robj;
+						robj.key = iter->second;
+						robj.value = iter->first;
+						sObj.insert(std::move(robj));
 					}
+					
 				}
-
 			}
+			
+			set.insert(std::make_pair(obj[0],std::move(setMap)));
+			sset.insert(std::make_pair(obj[0],std::move(sObj)));
+			
 		}
 		else
 		{
+			auto itt = sset.find(obj[0]);
+			if(itt == sset.end())
+			{
+				assert(false);
+			}
+			
 			zfree(obj[0]);
 			for(int i = 1; i < obj.size(); i +=2)
 			{
-				obj[i + 1]->calHash();
-				auto it = iter->second.find(obj[i + 1]);
-				if(it == iter->second.end())
+				auto iter = it->second.find(obj[i + 1]);
+				if(iter == it->second.end())
 				{
-					count ++;
-					iter->second.insert(std::make_pair(obj[i + 1],obj[i]));
-					rSObj sobj;
-					sobj.key = obj[i];
-					sobj.value = obj[i + 1];
-					sset.insert(std::move(sobj));
+					rSObj robj;
+					robj.key = obj[i];
+					robj.value = obj[i + 1];
+					itt->second.insert(std::move(robj));
+					it->second.insert(std::make_pair(obj[i + 1],obj[i]));
+					count++;
 				}
 				else
 				{
+					zfree(obj [i + 1]);
 					{
-						rSObj sobj;
-						sobj.key = it->second;
-						sobj.value =  it->first;
-						sset.erase(std::move(sobj));
-						iter->second.erase(it);
-						zfree(it->first);
-						zfree(it->second);
+						rSObj  robj;
+						robj.key = iter->second;
+						robj.value = iter->first;
+						itt->second.erase(std::move(robj));
 					}
-
+					
+					zfree(iter->second);
+					iter->second = obj[i];
 					{
-						rSObj sobj;
-						sobj.key = obj[i];
-						sobj.value = obj[i + 1];
-						sset.insert(std::move(sobj));
-						iter->second.insert(std::make_pair(obj[i + 1],obj[i]));
+					
+						rSObj  robj;
+						robj.key = iter->second;
+						robj.value = iter->first;
+						itt->second.insert(std::move(robj));
 					}
+				
 				}
-
 			}
-
+				
 		}
 	}
 
@@ -542,32 +545,25 @@ bool xRedis::zrangeCommond(const std::deque <rObj*> & obj,xSession * session)
 	long long  end = 0;
 	string2ll(obj[2]->ptr,sdsllen(obj[2]->ptr),&end);
 	MutexLock &mu =  sortSetShards[hash% kShards].mutex;
-	auto &sset = sortSetShards[hash% kShards].sset;
+	auto &sset = sortSetShards[hash% kShards].sset; 
 	{
 		MutexLockGuard lock(mu);
-		for(int i = 0 ; i < begin; i ++)
-		{
-			auto iter = sset.begin();
-			iter++;
-		}
 
-		if(end == -1)
+		auto it = sset.find(obj[0]);
+		if(it != sset.end())
 		{
-			end = sset.size();
-		}
-
-		addReplyMultiBulkLen(session->sendBuf,sset.size() * 2);
-		int i  = 0 ;
-		for(auto iter = sset.begin(); iter != sset.end(); iter ++)
-		{
-			addReplyBulkCBuffer(session->sendBuf,(*iter).value->ptr,sdsllen((*iter).value->ptr));
-			addReplyBulkCBuffer(session->sendBuf,(*iter).key->ptr,sdsllen((*iter).key->ptr));
-
-			if(++i >= end)
+			addReplyMultiBulkLen(session->sendBuf,sset.size() * 2);
+			for(auto iter = it->second.begin(); iter != it->second.end(); iter ++)
 			{
-				break;
+				addReplyBulkCBuffer(session->sendBuf,(*iter).value->ptr,sdsllen((*iter).value->ptr));
+				addReplyBulkCBuffer(session->sendBuf,(*iter).key->ptr,sdsllen((*iter).key->ptr));
 			}
 		}
+		else
+		{
+			addReplyMultiBulkLen(session->sendBuf,0);
+		}
+	
 	}
 
 	for(auto it  = obj.begin(); it != obj.end(); it ++)
@@ -632,7 +628,6 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	LOG_INFO<<count;
 	struct rusage self_ru, c_ru;
 	getrusage(RUSAGE_SELF, &self_ru);
 	getrusage(RUSAGE_CHILDREN, &c_ru);
@@ -1050,9 +1045,10 @@ bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
 
 		repli.replicationSetMaster(this,obj[0],port);
 		LOG_INFO<<"SLAVE OF "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
-		zfree(obj[0]);
-		zfree(obj[1]);
 	}
+
+	zfree(obj[0]);
+	zfree(obj[1]);
 
 	addReply(session->sendBuf,shared.ok);
 	return true;
@@ -1296,13 +1292,19 @@ int  xRedis::removeCommond(rObj * obj,int &count)
 			auto it = set.find(obj);
 			if(it != set.end())
 			{
+				auto itt = sset.find(obj);
+				if(itt == sset.end())
+				{
+					assert(false);
+				}
+				
 				count  ++;
 				for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
 				{
 					rSObj sobj;
 					sobj.key = iter->second;
 					sobj.value = iter->first;
-					sset.erase(sobj);
+					itt->second.erase(sobj);
 					zfree(iter->first);
 					zfree(iter->second);
 				}
@@ -1596,7 +1598,6 @@ bool xRedis::hsetCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 3)
 	{
-		if(!slaveEnabled)
 		addReplyErrorFormat(session->sendBuf,"unknown  hset error");
 		return false;
 	}
@@ -1636,7 +1637,6 @@ bool xRedis::hsetCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 	}
 	
-	if(!slaveEnabled)
 	addReply(session->sendBuf,update ? shared.czero : shared.cone);
 
 	return true;
@@ -1818,7 +1818,6 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 	count++;
 	if(obj.size() <  2 || obj.size() > 8 )
 	{
-		if(!slaveEnabled)
 		addReplyErrorFormat(session->sendBuf,"unknown  param error");
 		return false;
 	}
@@ -1936,7 +1935,6 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 		zfree(obj[i]);
 	}
 	
-	if(!slaveEnabled)
 	addReply(session->sendBuf,shared.ok);
 	return true;
 }

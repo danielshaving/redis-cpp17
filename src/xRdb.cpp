@@ -702,63 +702,96 @@ int rdbLoadSortSet(xRio * rdb,xRedis * redis)
 		auto & set = redis->sortSetShards[hash % redis->kShards].set;
 		auto &sset =  redis->sortSetShards[hash % redis->kShards].sset;
 		{
-			MutexLockGuard lock(mu);
-			for(int i = 0 ; i < len; i ++)
-			{
-				if ((rdbver = rdbLoadType(rdb)) == -1)
-					return	REDIS_ERR;
-
-				if(rdbver != REDIS_RDB_TYPE_STRING)
-					return REDIS_ERR;
-
-				if ((kkey = rdbLoadStringObject(rdb)) == nullptr)
-					return	REDIS_ERR;
-
-				if ((val = rdbLoadObject(rdbver,rdb)) == nullptr)
-					return	REDIS_ERR;
-
-				kkey->calHash();
-				umap.insert(std::make_pair(kkey,val));
-
-				rSObj obj;
-				obj.key = val;
-				obj.value = kkey;
-				auto it = sset.find(obj);
-				if(it == sset.end())
-				{
-					sset.insert(std::move(obj));
-				}
-				else
-				{
-					zfree((*it).key);
-					zfree((*it).value);
-					sset.erase(it);
-					sset.insert(std::move(obj));
-				}
-			}
-
+			MutexLockGuard lock(mu);	
 			auto it = set.find(key);
 			if(it == set.end())
 			{
+				for(int i = 0 ; i < len; i ++)
+				{
+					if ((rdbver = rdbLoadType(rdb)) == -1)
+						return	REDIS_ERR;
+				
+					if(rdbver != REDIS_RDB_TYPE_STRING)
+						return REDIS_ERR;
+				
+					if ((kkey = rdbLoadStringObject(rdb)) == nullptr)
+						return	REDIS_ERR;
+				
+					if ((val = rdbLoadObject(rdbver,rdb)) == nullptr)
+						return	REDIS_ERR;
+				
+					kkey->calHash();
+					umap.insert(std::make_pair(kkey,val));
+				
+					rSObj obj;
+					obj.key = val;
+					obj.value = kkey;
+					smap.insert(std::move(obj));
+				}
+				sset.insert(std::make_pair(key,std::move(smap)));
 				set.insert(std::make_pair(key,std::move(umap)));
 			}
 			else
 			{
-
-				for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+				auto itt = sset.find(key);
+				if(itt == sset.end())
 				{
-					zfree(iter->first);
-					zfree(iter->second);
+					assert(false);
 				}
-
-				set.erase(it);
-				zfree(it->first);
-				set.insert(std::make_pair(key,std::move(umap)));
-
+				zfree(key);
+				
+				for(int i = 0 ; i < len; i ++)
+				{
+					if ((rdbver = rdbLoadType(rdb)) == -1)
+						return	REDIS_ERR;
+				
+					if(rdbver != REDIS_RDB_TYPE_STRING)
+						return REDIS_ERR;
+				
+					if ((kkey = rdbLoadStringObject(rdb)) == nullptr)
+						return	REDIS_ERR;
+				
+					if ((val = rdbLoadObject(rdbver,rdb)) == nullptr)
+						return	REDIS_ERR;
+				
+					kkey->calHash();
+					auto iter = it->second.find(kkey);
+					if(iter == it->second.end())
+					{
+						rSObj obj;
+						obj.key = val;
+						obj.value = kkey;
+						itt->second.insert(std::move(obj));
+						it->second.insert(std::make_pair(kkey,val));	
+					}
+					else
+					{
+						zfree(kkey);
+						{
+							rSObj  robj;
+							robj.key = iter->second;
+							robj.value = iter->first;
+							itt->second.erase(std::move(robj));
+						}
+						
+						zfree(iter->second);
+						iter->second = val;
+						{
+						
+							rSObj  robj;
+							robj.key = iter->second;
+							robj.value = iter->first;
+							itt->second.insert(std::move(robj));
+						}
+					
+					}
+				
+					
+				}
 			}
 		}
-
 	}
+	
 	return REDIS_OK;
 }
 

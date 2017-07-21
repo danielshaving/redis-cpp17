@@ -106,6 +106,7 @@ public:
 		{
 			stop();
 		}
+	
 	}
 
 	void stop()
@@ -127,8 +128,6 @@ public:
 
 	void append(const char * loline,int len);
 private:
-	xAsyncLogging(const xAsyncLogging&);
-	void operator = (const xAsyncLogging &);
 	void threadFunc();
 
 	typedef xFixedBuffer<kLargeBuffer> Buffer;

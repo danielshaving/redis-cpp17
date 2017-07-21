@@ -6,7 +6,7 @@
 #include "xSocket.h"
 
 class xRedis;
-class xReplication
+class xReplication: noncopyable
 {
 public:
 	xReplication();
@@ -28,7 +28,6 @@ public:
 
 	bool start;
 	bool isreconnect;
-	pid_t pid;
 	xEventLoop *loop;
 	xTcpClient *client;
 	xRedis *redis;
@@ -39,7 +38,6 @@ public:
 	xBuffer sendBuf;
 	int connectCount;
 	xSocket socket;
-	static const int maxConnectCount = 3;
 };
 
 void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*> &robjs);

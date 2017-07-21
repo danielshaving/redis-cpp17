@@ -12,11 +12,11 @@
 #include "xLog.h"
 #include "xSocket.h"
 #include "xReplication.h"
+#include "xSentinel.h"
 
 class xRedis : noncopyable
 {
 public:
-	xRedis() {}
 	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster = false);
 	~xRedis();
 	void test(void * data);
@@ -83,7 +83,7 @@ public:
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj *,rObj *,Hash,Equal>,Hash,Equal> SortSet;
-	typedef std::set<rSObj> SSet;
+	typedef std::unordered_map<rObj*,std::set<rSObj>,Hash,Equal> SSet;
 	typedef std::unordered_map<rObj*,std::list<xTcpconnectionPtr>,Hash,Equal> PubSub;
 
 	struct SetMapLock
@@ -138,11 +138,14 @@ public:
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  authEnabled;
 	std::atomic<bool>  repliEnabled;
+	
 	std::atomic<int>	   salveCount;
 
 	xBuffer		slaveCached;
 	xReplication  repli;
-	std::shared_ptr<std::thread > threads;
+	xSentinel	   senti;
+	std::shared_ptr<std::thread > repliThreads;
+	std::shared_ptr<std::thread > sentiThreads;
 	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
 	std::map<int32_t,xTimer*> repliTimers;
 	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;

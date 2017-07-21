@@ -4,6 +4,8 @@
 #include "xObject.h"
 #include "xSds.h"
 
+
+class xSentinel;
 class xRedis;
 class xSession: noncopyable, public std::enable_shared_from_this<xSession>
 {

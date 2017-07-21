@@ -75,7 +75,6 @@
 #define REDIS_ZSET 3
 #define REDIS_HASH 4
 
-
 /* Object types */
 #define OBJ_STRING 0
 #define OBJ_LIST 1
@@ -296,7 +295,7 @@
 #define REDIS_ERR_OTHER 2 /* Everything else... */
 
 
-
+#define REDIS_RECONNECT_COUNT 10
 class noncopyable
 {
  protected:

@@ -59,39 +59,45 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 	}
 
 
-	if(sendBuf.readableBytes() > 0 )
+	if( (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
 	{
-		conn->send(&sendBuf);
-		sendBuf.retrieveAll();
+		
 	}
-
-
-	if(sendPubSub.readableBytes() > 0 )
+	else
 	{
-		for(auto iter = pubSubTcpconn.begin(); iter != pubSubTcpconn.end(); iter ++)
+		if(sendBuf.readableBytes() > 0 )
 		{
-			(*iter)->send(&sendPubSub);
+			conn->send(&sendBuf);
+			sendBuf.retrieveAll();
 		}
 
-		pubSubTcpconn.clear();
-		sendPubSub.retrieveAll();
-	}
 
-	if(redis->repliEnabled)
-	{
-		MutexLockGuard mu(redis->slaveMutex);
-		for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
+		if(sendPubSub.readableBytes() > 0 )
 		{
-			if(sendSlaveBuf.readableBytes() > 0 )
+			for(auto iter = pubSubTcpconn.begin(); iter != pubSubTcpconn.end(); iter ++)
 			{
-				it->second->send(&sendSlaveBuf);
+				(*iter)->send(&sendPubSub);
 			}
+
+			pubSubTcpconn.clear();
+			sendPubSub.retrieveAll();
 		}
-		sendSlaveBuf.retrieveAll();
+
+		if(redis->repliEnabled)
+		{
+			MutexLockGuard mu(redis->slaveMutex);
+			for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
+			{
+				if(sendSlaveBuf.readableBytes() > 0 )
+				{
+					it->second->send(&sendSlaveBuf);
+				}
+			}
+			sendSlaveBuf.retrieveAll();
+		}
 	}
-
-
 }
+
 
 
 bool xSession::checkCommond(rObj*  robjs)

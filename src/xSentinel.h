@@ -1,28 +1,30 @@
 #pragma once
 #include "all.h"
-
-#include "xEventLoop.h"
-#include "xTcpServer.h"
-#include "xPosix.h"
+#include "xObject.h"
+#include "xTcpClient.h"
+#include "xSocket.h"
 
 class xRedis;
-class xSentinel
+class xSentinel: noncopyable
 {
 public:
-	xSentinel(const char *ip,uint16_t port,bool clusterEnabled,int32_t threadCount);
+	xSentinel();
+	~xSentinel();
+
+	void connectSentinel();
 	void connErrorCallBack();
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
-	void run();
-
+	void reconnectTimer(void * data);
 private:
-
-	std::shared_ptr<xRedis> redis;
-	xEventLoop loop;
-	xTcpServer server;
-	mutable MutexLock mutex;
-
-	const char *ip;
-	uint16_t port;
-	bool clusterEnabled;
+	bool start;
+	bool isreconnect;
+	xEventLoop *loop;
+	xTcpClient *client;
+	xRedis *redis;
+	std::string ip;
+	int32_t port;
+	xBuffer sendBuf;
+	int connectCount;
+	xSocket socket;
 };

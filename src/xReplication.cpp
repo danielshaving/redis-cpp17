@@ -6,8 +6,7 @@
 xReplication::xReplication()
 :start(false),
  isreconnect(true),
- port(0),
- connectCount(0)
+ port(0)
 {
 
 }
@@ -21,7 +20,6 @@ xReplication::~xReplication()
 
 void xReplication::connectMaster()
 {
-	pid = getpid();
 	start = true;
 	xEventLoop loop;
 	xTcpClient client(&loop,this);
@@ -102,6 +100,8 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 			conn->forceClose();
 			return ;
 		}
+
+		//redis->clearCommond();
 		
 		if(rdbLoad(rdb_filename,redis) == REDIS_OK)
 		{
@@ -167,7 +167,7 @@ void xReplication::connErrorCallBack()
 		return ;
 	}
 	
-	if(connectCount >= maxConnectCount)
+	if(connectCount >= REDIS_RECONNECT_COUNT)
 	{
 		LOG_WARN<<"Reconnect failure";
 		ip.clear();
