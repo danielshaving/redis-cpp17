@@ -1,6 +1,6 @@
 TARGET= ./redis-server
 
-CFLAGS := -Wall -w   -g -O0  -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++11 -DUSE_JEMALLOC
+CFLAGS := -Wall -w   -g -O0  -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++11 #-DUSE_JEMALLOC
 cppfiles := $(shell ls *.cpp)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cpp,./%.o, $(cppfiles) $(cfiles))
@@ -9,7 +9,7 @@ CXXOBJS=${patsubst %.cpp,./%.o,$(cppfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB= ../libjemalloc.a  #/usr/lib64/libprofiler.so
+LIB= #../libjemalloc.a  #/usr/lib64/libprofiler.so
 
 
 

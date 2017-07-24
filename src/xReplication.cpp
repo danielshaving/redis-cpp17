@@ -77,8 +77,6 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		}
 		
 
-		//LOG_INFO<<"Salve node recv  mastr data :"<<recvBuf->readableBytes();
-
 		if(len > recvBuf->readableBytes() - 4)
 		{
 			break;
@@ -90,7 +88,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		{	
 			isreconnect = false;
 			conn->forceClose();
-			LOG_WARN<<"Slave recv data error";
+			LOG_WARN<<"Slave read data error";
 			return ;
 		}
 		
@@ -169,6 +167,9 @@ void xReplication::reconnectTimer(void * data)
 
 void xReplication::connErrorCallBack()
 {
+	return;
+
+	/*
 	if(!isreconnect)
 	{
 		return ;
@@ -185,6 +186,8 @@ void xReplication::connErrorCallBack()
 	
 	++connectCount;
 	loop->runAfter(5,nullptr,false,std::bind(&xReplication::reconnectTimer,this,std::placeholders::_1));
+	*/
+	
 }
 
 void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)
@@ -192,6 +195,16 @@ void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)
 	this->ip = obj->ptr;
 	this->port = port;
 	this->redis = redis;
+
+	if(redis->repliEnabled)
+	{
+		MutexLockGuard mu(redis->slaveMutex);
+		for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it ++)
+		{
+			it->second->forceClose();
+		}
+	}
+
 	client->connect(this->ip.c_str(),this->port);
 }
 

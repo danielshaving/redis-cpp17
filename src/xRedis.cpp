@@ -85,7 +85,6 @@ count(0)
 	handlerCommondMap[obj] = std::bind(&xRedis::keysCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("bgsave",6);
 	handlerCommondMap[obj] = std::bind(&xRedis::bgsaveCommond, this, std::placeholders::_1, std::placeholders::_2);
-
 	obj = createStringObject("memory",6);
 	handlerCommondMap[obj] = std::bind(&xRedis::memoryCommond, this, std::placeholders::_1, std::placeholders::_2);
 
@@ -102,7 +101,6 @@ count(0)
 	obj = createStringObject("flushdb",7);
 	unorderedmapCommonds.insert(obj);
 	
-	password.clear();
 	createSharedObjects();
 	loadDataFromDisk();
 	server.init(&loop, host, port,this);
@@ -140,26 +138,40 @@ void xRedis::handleSetExpire(void * data)
 
 void xRedis::handleSalveRepliTimeOut(void * data)
 {
-	int32_t *sockfd = reinterpret_cast<int32_t *>(data);
-	{
-		MutexLockGuard mu(slaveMutex);
-		auto it = tcpconnMaps.find(*sockfd);
-		if(it != tcpconnMaps.end())
-		{
-			it->second->forceClose();
-			tcpconnMaps.erase(it);
-		}
-
-		if(tcpconnMaps.size() == 0)
-		{
-			repliEnabled = false;
-			slaveCached.retrieveAll();
-		}
-			
-	}
+	int32_t *sockfd = (int32_t *)data;
+	clearRepliState(*sockfd);
 	LOG_INFO<<"sync connect repli  timeout ";
 }
 
+
+void xRedis::clearRepliState(int32_t sockfd)
+{
+	{
+		MutexLockGuard mu(slaveMutex);
+		auto it =  tcpconnMaps.find(sockfd);
+		if(it != tcpconnMaps.end())
+		{
+			salveCount--;
+			tcpconnMaps.erase(sockfd);
+			if(tcpconnMaps.size() == 0)
+			{
+				repliEnabled = false;
+				xBuffer buffer;
+				slaveCached.swap(buffer);
+			}
+		}
+
+		auto iter = repliTimers.find(sockfd);
+		if(iter != repliTimers.end())
+		{
+			loop.cancelAfter(iter->second);
+			repliTimers.erase(iter);
+		}
+
+	}
+
+
+}
 void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
@@ -173,54 +185,15 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	else
 	{
 		{
+			clearRepliState(conn->getSockfd());
+		}
+	
+		{
 			MutexLockGuard mu(mutex);
 			sessions.erase(conn->getSockfd());
 		}
 
-		{
-			MutexLockGuard mu(slaveMutex);
-			auto it =  tcpconnMaps.find(conn->getSockfd());
-			if(it != tcpconnMaps.end())
-			{
-				salveCount--;
-				tcpconnMaps.erase(conn->getSockfd());
-				if(tcpconnMaps.size() == 0)
-				{
-					repliEnabled = false;
-					xBuffer buffer;
-					slaveCached.swap(buffer);
-				}
-			}
-
-			auto iter = repliTimers.find(conn->getSockfd());
-			if(iter != repliTimers.end())
-			{
-				loop.cancelAfter(iter->second);
-				repliTimers.erase(iter);
-			}
-
-		}
-
-		{
-			for(auto it = pubSubShards.begin(); it != pubSubShards.end(); it++)
-			{
-				MutexLockGuard lock((*it).mutex);
-				auto pubSub = (*it).pubSub;
-				for(auto iter = pubSub.begin(); iter != pubSub.end(); iter++)
-				{
-					for(auto item  = iter->second.begin();  item != iter->second.end();)
-					{
-						if((*item)->getSockfd() == conn->getSockfd())
-						{
-							item = iter->second.erase(item);
-							continue;
-						}
-
-						item++;
-					}
-				}
-			}
-		}
+		
 		//LOG_INFO<<"Client disconnect";
 	}
 }
@@ -323,26 +296,28 @@ bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
 		
 			for(int i = 1; i < obj.size(); i +=2)
 			{
+				obj[i]->calHash();
+				obj[i + 1]->calHash();
 				auto iter = setMap.find(obj[i + 1]);
 				if(iter == setMap.end())
 				{
 					rSObj robj;
 					robj.key = obj[i];
 					robj.value = obj[i + 1];
-					sObj.insert(std::move(robj));
+					sObj.insert(robj);
 					setMap.insert(std::make_pair(obj[i + 1],obj[i]));
 					count++;
 				}
 				else
 				{
-					zfree(obj [i + 1]);
 					{
 						rSObj  robj;
-						robj.key = iter->second;
-						robj.value = iter->first;
-						sObj.erase(std::move(robj));
+						robj.key = obj[i];
+						robj.value = obj[i + 1];
+						sObj.erase(robj);
 					}
-					
+
+					zfree(obj [i + 1]);
 					zfree(iter->second);
 					iter->second = obj[i];
 					
@@ -350,14 +325,14 @@ bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
 						rSObj  robj;
 						robj.key = iter->second;
 						robj.value = iter->first;
-						sObj.insert(std::move(robj));
+						sObj.insert(robj);
 					}
 					
 				}
 			}
 			
-			set.insert(std::make_pair(obj[0],std::move(setMap)));
-			sset.insert(std::make_pair(obj[0],std::move(sObj)));
+			set.insert(std::make_pair(obj[0],setMap));
+			sset.insert(std::make_pair(obj[0],sObj));
 			
 		}
 		else
@@ -371,26 +346,29 @@ bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
 			zfree(obj[0]);
 			for(int i = 1; i < obj.size(); i +=2)
 			{
+				obj[i]->calHash();
+				obj[i + 1]->calHash();
 				auto iter = it->second.find(obj[i + 1]);
 				if(iter == it->second.end())
 				{
 					rSObj robj;
 					robj.key = obj[i];
 					robj.value = obj[i + 1];
-					itt->second.insert(std::move(robj));
+					itt->second.insert(robj);
 					it->second.insert(std::make_pair(obj[i + 1],obj[i]));
 					count++;
 				}
 				else
 				{
-					zfree(obj [i + 1]);
+					
 					{
 						rSObj  robj;
-						robj.key = iter->second;
-						robj.value = iter->first;
-						itt->second.erase(std::move(robj));
+						robj.key = obj[i];
+						robj.value = obj[i + 1];
+						itt->second.erase(robj);
 					}
-					
+				
+					zfree(obj [i + 1]);	
 					zfree(iter->second);
 					iter->second = obj[i];
 					{
@@ -398,7 +376,7 @@ bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
 						rSObj  robj;
 						robj.key = iter->second;
 						robj.value = iter->first;
-						itt->second.insert(std::move(robj));
+						itt->second.insert(robj);
 					}
 				
 				}
@@ -551,11 +529,10 @@ bool xRedis::zrangeCommond(const std::deque <rObj*> & obj,xSession * session)
 	auto &sset = sortSetShards[hash% kShards].sset; 
 	{
 		MutexLockGuard lock(mu);
-
 		auto it = sset.find(obj[0]);
 		if(it != sset.end())
 		{
-			addReplyMultiBulkLen(session->sendBuf,sset.size() * 2);
+			addReplyMultiBulkLen(session->sendBuf,it->second.size() * 2);
 			for(auto iter = it->second.begin(); iter != it->second.end(); iter ++)
 			{
 				addReplyBulkCBuffer(session->sendBuf,(*iter).value->ptr,sdsllen((*iter).value->ptr));
@@ -569,12 +546,7 @@ bool xRedis::zrangeCommond(const std::deque <rObj*> & obj,xSession * session)
 	
 	}
 
-	for(auto it  = obj.begin(); it != obj.end(); it ++)
-	{
-		zfree(*it);
-	}
-
-	return true;
+	return false;
 }
 
 bool xRedis::zrankCommond(const std::deque <rObj*> & obj,xSession * session)
@@ -718,6 +690,18 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 	(float)c_ru.ru_stime.tv_sec+(float)c_ru.ru_stime.tv_usec/1000000,
 	(float)c_ru.ru_utime.tv_sec+(float)c_ru.ru_utime.tv_usec/1000000);
 
+	info = sdscat(info,"\r\n");
+	info = sdscatprintf(info,
+	"# Server\r\n"
+	"tcp_connect_count:%d\r\n"
+	"local_ip:%s\r\n"
+	"local_port:%d\r\n"
+	"local_thread_count:%d\n",
+	sessions.size(),
+	host.c_str(),
+	port,
+	threadCount+=4);
+	
 	addReplyBulkSds(session->sendBuf, info);
 
 	for(auto it = obj.begin(); it != obj.end(); it++)
@@ -1044,7 +1028,7 @@ bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	MutexLockGuard lk(mutex);
+	
 	if (!strcasecmp(obj[0]->ptr,"no") &&!strcasecmp(obj[1]->ptr,"one")) 
 	{
 		if (masterHost.c_str() && masterPort) 
@@ -1074,18 +1058,16 @@ bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
 			LOG_WARN<<"SLAVE OF would result into synchronization with the master we are already connected with. No operation performed.";
 			addReplySds(session->sendBuf,sdsnew("+OK Already connected to specified master\r\n"));
 			return false;
-		}
-		
+		}	
 
 		repli.replicationSetMaster(this,obj[0],port);
 		LOG_INFO<<"SLAVE OF "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
 	}
+	
 
-	zfree(obj[0]);
-	zfree(obj[1]);
 
 	addReply(session->sendBuf,shared.ok);
-	return true;
+	return false;
 }
 
 

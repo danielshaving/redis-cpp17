@@ -69,9 +69,12 @@ public:
 	bool keysCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool bgsaveCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool memoryCommond(const std::deque <rObj*> & obj,xSession * session);
+
+	
 	bool save(xSession * session);
 	int removeCommond(rObj * obj,int &count);
 	void clearCommond();
+	void clearRepliState(int32_t sockfd);
 	size_t getDbsize();
 
 public:
