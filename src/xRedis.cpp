@@ -312,8 +312,8 @@ bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
 				{
 					{
 						rSObj  robj;
-						robj.key = obj[i];
-						robj.value = obj[i + 1];
+						robj.key = iter->second;
+						robj.value = iter->first;
 						sObj.erase(robj);
 					}
 
@@ -360,11 +360,10 @@ bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
 				}
 				else
 				{
-					
 					{
 						rSObj  robj;
-						robj.key = obj[i];
-						robj.value = obj[i + 1];
+						robj.key = iter->second;
+						robj.value = iter->first;
 						itt->second.erase(robj);
 					}
 				

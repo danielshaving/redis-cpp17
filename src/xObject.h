@@ -25,7 +25,7 @@ typedef struct redisObject
 typedef struct redisSortObject
 {
 	bool operator <(const redisSortObject & r) const
-	{
+	{	
 		int cmp = memcmp(key->ptr,r.key->ptr,sdsllen(key->ptr));
 		if( cmp < 0)
 		{
@@ -33,7 +33,7 @@ typedef struct redisSortObject
 		}
 		else if(cmp == 0)
 		{
-			return memcmp(value->ptr,r.value->ptr,sdsllen(value->ptr));
+			return memcmp(value->ptr,r.value->ptr,sdsllen(value->ptr)) < 0;
 		}
 		else
 		{
