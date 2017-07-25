@@ -139,7 +139,12 @@ void xRedis::handleSetExpire(void * data)
 void xRedis::handleSalveRepliTimeOut(void * data)
 {
 	int32_t *sockfd = (int32_t *)data;
-	clearRepliState(*sockfd);
+	MutexLockGuard mu(slaveMutex);
+	auto it =  tcpconnMaps.find(*sockfd);
+	if(it != tcpconnMaps.end())
+	{
+		it->second->forceClose();
+	}
 	LOG_INFO<<"sync connect repli  timeout ";
 }
 
@@ -1132,15 +1137,6 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 			{
 				session->conn->getLoop()->cancelAfter(timer);
 			}
-
-			repliTimers.erase(session->conn->getSockfd());
-			tcpconnMaps.erase(session->conn->getSockfd());
-			if(tcpconnMaps.size() == 0)
-			{
-				repliEnabled = false;
-				slaveCached.retrieveAll();	
-			}
-			repli.isreconnect =false;
 			session->conn->forceClose();
 			LOG_INFO<<"master sync send failure";
 			return false;
