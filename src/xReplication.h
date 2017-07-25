@@ -38,6 +38,10 @@ public:
 	xBuffer sendBuf;
 	int connectCount;
 	xSocket socket;
+	FILE * fp ;
+	int32_t salveLen;
+	int32_t salveReadLen;
+	std::atomic<bool>  slaveSyncEnabled;
 };
 
 void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*> &robjs);

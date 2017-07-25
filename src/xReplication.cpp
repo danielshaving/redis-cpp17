@@ -2,11 +2,13 @@
 #include "xRedis.h"
 #include "xLog.h"
 
-
 xReplication::xReplication()
 :start(false),
  isreconnect(true),
- port(0)
+ port(0),
+ salveLen(0),
+ salveReadLen(0),
+ slaveSyncEnabled(false)
 {
 
 }
@@ -44,6 +46,11 @@ void xReplication::syncWrite(const xTcpconnectionPtr& conn)
 	sendBuf.append(shared.sync->ptr,sdsllen(shared.sync->ptr));
 	conn->send(&sendBuf);
 	sendBuf.retrieveAll();
+	fp = createFile();
+	if(fp == nullptr)
+	{
+		conn->forceClose();
+	}
 }
 
 void xReplication::syncWithMaster(const xTcpconnectionPtr& conn)
@@ -67,67 +74,69 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 {
 	while(recvBuf->readableBytes() >= 4)
 	{
-		int32_t  len = *(int32_t*)(recvBuf->peek());
-		if(len >= 4096  * 4096 * 100 || len <=0)
+		if(!slaveSyncEnabled)
 		{
-			isreconnect = false;
-			LOG_WARN<<"Length is too large";
-			conn->forceClose();
-			break;
+			salveLen = *(int32_t*)(recvBuf->peek());
+			if(salveLen >= INT_MAX || salveLen<=0)
+			{
+				isreconnect = false;
+				LOG_WARN<<"Length is too large";
+				closeFile(fp);
+				conn->forceClose();
+				break;
+			}
+			slaveSyncEnabled = true;
+			recvBuf->retrieveInt32();
+			if(recvBuf->readableBytes() == 0)
+			{
+				break;
+			}
 		}
+
 		
-
-		if(len > recvBuf->readableBytes() - 4)
-		{
-			break;
-		}
-
-		recvBuf->retrieve(4);
-
-		if(recvBuf->readableBytes() > len + 4)
-		{	
-			isreconnect = false;
-			conn->forceClose();
-			LOG_WARN<<"Slave read data error";
-			return ;
-		}
-		
-
-		char rdb_filename[] = "dump.rdb";
-		if(rdbWrite(rdb_filename,recvBuf->peek(), len) == REDIS_OK)
-		{	
-			LOG_INFO<<"Replication save  rdb success";
-		}
-		else
-		{
-			isreconnect = false;
-			LOG_INFO<<"Replication save  rdb failure";
-			conn->forceClose();
-			return ;
-		}
-
-		//redis->clearCommond();
-		
-		if(rdbLoad(rdb_filename,redis) == REDIS_OK)
-		{
-			LOG_INFO<<"Replication load rdb success";
-		}
-		else
-		{
-			conn->forceClose();
-			LOG_INFO<<"Replication load rdb failure";
-			return ;
-		}
-
-		xBuffer sendbuffer;
-		sendbuffer.append(shared.ok->ptr,sdsllen(shared.ok->ptr));
-		conn->send(&sendbuffer);
+		char fileName[] = "dump.rdb";
+		rdbSyncWrite(recvBuf->peek(),fp,recvBuf->readableBytes());
+		salveReadLen += recvBuf->readableBytes();
 		recvBuf->retrieveAll();
-		xBuffer buffer;
-		recvBuf->swap(buffer);
-		std::shared_ptr<xSession> session (new xSession(redis,conn));
-		MutexLockGuard mu(redis->mutex);
-		redis->sessions[conn->getSockfd()] = session;
+
+		if(salveReadLen > salveLen)
+		{
+			LOG_WARN<<"slave read data failure";
+			closeFile(fp);
+			conn->forceClose();
+			
+		}
+
+		if(salveLen == salveReadLen)
+		{
+			LOG_INFO<<"slave read data sucess";
+			rdbSyncClose(fileName,fp);
+			redis->clearCommond();
+
+			if(rdbLoad(fileName,redis) == REDIS_OK)
+			{
+				LOG_INFO<<"Replication load rdb success";
+			}
+			else
+			{
+				closeFile(fp);
+				conn->forceClose();
+				LOG_INFO<<"Replication load rdb failure";
+				return ;
+			}
+
+			xBuffer sendbuffer;
+			sendbuffer.append(shared.ok->ptr,sdsllen(shared.ok->ptr));
+			conn->send(&sendbuffer);
+			recvBuf->retrieveAll();
+			xBuffer buffer;
+			recvBuf->swap(buffer);
+			std::shared_ptr<xSession> session (new xSession(redis,conn));
+			MutexLockGuard mu(redis->mutex);
+			redis->sessions[conn->getSockfd()] = session;
+	
+		}
+		
 
 	}
 	
@@ -149,6 +158,9 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	}
 	else
 	{
+		slaveSyncEnabled = false;
+		salveReadLen = 0;
+		salveLen = 0;
 		redis->masterHost.clear();
 		redis->masterPort = 0;
 		redis->slaveEnabled =  false;

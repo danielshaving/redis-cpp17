@@ -1326,16 +1326,13 @@ int  xRedis::removeCommond(rObj * obj,int &count)
 				count  ++;
 				for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
 				{
-					rSObj sobj;
-					sobj.key = iter->second;
-					sobj.value = iter->first;
-					itt->second.erase(sobj);
 					zfree(iter->first);
 					zfree(iter->second);
 				}
 
 				set.erase(it);
 				zfree(it->first);
+				sset.erase(itt);
 
 			}
 		}

@@ -816,13 +816,15 @@ bool   rdbReplication(char *filename,xSession *session)
 		LOG_INFO<<"load dump.rdb size :"<<sb.st_size;
 	}
 
-	size_t len = 65536;
+	size_t len = REDIS_SLAVE_SYNC_SIZE;
 	
 	char str[4];
 	int32_t * sendLen = (int32_t*)str;
 	*sendLen = sb.st_size;
 	int32_t sendBytes  = * sendLen ;
 	session->sendBuf.append((const char*)str,4);
+	session->conn->send(&session->sendBuf);
+	session->sendBuf.retrieveAll();
 	
 	while(sendBytes)
 	{
@@ -847,6 +849,58 @@ bool   rdbReplication(char *filename,xSession *session)
 
 	fclose(fp);
 	return true;
+}
+
+
+
+
+int  closeFile(FILE * fp)
+{
+	if (fclose(fp) == EOF) return REDIS_ERR;
+}
+
+
+FILE *createFile()
+{
+	FILE *fp ;
+	char tmpfile[256];
+	snprintf(tmpfile,256,"temp-%d.rdb",(int)getpid());
+	fp = fopen(tmpfile,"w");
+	if(!fp)
+	{
+		 LOG_TRACE<<"Failed opening .rdb for saving:"<<strerror(errno);
+		 return nullptr;
+	}
+	
+	return fp;	
+}
+
+
+int rdbSyncWrite(const char *buf,FILE * fp,size_t len)
+{
+	xRio rdb;
+	rioInitWithFile(&rdb,fp);
+	if(rioWrite(&rdb,buf,len) == 0)
+	{
+		return REDIS_ERR;
+	}
+}
+
+
+int  rdbSyncClose(char * fileName,FILE * fp)
+{
+	if (fflush(fp) == EOF) return REDIS_ERR;
+	if (fsync(fileno(fp)) == -1) return REDIS_ERR;
+	if (fclose(fp) == EOF) return REDIS_ERR;
+
+
+	char tmpfile[256];
+	snprintf(tmpfile,256,"temp-%d.rdb",(int)getpid());
+	
+	if(rename(tmpfile,fileName) == -1)
+	{
+		return REDIS_ERR;
+	}
 }
 
 int  rdbWrite(char *filename,const char *buf, size_t len)

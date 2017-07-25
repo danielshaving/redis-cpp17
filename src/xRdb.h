@@ -68,6 +68,8 @@ int rioFileFlush(xRio *r);
 void rioInitWithFile(xRio *r, FILE *fp);
 void rioInitWithBuffer(xRio *r, sds s);
 
+FILE * createFile();
+int  closeFile(FILE * fp);
 
 
 int rdbSaveType(xRio *rdb, unsigned char type);
@@ -109,4 +111,6 @@ int rdbTryIntegerEncoding(char *s, size_t len, unsigned char *enc);
 int rdbEncodeInteger(long long value, unsigned char *enc);
 rObj *rdbGenericLoadStringObject(xRio *rdb, int encode);
 int  rdbWrite(char *filename,const char *buf, size_t len);
+int rdbSyncWrite(const char *buf,FILE * fp,size_t len);
+int rdbSyncClose(char * fileName,FILE * fp);
 

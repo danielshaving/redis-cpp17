@@ -57,6 +57,7 @@
 #include <atomic>
 #include <stdarg.h>
 #include <sys/resource.h>
+#include <limits.h>
 
 
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
@@ -294,6 +295,8 @@
 #define REDIS_ERR_OOM 5 /* Out of memory */
 #define REDIS_ERR_OTHER 2 /* Everything else... */
 
+
+#define REDIS_SLAVE_SYNC_SIZE  65536 
 
 #define REDIS_RECONNECT_COUNT 10
 class noncopyable
