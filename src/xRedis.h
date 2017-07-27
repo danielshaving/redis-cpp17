@@ -74,7 +74,7 @@ public:
 	bool keysCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool bgsaveCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool memoryCommond(const std::deque <rObj*> & obj,xSession * session);
-
+	bool sentinelCommond(const std::deque<rObj*> & obj, xSession * session);
 	
 	bool save(xSession * session);
 	int removeCommond(rObj * obj,int &count);
@@ -82,6 +82,7 @@ public:
 	void clearRepliState(int32_t sockfd);
 	size_t getDbsize();
 
+	void structureProtocol(xBuffer &  sendBuf, rObj * commond, std::deque<rObj*> &robjs);
 public:
 	
 	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommonds;
@@ -139,12 +140,12 @@ public:
 	mutable MutexLock mutex;
 	mutable MutexLock slaveMutex;
 	mutable MutexLock expireMutex;
+	mutable MutexLock sentinelMutex;
+	mutable MutexLock clusterMutex;
 	std::string host;
 	int32_t port;
 	int32_t threadCount;
-	std::string sentinelHost;
-	std::atomic<int> sentinelPort;
-	std::string  masterHost;
+	std::string			masterHost;
 	std::atomic<int>    masterPort ;
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
@@ -158,12 +159,13 @@ public:
 	xSentinel	   senti;
 	std::shared_ptr<std::thread > repliThreads;
 	std::shared_ptr<std::thread > sentiThreads;
-	std::map<int32_t,xTcpconnectionPtr> tcpconnMaps;
+	std::map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
+	std::map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;
 	std::map<int32_t,xTimer*> repliTimers;
 	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
 	xSocket socket;
 	std::string password;
-	std::atomic<int64_t >  count ;
+	std::atomic<int64_t >  count;
 	std::atomic<bool>	pingPong;
 };
 

@@ -47,5 +47,3 @@ public:
 	xTimer *timer;
 };
 
-void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*> &robjs);
-

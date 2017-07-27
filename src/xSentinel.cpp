@@ -28,15 +28,19 @@ void xSentinel::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	{
 		this->conn = conn;
 		socket.getpeerName(conn->getSockfd(),&(conn->host),conn->port);
-		redis->sentinelHost = conn->host;
-		redis->sentinelPort = conn->port ;
+		{
+			MutexLockGuard lk(redis->sentinelMutex);
+			redis->salvetcpconnMaps.insert(std::make_pair(conn->getSockfd(), conn));
+		}
 		LOG_INFO<<"connect Sentinel suucess ";
 		
 	}
 	else
 	{
-		redis->sentinelHost.clear();
-		redis->sentinelPort = 0;
+		{
+			MutexLockGuard lk(redis->sentinelMutex);
+			redis->salvetcpconnMaps.erase(conn->getSockfd());
+		}
 		LOG_INFO<<"disconnect sentinel ";
 	}
 }

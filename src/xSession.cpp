@@ -87,7 +87,7 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 		if(redis->repliEnabled)
 		{
 			MutexLockGuard mu(redis->slaveMutex);
-			for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it++)
+			for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); it++)
 			{
 				if(sendSlaveBuf.readableBytes() > 0 )
 				{
@@ -136,13 +136,13 @@ int xSession::processCommand()
 	{
 		{
 			MutexLockGuard mu(redis->slaveMutex);
-			auto it = redis->tcpconnMaps.find(conn->getSockfd());
-			if(it !=  redis->tcpconnMaps.end())
+			auto it = redis->salvetcpconnMaps.find(conn->getSockfd());
+			if(it !=  redis->salvetcpconnMaps.end())
 			{
 				fromSalve = true;
 				if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
 				{
-					if(++redis->salveCount >= redis->tcpconnMaps.size())
+					if(++redis->salveCount >= redis->salvetcpconnMaps.size())
 					{
 						LOG_INFO<<"slaveof sync success";
 						if(redis->slaveCached.readableBytes() > 0)
@@ -184,13 +184,13 @@ int xSession::processCommand()
 				if(!fromSalve)
 				{
 					MutexLockGuard mu(redis->slaveMutex);
-					if(redis->salveCount <  redis->tcpconnMaps.size())
+					if(redis->salveCount <  redis->salvetcpconnMaps.size())
 					{
-						replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
+						redis->structureProtocol(redis->slaveCached,robjs[0],robjs);
 					}
 					else
 					{
-						replicationFeedSlaves(sendSlaveBuf,robjs[0],robjs);
+						redis->structureProtocol(sendSlaveBuf,robjs[0],robjs);
 					}
 				}
 				

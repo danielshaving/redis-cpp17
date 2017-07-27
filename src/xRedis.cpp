@@ -62,8 +62,8 @@ void xRedis::handleSalveRepliTimeOut(void * data)
 {
 	int32_t *sockfd = (int32_t *)data;
 	MutexLockGuard mu(slaveMutex);
-	auto it =  tcpconnMaps.find(*sockfd);
-	if(it != tcpconnMaps.end())
+	auto it = salvetcpconnMaps.find(*sockfd);
+	if(it != salvetcpconnMaps.end())
 	{
 		it->second->forceClose();
 	}
@@ -75,12 +75,12 @@ void xRedis::clearRepliState(int32_t sockfd)
 {
 	{
 		MutexLockGuard mu(slaveMutex);
-		auto it =  tcpconnMaps.find(sockfd);
-		if(it != tcpconnMaps.end())
+		auto it = salvetcpconnMaps.find(sockfd);
+		if(it != salvetcpconnMaps.end())
 		{
 			salveCount--;
-			tcpconnMaps.erase(sockfd);
-			if(tcpconnMaps.size() == 0)
+			salvetcpconnMaps.erase(sockfd);
+			if(salvetcpconnMaps.size() == 0)
 			{
 				repliEnabled = false;
 				xBuffer buffer;
@@ -522,6 +522,11 @@ bool xRedis::unsubscribeCommond(const std::deque <rObj*> & obj,xSession * sessio
 }
 
 
+bool xRedis::sentinelCommond(const std::deque<rObj*> & obj, xSession * session)
+{
+	return true;
+}
+
 bool xRedis::memoryCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size()  > 2)
@@ -630,7 +635,7 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 
 	{
 		MutexLockGuard lock(slaveMutex);
-		for(auto it = tcpconnMaps.begin(); it != tcpconnMaps.end(); it ++)
+		for(auto it = salvetcpconnMaps.begin(); it != salvetcpconnMaps.end(); it ++)
 		{
 			info = sdscat(info,"\r\n");
 			info = sdscatprintf(info,
@@ -852,13 +857,12 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
 								 (char*)obj[2]->ptr);
 			 return false;
 		}
-
 	}
 
 	if (host.c_str() && !memcmp(host.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
 		&& this->port == port)
 	{
-		LOG_WARN<<"Clsuter meet  connect self error .";
+		LOG_WARN<<"	cluster  meet  connect self error .";
 		addReplySds(session->sendBuf,sdsnew("Don't connect self \r\n"));
 		return false;
 	}
@@ -868,6 +872,39 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
+
+
+
+
+void xRedis::structureProtocol(xBuffer &  sendBuf, rObj * commond, std::deque<rObj*> &robjs)
+{
+	int len, j;
+	char buf[32];
+	buf[0] = '*';
+	len = 1 + ll2string(buf + 1, sizeof(buf) - 1, robjs.size());
+	buf[len++] = '\r';
+	buf[len++] = '\n';
+	sendBuf.append(buf, len);
+
+	buf[0] = '$';
+	len = 1 + ll2string(buf + 1, sizeof(buf) - 1, sdsllen(commond->ptr));
+	buf[len++] = '\r';
+	buf[len++] = '\n';
+	sendBuf.append(buf, len);
+	sendBuf.append(commond->ptr, sdsllen(commond->ptr));
+	sendBuf.append("\r\n", 2);
+
+	for (int i = 1; i < robjs.size(); i++)
+	{
+		buf[0] = '$';
+		len = 1 + ll2string(buf + 1, sizeof(buf) - 1, sdsllen(robjs[i]->ptr));
+		buf[len++] = '\r';
+		buf[len++] = '\n';
+		sendBuf.append(buf, len);
+		sendBuf.append(robjs[i]->ptr, sdsllen(robjs[i]->ptr));
+		sendBuf.append("\r\n", 2);
+	}
+}
 
 
 bool  xRedis::save(xSession * session)
@@ -1022,7 +1059,7 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,(void *)&sockfd,
 				false,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
-		tcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
+		salvetcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
 		repliEnabled = true;
 	}
 
@@ -1444,7 +1481,7 @@ bool xRedis::ppingCommond(const std::deque <rObj*> & obj, xSession * session)
 {
 	std::deque<rObj*>  robjs;
 	robjs.push_back(shared.ppong);
-	replicationFeedSlaves(session->sendBuf,shared.ppong, robjs);
+	structureProtocol(session->sendBuf,shared.ppong, robjs);
 	return true;
 }
 
@@ -1991,6 +2028,8 @@ void xRedis::init()
 	obj = createStringObject("ppong",6);
 	handlerCommondMap[obj] = std::bind(&xRedis::ppongCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("pping", 6);
+	handlerCommondMap[obj] = std::bind(&xRedis::ppingCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("sentinel", 8);
 	handlerCommondMap[obj] = std::bind(&xRedis::ppingCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("set",3);
 	unorderedmapCommonds.insert(obj);

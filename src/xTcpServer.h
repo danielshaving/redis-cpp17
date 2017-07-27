@@ -18,7 +18,6 @@ public:
 	void newConnection(int sockfd);
 	void start();
 
-
 	void removeConnection(const xTcpconnectionPtr& conn);
 	void removeConnectionInLoop(const xTcpconnectionPtr& conn);
 	void setThreadInitCallback(const ThreadInitCallback& cb){ threadInitCallback= cb; }

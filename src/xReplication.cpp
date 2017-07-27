@@ -161,7 +161,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	if(conn->connected())
 	{
 		this->conn = conn;
-		socket.getpeerName(conn->getSockfd(),&(conn->host),conn->port);
+		socket.getpeerName(conn->getSockfd(),&(conn->host),conn->port);
 		redis->masterHost = conn->host.c_str();
 		redis->masterPort = conn->port ;
 		redis->slaveEnabled =  true;
@@ -232,7 +232,7 @@ void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)
 	if(redis->repliEnabled)
 	{
 		MutexLockGuard mu(redis->slaveMutex);
-		for(auto it = redis->tcpconnMaps.begin(); it != redis->tcpconnMaps.end(); it ++)
+		for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); it ++)
 		{
 			it->second->forceClose();
 		}
@@ -240,35 +240,4 @@ void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)
 
 	client->connect(this->ip.c_str(),this->port);
 }
-
-void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*>  &robjs)
-{
-	int len, j;
-	char buf[32];
-	buf[0] = '*';
-	len =1 +  ll2string(buf+1,sizeof(buf)-1,robjs.size());
-	buf[len++] = '\r';
-	buf[len++] = '\n';
-	sendBuf.append(buf,len);
-
-	buf[0] = '$';
-	len =1 +  ll2string(buf+1,sizeof(buf)-1,sdsllen(commond->ptr));
-	buf[len++] = '\r';
-	buf[len++] = '\n';
-	sendBuf.append(buf,len);
-	sendBuf.append(commond->ptr,sdsllen(commond->ptr));
-	sendBuf.append("\r\n",2);
-	
-	for(int i = 1;  i < robjs.size() ; i ++)
-	{
-		buf[0] = '$';
-		len = 1 + ll2string(buf+1,sizeof(buf)-1,sdsllen(robjs[i]->ptr));
-		buf[len++] = '\r';
-		buf[len++] = '\n';
-		sendBuf.append(buf,len);
-		sendBuf.append(robjs[i]->ptr,sdsllen(robjs[i]->ptr));
-		sendBuf.append("\r\n",2);
-	}
-}
-
 
