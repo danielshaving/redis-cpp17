@@ -35,6 +35,9 @@ public:
 	bool saveCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool pingCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool pongCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool ppingCommond(const std::deque <rObj*> & obj, xSession * session);
+	bool ppongCommond(const std::deque <rObj*> & obj, xSession * session);
+
 	bool flushdbCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool dbsizeCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool quitCommond(const std::deque <rObj*> & obj,xSession * session);

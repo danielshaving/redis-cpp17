@@ -55,7 +55,7 @@ void xReplication::handleTimer(void * data)
 			LOG_INFO<<"ping ping ";	
 		}
 		
-		conn->send(stringPiepe(shared.ping->ptr,sdsllen(shared.ping->ptr)));
+		conn->send(stringPiepe(shared.pping->ptr,sdsllen(shared.pping->ptr)));
 	}
 }
 
@@ -145,8 +145,8 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 			std::shared_ptr<xSession> session (new xSession(redis,conn));
 			MutexLockGuard mu(redis->mutex);
 			redis->sessions[conn->getSockfd()] = session;
-			//conn->send(stringPiepe(shared.ping->ptr,sdsllen(shared.ping->ptr)));
-			//timer = loop->runAfter(1,nullptr,true,std::bind(&xReplication::handleTimer,this,std::placeholders::_1));
+			conn->send(stringPiepe(shared.pping->ptr,sdsllen(shared.pping->ptr)));
+			timer = loop->runAfter(1,nullptr,true,std::bind(&xReplication::handleTimer,this,std::placeholders::_1));
 	
 		}
 		

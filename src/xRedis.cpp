@@ -1440,10 +1440,24 @@ bool xRedis::hkeysCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool xRedis::pongCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::ppingCommond(const std::deque <rObj*> & obj, xSession * session)
+{
+	std::deque<rObj*>  robjs;
+	robjs.push_back(shared.ppong);
+	replicationFeedSlaves(session->sendBuf,shared.ppong, robjs);
+	return true;
+}
+
+bool xRedis::ppongCommond(const std::deque <rObj*> & obj, xSession * session)
 {
 	pingPong = true;
 	return true;
+}
+
+
+bool xRedis::pongCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	return false;
 }
 
 bool xRedis::pingCommond(const std::deque <rObj*> & obj,xSession * session)
@@ -1974,8 +1988,10 @@ void xRedis::init()
 	handlerCommondMap[obj] = std::bind(&xRedis::bgsaveCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("memory",6);
 	handlerCommondMap[obj] = std::bind(&xRedis::memoryCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("+pong",5);
-	handlerCommondMap[obj] = std::bind(&xRedis::pongCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("ppong",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::ppongCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("pping", 6);
+	handlerCommondMap[obj] = std::bind(&xRedis::ppingCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("set",3);
 	unorderedmapCommonds.insert(obj);
 	obj = createStringObject("hset",4);

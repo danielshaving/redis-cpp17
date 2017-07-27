@@ -77,7 +77,7 @@ struct EEqual
 
 struct sharedObjectsStruct
 {
-    rObj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *ping,*pong, *space,
+    rObj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *pping,*ping,*pong,*ppong, *space,
     *colon, *nullbulk, *nullmultibulk, *queued,
     *emptymultibulk, *wrongtypeerr, *nokeyerr, *syntaxerr, *sameobjecterr,
     *outofrangeerr, *noscripterr, *loadingerr, *slowscripterr, *bgsaveerr,
