@@ -124,7 +124,6 @@ void xLogFile::append(const char* logline, int len)
 
 void xLogFile::flush()
 {
-
 	std::unique_lock<std::mutex> lk(mutex);
 	file->flush();
 
@@ -479,7 +478,7 @@ void xLogger::xImpl::formatTime()
 
 void xLogger::xImpl::finish()
 {
-	stream << "  " << T(baseName.data,baseName.size)<< ':' << line <<"\r\n";
+	stream << "  " << T(baseName.data,baseName.size)<< ':' << line<<"\r";
 }
 
 xLogger::xLogger(xSourceFile file, int line)

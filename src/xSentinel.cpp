@@ -18,13 +18,27 @@ xSentinel::~xSentinel()
 
 void xSentinel::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
 {
-
+	
 }
 
 
 void xSentinel::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
-	
+	if(conn->connected())
+	{
+		this->conn = conn;
+		socket.getpeerName(conn->getSockfd(),&(conn->host),conn->port);
+		redis->sentinelHost = conn->host;
+		redis->sentinelPort = conn->port ;
+		LOG_INFO<<"connect Sentinel suucess ";
+		
+	}
+	else
+	{
+		redis->sentinelHost.clear();
+		redis->sentinelPort = 0;
+		LOG_INFO<<"disconnect sentinel ";
+	}
 }
 
 
@@ -36,6 +50,7 @@ void xSentinel::connectSentinel()
 	client.setConnectionCallback(std::bind(&xSentinel::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
 	client.setMessageCallback( std::bind(&xSentinel::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
 	client.setConnectionErrorCallBack(std::bind(&xSentinel::connErrorCallBack, this));
+	this->loop = &loop;
 	this->client = & client;
 	this->loop = &loop;
 	loop.run();
@@ -51,6 +66,7 @@ void xSentinel::reconnectTimer(void * data)
 
 void xSentinel::connErrorCallBack()
 {
+
 	if(!isreconnect)
 	{
 		return ;
@@ -69,6 +85,10 @@ void xSentinel::connErrorCallBack()
 	loop->runAfter(5,nullptr,false,std::bind(&xSentinel::reconnectTimer,this,std::placeholders::_1));
 }
 
+void xSentinel::init()
+{
+	
+}
 
 
 

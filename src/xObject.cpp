@@ -181,55 +181,78 @@ rObj *createStringObjectFromLongLong(long long value)
 	return o;
 }
 
+
+void freeStringObject(rObj *o) 
+{
+    if (o->encoding == OBJ_ENCODING_RAW)
+    {
+        sdsfree((sds)o->ptr);
+    }
+}
+
+
+void decrRefCount(rObj *o) 
+{
+	switch(o->type)
+	{
+		case OBJ_STRING: freeStringObject(o); break;
+		default: LOG_WARN<<"Unknown object type"; break;
+	}
+	zfree(o);
+}
+
+
 void destorySharedObjects()
 {
-	zfree(shared.crlf);
-	zfree(shared.ok);
-	zfree(shared.err);
-	zfree(shared.emptybulk);
-	zfree(shared.czero);
-	zfree(shared.cone);
-	zfree(shared.cnegone);
-	zfree(shared.nullbulk);
-	zfree(shared.nullmultibulk);
-	zfree(shared.emptymultibulk);
-	zfree(shared.pong);
-	zfree(shared.queued);
-	zfree(shared.emptyscan);
-	zfree(shared.wrongtypeerr);
-	zfree(shared.nokeyerr);
-	zfree(shared.syntaxerr);
-	zfree(shared.sameobjecterr);
-	zfree(shared.outofrangeerr);
-	zfree(shared.noscripterr);
-	zfree(shared.loadingerr);
-	zfree(shared.slowscripterr);
-	zfree(shared.masterdownerr);
-	zfree(shared.bgsaveerr);
-	zfree(shared.roslaveerr);
-	zfree(shared.noautherr);
-	zfree(shared.oomerr);
-	zfree(shared.execaborterr);
-	zfree(shared.noreplicaserr);
-	zfree(shared.busykeyerr);
-	zfree(shared.space);
-	zfree(shared.colon);
-	zfree(shared.plus);
-	zfree(shared.messagebulk);
-	zfree(shared.pmessagebulk);
-	zfree(shared.subscribebulk);
-	zfree(shared.unsubscribebulk);
-	zfree(shared.psubscribebulk);
-	zfree(shared.punsubscribebulk);
+	freeStringObject(shared.crlf);
+	freeStringObject(shared.ok);
+	freeStringObject(shared.err);
+	freeStringObject(shared.emptybulk);
+	freeStringObject(shared.czero);
+	freeStringObject(shared.cone);
+	freeStringObject(shared.cnegone);
+	freeStringObject(shared.nullbulk);
+	freeStringObject(shared.nullmultibulk);
+	freeStringObject(shared.emptymultibulk);
+	freeStringObject(shared.ping);
+	freeStringObject(shared.pong);
+	
+	freeStringObject(shared.queued);
+	freeStringObject(shared.emptyscan);
+	freeStringObject(shared.wrongtypeerr);
+	freeStringObject(shared.nokeyerr);
+	freeStringObject(shared.syntaxerr);
+	freeStringObject(shared.sameobjecterr);
+	freeStringObject(shared.outofrangeerr);
+	freeStringObject(shared.noscripterr);
+	freeStringObject(shared.loadingerr);
+	freeStringObject(shared.slowscripterr);
+	freeStringObject(shared.masterdownerr);
+	freeStringObject(shared.bgsaveerr);
+	freeStringObject(shared.roslaveerr);
+	freeStringObject(shared.noautherr);
+	freeStringObject(shared.oomerr);
+	freeStringObject(shared.execaborterr);
+	freeStringObject(shared.noreplicaserr);
+	freeStringObject(shared.busykeyerr);
+	freeStringObject(shared.space);
+	freeStringObject(shared.colon);
+	freeStringObject(shared.plus);
+	freeStringObject(shared.messagebulk);
+	freeStringObject(shared.pmessagebulk);
+	freeStringObject(shared.subscribebulk);
+	freeStringObject(shared.unsubscribebulk);
+	freeStringObject(shared.psubscribebulk);
+	freeStringObject(shared.punsubscribebulk);
 
 	
 	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
 	{
-		zfree(shared.mbulkhdr[j]);
-		zfree(shared.bulkhdr[j]);
+		freeStringObject(shared.mbulkhdr[j]);
+		freeStringObject(shared.bulkhdr[j]);
 	}
 
-	zfree(shared.sync);
+	freeStringObject(shared.sync);
 
 }
 
@@ -248,6 +271,7 @@ void createSharedObjects()
     shared.nullbulk = createObject(REDIS_STRING,sdsnew("$-1\r\n"));
     shared.nullmultibulk = createObject(REDIS_STRING,sdsnew("*-1\r\n"));
     shared.emptymultibulk = createObject(REDIS_STRING,sdsnew("*0\r\n"));
+    shared.ping = createObject(REDIS_STRING,sdsnew("PING\r\n"));
     shared.pong = createObject(REDIS_STRING,sdsnew("+PONG\r\n"));
     shared.queued = createObject(REDIS_STRING,sdsnew("+QUEUED\r\n"));
     shared.emptyscan = createObject(REDIS_STRING,sdsnew("*2\r\n$1\r\n0\r\n*0\r\n"));

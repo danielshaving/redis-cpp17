@@ -2,7 +2,7 @@
 
 
 
-xRedis::xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster)
+xRedis::xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster,bool enabledSentinel)
 :host(ip),
 port(port),
 threadCount(threadCount),
@@ -12,102 +12,24 @@ slaveEnabled(false),
 authEnabled(false),
 repliEnabled(false),
 salveCount(0),
-count(0)
+count(0),
+pingPong(false)
 {
+	init();
+	if(enbaledCluster)
+	{
+		sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
+		sentiThreads->detach();
+	}
 	repliThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
-	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
-
 	repliThreads->detach();
-	sentiThreads->detach();
-	rObj * obj = createStringObject("set",3);
-	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("get",3);
-	handlerCommondMap[obj] =std::bind(&xRedis::getCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("flushdb",7);
-	handlerCommondMap[obj] =std::bind(&xRedis::flushdbCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("dbsize",6);
-	handlerCommondMap[obj] =std::bind(&xRedis::dbsizeCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hset",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::hsetCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hget",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::hgetCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hgetall",7);
-	handlerCommondMap[obj] =std::bind(&xRedis::hgetallCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("ping",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::pingCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("save",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::saveCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("slaveof",7);
-	handlerCommondMap[obj] =std::bind(&xRedis::slaveofCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("sync",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::syncCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("command",7);
-	handlerCommondMap[obj] =std::bind(&xRedis::commandCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("config",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::configCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("auth",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::authCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("info",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::infoCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("echo",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::echoCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("client",5);
-	handlerCommondMap[obj] = std::bind(&xRedis::clientCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("subscribe",9);
-	handlerCommondMap[obj] = std::bind(&xRedis::subscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hkeys",5);
-	handlerCommondMap[obj] = std::bind(&xRedis::hkeysCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("select",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::selectCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("sadd",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::saddCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("scard",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::scardCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("publish",7);
-	handlerCommondMap[obj] = std::bind(&xRedis::publishCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("del",3);
-	handlerCommondMap[obj] = std::bind(&xRedis::delCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("unsubscribe",11);
-	handlerCommondMap[obj] = std::bind(&xRedis::unsubscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hlen",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::hlenCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zadd",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::zaddCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zcard",5);
-	handlerCommondMap[obj] = std::bind(&xRedis::zcardCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zrange",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::zrangeCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zrank",5);
-	handlerCommondMap[obj] = std::bind(&xRedis::zrankCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zrevrange",9);
-	handlerCommondMap[obj] = std::bind(&xRedis::zrevrangeCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("keys",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::keysCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("bgsave",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::bgsaveCommond, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("memory",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::memoryCommond, this, std::placeholders::_1, std::placeholders::_2);
-
-	obj = createStringObject("set",3);
-	unorderedmapCommonds.insert(obj);
-	obj = createStringObject("hset",4);
-	unorderedmapCommonds.insert(obj);
-	obj = createStringObject("zadd",4);
-	unorderedmapCommonds.insert(obj);
-	obj = createStringObject("sadd",4);
-	unorderedmapCommonds.insert(obj);
-	obj = createStringObject("del",3);
-	unorderedmapCommonds.insert(obj);
-	obj = createStringObject("flushdb",7);
-	unorderedmapCommonds.insert(obj);
-	
 	createSharedObjects();
 	loadDataFromDisk();
 	server.init(&loop, host, port,this);
 	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
 	server.setThreadNum(threadCount);
 	server.start();
-
+	zmalloc_enable_thread_safeness();
 }
 
 xRedis::~xRedis()
@@ -117,10 +39,10 @@ xRedis::~xRedis()
 }
 
 
-
 void xRedis::test(void * data)
 {
 	count++;
+	LOG_INFO << count;
 }
 
 void xRedis::handleTimeOut(void * data)
@@ -181,7 +103,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
 	{
-		socket.getpeerName(conn->getSockfd(),conn->host,conn->port);
+		socket.getpeerName(conn->getSockfd(),&(conn->host),conn->port);
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
@@ -705,15 +627,26 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 	host.c_str(),
 	port,
 	threadCount+=4);
+
+	{
+		MutexLockGuard lock(slaveMutex);
+		for(auto it = tcpconnMaps.begin(); it != tcpconnMaps.end(); it ++)
+		{
+			info = sdscat(info,"\r\n");
+			info = sdscatprintf(info,
+			"# SlaveInfo \r\n"
+			"slave_ip:%s\r\n"
+			"slave_port:%d\r\n",
+			it->second->host.c_str(),
+			it->second->port);
+
+		}
+
+	}
 	
 	addReplyBulkSds(session->sendBuf, info);
-
-	for(auto it = obj.begin(); it != obj.end(); it++)
-	{
-		zfree(*it);
-	}
-
-	return true;
+	
+	return false ;
 }
 
 
@@ -727,12 +660,7 @@ bool xRedis::clientCommond(const std::deque <rObj*> & obj,xSession * session)
 
 	addReply(session->sendBuf,shared.ok);
 
-	for(auto it = obj.begin(); it != obj.end(); it++)
-	{
-		zfree(*it);
-	}
-
-	return true;
+	return false;
 }
 
 
@@ -746,11 +674,8 @@ bool xRedis::echoCommond(const std::deque <rObj*> & obj,xSession * session)
 
 	addReplyBulk(session->sendBuf,obj[0]);
 
-	for(auto it = obj.begin(); it != obj.end(); it++)
-	{
-		zfree(*it);
-	}
-	return true;
+	
+	return false;
 }
 
 bool xRedis::publishCommond(const std::deque <rObj*> & obj,xSession * session)
@@ -788,12 +713,7 @@ bool xRedis::publishCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 	}
 
-	for(auto it = obj.begin(); it != obj.end(); it ++)
-	{
-		zfree(*it);
-	}
-
-	return true;
+	return false;
 }
 
 bool xRedis::subscribeCommond(const std::deque <rObj*> & obj,xSession * session)
@@ -807,10 +727,10 @@ bool xRedis::subscribeCommond(const std::deque <rObj*> & obj,xSession * session)
 
 	for(auto it = obj.begin(); it != obj.end(); it++)
 	{
-		(*it)->calHash();
-	    size_t hash = (*it)->hash;
+	     (*it)->calHash();
+	     size_t hash = (*it)->hash;
 
-	    MutexLock &mu = pubSubShards[hash% kShards].mutex;
+	     MutexLock &mu = pubSubShards[hash% kShards].mutex;
 		auto &pubSub = pubSubShards[hash% kShards].pubSub;
 		{
 			MutexLockGuard lock(mu);
@@ -863,12 +783,8 @@ bool xRedis::authCommond(const std::deque <rObj*> & obj,xSession * session)
 		addReplyError(session->sendBuf,"invalid password");
 	}
 
-	for(auto it = obj.begin(); it != obj.end(); it++)
-	{
-		zfree(*it);
-	}
 
-	return true;
+	return false;
 }
 
 bool xRedis::configCommond(const std::deque <rObj*> & obj,xSession * session)
@@ -908,24 +824,12 @@ bool xRedis::configCommond(const std::deque <rObj*> & obj,xSession * session)
 		addReplyError(session->sendBuf, "CONFIG subcommand must be one of GET, SET, RESETSTAT, REWRITE");
 	}
 
+	return false;
 
-	for(auto it = obj.begin(); it != obj.end(); it++)
-	{
-		zfree(*it);
-	}
-
-	return true;
 }
 
 bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-
-	for(auto it = obj.begin(); it != obj.end(); it++)
-	{
-		zfree(*it);
-	}
-	addReply(session->sendBuf,shared.ok);
-	return true;
 	if(!clusterEnabled)
 	{
 		addReplyError(session->sendBuf,"This instance has cluster support disabled");
@@ -950,8 +854,15 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 
 	}
-	
 
+	if (host.c_str() && !memcmp(host.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
+		&& this->port == port)
+	{
+		LOG_WARN<<"Clsuter meet  connect self error .";
+		addReplySds(session->sendBuf,sdsnew("Don't connect self \r\n"));
+		return false;
+	}
+		
 
 	return  true;
 }
@@ -971,7 +882,8 @@ bool  xRedis::save(xSession * session)
 		}
 		else
 		{
-			LOG_INFO<<"Save rdb failure";
+			LOG_INFO<<"Save rdb failure";
+
 			return false;
 		}
 	}
@@ -1523,12 +1435,14 @@ bool xRedis::hkeysCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 	}
 
-	for(auto it = obj.begin(); it != obj.end(); it ++)
-	{
-		zfree(*it);
-	}
+	return false;
+
+}
 
 
+bool xRedis::pongCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	pingPong = true;
 	return true;
 }
 
@@ -1539,12 +1453,7 @@ bool xRedis::pingCommond(const std::deque <rObj*> & obj,xSession * session)
 		addReplyErrorFormat(session->sendBuf,"unknown ping error");
 		return false;
 	}
-
-	for(auto it = obj.begin(); it != obj.end(); it ++)
-	{
-		zfree(*it);
-	}
-
+	
 	addReply(session->sendBuf,shared.pong);
 	return true;
 }
@@ -1993,5 +1902,93 @@ void xRedis::flush()
 
 }
 
+
+
+void xRedis::init()
+{
+	rObj * obj = createStringObject("set",3);
+	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("get",3);
+	handlerCommondMap[obj] =std::bind(&xRedis::getCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("flushdb",7);
+	handlerCommondMap[obj] =std::bind(&xRedis::flushdbCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("dbsize",6);
+	handlerCommondMap[obj] =std::bind(&xRedis::dbsizeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("hset",4);
+	handlerCommondMap[obj] =std::bind(&xRedis::hsetCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("hget",4);
+	handlerCommondMap[obj] =std::bind(&xRedis::hgetCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("hgetall",7);
+	handlerCommondMap[obj] =std::bind(&xRedis::hgetallCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("ping",4);
+	handlerCommondMap[obj] =std::bind(&xRedis::pingCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("save",4);
+	handlerCommondMap[obj] =std::bind(&xRedis::saveCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("slaveof",7);
+	handlerCommondMap[obj] =std::bind(&xRedis::slaveofCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("sync",4);
+	handlerCommondMap[obj] =std::bind(&xRedis::syncCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("command",7);
+	handlerCommondMap[obj] =std::bind(&xRedis::commandCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("config",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::configCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("auth",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::authCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("info",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::infoCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("echo",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::echoCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("client",5);
+	handlerCommondMap[obj] = std::bind(&xRedis::clientCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("subscribe",9);
+	handlerCommondMap[obj] = std::bind(&xRedis::subscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("hkeys",5);
+	handlerCommondMap[obj] = std::bind(&xRedis::hkeysCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("select",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::selectCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("sadd",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::saddCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("scard",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::scardCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("publish",7);
+	handlerCommondMap[obj] = std::bind(&xRedis::publishCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("del",3);
+	handlerCommondMap[obj] = std::bind(&xRedis::delCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("unsubscribe",11);
+	handlerCommondMap[obj] = std::bind(&xRedis::unsubscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("hlen",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::hlenCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("zadd",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::zaddCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("zcard",5);
+	handlerCommondMap[obj] = std::bind(&xRedis::zcardCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("zrange",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::zrangeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("zrank",5);
+	handlerCommondMap[obj] = std::bind(&xRedis::zrankCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("zrevrange",9);
+	handlerCommondMap[obj] = std::bind(&xRedis::zrevrangeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("keys",4);
+	handlerCommondMap[obj] = std::bind(&xRedis::keysCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("bgsave",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::bgsaveCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("memory",6);
+	handlerCommondMap[obj] = std::bind(&xRedis::memoryCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("+pong",5);
+	handlerCommondMap[obj] = std::bind(&xRedis::pongCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("set",3);
+	unorderedmapCommonds.insert(obj);
+	obj = createStringObject("hset",4);
+	unorderedmapCommonds.insert(obj);
+	obj = createStringObject("zadd",4);
+	unorderedmapCommonds.insert(obj);
+	obj = createStringObject("sadd",4);
+	unorderedmapCommonds.insert(obj);
+	obj = createStringObject("del",3);
+	unorderedmapCommonds.insert(obj);
+	obj = createStringObject("flushdb",7);
+	unorderedmapCommonds.insert(obj);
+	
+}
 
 

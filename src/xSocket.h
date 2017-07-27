@@ -20,7 +20,7 @@ public:
 	xSocket(xEventLoop *loop,std::string ip,int32_t port);
 	~xSocket();
 
-	bool getpeerName(int32_t fd,std::string ip,int32_t &port);
+	bool getpeerName(int32_t fd,std::string *ip,int32_t &port);
 	int  createNonBloackSocket();
 	int  connect(int sockfd,std::string ip,int port);
 

@@ -20,9 +20,9 @@ void xPriorityQueue::dtor()
 			{
 				continue;
 			}
-			delete p[i];
+			zfree(p[i]);
 		}
-		delete []p;
+		zfree(p);
 	}
 }
 xPriorityQueue::~xPriorityQueue()
@@ -94,17 +94,7 @@ xTimer *xPriorityQueue::top()
 void  xPriorityQueue::reserve()
 {
 	int aa = a ? a * 2:8;
-	xTimer **pp = new xTimer * [aa];
-
-	for(int i = 0; i < a; i++)
-	{
-		pp[i] = p[i];
-	}
-
-	if(p)
-	{
-		delete []p;
-	}
+	xTimer **pp = (xTimer**)zrealloc(p,aa * sizeof * pp);
 
 	a = aa;
 	p = pp;
@@ -223,7 +213,9 @@ xTimerQueue::~xTimerQueue()
 xTimer  * xTimerQueue::addTimer(double when, void * data,bool repeat,xTimerCallback&& cb)
 {
 	xTimestamp time(addTime(xTimestamp::now(), when));
-	xTimer * timer = new xTimer(std::move(cb),std::move(time),repeat,when,data);
+	xTimer * timer = (xTimer*)zmalloc(sizeof(xTimer));
+	new(timer)xTimer(std::move(cb), std::move(time), repeat, when, data);
+	//xTimer * timer = new xTimer(std::move(cb),std::move(time),repeat,when,data);
 	loop->runInLoop(std::bind(&xTimerQueue::addTimerInLoop,this,timer));
 	return timer;
 }
@@ -240,11 +232,14 @@ void xTimerQueue::cancelInloop(xTimer *timer)
 		return ;
 	}
 
-	if(pqueue.size()  == 1)
+	pqueue.erase(timer);
+	timer->~xTimer();
+	zfree(timer);
+	if (pqueue.size() > 1)
 	{
-		pqueue.erase(timer);
-		resetTimerfd(timerfd,pqueue.head()->getExpiration());
+		resetTimerfd(timerfd, pqueue.head()->getExpiration());
 	}
+	
 }
 
 
@@ -310,7 +305,8 @@ void  xTimerQueue::handleRead()
 		}
 		else
 		{
-			delete *it;
+			(*it)->~xTimer();
+			zfree(*it);
 			*it = nullptr;
 		}
 	}

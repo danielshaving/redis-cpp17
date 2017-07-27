@@ -77,7 +77,7 @@ struct EEqual
 
 struct sharedObjectsStruct
 {
-    rObj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *pong, *space,
+    rObj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *ping,*pong, *space,
     *colon, *nullbulk, *nullmultibulk, *queued,
     *emptymultibulk, *wrongtypeerr, *nokeyerr, *syntaxerr, *sameobjecterr,
     *outofrangeerr, *noscripterr, *loadingerr, *slowscripterr, *bgsaveerr,
@@ -101,6 +101,9 @@ rObj *createStringObject(const char *ptr, size_t len);
 rObj *createEmbeddedStringObject(const char *ptr, size_t len);
 void createSharedObjects();
 void destorySharedObjects();
+void freeStringObject(rObj *o) ;
+void decrRefCount(rObj *o) ;
+
 rObj *createStringObjectFromLongLong(long long value);
 int getLongLongFromObject(rObj *o, long long   *target);
 int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg);

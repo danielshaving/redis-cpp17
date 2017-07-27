@@ -12,6 +12,7 @@ public:
 	xReplication();
 	~xReplication();
 
+	void handleTimer(void * data);
 	void connectMaster();
 	void replicationSetMaster(xRedis * redis,rObj * obj,int32_t port);
 
@@ -42,6 +43,8 @@ public:
 	int32_t salveLen;
 	int32_t salveReadLen;
 	std::atomic<bool>  slaveSyncEnabled;
+	xTcpconnectionPtr conn;
+	xTimer *timer;
 };
 
 void replicationFeedSlaves(xBuffer &  sendBuf,rObj * commond  ,std::deque<rObj*> &robjs);

@@ -115,16 +115,6 @@ bool xSession::checkCommond(rObj*  robjs)
 
 int xSession::processCommand()
 {
-//	std::string str = "HSET";
-//	std::string str1 = robjs[0]->ptr;
-//	if(str != str1)
-//	{
-//		LOG_INFO<<robjs[0]->ptr;
-//		LOG_INFO<<robjs.size();
-//	}
-
-
-
 	assert(robjs.size());
 	
 	if(redis->authEnabled)
@@ -140,6 +130,8 @@ int xSession::processCommand()
 		}
 	}
 
+	bool fromSalve = false;
+	
 	if(redis->repliEnabled)
 	{
 		{
@@ -147,6 +139,7 @@ int xSession::processCommand()
 			auto it = redis->tcpconnMaps.find(conn->getSockfd());
 			if(it !=  redis->tcpconnMaps.end())
 			{
+				fromSalve = true;
 				if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
 				{
 					if(++redis->salveCount >= redis->tcpconnMaps.size())
@@ -188,15 +181,19 @@ int xSession::processCommand()
 		{
 			if( redis->masterPort == 0 )
 			{
-				MutexLockGuard mu(redis->slaveMutex);
-				if(redis->salveCount <  redis->tcpconnMaps.size())
+				if(!fromSalve)
 				{
-					replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
+					MutexLockGuard mu(redis->slaveMutex);
+					if(redis->salveCount <  redis->tcpconnMaps.size())
+					{
+						replicationFeedSlaves(redis->slaveCached,robjs[0],robjs);
+					}
+					else
+					{
+						replicationFeedSlaves(sendSlaveBuf,robjs[0],robjs);
+					}
 				}
-				else
-				{
-					replicationFeedSlaves(sendSlaveBuf,robjs[0],robjs);
-				}
+				
 
 			}
 			else

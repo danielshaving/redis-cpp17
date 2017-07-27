@@ -8,10 +8,11 @@ xReplication::xReplication()
  port(0),
  salveLen(0),
  salveReadLen(0),
- slaveSyncEnabled(false)
-{
+ slaveSyncEnabled(false),
+ timer(nullptr)
+ {
 
-}
+ }
 
 xReplication::~xReplication()
 {
@@ -41,11 +42,26 @@ void xReplication::replicationCron()
 
 
 
+void xReplication::handleTimer(void * data)
+{
+	if(conn)
+	{
+		if(!redis->pingPong)
+		{
+			LOG_WARN<<"ping pong handleTimer timeout";
+		}
+		else
+		{
+			LOG_INFO<<"ping ping ";	
+		}
+		
+		conn->send(stringPiepe(shared.ping->ptr,sdsllen(shared.ping->ptr)));
+	}
+}
+
 void xReplication::syncWrite(const xTcpconnectionPtr& conn)
 {
-	sendBuf.append(shared.sync->ptr,sdsllen(shared.sync->ptr));
-	conn->send(&sendBuf);
-	sendBuf.retrieveAll();
+	conn->send(stringPiepe(shared.sync->ptr,sdsllen(shared.sync->ptr)));
 	fp = createFile();
 	if(fp == nullptr)
 	{
@@ -125,15 +141,12 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 				return ;
 			}
 
-			xBuffer sendbuffer;
-			sendbuffer.append(shared.ok->ptr,sdsllen(shared.ok->ptr));
-			conn->send(&sendbuffer);
-			recvBuf->retrieveAll();
-			xBuffer buffer;
-			recvBuf->swap(buffer);
+			conn->send(stringPiepe(shared.ok->ptr,sdsllen(shared.ok->ptr)));
 			std::shared_ptr<xSession> session (new xSession(redis,conn));
 			MutexLockGuard mu(redis->mutex);
 			redis->sessions[conn->getSockfd()] = session;
+			//conn->send(stringPiepe(shared.ping->ptr,sdsllen(shared.ping->ptr)));
+			//timer = loop->runAfter(1,nullptr,true,std::bind(&xReplication::handleTimer,this,std::placeholders::_1));
 	
 		}
 		
@@ -147,8 +160,9 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
 	{
-		socket.getpeerName(conn->getSockfd(),conn->host,conn->port);
-		redis->masterHost = conn->host;
+		this->conn = conn;
+		socket.getpeerName(conn->getSockfd(),&(conn->host),conn->port);
+		redis->masterHost = conn->host.c_str();
 		redis->masterPort = conn->port ;
 		redis->slaveEnabled =  true;
 		redis->repliEnabled = true;
@@ -158,6 +172,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	}
 	else
 	{
+		this->conn = nullptr;
 		slaveSyncEnabled = false;
 		salveReadLen = 0;
 		salveLen = 0;
@@ -167,6 +182,12 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		redis->repliEnabled = false;
 		MutexLockGuard mu(redis->mutex);
 		redis->sessions.erase(conn->getSockfd());
+		
+		if(timer)
+		{
+			loop->cancelAfter(timer);
+		}
+		
 		LOG_INFO<<"Connect  master disconnect";
 	}
 }

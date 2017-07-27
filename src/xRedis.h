@@ -17,8 +17,9 @@
 class xRedis : noncopyable
 {
 public:
-	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster = false);
+	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster = false,bool enabledSentinel = false);
 	~xRedis();
+	void init();
 	void test(void * data);
 	void handleTimeOut(void * data);
 	void handleSalveRepliTimeOut(void * data);
@@ -33,6 +34,7 @@ public:
 
 	bool saveCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool pingCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool pongCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool flushdbCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool dbsizeCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool quitCommond(const std::deque <rObj*> & obj,xSession * session);
@@ -78,16 +80,19 @@ public:
 	size_t getDbsize();
 
 public:
+	
 	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommonds;
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commondFunction;
 	std::unordered_map<rObj*,commondFunction,Hash,EEqual> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
+
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj *,rObj *,Hash,Equal>,Hash,Equal> SortSet;
 	typedef std::unordered_map<rObj*,std::set<rSObj>,Hash,Equal> SSet;
 	typedef std::unordered_map<rObj*,std::list<xTcpconnectionPtr>,Hash,Equal> PubSub;
+
 	struct SetMapLock
 	{		
 		SetMap setMap;
@@ -134,15 +139,16 @@ public:
 	std::string host;
 	int32_t port;
 	int32_t threadCount;
-	std::string masterHost;
+	std::string sentinelHost;
+	std::atomic<int> sentinelPort;
+	std::string  masterHost;
 	std::atomic<int>    masterPort ;
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  authEnabled;
 	std::atomic<bool>  repliEnabled;
-	
-
-	std::atomic<int>	   salveCount;
+	std::atomic<bool>  sentinelEnabled;
+	std::atomic<int>	salveCount;
 
 	xBuffer		slaveCached;
 	xReplication  repli;
@@ -155,6 +161,7 @@ public:
 	xSocket socket;
 	std::string password;
 	std::atomic<int64_t >  count ;
+	std::atomic<bool>	pingPong;
 };
 
 

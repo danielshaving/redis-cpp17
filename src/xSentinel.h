@@ -10,7 +10,7 @@ class xSentinel: noncopyable
 public:
 	xSentinel();
 	~xSentinel();
-
+	void init();
 	void connectSentinel();
 	void connErrorCallBack();
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
@@ -27,4 +27,5 @@ private:
 	xBuffer sendBuf;
 	int connectCount;
 	xSocket socket;
+	xTcpconnectionPtr conn;
 };

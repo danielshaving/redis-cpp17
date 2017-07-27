@@ -62,9 +62,6 @@ public:
 	void shutdownInLoop();
 	void forceClose();
 	xBuffer * getSendBuff(){ return &sendBuff; }
-
-	std::string			host;
-	int32_t 			port;
 	
 public:
 	xEventLoop 			  *loop;
@@ -82,5 +79,7 @@ public:
 	std::shared_ptr<xChannel> channel;
 	void 				*data;
 	void 				*context;
+	std::string			host;
+	int32_t 			port;
 
 };
