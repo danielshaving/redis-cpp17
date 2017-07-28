@@ -190,8 +190,6 @@ public:
 		headers.swap(that.headers);
 	}
   
-  
-	
 private:
 	Method method;
 	Version version;

@@ -21,9 +21,9 @@ public:
 	void  updateChannel(xChannel* channel);
 	void  removeChannel(xChannel* channel);
 	void  update(int operation, xChannel* channel);
-       void 	fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
+    void 	fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
  private:
- 	ChannelMap 				channels;
+	ChannelMap 				channels;
 	EventList 			    events;
 	xEventLoop 				*loop;
 	int                    		maxFd;;

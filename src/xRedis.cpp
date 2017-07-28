@@ -16,13 +16,13 @@ count(0),
 pingPong(false)
 {
 	init();
-	if(enbaledCluster)
-	{
-		sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
-		sentiThreads->detach();
-	}
+	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
+	sentiThreads->detach();
 	repliThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
 	repliThreads->detach();
+	clusterThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
+	clusterThreads->detach();
+
 	createSharedObjects();
 	loadDataFromDisk();
 	server.init(&loop, host, port,this);
@@ -107,7 +107,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		//LOG_INFO<<"Client connect success";
+		LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -121,7 +121,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		}
 
 		
-		//LOG_INFO<<"Client disconnect";
+		LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -749,78 +749,78 @@ bool xRedis::subscribeCommond(const std::deque <rObj*> & obj,xSession * session)
 			{
 				std::list<xTcpconnectionPtr> list;
 				list.push_back(session->conn);
-				pubSub.insert(std::make_pair(*it,std::move(list)));
+				pubSub.insert(std::make_pair(*it, std::move(list)));
 			}
 
 		}
 
-		addReply(session->sendBuf,shared.mbulkhdr[3]);
-		addReply(session->sendBuf,shared.subscribebulk);
-		addReplyBulk(session->sendBuf,*it);
-		addReplyLongLong(session->sendBuf,++count);
+		addReply(session->sendBuf, shared.mbulkhdr[3]);
+		addReply(session->sendBuf, shared.subscribebulk);
+		addReplyBulk(session->sendBuf, *it);
+		addReplyLongLong(session->sendBuf, ++count);
 
 	}
 
 	return true;
 }
 
-bool xRedis::authCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::authCommond(const std::deque <rObj*> & obj, xSession * session)
 {
-	if(obj.size() > 1)
+	if (obj.size() > 1)
 	{
-		addReplyErrorFormat(session->sendBuf,"unknown auth  error");
+		addReplyErrorFormat(session->sendBuf, "unknown auth  error");
 		return false;
 	}
 
-	if(password.c_str() == nullptr)
+	if (password.c_str() == nullptr)
 	{
-		addReplyError(session->sendBuf,"Client sent AUTH, but no password is set");
+		addReplyError(session->sendBuf, "Client sent AUTH, but no password is set");
 		return false;
 	}
 
-	if (!strcasecmp(obj[0]->ptr,password.c_str()))
+	if (!strcasecmp(obj[0]->ptr, password.c_str()))
 	{
 		session->authEnabled = true;
-		addReply(session->sendBuf,shared.ok);
+		addReply(session->sendBuf, shared.ok);
 	}
 	else
 	{
-		addReplyError(session->sendBuf,"invalid password");
+		addReplyError(session->sendBuf, "invalid password");
 	}
 
 
 	return false;
 }
 
-bool xRedis::configCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::configCommond(const std::deque <rObj*> & obj, xSession * session)
 {
 
-	if(obj.size() > 3)
+	if (obj.size() > 3)
 	{
-		addReplyErrorFormat(session->sendBuf,"unknown config  error");
+		addReplyErrorFormat(session->sendBuf, "unknown config  error");
 		return false;
 	}
 
-	if (!strcasecmp(obj[0]->ptr,"set"))
+	if (!strcasecmp(obj[0]->ptr, "set"))
 	{
-		if(obj.size() != 3)
+		if (obj.size() != 3)
 		{
-			addReplyErrorFormat(session->sendBuf,"Wrong number of arguments for CONFIG %s",
-			        (char*)obj[0]->ptr);
+			addReplyErrorFormat(session->sendBuf, "Wrong number of arguments for CONFIG %s",
+				(char*)obj[0]->ptr);
 			return false;
 		}
 
-		if (!strcasecmp(obj[1]->ptr,"requirepass"))
+		if (!strcasecmp(obj[1]->ptr, "requirepass"))
 		{
 			password = obj[2]->ptr;
 			authEnabled = true;
 			session->authEnabled = false;
-			addReply(session->sendBuf,shared.ok);
+			addReply(session->sendBuf, shared.ok);
 		}
 		else
 		{
-			addReplyErrorFormat(session->sendBuf,"Invalid argument  for CONFIG SET '%s'",
-						            (char*)obj[1]->ptr);
+			addReplyErrorFormat(session->sendBuf, "Invalid argument  for CONFIG SET '%s'",
+				(char*)obj[1]->ptr);
 		}
 
 	}
@@ -833,50 +833,79 @@ bool xRedis::configCommond(const std::deque <rObj*> & obj,xSession * session)
 
 }
 
-bool xRedis::clusterCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 {
-	if(!clusterEnabled)
+	if (obj.size() != 3)
 	{
-		addReplyError(session->sendBuf,"This instance has cluster support disabled");
+		addReplyErrorFormat(session->sendBuf, "unknown cluster  error");
 		return false;
 	}
 
-	if(obj.size() != 3)
+	if (!clusterEnabled)
 	{
-		addReplyErrorFormat(session->sendBuf,"unknown cluster  error");
+		addReplyError(session->sendBuf, "This instance has cluster support disabled");
 		return false;
 	}
 
-	if(!strcasecmp(obj[0]->ptr,"meet"))
+	long long port;
+
+	if (getLongLongFromObject(obj[2], &port) != REDIS_OK)
 	{
-		long long port;
-		
-		if (getLongLongFromObject(obj[2], &port) != REDIS_OK)
+		addReplyErrorFormat(session->sendBuf, "Invalid TCP port specified: %s",
+			(char*)obj[2]->ptr);
+		return false;
+	}
+
+	if ((strcasecmp(obj[0]->ptr, "meet") == 0))
+	{
+		if (host.c_str() && !memcmp(host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr))
+			&& this->port == port)
 		{
-			 addReplyErrorFormat(session->sendBuf,"Invalid TCP port specified: %s",
-								 (char*)obj[2]->ptr);
-			 return false;
+			LOG_WARN << "cluster  meet  connect self error .";
+			addReplyErrorFormat(session->sendBuf, "Don't connect self ");
+			return false;
 		}
-	}
 
-	if (host.c_str() && !memcmp(host.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
-		&& this->port == port)
+		{
+			MutexLockGuard lk(clusterMutex);
+			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
+			{
+				if (port == it->second->port && !memcmp(it->second->host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr)))
+				{
+					LOG_WARN << "cluster  meet  already exists .";
+					addReplyErrorFormat(session->sendBuf, "cluster  meet  already exists ");
+					return false;
+				}
+			}
+		}
+		clus.connSetCluster(obj[1]->ptr, (int32_t)port, this);
+	}
+	else if ((strcasecmp(obj[0]->ptr, "connect") == 0))
 	{
-		LOG_WARN<<"	cluster  meet  connect self error .";
-		addReplySds(session->sendBuf,sdsnew("Don't connect self \r\n"));
+		{
+			MutexLockGuard lk(clusterMutex);
+			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
+			{
+				if (port == it->second->port && !memcmp(it->second->host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr)))
+				{
+					return false;
+				}
+			}
+		}
+		clus.connSetCluster(obj[1]->ptr, (int32_t)port, this);
+	}
+	else
+	{
+		addReplyErrorFormat(session->sendBuf, "unknown param error");
 		return false;
 	}
-		
-
-	return  true;
+	
+	addReply(session->sendBuf, shared.ok);
+	return false;
+	
 }
 
-
-
-
-
-
-void xRedis::structureProtocol(xBuffer &  sendBuf, rObj * commond, std::deque<rObj*> &robjs)
+void xRedis::structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs)
 {
 	int len, j;
 	char buf[32];
@@ -886,15 +915,7 @@ void xRedis::structureProtocol(xBuffer &  sendBuf, rObj * commond, std::deque<rO
 	buf[len++] = '\n';
 	sendBuf.append(buf, len);
 
-	buf[0] = '$';
-	len = 1 + ll2string(buf + 1, sizeof(buf) - 1, sdsllen(commond->ptr));
-	buf[len++] = '\r';
-	buf[len++] = '\n';
-	sendBuf.append(buf, len);
-	sendBuf.append(commond->ptr, sdsllen(commond->ptr));
-	sendBuf.append("\r\n", 2);
-
-	for (int i = 1; i < robjs.size(); i++)
+	for (int i = 0; i < robjs.size(); i++)
 	{
 		buf[0] = '$';
 		len = 1 + ll2string(buf + 1, sizeof(buf) - 1, sdsllen(robjs[i]->ptr));
@@ -1481,7 +1502,7 @@ bool xRedis::ppingCommond(const std::deque <rObj*> & obj, xSession * session)
 {
 	std::deque<rObj*>  robjs;
 	robjs.push_back(shared.ppong);
-	structureProtocol(session->sendBuf,shared.ppong, robjs);
+	structureRedisProtocol(session->sendBuf,robjs);
 	return true;
 }
 
@@ -2031,6 +2052,8 @@ void xRedis::init()
 	handlerCommondMap[obj] = std::bind(&xRedis::ppingCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("sentinel", 8);
 	handlerCommondMap[obj] = std::bind(&xRedis::ppingCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("cluster", 7);
+	handlerCommondMap[obj] = std::bind(&xRedis::clusterCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("set",3);
 	unorderedmapCommonds.insert(obj);
 	obj = createStringObject("hset",4);

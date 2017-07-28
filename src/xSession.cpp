@@ -186,11 +186,11 @@ int xSession::processCommand()
 					MutexLockGuard mu(redis->slaveMutex);
 					if(redis->salveCount <  redis->salvetcpconnMaps.size())
 					{
-						redis->structureProtocol(redis->slaveCached,robjs[0],robjs);
+						redis->structureRedisProtocol(redis->slaveCached,robjs);
 					}
 					else
 					{
-						redis->structureProtocol(sendSlaveBuf,robjs[0],robjs);
+						redis->structureRedisProtocol(sendSlaveBuf,robjs);
 					}
 				}
 				

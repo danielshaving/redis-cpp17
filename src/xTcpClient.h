@@ -41,7 +41,6 @@ public:
 	MessageCallback messageCallback;
 	WriteCompleteCallback writeCompleteCallback;
 
-
 	xTcpconnectionPtr connection;
 	void *data;
 

@@ -3,9 +3,6 @@
 #include "xLog.h"
 
 xCluster::xCluster()
-	:start(false),
-	isreconnect(true),
-	port(0)
 {
 
 }
@@ -20,8 +17,46 @@ void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, voi
 {
 	while (recvBuf->readableBytes() > 0)
 	{
+		if (memcmp(recvBuf->peek(), shared.ok->ptr, 3) == 0)
+		{
+			recvBuf->retrieve(5);
+			if (recvBuf->readableBytes() == 0)
+			{
+				std::shared_ptr<xSession> session(new xSession(redis, conn));
+				{
+					MutexLockGuard lk(redis->mutex);
+					redis->sessions[conn->getSockfd()] = session;
+				}
+
+				break;
+			}	
+		}
+		else
+		{
+			conn->forceClose();
+			LOG_WARN << "connect cluster read msg error";
+			break;
+		}
 
 	}
+}
+
+
+void xCluster::structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, std::deque<rObj*> &robj,const xTcpconnectionPtr & conn)
+{
+	rObj * ip = createStringObject(host.c_str(), host.length());
+	char buf[32];
+	int32_t len = ll2string(buf, sizeof(buf), port);
+	rObj * p = createStringObject((const char*)buf, len);
+	robj.push_back(ip);
+	robj.push_back(p);
+	redis->structureRedisProtocol(sendBuf, robj);
+	robj.pop_back();
+	robj.pop_back();
+	zfree(ip);
+	zfree(p);
+	conn->send(&sendBuf);
+	sendBuf.retrieveAll();
 }
 
 
@@ -29,30 +64,29 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 {
 	if (conn->connected())
 	{
-		this->conn = conn;
 		socket.getpeerName(conn->getSockfd(), &(conn->host), conn->port);
-
 		{
 			xBuffer sendBuf;
-			MutexLockGuard lc(redis->sentinelMutex);
+			std::deque<rObj*> robj;
+			rObj * c = createStringObject("cluster", 7);
+			rObj * m = createStringObject("connect", 7);
+			robj.push_back(c);
+			robj.push_back(m);
+
+			MutexLockGuard lk(redis->clusterMutex);
 			for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); it++)
 			{
-				//structureProtocol();
-				//conn->send();
+				structureProtocolSetCluster(it->second->host, it->second->port, sendBuf, robj,conn);
+			}
+
+			structureProtocolSetCluster(redis->host, redis->port, sendBuf, robj,conn);
+			for (auto it = robj.begin(); it != robj.end(); it++)
+			{
+				zfree(*it);
 			}
 
 			redis->clustertcpconnMaps.insert(std::make_pair(conn->getSockfd(), conn));
 
-		
-		}
-		
-		
-
-
-		std::shared_ptr<xSession> session(new xSession(redis, conn));
-		{
-			MutexLockGuard mu(redis->mutex);
-			redis->sessions[conn->getSockfd()] = session;
 		}
 		LOG_INFO << "connect cluster suucess ";
 
@@ -60,8 +94,17 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 	else
 	{
 		{
-			MutexLockGuard lc(redis->sentinelMutex);
+			MutexLockGuard lc(redis->clusterMutex);
 			redis->clustertcpconnMaps.erase(conn->getSockfd());
+			for (auto it = tcpvectors.begin(); it != tcpvectors.end(); it++)
+			{
+				if ((*it)->connection->host == conn->host && (*it)->connection->port == conn->port)
+				{
+					tcpvectors.erase(it);
+					break;
+				}
+			}
+			
 		}
 
 		LOG_INFO << "disconnect cluster ";
@@ -69,16 +112,20 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 }
 
 
+void xCluster::connSetCluster(std::string ip, int32_t port,xRedis * redis)
+{
+	this->redis = redis;
+	std::shared_ptr<xTcpClient> client(new xTcpClient(loop, this));
+	client->setConnectionCallback(std::bind(&xCluster::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
+	client->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	client->setConnectionErrorCallBack(std::bind(&xCluster::connErrorCallBack, this));
+	client->connect(ip.c_str(), port);
+	tcpvectors.push_back(client);
+}
+
 void xCluster::connectCluster()
 {
-	start = true;
 	xEventLoop loop;
-	xTcpClient client(&loop, this);
-	client.setConnectionCallback(std::bind(&xCluster::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
-	client.setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-	client.setConnectionErrorCallBack(std::bind(&xCluster::connErrorCallBack, this));
-	this->loop = &loop;
-	this->client = &client;
 	this->loop = &loop;
 	loop.run();
 }
@@ -86,30 +133,14 @@ void xCluster::connectCluster()
 void xCluster::reconnectTimer(void * data)
 {
 	LOG_INFO << "Reconnect..........";
-	client->connect(ip.c_str(), port);
+
 }
 
 
 
 void xCluster::connErrorCallBack()
 {
-
-	if (!isreconnect)
-	{
-		return;
-	}
-
-	if (connectCount >= REDIS_RECONNECT_COUNT)
-	{
-		LOG_WARN << "Reconnect failure";
-		ip.clear();
-		port = 0;
-		isreconnect = true;
-		return;
-	}
-
-	++connectCount;
-	loop->runAfter(5, nullptr, false, std::bind(&xCluster::reconnectTimer, this, std::placeholders::_1));
+	return;
 }
 
 void xCluster::init()

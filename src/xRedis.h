@@ -13,6 +13,7 @@
 #include "xSocket.h"
 #include "xReplication.h"
 #include "xSentinel.h"
+#include "xCluster.h"
 
 class xRedis : noncopyable
 {
@@ -75,14 +76,14 @@ public:
 	bool bgsaveCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool memoryCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool sentinelCommond(const std::deque<rObj*> & obj, xSession * session);
-	
+
 	bool save(xSession * session);
 	int removeCommond(rObj * obj,int &count);
 	void clearCommond();
 	void clearRepliState(int32_t sockfd);
 	size_t getDbsize();
 
-	void structureProtocol(xBuffer &  sendBuf, rObj * commond, std::deque<rObj*> &robjs);
+	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 public:
 	
 	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommonds;
@@ -157,8 +158,12 @@ public:
 	xBuffer		slaveCached;
 	xReplication  repli;
 	xSentinel	   senti;
+	xCluster	   clus;
+
 	std::shared_ptr<std::thread > repliThreads;
 	std::shared_ptr<std::thread > sentiThreads;
+	std::shared_ptr<std::thread>	 clusterThreads;
+
 	std::map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
 	std::map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;
 	std::map<int32_t,xTimer*> repliTimers;
