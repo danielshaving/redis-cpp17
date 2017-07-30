@@ -2,7 +2,8 @@
 
 
 
-xRedis::xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster,bool enabledSentinel)
+
+xRedis::xRedis(const char * ip, int16_t port, int16_t threadCount,bool enbaledCluster,bool enabledSentinel)
 :host(ip),
 port(port),
 threadCount(threadCount),
@@ -12,6 +13,7 @@ slaveEnabled(false),
 authEnabled(false),
 repliEnabled(false),
 salveCount(0),
+clusterSlotEnabled(false),
 count(0),
 pingPong(false)
 {
@@ -801,41 +803,41 @@ bool xRedis::configCommond(const std::deque <rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	if (!strcasecmp(obj[0]->ptr, "set"))
-	{
-		if (obj.size() != 3)
-		{
-			addReplyErrorFormat(session->sendBuf, "Wrong number of arguments for CONFIG %s",
-				(char*)obj[0]->ptr);
-			return false;
-		}
-
-		if (!strcasecmp(obj[1]->ptr, "requirepass"))
-		{
-			password = obj[2]->ptr;
-			authEnabled = true;
-			session->authEnabled = false;
-			addReply(session->sendBuf, shared.ok);
-		}
-		else
-		{
-			addReplyErrorFormat(session->sendBuf, "Invalid argument  for CONFIG SET '%s'",
-				(char*)obj[1]->ptr);
-		}
-
-	}
-	else
-	{
-		addReplyError(session->sendBuf, "CONFIG subcommand must be one of GET, SET, RESETSTAT, REWRITE");
-	}
-
+if (!strcasecmp(obj[0]->ptr, "set"))
+{
+if (obj.size() != 3)
+{
+	addReplyErrorFormat(session->sendBuf, "Wrong number of arguments for CONFIG %s",
+		(char*)obj[0]->ptr);
 	return false;
+}
+
+if (!strcasecmp(obj[1]->ptr, "requirepass"))
+{
+	password = obj[2]->ptr;
+	authEnabled = true;
+	session->authEnabled = false;
+	addReply(session->sendBuf, shared.ok);
+}
+else
+{
+	addReplyErrorFormat(session->sendBuf, "Invalid argument  for CONFIG SET '%s'",
+		(char*)obj[1]->ptr);
+}
+
+}
+else
+{
+	addReplyError(session->sendBuf, "CONFIG subcommand must be one of GET, SET, RESETSTAT, REWRITE");
+}
+
+return false;
 
 }
 
 bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 {
-	if (obj.size() != 3)
+	if (obj.size() < 2)
 	{
 		addReplyErrorFormat(session->sendBuf, "unknown cluster  error");
 		return false;
@@ -856,16 +858,16 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	if ((strcasecmp(obj[0]->ptr, "meet") == 0))
+	if (host.c_str() && !memcmp(host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr))
+		&& this->port == port)
 	{
-		if (host.c_str() && !memcmp(host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr))
-			&& this->port == port)
-		{
-			LOG_WARN << "cluster  meet  connect self error .";
-			addReplyErrorFormat(session->sendBuf, "Don't connect self ");
-			return false;
-		}
+		LOG_WARN << "cluster  meet  connect self error .";
+		addReplyErrorFormat(session->sendBuf, "Don't connect self ");
+		return false;
+	}
 
+	if (!strcasecmp(obj[0]->ptr, "meet"))
+	{
 		{
 			MutexLockGuard lk(clusterMutex);
 			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
@@ -880,7 +882,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		}
 		clus.connSetCluster(obj[1]->ptr, (int32_t)port, this);
 	}
-	else if ((strcasecmp(obj[0]->ptr, "connect") == 0))
+	else if (!strcasecmp(obj[0]->ptr, "connect"))
 	{
 		{
 			MutexLockGuard lk(clusterMutex);
@@ -893,6 +895,83 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			}
 		}
 		clus.connSetCluster(obj[1]->ptr, (int32_t)port, this);
+	}
+	else if (!strcasecmp(obj[0]->ptr, "slots") && obj.size() == 1)
+	{
+
+	}
+	else if (!strcasecmp(obj[0]->ptr, "keyslot") && obj.size() == 2)
+	{
+		const char * key = obj[1]->ptr;
+		addReplyLongLong(session->sendBuf, clus.keyHashSlot((char*)key, sdsllen(key)));
+		return false;
+	}
+	else if (!strcasecmp(obj[0]->ptr, "sync"))
+	{
+		int32_t slot;
+		long long  p;
+		if ((slot = clus.getSlotOrReply(session, obj[1])) == 0)
+		{
+			LOG_INFO << "getSlotOrReply error ";
+			return false;
+		}
+
+		if (getLongLongFromObject(obj[3], &p) != REDIS_OK)
+		{
+			addReplyError(session->sendBuf, "Invalid or out of range port");
+			return  REDIS_ERR;
+		}
+
+		MutexLockGuard lk(clusterMutex);
+		auto it = clus.clusterSlotNodes.find(slot);
+		if (it == clus.clusterSlotNodes.end())
+		{
+			xClusterNode node;
+			node.ip = obj[1]->ptr;
+			node.port = (int16_t)p;
+			clus.clusterSlotNodes.insert(std::make_pair(slot,std::move(node)));
+		}
+		else
+		{
+			LOG_INFO << "clusterSlotNodes insert error ";
+		}
+		
+	}
+	else if (!strcasecmp(obj[0]->ptr, "delslots"))
+	{
+		MutexLockGuard lk(clusterMutex);
+	}
+	else if (!strcasecmp(obj[0]->ptr, "addslots"))
+	{
+		int32_t  j, slot;
+		int32_t del = !strcasecmp(obj[0]->ptr, "delslots");
+		for (j = 1; j < obj.size(); j++)
+		{
+			if ((slot = clus.getSlotOrReply(session, obj[j])) == 0)
+			{
+				return false;
+			}
+			MutexLockGuard lk(clusterMutex);
+			auto it = clus.clusterSlotNodes.find(slot);
+			if (it == clus.clusterSlotNodes.end())
+			{
+				xClusterNode  node;
+				node.ip = host;
+				node.port = port;
+				rObj * i = createStringObject(host.c_str(), host.length());
+				char buf[32];
+				int32_t len = ll2string(buf, sizeof(buf), port);
+				rObj * p = createStringObject((const char*)buf, len);
+				clus.syncClusterSlot(i, p, obj[j]);
+				clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
+			}
+			else
+			{
+				addReplyErrorFormat(session->sendBuf, "Slot %d specified multiple times", slot);
+			}
+		}
+		clusterSlotEnabled = true;
+
 	}
 	else
 	{

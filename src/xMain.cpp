@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
 		printf("%s\n",ascii_logo);
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
-		int32_t threadCount =  atoi(argv[3]);
+		int16_t threadCount =  atoi(argv[3]);
 		uint16_t clusterEnbaled =  atoi(argv[4]);
 		uint16_t sentinelEnabled =  atoi(argv[3]);
 		xLogger::setOutput(asyncOutput);

@@ -18,7 +18,7 @@
 class xRedis : noncopyable
 {
 public:
-	xRedis(const char * ip,int32_t port,int32_t threadCount,bool enbaledCluster = false,bool enabledSentinel = false);
+	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false,bool enabledSentinel = false);
 	~xRedis();
 	void init();
 	void test(void * data);
@@ -144,8 +144,8 @@ public:
 	mutable MutexLock sentinelMutex;
 	mutable MutexLock clusterMutex;
 	std::string host;
-	int32_t port;
-	int32_t threadCount;
+	int16_t port;
+	int16_t threadCount;
 	std::string			masterHost;
 	std::atomic<int>    masterPort ;
 	std::atomic<bool>  clusterEnabled;
@@ -154,7 +154,7 @@ public:
 	std::atomic<bool>  repliEnabled;
 	std::atomic<bool>  sentinelEnabled;
 	std::atomic<int>	salveCount;
-
+	std::atomic<bool>	clusterSlotEnabled;
 	xBuffer		slaveCached;
 	xReplication  repli;
 	xSentinel	   senti;

@@ -24,13 +24,13 @@ public:
 	  errorConnectionCallback = cb;
   }
 
-  void start(const char *ip,int32_t port);
+  void start(const char *ip, int16_t port);
   void restart();
   void stop();
 
-  void startInLoop(const char *ip,int32_t port);
+  void startInLoop(const char *ip, int16_t port);
   void stopInLoop();
-  void connect(const char *ip,int32_t port);
+  void connect(const char *ip, int16_t port);
   void connecting(int sockfd);
   void resetChannel();
   int  removeAndResetChannel();

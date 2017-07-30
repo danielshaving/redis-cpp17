@@ -130,6 +130,29 @@ int xSession::processCommand()
 		}
 	}
 
+	if (redis->clusterEnabled && redis->clusterSlotEnabled)
+	{
+		const char * key = robjs[1]->ptr;
+		int hashslot = redis->clus.keyHashSlot((char*)key, sdsllen(key));
+		MutexLockGuard mu(redis->clusterMutex);
+		auto it = redis->clus.clusterSlotNodes.find(hashslot);
+		if (it == redis->clus.clusterSlotNodes.end())
+		{
+			redis->clus.clusterRedirectClient(this,nullptr,hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
+		}
+		else
+		{
+			if (redis->host == it->second.ip && redis->port == it->second.port)
+			{
+
+			}
+			else
+			{
+				redis->clus.clusterRedirectClient(this, &(it->second), hashslot, CLUSTER_REDIR_MOVED);
+			}
+		}
+	}
+
 	bool fromSalve = false;
 	
 	if(redis->repliEnabled)

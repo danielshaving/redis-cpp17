@@ -1,6 +1,7 @@
 #include "xCluster.h"
 #include "xRedis.h"
 #include "xLog.h"
+#include "xCrc16.h"
 
 xCluster::xCluster()
 {
@@ -29,7 +30,7 @@ void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, voi
 				}
 
 				break;
-			}	
+			}
 		}
 		else
 		{
@@ -42,7 +43,103 @@ void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, voi
 }
 
 
-void xCluster::structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, std::deque<rObj*> &robj,const xTcpconnectionPtr & conn)
+void xCluster::clusterRedirectClient(xSession * session, xClusterNode * n, int hashSlot, int errCode)
+{
+	if (errCode == CLUSTER_REDIR_CROSS_SLOT) {
+		addReplySds(session->sendBuf, sdsnew("-CROSSSLOT Keys in request don't hash to the same slot\r\n"));
+	}
+	else if (errCode == CLUSTER_REDIR_UNSTABLE) {
+		/* The request spawns mutliple keys in the same slot,
+		* but the slot is not "stable" currently as there is
+		* a migration or import in progress. */
+		addReplySds(session->sendBuf,  sdsnew("-TRYAGAIN Multiple keys request during rehashing of slot\r\n"));
+	}
+	else if (errCode == CLUSTER_REDIR_DOWN_STATE) {
+		addReplySds(session->sendBuf,  sdsnew("-CLUSTERDOWN The cluster is down\r\n"));
+	}
+	else if (errCode == CLUSTER_REDIR_DOWN_UNBOUND) {
+		addReplySds(session->sendBuf, sdsnew("-CLUSTERDOWN Hash slot not served\r\n"));
+	}
+	else if (errCode == CLUSTER_REDIR_MOVED ||
+		errCode == CLUSTER_REDIR_ASK)
+	{
+		addReplySds(session->sendBuf,  sdscatprintf(sdsempty(),
+			"-%s %d %s:%d\r\n",
+			(errCode == CLUSTER_REDIR_ASK) ? "ASK" : "MOVED",
+			hashSlot, n->ip.c_str(), n->port));
+	}
+	else {
+		LOG_WARN << "getNodeByQuery() unknown error.";
+	}
+}
+
+
+void xCluster::syncClusterSlot(rObj * i, rObj * p,rObj * s)
+{
+	std::deque<rObj*> robj;
+	rObj * c = createStringObject("cluster", 7);
+	rObj * m = createStringObject("sync", 7);
+	robj.push_back(c);
+	robj.push_back(m);
+	robj.push_back(s);
+	robj.push_back(i);
+	robj.push_back(p);
+
+	{
+		MutexLockGuard lk(redis->clusterMutex);
+		for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); it++)
+		{
+			xBuffer sendBuf;
+			redis->structureRedisProtocol(sendBuf, robj);
+			it->second->send(&sendBuf);
+		}
+
+	}
+
+	for (auto it = robj.begin(); it != robj.end(); it++)
+	{
+		zfree(*it);
+	}
+
+	
+}
+
+unsigned int xCluster::keyHashSlot(char *key, int keylen)
+{
+	int s, e; /* start-end indexes of { and } */
+
+	for (s = 0; s < keylen; s++)
+		if (key[s] == '{') break;
+
+	/* No '{' ? Hash the whole key. This is the base case. */
+	if (s == keylen) return crc16(key, keylen) & 0x3FFF;
+
+	/* '{' found? Check if we have the corresponding '}'. */
+	for (e = s + 1; e < keylen; e++)
+		if (key[e] == '}') break;
+
+	/* No '}' or nothing betweeen {} ? Hash the whole key. */
+	if (e == keylen || e == s + 1) return crc16(key, keylen) & 0x3FFF;
+
+	/* If we are here there is both a { and a } on its right. Hash
+	* what is in the middle between { and }. */
+	return crc16(key + s + 1, e - s - 1) & 0x3FFF;
+}
+
+int xCluster::getSlotOrReply(xSession  * session,rObj * o)
+{
+	long long slot;
+
+	if (getLongLongFromObject(o, &slot) != REDIS_OK ||
+		slot < 0 || slot >= CLUSTER_SLOTS)
+	{
+		addReplyError(session->sendBuf, "Invalid or out of range slot");
+		return  REDIS_ERR;
+	}
+	return (int)slot;
+}
+
+void xCluster::structureProtocolSetCluster(std::string host, int16_t port, xBuffer &sendBuf, std::deque<rObj*> &robj,const xTcpconnectionPtr & conn)
 {
 	rObj * ip = createStringObject(host.c_str(), host.length());
 	char buf[32];
@@ -104,7 +201,7 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 					break;
 				}
 			}
-			
+
 		}
 
 		LOG_INFO << "disconnect cluster ";
@@ -112,7 +209,7 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 }
 
 
-void xCluster::connSetCluster(std::string ip, int32_t port,xRedis * redis)
+void xCluster::connSetCluster(std::string ip, int16_t port,xRedis * redis)
 {
 	this->redis = redis;
 	std::shared_ptr<xTcpClient> client(new xTcpClient(loop, this));

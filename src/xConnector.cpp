@@ -15,7 +15,7 @@ xConnector::~xConnector()
 }
 
 
-void xConnector::start(const char *ip,int32_t port)
+void xConnector::start(const char *ip, int16_t port)
 {
 	isconnect = true;
 	loop->runInLoop(std::bind(&xConnector::startInLoop, this,ip,port));
@@ -23,7 +23,7 @@ void xConnector::start(const char *ip,int32_t port)
 
 
 
-void xConnector::startInLoop(const char *ip,int32_t port)
+void xConnector::startInLoop(const char *ip, int16_t port)
 {
 	loop->assertInLoopThread();
 	if (isconnect)
@@ -71,7 +71,7 @@ void xConnector::connecting(int sockfd)
 }
 
 
-void xConnector::connect(const char *ip,int32_t port)
+void xConnector::connect(const char *ip, int16_t port)
 {
   int sockfd = socket.createNonBloackSocket();
   int ret = socket.connect(sockfd, ip,port);

@@ -297,8 +297,24 @@
 
 
 #define REDIS_SLAVE_SYNC_SIZE  65536 
-
 #define REDIS_RECONNECT_COUNT 10
+
+#define CLUSTER_SLOTS 16384
+#define CLUSTER_OK 0          /* Everything looks ok */
+#define CLUSTER_FAIL 1        /* The cluster can't work */
+#define CLUSTER_NAMELEN 40    /* sha1 hex length */
+#define CLUSTER_PORT_INCR 10000 /* Cluster port = baseport + PORT_INCR */
+
+
+ /* Redirection errors returned by getNodeByQuery(). */
+#define CLUSTER_REDIR_NONE 0          /* Node can serve the request. */
+#define CLUSTER_REDIR_CROSS_SLOT 1    /* -CROSSSLOT request. */
+#define CLUSTER_REDIR_UNSTABLE 2      /* -TRYAGAIN redirection required */
+#define CLUSTER_REDIR_ASK 3           /* -ASK redirection required. */
+#define CLUSTER_REDIR_MOVED 4         /* -MOVED redirection required. */
+#define CLUSTER_REDIR_DOWN_STATE 5    /* -CLUSTERDOWN, global state. */
+#define CLUSTER_REDIR_DOWN_UNBOUND 6  /* -CLUSTERDOWN, unbound slot. */
+
 class noncopyable
 {
  protected:
