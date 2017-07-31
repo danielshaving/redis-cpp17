@@ -680,8 +680,6 @@ bool xRedis::echoCommond(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	addReplyBulk(session->sendBuf,obj[0]);
-
-	
 	return false;
 }
 
@@ -906,9 +904,22 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		addReplyLongLong(session->sendBuf, clus.keyHashSlot((char*)key, sdsllen(key)));
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr, "sync"))
+	else if (!strcasecmp(obj[0]->ptr, "delsync"))
 	{
-		int32_t slot;
+		int slot;
+		if ((slot = clus.getSlotOrReply(session, obj[1])) == 0)
+		{
+			LOG_INFO << "getSlotOrReply error ";
+			return false;
+		}
+
+		MutexLockGuard lk(clusterMutex);
+		clus.clusterSlotNodes.erase(slot);
+		LOG_INFO << "delsync success:" << slot;
+	}
+	else if (!strcasecmp(obj[0]->ptr, "addsync"))
+	{
+		int slot;
 		long long  p;
 		if ((slot = clus.getSlotOrReply(session, obj[1])) == 0)
 		{
@@ -926,10 +937,12 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		auto it = clus.clusterSlotNodes.find(slot);
 		if (it == clus.clusterSlotNodes.end())
 		{
+			LOG_INFO << "addsync success:" << slot;
 			xClusterNode node;
 			node.ip = obj[1]->ptr;
 			node.port = (int16_t)p;
-			clus.clusterSlotNodes.insert(std::make_pair(slot,std::move(node)));
+			clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
+
 		}
 		else
 		{
@@ -940,11 +953,32 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 	else if (!strcasecmp(obj[0]->ptr, "delslots"))
 	{
 		MutexLockGuard lk(clusterMutex);
+		int slot;
+		int j;
+		for (j = 1; j < obj.size(); j++)
+		{
+			if ((slot = clus.getSlotOrReply(session, obj[j])) == 0)
+			{
+				return false;
+			}
+			auto it = clus.clusterSlotNodes.find(slot);
+			if (it == clus.clusterSlotNodes.end())
+			{
+				std::deque<rObj*> robj;
+				rObj * c = createStringObject("cluster", 6);
+				rObj * a = createStringObject("delsync", 7);
+				robj.push_back(c);
+				robj.push_back(a);
+				robj.push_back(obj[j]);
+				clus.syncClusterSlot(robj);
+				clus.clusterSlotNodes.erase(slot);
+
+			}
+		}
 	}
 	else if (!strcasecmp(obj[0]->ptr, "addslots"))
 	{
 		int32_t  j, slot;
-		int32_t del = !strcasecmp(obj[0]->ptr, "delslots");
 		for (j = 1; j < obj.size(); j++)
 		{
 			if ((slot = clus.getSlotOrReply(session, obj[j])) == 0)
@@ -962,7 +996,18 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 				char buf[32];
 				int32_t len = ll2string(buf, sizeof(buf), port);
 				rObj * p = createStringObject((const char*)buf, len);
-				clus.syncClusterSlot(i, p, obj[j]);
+
+				std::deque<rObj*> robj;
+				rObj * c = createStringObject("cluster", 6);
+				rObj * a = createStringObject("addsync", 7);
+			
+				robj.push_back(c);
+				robj.push_back(a);
+				robj.push_back(obj[j]);
+				robj.push_back(i);
+				robj.push_back(p);
+
+				clus.syncClusterSlot(robj);
 				clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
 			}
 			else

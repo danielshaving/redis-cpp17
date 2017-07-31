@@ -74,26 +74,13 @@ void xCluster::clusterRedirectClient(xSession * session, xClusterNode * n, int h
 }
 
 
-void xCluster::syncClusterSlot(rObj * i, rObj * p,rObj * s)
+void xCluster::syncClusterSlot(std::deque<rObj*> &robj)
 {
-	std::deque<rObj*> robj;
-	rObj * c = createStringObject("cluster", 7);
-	rObj * m = createStringObject("sync", 7);
-	robj.push_back(c);
-	robj.push_back(m);
-	robj.push_back(s);
-	robj.push_back(i);
-	robj.push_back(p);
-
+	for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); it++)
 	{
-		MutexLockGuard lk(redis->clusterMutex);
-		for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); it++)
-		{
-			xBuffer sendBuf;
-			redis->structureRedisProtocol(sendBuf, robj);
-			it->second->send(&sendBuf);
-		}
-
+		xBuffer sendBuf;
+		redis->structureRedisProtocol(sendBuf, robj);
+		it->second->send(&sendBuf);
 	}
 
 	for (auto it = robj.begin(); it != robj.end(); it++)
@@ -101,7 +88,6 @@ void xCluster::syncClusterSlot(rObj * i, rObj * p,rObj * s)
 		zfree(*it);
 	}
 
-	
 }
 
 unsigned int xCluster::keyHashSlot(char *key, int keylen)

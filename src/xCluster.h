@@ -30,7 +30,7 @@ public:
 	void structureProtocolSetCluster(std::string host, int16_t port, xBuffer &sendBuf, std::deque<rObj*> &robjs, const xTcpconnectionPtr & conn);
 	int getSlotOrReply(xSession  * session,rObj * o );
 	unsigned int keyHashSlot(char *key, int keylen);
-	void syncClusterSlot(rObj * i ,rObj * p,rObj * s);
+	void syncClusterSlot(std::deque<rObj*> &robj);
 	void clusterRedirectClient(xSession * session, xClusterNode * node,int hashSlot,int errCode);
 
 public:
