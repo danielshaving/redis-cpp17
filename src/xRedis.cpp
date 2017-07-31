@@ -847,25 +847,25 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	long long port;
-
-	if (getLongLongFromObject(obj[2], &port) != REDIS_OK)
-	{
-		addReplyErrorFormat(session->sendBuf, "Invalid TCP port specified: %s",
-			(char*)obj[2]->ptr);
-		return false;
-	}
-
-	if (host.c_str() && !memcmp(host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr))
-		&& this->port == port)
-	{
-		LOG_WARN << "cluster  meet  connect self error .";
-		addReplyErrorFormat(session->sendBuf, "Don't connect self ");
-		return false;
-	}
-
 	if (!strcasecmp(obj[0]->ptr, "meet"))
 	{
+		long long port;
+
+		if (getLongLongFromObject(obj[2], &port) != REDIS_OK)
+		{
+			addReplyErrorFormat(session->sendBuf, "Invalid TCP port specified: %s",
+				(char*)obj[2]->ptr);
+			return false;
+		}
+
+		if (host.c_str() && !memcmp(host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr))
+			&& this->port == port)
+		{
+			LOG_WARN << "cluster  meet  connect self error .";
+			addReplyErrorFormat(session->sendBuf, "Don't connect self ");
+			return false;
+		}
+
 		{
 			MutexLockGuard lk(clusterMutex);
 			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
@@ -937,9 +937,10 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		auto it = clus.clusterSlotNodes.find(slot);
 		if (it == clus.clusterSlotNodes.end())
 		{
+			clusterSlotEnabled = true;
 			LOG_INFO << "addsync success:" << slot;
 			xClusterNode node;
-			node.ip = obj[1]->ptr;
+			node.ip = obj[2]->ptr;
 			node.port = (int16_t)p;
 			clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
 
@@ -948,6 +949,8 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		{
 			LOG_INFO << "clusterSlotNodes insert error ";
 		}
+
+		return false;
 		
 	}
 	else if (!strcasecmp(obj[0]->ptr, "delslots"))
@@ -965,16 +968,24 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			if (it == clus.clusterSlotNodes.end())
 			{
 				std::deque<rObj*> robj;
-				rObj * c = createStringObject("cluster", 6);
-				rObj * a = createStringObject("delsync", 7);
+				rObj * c = createStringObject("cluster", 7);
+				rObj * d = createStringObject("delsync", 7);
 				robj.push_back(c);
-				robj.push_back(a);
-				robj.push_back(obj[j]);
+				robj.push_back(d);
+				rObj * o = createStringObject(obj[j]->ptr, sdsllen(obj[j]->ptr));
+				robj.push_back(o);
 				clus.syncClusterSlot(robj);
 				clus.clusterSlotNodes.erase(slot);
 
 			}
 		}
+
+		if (clus.clusterSlotNodes.size() == 0)
+		{
+			clusterSlotEnabled = false;
+		}
+
+		return false;
 	}
 	else if (!strcasecmp(obj[0]->ptr, "addslots"))
 	{
@@ -991,19 +1002,20 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			{
 				xClusterNode  node;
 				node.ip = host;
-				node.port = port;
+				node.port = this->port;
 				rObj * i = createStringObject(host.c_str(), host.length());
 				char buf[32];
-				int32_t len = ll2string(buf, sizeof(buf), port);
+				int32_t len = ll2string(buf, sizeof(buf), this->port);
 				rObj * p = createStringObject((const char*)buf, len);
 
 				std::deque<rObj*> robj;
-				rObj * c = createStringObject("cluster", 6);
+				rObj * c = createStringObject("cluster", 7);
 				rObj * a = createStringObject("addsync", 7);
 			
 				robj.push_back(c);
 				robj.push_back(a);
-				robj.push_back(obj[j]);
+				rObj * o = createStringObject(obj[j]->ptr, sdsllen(obj[j]->ptr));
+				robj.push_back(o);
 				robj.push_back(i);
 				robj.push_back(p);
 
@@ -2102,6 +2114,9 @@ void xRedis::flush()
 
 void xRedis::init()
 {
+
+	salvetcpconnMaps.clear();
+	clustertcpconnMaps.clear();
 	rObj * obj = createStringObject("set",3);
 	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("get",3);

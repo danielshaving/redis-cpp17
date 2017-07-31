@@ -10,7 +10,7 @@ public:
 
 	 typedef std::function<void (int sockfd)> NewConnectionCallback;
 
-	 xAcceptor(xEventLoop* loop,std::string ip,int32_t port);
+	 xAcceptor(xEventLoop* loop,std::string ip, int16_t port);
 	 ~xAcceptor();
 
 

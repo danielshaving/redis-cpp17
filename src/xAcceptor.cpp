@@ -1,6 +1,6 @@
 #include "xAcceptor.h"
 
- xAcceptor::xAcceptor(xEventLoop* loop,std::string ip,int32_t port)
+ xAcceptor::xAcceptor(xEventLoop* loop,std::string ip, int16_t port)
  :loop(loop),
   socket(loop,ip,port),
   channel(loop,socket.getListenFd()),

@@ -14,7 +14,7 @@ public:
 	~xTcpServer();
 
 
-	void init(xEventLoop *loop,std::string ip,int32_t port,void *data);
+	void init(xEventLoop *loop,std::string ip,int16_t port,void *data);
 	void newConnection(int sockfd);
 	void start();
 

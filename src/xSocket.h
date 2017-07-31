@@ -8,21 +8,21 @@ private:
 
 	xEventLoop		    *loop;
 	std::string				ip;
-	int32_t 				port;
+	int16_t 				port;
 
     int                     listenSocketFd;
     int                     maxSocketFd;
     int                     onlineNumber;
     bool					 protocol;
 public:
-    typedef std::function<void (int sockfd,const std::string &ip,int32_t port)> NewConnectionCallback;
+    typedef std::function<void (int sockfd,const std::string &ip, int16_t port)> NewConnectionCallback;
 	xSocket();
-	xSocket(xEventLoop *loop,std::string ip,int32_t port);
+	xSocket(xEventLoop *loop,std::string ip, int16_t port);
 	~xSocket();
 
-	bool getpeerName(int32_t fd,std::string *ip,int32_t &port);
+	bool getpeerName(int32_t fd,std::string *ip, int16_t &port);
 	int  createNonBloackSocket();
-	int  connect(int sockfd,std::string ip,int port);
+	int  connect(int sockfd,std::string ip, int16_t port);
 
     bool  initialize();
     int   getListenFd();

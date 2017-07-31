@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
 		uint16_t sentinelEnabled =  atoi(argv[3]);
 		xLogger::setOutput(asyncOutput);
 
-		xAsyncLogging log("libredis", 2000);
+		xAsyncLogging log("xredis", 20000);
 		log.start();
 		g_asyncLog = &log;
 		xRedis redis(ip,port,threadCount,clusterEnbaled,sentinelEnabled);

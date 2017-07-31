@@ -7,7 +7,7 @@ xTcpServer::xTcpServer()
 }
 
 
-void xTcpServer::init(xEventLoop *loop,std::string ip,int32_t port,void *data)
+void xTcpServer::init(xEventLoop *loop,std::string ip,int16_t port,void *data)
 {
 	this->loop = loop;
 	this->data = data;
