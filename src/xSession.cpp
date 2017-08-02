@@ -132,34 +132,47 @@ int xSession::processCommand()
 
 	if (redis->clusterEnabled && redis->clusterSlotEnabled)
 	{
-		if (robjs.size() > 2)
+		if (!(strcasecmp(robjs[0]->ptr, "cluster")))
 		{
-			const char * key = robjs[1]->ptr;
-			int hashslot = redis->clus.keyHashSlot((char*)key, sdsllen(key));
-			MutexLockGuard mu(redis->clusterMutex);
-			auto it = redis->clus.clusterSlotNodes.find(hashslot);
-			if (it == redis->clus.clusterSlotNodes.end())
-			{
-				redis->clus.clusterRedirectClient(this, nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
-				clearObj();
-				return REDIS_ERR;
-			}
-			else
-			{
-				if (redis->host == it->second.ip && redis->port == it->second.port)
-				{
 
-				}
-				else
+		}
+		else
+		{
+			if (robjs.size() >= 2)
+			{
+				const char * key = robjs[1]->ptr;
+				int hashslot = redis->clus.keyHashSlot((char*)key, sdsllen(key));
+				MutexLockGuard mu(redis->clusterMutex);
+				if (redis->clus.clusterSlotNodes.size() == 0)
 				{
-					redis->clus.clusterRedirectClient(this, &(it->second), hashslot, CLUSTER_REDIR_MOVED);
+					redis->clus.clusterRedirectClient(this, nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
 					clearObj();
 					return REDIS_ERR;
 				}
+
+				auto it = redis->clus.clusterSlotNodes.find(hashslot);
+				if (it == redis->clus.clusterSlotNodes.end())
+				{
+					redis->clus.clusterRedirectClient(this, nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
+					clearObj();
+					return REDIS_ERR;
+				}
+				else
+				{
+					if (redis->host == it->second.ip && redis->port == it->second.port)
+					{
+
+					}
+					else
+					{
+						redis->clus.clusterRedirectClient(this, &(it->second), hashslot, CLUSTER_REDIR_MOVED);
+						clearObj();
+						return REDIS_ERR;
+					}
+				}
 			}
+
 		}
-		
-	
 	}
 
 	bool fromSalve = false;

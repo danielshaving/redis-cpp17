@@ -71,7 +71,7 @@ void xCluster::clusterRedirectClient(xSession * session, xClusterNode * n, int h
 	else {
 		LOG_WARN << "getNodeByQuery() unknown error.";
 	}
-}
+} 
 
 
 void xCluster::syncClusterSlot(std::deque<rObj*> &robj)

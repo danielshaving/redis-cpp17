@@ -155,6 +155,8 @@ public:
 	std::atomic<bool>  sentinelEnabled;
 	std::atomic<int>	salveCount;
 	std::atomic<bool>	clusterSlotEnabled;
+	std::atomic<int>	clusterSlotState;
+
 	xBuffer		slaveCached;
 	xReplication  repli;
 	xSentinel	   senti;
