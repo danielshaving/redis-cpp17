@@ -634,7 +634,7 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 	sessions.size(),
 	host.c_str(),
 	port,
-	threadCount+=4);
+	threadCount);
 
 	{
 		MutexLockGuard lock(slaveMutex);
@@ -911,7 +911,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		sds ci = sdsempty(), ni = sdsempty();
 
 		ci = sdscatprintf(sdsempty(), "%s %s:%d ------connetc slot:",
-			(host + std::to_string(port)).c_str(),
+			(host + "::" + std::to_string(port)).c_str(),
 			host.c_str(),
 			port);
 
@@ -976,7 +976,89 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			return false;
 		}
 
-		MutexLockGuard lk(clusterMutex);
+		std::string nodeName = obj[3]->ptr;
+		if (nodeName == host + "::" + std::to_string(port))
+		{
+			addReplyErrorFormat(session->sendBuf, "setslot self server error ");
+			return false;
+		}
+
+		bool mark = false;
+		{
+			MutexLockGuard lk(clusterMutex);
+			for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); it++)
+			{
+				std::string node = it->second.ip + "::" + std::to_string(it->second.port);
+				if (node == nodeName)
+				{
+					break;
+					mark = true;
+				}
+			}
+		}
+
+		if (!mark)
+		{
+			addReplyErrorFormat(session->sendBuf, "setslot slot node no found error ");
+			return false;
+		}
+
+		if( ! strcasecmp(obj[2]->ptr, "importing") )
+		{
+			MutexLockGuard lk(clusterMutex);
+			auto it = clus.importingSlotsFrom.find(nodeName);
+			if (it == clus.importingSlotsFrom.end())
+			{
+				std::unordered_set<int32_t> uset;
+				uset.insert(slot);
+				clus.importingSlotsFrom.insert(std::make_pair(std::move(nodeName), std::move(uset)));
+			}
+			else
+			{
+				auto iter = it->second.find(slot);
+				if (iter == it->second.end())
+				{
+					it->second.insert(slot);
+				}
+				else
+				{
+					addReplyErrorFormat(session->sendBuf, "repeat importing slot :%d", slot);
+					return false;
+				}
+
+			}
+		}
+		else if (!strcasecmp(obj[2]->ptr, "migrating"))
+		{
+			MutexLockGuard lk(clusterMutex);
+			auto it = clus.migratingSlosTos.find(nodeName);
+			if (it == clus.migratingSlosTos.end())
+			{
+				std::unordered_set<int32_t> uset;
+				uset.insert(slot);
+				clus.migratingSlosTos.insert(std::make_pair(std::move(nodeName), std::move(uset)));
+			}
+			else
+			{
+				auto iter = it->second.find(slot);
+				if (iter == it->second.end())
+				{
+					it->second.insert(slot);
+				}
+				else
+				{
+					addReplyErrorFormat(session->sendBuf, "repeat migrating slot :%d", slot);
+					return false;
+				}
+			}
+		}
+		else
+		{
+			addReplyErrorFormat(session->sendBuf, "Invalid  param ");
+			return false;
+		}
+
+		
 	}
 	else if (!strcasecmp(obj[0]->ptr, "delsync"))
 	{
