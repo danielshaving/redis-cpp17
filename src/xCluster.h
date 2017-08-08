@@ -32,6 +32,7 @@ public:
 	unsigned int keyHashSlot(char *key, int keylen);
 	void syncClusterSlot(std::deque<rObj*> &robj);
 	void clusterRedirectClient(xSession * session, xClusterNode * node,int hashSlot,int errCode);
+	void asyncReplicationToNode(std::string ip,int16_t port);
 
 public:
 	xEventLoop *loop;

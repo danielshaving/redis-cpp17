@@ -14,7 +14,7 @@ authEnabled(false),
 repliEnabled(false),
 salveCount(0),
 clusterSlotEnabled(false),
-clusterSlotState(0),
+clusterRepliEnabled(false),
 count(0),
 pingPong(false)
 {
@@ -320,22 +320,12 @@ bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::zcardCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	for(auto it  = obj.begin(); it != obj.end(); it ++)
-	{
-		zfree(*it);
-	}
-
-	return true;
+	return false;
 }
 
 bool xRedis::zcountCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	for(auto it  = obj.begin(); it != obj.end(); it ++)
-	{
-		zfree(*it);
-	}
-
-	return true;
+	return false;
 }
 
 
@@ -432,12 +422,7 @@ bool xRedis::keysCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 
-	for(auto it = obj.begin(); it != obj.end(); it ++)
-	{
-		zfree(*it);
-	}
-
-	return true;
+	return false;
 }
 
 bool xRedis::zrangeCommond(const std::deque <rObj*> & obj,xSession * session)
@@ -480,12 +465,7 @@ bool xRedis::zrangeCommond(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::zrankCommond(const std::deque <rObj*> & obj,xSession * session)
 {
-	for(auto it  = obj.begin(); it != obj.end(); it ++)
-	{
-		zfree(*it);
-	}
-
-	return true;
+	return false;
 }
 
 
@@ -527,7 +507,7 @@ bool xRedis::unsubscribeCommond(const std::deque <rObj*> & obj,xSession * sessio
 
 bool xRedis::sentinelCommond(const std::deque<rObj*> & obj, xSession * session)
 {
-	return true;
+	return false;
 }
 
 bool xRedis::memoryCommond(const std::deque <rObj*> & obj,xSession * session)
@@ -536,14 +516,14 @@ bool xRedis::memoryCommond(const std::deque <rObj*> & obj,xSession * session)
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown memory  error");
 		return false;
-	}
+		}
 #ifdef USE_JEMALLOC
 
-	char tmp[32];
-	unsigned narenas = 0;
-	size_t sz = sizeof(unsigned);
-	if (!je_mallctl("arenas.narenas", &narenas, &sz, NULL, 0))
-	{
+		char tmp[32];
+		unsigned narenas = 0;
+		size_t sz = sizeof(unsigned);
+		if (!je_mallctl("arenas.narenas", &narenas, &sz, NULL, 0))
+		{
 		sprintf(tmp, "arena.%d.purge", narenas);
 		if (!je_mallctl(tmp, NULL, 0, NULL, 0))
 		{
@@ -554,7 +534,7 @@ bool xRedis::memoryCommond(const std::deque <rObj*> & obj,xSession * session)
 
 #endif
 
-    addReply(session->sendBuf,shared.ok);
+	addReply(session->sendBuf,shared.ok);
 
 
 	return false;
@@ -802,36 +782,71 @@ bool xRedis::configCommond(const std::deque <rObj*> & obj, xSession * session)
 		return false;
 	}
 
-if (!strcasecmp(obj[0]->ptr, "set"))
-{
-if (obj.size() != 3)
-{
-	addReplyErrorFormat(session->sendBuf, "Wrong number of arguments for CONFIG %s",
-		(char*)obj[0]->ptr);
+	if (!strcasecmp(obj[0]->ptr, "set"))
+	{
+		if (obj.size() != 3)
+		{
+			addReplyErrorFormat(session->sendBuf, "Wrong number of arguments for CONFIG %s",
+				(char*)obj[0]->ptr);
+			return false;
+		}
+
+		if (!strcasecmp(obj[1]->ptr, "requirepass"))
+		{
+			password = obj[2]->ptr;
+			authEnabled = true;
+			session->authEnabled = false;
+			addReply(session->sendBuf, shared.ok);
+		}
+		else
+		{
+			addReplyErrorFormat(session->sendBuf, "Invalid argument  for CONFIG SET '%s'",
+				(char*)obj[1]->ptr);
+		}
+
+	}
+	else
+	{
+		addReplyError(session->sendBuf, "CONFIG subcommand must be one of GET, SET, RESETSTAT, REWRITE");
+	}
+
 	return false;
+
 }
 
-if (!strcasecmp(obj[1]->ptr, "requirepass"))
+bool xRedis::migrateCommond(const std::deque<rObj*> & obj, xSession * session)
 {
-	password = obj[2]->ptr;
-	authEnabled = true;
-	session->authEnabled = false;
-	addReply(session->sendBuf, shared.ok);
-}
-else
-{
-	addReplyErrorFormat(session->sendBuf, "Invalid argument  for CONFIG SET '%s'",
-		(char*)obj[1]->ptr);
-}
+	if (obj.size() < 4)
+	{
+		addReplyErrorFormat(session->sendBuf, "unknown migrate  error");
+	}
 
-}
-else
-{
-	addReplyError(session->sendBuf, "CONFIG subcommand must be one of GET, SET, RESETSTAT, REWRITE");
-}
+	if (!clusterEnabled)
+	{
+		addReplyError(session->sendBuf, "This instance has cluster support disabled");
+		return false;
+	}
 
-return false;
+	long long port;
 
+	if (getLongLongFromObject(obj[1], &port) != REDIS_OK)
+	{
+		addReplyErrorFormat(session->sendBuf, "Invalid TCP port specified: %s",
+			(char*)obj[2]->ptr);
+		return false;
+	}
+
+
+	std::string ip = obj[0]->ptr;
+	if (ip == host  &&  this->port == port)
+	{
+		addReplyErrorFormat(session->sendBuf, "migrate  self server error ");
+		return false;
+	}
+
+	clus.asyncReplicationToNode( ip , port);
+
+	return false;
 }
 
 bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
@@ -930,13 +945,13 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
 		{
 			ni = sdscatprintf(sdsempty(), "%s %s:%d ------connetc slot:",
-				(it->second->host +  std::to_string(it->second->port)).c_str(),
+				(it->second->host +  "::" + std::to_string(it->second->port)).c_str(),
 				it->second->host.c_str(),
 				it->second->port);
 
 			ci = sdscatsds(ci, ni);
 			sdsfree(ni);
-			ci = sdscatlen(ci, "\n", 1);
+		
 			for (auto iter = clus.clusterSlotNodes.begin(); iter != clus.clusterSlotNodes.end(); iter++)
 			{
 				if (iter->second.ip == it->second->host && iter->second.port == it->second->port)
@@ -948,6 +963,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 				}
 				
 			}
+			ci = sdscatlen(ci, "\n", 1);
 
 		}
 
@@ -983,28 +999,31 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			return false;
 		}
 
-		bool mark = false;
-		{
-			MutexLockGuard lk(clusterMutex);
-			for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); it++)
-			{
-				std::string node = it->second.ip + "::" + std::to_string(it->second.port);
-				if (node == nodeName)
-				{
-					break;
-					mark = true;
-				}
-			}
-		}
-
-		if (!mark)
-		{
-			addReplyErrorFormat(session->sendBuf, "setslot slot node no found error ");
-			return false;
-		}
+	
 
 		if( ! strcasecmp(obj[2]->ptr, "importing") )
 		{
+			bool mark = false;
+			{
+				MutexLockGuard lk(clusterMutex);
+				for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); it++)
+				{
+					std::string node = it->second.ip + "::" + std::to_string(it->second.port);
+					if (node == nodeName && slot == it->first)
+					{
+						mark = true;
+						break;
+						
+					}
+				}
+			}
+
+			if (!mark)
+			{
+				addReplyErrorFormat(session->sendBuf, "setslot slot node no found error ");
+				return false;
+			}
+		
 			MutexLockGuard lk(clusterMutex);
 			auto it = clus.importingSlotsFrom.find(nodeName);
 			if (it == clus.importingSlotsFrom.end())

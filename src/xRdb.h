@@ -90,7 +90,6 @@ int rdbSaveSortSet(xRio *rdb,xRedis * redis);
 int rdbSaveObjectType(xRio *rdb, rObj *o);
 
 int rdbLoadType(xRio *rdb);
-int rdbLoadObjectType(xRio *rdb);
 uint32_t rdbLoadUType(xRio *rdb);
 rObj *rdbLoadIntegerObject(xRio *rdb, int enctype, int encode);
 rObj *rdbLoadEncodedStringObject(xRio *rdb);

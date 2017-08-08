@@ -142,6 +142,98 @@ void xCluster::structureProtocolSetCluster(std::string host, int16_t port, xBuff
 	sendBuf.retrieveAll();
 }
 
+void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
+{
+	std::unordered_set<int32_t>  uset;
+	int32_t fd = 0;
+	std::string ipPort = ip + "::" + std::to_string(port);
+	{
+		MutexLockGuard lk(redis->clusterMutex);
+		auto it = migratingSlosTos.find(ipPort);
+		if(it == migratingSlosTos.end())
+		{
+			LOG_WARN<<"async slot error";
+			return ;
+		}
+			
+		if(it->second.size() == 0)
+		{
+			LOG_WARN<<"async slot error";
+			return ;
+		}
+
+		 uset = it->second;
+
+		 for(auto iter = redis->clustertcpconnMaps.begin(); iter != redis->clustertcpconnMaps.end(); iter++)
+		 {
+		 	if(iter->second->host == ip && iter->second->port == port)
+		 	{
+		 		fd = iter->first;
+				break;
+		 	}
+		 }
+	}
+
+	xBuffer sendBuf;
+	
+	if(fd == 0)
+	{
+		LOG_WARN<<"clustertcpconnMaps error";
+		return ;
+	}
+
+	redis->clusterRepliEnabled = true;
+	std::deque<rObj*> deques;
+	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); it ++)
+	{
+		{
+			MutexLockGuard lock((*it).mutex);
+			for(auto iter = (*it).setMap.begin(); iter !=  (*it).setMap.end(); iter ++)
+			{
+				unsigned int slot = keyHashSlot((char*)iter->first->ptr,sdsllen(iter->first->ptr));
+				auto iterr = uset.find(slot);
+				if(iterr != uset.end())
+				{
+					deques.push_back(iter->first);
+					deques.push_back(iter->second);
+					redis->structureRedisProtocol(sendBuf,deques);
+					deques.clear();
+				}				
+			}
+		}
+
+		{
+			MutexLockGuard lock(redis->clusterMutex);
+			auto iter = redis->clustertcpconnMaps.find(fd);
+			if(iter == redis->clustertcpconnMaps.end())
+			{
+				LOG_WARN<<"cluster disconnect error";
+				return ;
+			}
+			iter->second->send(&sendBuf);
+		}
+	}
+	
+	
+	redis->clusterRepliEnabled = false;
+	
+	{
+		MutexLockGuard lock(redis->clusterMutex);
+		auto iter = redis->clustertcpconnMaps.find(fd);
+		if(iter == redis->clustertcpconnMaps.end())
+		{
+			LOG_WARN<<"cluster disconnect error";
+			return ;
+		}
+		iter->second->send(&redis->clusterCached);
+		xBuffer buff;
+		buff.swap(redis->clusterCached);
+	}
+
+	LOG_INFO<<"Cluster aysncRepliction success";
+	
+}
+
 
 void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 {
@@ -230,6 +322,7 @@ void xCluster::init()
 {
 
 }
+
 
 
 

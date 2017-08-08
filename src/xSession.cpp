@@ -132,17 +132,56 @@ int xSession::processCommand()
 
 	if (redis->clusterEnabled && redis->clusterSlotEnabled)
 	{
-		if (!(strcasecmp(robjs[0]->ptr, "cluster")))
+		if (!(strcasecmp(robjs[0]->ptr, "cluster")) || !(strcasecmp(robjs[0]->ptr, "migrate")))
 		{
 
 		}
 		else
 		{
+			bool mark = false;
 			if (robjs.size() >= 2)
 			{
+				std::string ipPort = conn->host + "::" + std::to_string(conn->port);
+				
 				const char * key = robjs[1]->ptr;
 				int hashslot = redis->clus.keyHashSlot((char*)key, sdsllen(key));
+				
 				MutexLockGuard mu(redis->clusterMutex);
+				if(redis->clusterRepliEnabled)
+				{
+					
+					for(auto it = redis->clus.migratingSlosTos.begin(); it != redis->clus.migratingSlosTos.end(); it ++)
+					{
+						auto iter = it->second.find(hashslot);
+						if(iter != it->second.end())
+						{
+							mark = true;
+							break;
+						}
+					}
+				}
+
+				if(mark)
+				{
+					redis->structureRedisProtocol(redis->clusterCached,robjs);
+				}
+
+				{
+					{
+						auto it = redis->clus.importingSlotsFrom.find(ipPort);
+						if(it !=  redis->clus.importingSlotsFrom.end())
+						{
+							auto iter = it->second.find(hashslot);
+							if(iter != it->second.end())
+							{
+								goto err;
+							}
+						}
+					}
+				}
+
+				
+				
 				if (redis->clus.clusterSlotNodes.size() == 0)
 				{
 					redis->clus.clusterRedirectClient(this, nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
@@ -175,6 +214,8 @@ int xSession::processCommand()
 		}
 	}
 
+err:
+		
 	bool fromSalve = false;
 	
 	if(redis->repliEnabled)

@@ -315,6 +315,11 @@
 #define CLUSTER_REDIR_DOWN_STATE 5    /* -CLUSTERDOWN, global state. */
 #define CLUSTER_REDIR_DOWN_UNBOUND 6  /* -CLUSTERDOWN, unbound slot. */
 
+
+#define CLUSTER_SYNC 0
+#define CLUSTER_SYNCING  1
+#define CLUSTER_SYNCED 2
+
 class noncopyable
 {
  protected:

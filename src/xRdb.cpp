@@ -142,9 +142,6 @@ void rioInitWithBuffer(xRio *r, sds s)
 }
 
 
-
-
-
 int rdbEncodeInteger(long long value, unsigned char *enc)
 {
 	if (value >= -(1<<7) && value <= (1<<7)-1) {

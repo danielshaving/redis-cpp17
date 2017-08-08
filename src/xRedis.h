@@ -18,6 +18,7 @@
 class xRedis : noncopyable
 {
 public:
+	
 	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false,bool enabledSentinel = false);
 	~xRedis();
 	void init();
@@ -76,6 +77,7 @@ public:
 	bool bgsaveCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool memoryCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool sentinelCommond(const std::deque<rObj*> & obj, xSession * session);
+	bool migrateCommond(const std::deque<rObj*> & obj, xSession * session);
 
 	bool save(xSession * session);
 	int removeCommond(rObj * obj,int &count);
@@ -143,21 +145,19 @@ public:
 	mutable MutexLock expireMutex;
 	mutable MutexLock sentinelMutex;
 	mutable MutexLock clusterMutex;
-	std::string host;
-	int16_t port;
-	int16_t threadCount;
-	std::string			masterHost;
-	std::atomic<int>    masterPort ;
-	std::atomic<bool>  clusterEnabled;
-	std::atomic<bool>  slaveEnabled;
-	std::atomic<bool>  authEnabled;
-	std::atomic<bool>  repliEnabled;
-	std::atomic<bool>  sentinelEnabled;
-	std::atomic<int>	salveCount;
-	std::atomic<bool>	clusterSlotEnabled;
-	std::atomic<int>	clusterSlotState;
+	
+	std::atomic<bool> clusterEnabled;
+	std::atomic<bool> slaveEnabled;
+	std::atomic<bool> authEnabled;
+	std::atomic<bool> repliEnabled;
+	std::atomic<bool> sentinelEnabled;
+	std::atomic<int>	 salveCount;
+	std::atomic<bool>  clusterSlotEnabled;
+	std::atomic<bool>  clusterRepliEnabled;
 
 	xBuffer		slaveCached;
+	xBuffer 		clusterCached;
+	
 	xReplication  repli;
 	xSentinel	   senti;
 	xCluster	   clus;
@@ -170,10 +170,17 @@ public:
 	std::map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;
 	std::map<int32_t,xTimer*> repliTimers;
 	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
+	
 	xSocket socket;
 	std::string password;
 	std::atomic<int64_t >  count;
 	std::atomic<bool>	pingPong;
+	std::string host;
+	int16_t port;
+	int16_t threadCount;
+	std::string masterHost;
+	std::atomic<int>	masterPort ;
+	
 };
 
 
