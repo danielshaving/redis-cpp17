@@ -1,8 +1,5 @@
 #include "xRedis.h"
 
-
-
-
 xRedis::xRedis(const char * ip, int16_t port, int16_t threadCount,bool enbaledCluster,bool enabledSentinel)
 :host(ip),
 port(port),
@@ -14,7 +11,8 @@ authEnabled(false),
 repliEnabled(false),
 salveCount(0),
 clusterSlotEnabled(false),
-clusterRepliEnabled(false),
+clusterRepliMigratEnabled(false),
+clusterRepliImportEnabeld(false),
 count(0),
 pingPong(false)
 {
@@ -2306,8 +2304,6 @@ void xRedis::flush()
 void xRedis::init()
 {
 
-	salvetcpconnMaps.clear();
-	clustertcpconnMaps.clear();
 	rObj * obj = createStringObject("set",3);
 	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("get",3);

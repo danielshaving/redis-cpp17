@@ -147,7 +147,7 @@ int xSession::processCommand()
 				int hashslot = redis->clus.keyHashSlot((char*)key, sdsllen(key));
 				
 				MutexLockGuard mu(redis->clusterMutex);
-				if(redis->clusterRepliEnabled)
+				if(redis->clusterRepliMigratEnabled)
 				{
 					
 					for(auto it = redis->clus.migratingSlosTos.begin(); it != redis->clus.migratingSlosTos.end(); it ++)
@@ -163,7 +163,8 @@ int xSession::processCommand()
 
 				if(mark)
 				{
-					redis->structureRedisProtocol(redis->clusterCached,robjs);
+					redis->structureRedisProtocol(redis->clusterMigratCached,robjs);
+					goto jump;
 				}
 
 				{
@@ -174,7 +175,7 @@ int xSession::processCommand()
 							auto iter = it->second.find(hashslot);
 							if(iter != it->second.end())
 							{
-								goto err;
+								goto jump;
 							}
 						}
 					}
@@ -214,7 +215,7 @@ int xSession::processCommand()
 		}
 	}
 
-err:
+jump:
 		
 	bool fromSalve = false;
 	

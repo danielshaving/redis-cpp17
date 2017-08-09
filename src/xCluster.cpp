@@ -182,7 +182,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 		return ;
 	}
 
-	redis->clusterRepliEnabled = true;
+	redis->clusterRepliMigratEnabled = true;
 	std::deque<rObj*> deques;
 	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); it ++)
 	{
@@ -215,7 +215,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 	}
 	
 	
-	redis->clusterRepliEnabled = false;
+	redis->clusterRepliMigratEnabled = false;
 	
 	{
 		MutexLockGuard lock(redis->clusterMutex);
@@ -225,9 +225,9 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 			LOG_WARN<<"cluster disconnect error";
 			return ;
 		}
-		iter->second->send(&redis->clusterCached);
+		iter->second->send(&redis->clusterMigratCached);
 		xBuffer buff;
-		buff.swap(redis->clusterCached);
+		buff.swap(redis->clusterMigratCached);
 	}
 
 	LOG_INFO<<"Cluster aysncRepliction success";

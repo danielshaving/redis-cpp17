@@ -145,18 +145,21 @@ public:
 	mutable MutexLock expireMutex;
 	mutable MutexLock sentinelMutex;
 	mutable MutexLock clusterMutex;
-	
+
+
+	std::atomic<int>	 salveCount;
 	std::atomic<bool> clusterEnabled;
 	std::atomic<bool> slaveEnabled;
 	std::atomic<bool> authEnabled;
 	std::atomic<bool> repliEnabled;
 	std::atomic<bool> sentinelEnabled;
-	std::atomic<int>	 salveCount;
 	std::atomic<bool>  clusterSlotEnabled;
-	std::atomic<bool>  clusterRepliEnabled;
+	std::atomic<bool>  clusterRepliMigratEnabled;
+	std::atomic<bool>  clusterRepliImportEnabeld;
 
 	xBuffer		slaveCached;
-	xBuffer 		clusterCached;
+	xBuffer 		clusterMigratCached;
+	xBuffer		clusterImportCached;
 	
 	xReplication  repli;
 	xSentinel	   senti;
