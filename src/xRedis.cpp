@@ -892,7 +892,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 				}
 			}
 		}
-		clus.connSetCluster(obj[1]->ptr, (int32_t)port, this);
+		clus.connSetCluster(obj[1]->ptr, port, this);
 	}
 	else if (!strcasecmp(obj[0]->ptr, "connect") && obj.size() == 3)
 	{
@@ -1044,6 +1044,8 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 				}
 
 			}
+
+			clusterRepliImportEnabeld = true;
 		}
 		else if (!strcasecmp(obj[2]->ptr, "migrating"))
 		{
@@ -1076,6 +1078,20 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		}
 
 		
+	}
+
+	else if(!strcasecmp(obj[0]->ptr, "delimport"))
+	{
+		MutexLockGuard lk(clusterMutex);
+		std::string ipPort = session->conn->host + "::" + std::to_string(session->conn->port);
+		clus.importingSlotsFrom.erase(ipPort);
+		LOG_INFO << "delimport success:" << ipPort;
+		if(clus.importingSlotsFrom.size() == 0)
+		{
+			clusterRepliImportEnabeld = false;
+		}
+		
+		return false;
 	}
 	else if (!strcasecmp(obj[0]->ptr, "delsync"))
 	{
@@ -1418,11 +1434,11 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 	bool mark  = true;
-	char rdb_filename[] = "dump.rdb";
+	char rdbFileName[] = "dump.rdb";
 	{
 		{
 			MutexLockGuard lk(mutex);
-			mark = rdbReplication(rdb_filename,session);
+			mark = rdbReplication(rdbFileName,session);
 		}
 
 		if(!mark)

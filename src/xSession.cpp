@@ -67,6 +67,18 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 	}
 	else
 	{
+
+		if(redis->clusterRepliImportEnabeld)
+		{
+			MutexLockGuard lock(redis->clusterMutex);
+			auto it = redis->clustertcpconnMaps.find(conn->getSockfd());
+			if(it != redis->clustertcpconnMaps.end())
+			{
+				sendBuf.retrieveAll();
+			}
+		}
+			
+		
 		if(sendBuf.readableBytes() > 0 )
 		{
 			conn->send(&sendBuf);
@@ -83,6 +95,8 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 			pubSubTcpconn.clear();
 			sendPubSub.retrieveAll();
 		}
+
+		
 
 		if(redis->repliEnabled)
 		{

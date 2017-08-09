@@ -142,6 +142,23 @@ void xCluster::structureProtocolSetCluster(std::string host, int16_t port, xBuff
 	sendBuf.retrieveAll();
 }
 
+
+void xCluster::delClusterImport(std::deque<rObj*> &robj)
+{
+	for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); it++)
+	{
+		xBuffer sendBuf;
+		redis->structureRedisProtocol(sendBuf, robj);
+		it->second->send(&sendBuf);
+	}
+
+	for (auto it = robj.begin(); it != robj.end(); it++)
+	{
+		zfree(*it);
+	}
+}
+
+
 void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 {
 	std::unordered_set<int32_t>  uset;
@@ -218,16 +235,43 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 	redis->clusterRepliMigratEnabled = false;
 	
 	{
-		MutexLockGuard lock(redis->clusterMutex);
+		MutexLockGuard lock(redis->clusterMutex);	
 		auto iter = redis->clustertcpconnMaps.find(fd);
 		if(iter == redis->clustertcpconnMaps.end())
 		{
 			LOG_WARN<<"cluster disconnect error";
 			return ;
 		}
+		
 		iter->second->send(&redis->clusterMigratCached);
 		xBuffer buff;
 		buff.swap(redis->clusterMigratCached);
+		migratingSlosTos.clear();
+		for(auto it = uset.begin(); it != uset.end(); it ++)
+		{
+			clusterSlotNodes.erase(*it);
+
+			std::deque<rObj*> robj;
+			rObj * c = createStringObject("cluster", 7);
+			rObj * d = createStringObject("delsync", 7);
+			robj.push_back(c);
+			robj.push_back(d);
+
+			char buf[32];
+			int32_t len = ll2string(buf, sizeof(buf), *it);
+			rObj * o = createStringObject((const char*)buf, len);
+			robj.push_back(o);
+			syncClusterSlot(robj);	
+		}
+
+
+		std::deque<rObj*> robj;
+		rObj * c = createStringObject("cluster", 7);
+		rObj * d = createStringObject("delimport", 9);
+		robj.push_back(c);
+		robj.push_back(d);
+		delClusterImport(robj);	
+			
 	}
 
 	LOG_INFO<<"Cluster aysncRepliction success";
