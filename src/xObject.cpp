@@ -272,9 +272,9 @@ void createSharedObjects()
     shared.nullbulk = createObject(REDIS_STRING,sdsnew("$-1\r\n"));
     shared.nullmultibulk = createObject(REDIS_STRING,sdsnew("*-1\r\n"));
     shared.emptymultibulk = createObject(REDIS_STRING,sdsnew("*0\r\n"));
-	shared.pping = createObject(REDIS_STRING, sdsnew("PPING\r\n"));
+    shared.pping = createObject(REDIS_STRING, sdsnew("PPING\r\n"));
     shared.ping = createObject(REDIS_STRING,sdsnew("PING\r\n"));
-	shared.pong = createObject(REDIS_STRING, sdsnew("PONG\r\n"));
+    shared.pong = createObject(REDIS_STRING, sdsnew("+PONG\r\n"));
     shared.ppong = createObject(REDIS_STRING,sdsnew("PPONG"));
     shared.queued = createObject(REDIS_STRING,sdsnew("+QUEUED\r\n"));
     shared.emptyscan = createObject(REDIS_STRING,sdsnew("*2\r\n$1\r\n0\r\n*0\r\n"));
