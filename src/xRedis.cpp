@@ -108,7 +108,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		LOG_INFO<<"Client connect success";
+		//LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -122,7 +122,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		}
 
 		
-		LOG_INFO<<"Client disconnect";
+		//LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -814,7 +814,7 @@ bool xRedis::configCommond(const std::deque <rObj*> & obj, xSession * session)
 
 bool xRedis::migrateCommond(const std::deque<rObj*> & obj, xSession * session)
 {
-	if (obj.size() < 4)
+	if (obj.size() < 2)
 	{
 		addReplyErrorFormat(session->sendBuf, "unknown migrate  error");
 	}
@@ -844,6 +844,7 @@ bool xRedis::migrateCommond(const std::deque<rObj*> & obj, xSession * session)
 
 	clus.asyncReplicationToNode( ip , port);
 
+	addReply(session->sendBuf, shared.ok);
 	return false;
 }
 
@@ -1083,14 +1084,9 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 	else if(!strcasecmp(obj[0]->ptr, "delimport"))
 	{
 		MutexLockGuard lk(clusterMutex);
-		std::string ipPort = session->conn->host + "::" + std::to_string(session->conn->port);
-		clus.importingSlotsFrom.erase(ipPort);
-		LOG_INFO << "delimport success:" << ipPort;
-		if(clus.importingSlotsFrom.size() == 0)
-		{
-			clusterRepliImportEnabeld = false;
-		}
-		
+		clus.importingSlotsFrom.clear();
+		clusterRepliImportEnabeld = false;
+		LOG_INFO << "delimport success:";
 		return false;
 	}
 	else if (!strcasecmp(obj[0]->ptr, "delsync"))
@@ -1388,13 +1384,9 @@ bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 bool xRedis::commandCommond(const std::deque <rObj*> & obj,xSession * session)
-{
-	for(auto it = obj.begin(); it != obj.end(); it++)
-	{
-		zfree(*it);
-	}
+{	
 	addReply(session->sendBuf,shared.ok);
-	return true;
+	return false;
 }
 
 
@@ -2275,6 +2267,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 	{
 		zfree(obj[i]);
 	}
+	
 	addReply(session->sendBuf,shared.ok);
 	return true;
 }
@@ -2396,6 +2389,8 @@ void xRedis::init()
 	handlerCommondMap[obj] = std::bind(&xRedis::ppingCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("cluster", 7);
 	handlerCommondMap[obj] = std::bind(&xRedis::clusterCommond, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("migrate", 7);
+	handlerCommondMap[obj] = std::bind(&xRedis::migrateCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("set",3);
 	unorderedmapCommonds.insert(obj);
 	obj = createStringObject("hset",4);

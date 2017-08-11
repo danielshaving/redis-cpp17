@@ -199,6 +199,8 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 		return ;
 	}
 
+
+		
 	redis->clusterRepliMigratEnabled = true;
 	std::deque<rObj*> deques;
 	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); it ++)
@@ -227,7 +229,12 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 				LOG_WARN<<"cluster disconnect error";
 				return ;
 			}
-			iter->second->send(&sendBuf);
+			
+			if(sendBuf.readableBytes() > 0)
+			{
+				iter->second->send(&sendBuf);
+			}
+		
 		}
 	}
 	
@@ -235,18 +242,28 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 	redis->clusterRepliMigratEnabled = false;
 	
 	{
+
 		MutexLockGuard lock(redis->clusterMutex);	
-		auto iter = redis->clustertcpconnMaps.find(fd);
-		if(iter == redis->clustertcpconnMaps.end())
+		if(redis->clusterMigratCached.readableBytes()> 0 )
 		{
-			LOG_WARN<<"cluster disconnect error";
-			return ;
+			
+			auto iter = redis->clustertcpconnMaps.find(fd);
+			if(iter == redis->clustertcpconnMaps.end())
+			{
+				LOG_WARN<<"cluster disconnect error";
+				return ;
+			}
+			
+			iter->second->send(&redis->clusterMigratCached);
 		}
 		
-		iter->second->send(&redis->clusterMigratCached);
+		
 		xBuffer buff;
 		buff.swap(redis->clusterMigratCached);
 		migratingSlosTos.clear();
+
+		
+			
 		for(auto it = uset.begin(); it != uset.end(); it ++)
 		{
 			clusterSlotNodes.erase(*it);
@@ -256,12 +273,14 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 			rObj * d = createStringObject("delsync", 7);
 			robj.push_back(c);
 			robj.push_back(d);
-
 			char buf[32];
 			int32_t len = ll2string(buf, sizeof(buf), *it);
 			rObj * o = createStringObject((const char*)buf, len);
+		
 			robj.push_back(o);
 			syncClusterSlot(robj);	
+			
+			
 		}
 
 

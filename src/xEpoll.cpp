@@ -38,12 +38,12 @@ bool xEpoll::init(int fdCount)
 
 void  xEpoll::epollWait(ChannelList* activeChannels,int msTime)
 {
-    int numEvents = epoll_wait(epollFd, &*events.begin(), static_cast<int>(events.size()), msTime);
-    int savedErrno = errno;
+	int numEvents = epoll_wait(epollFd, &*events.begin(), static_cast<int>(events.size()), msTime);
+	int savedErrno = errno;
 
-    if (numEvents > 0)
+	if (numEvents > 0)
 	{
-    	fillActiveChannels(numEvents, activeChannels);
+		fillActiveChannels(numEvents, activeChannels);
 		if (numEvents == events.size())
 		{
 		  events.resize(events.size()*2);

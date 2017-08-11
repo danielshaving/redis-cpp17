@@ -774,11 +774,11 @@ int redisBufferRead(const xRedisContextPtr & c)
 	{
 		if ((errno == EAGAIN && ! (c->flags & REDIS_BLOCK)) || (errno == EINTR))
 		{
-		/* Try again later */
+			/* Try again later */
 		}
-	    else
+		else
 		{
-		    LOG_WARN<<"Server closed the connection";
+			LOG_WARN<<"Server closed the connection";
 			return REDIS_ERR;
 		}
 	}
