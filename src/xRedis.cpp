@@ -917,8 +917,9 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		}
 	
 		clus.connSetCluster(obj[1]->ptr, (int32_t)port, this);
+		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr, "nodes") && obj.size() == 1)
+	else if (!strcasecmp(obj[0]->ptr, "info") && obj.size() == 1)
 	{
 		rObj *o;
 		MutexLockGuard lk(clusterMutex);
@@ -1080,7 +1081,6 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 
 		
 	}
-
 	else if(!strcasecmp(obj[0]->ptr, "delimport"))
 	{
 		MutexLockGuard lk(clusterMutex);
@@ -1222,6 +1222,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 
 				clus.syncClusterSlot(robj);
 				clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
+				LOG_INFO << "addslots success " << slot;
 			}
 			else
 			{

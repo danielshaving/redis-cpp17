@@ -213,6 +213,8 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 				auto iterr = uset.find(slot);
 				if(iterr != uset.end())
 				{
+					rObj * o = createStringObject("set", 3);
+					deques.push_back(o);
 					deques.push_back(iter->first);
 					deques.push_back(iter->second);
 					redis->structureRedisProtocol(sendBuf,deques);
@@ -255,45 +257,16 @@ void xCluster::asyncReplicationToNode(std::string ip,int16_t port)
 			}
 			
 			iter->second->send(&redis->clusterMigratCached);
+			xBuffer buff;
+			buff.swap(redis->clusterMigratCached);
 		}
-		
-		
-		xBuffer buff;
-		buff.swap(redis->clusterMigratCached);
+
 		migratingSlosTos.clear();
 
-		
-			
-		for(auto it = uset.begin(); it != uset.end(); it ++)
-		{
-			clusterSlotNodes.erase(*it);
 
-			std::deque<rObj*> robj;
-			rObj * c = createStringObject("cluster", 7);
-			rObj * d = createStringObject("delsync", 7);
-			robj.push_back(c);
-			robj.push_back(d);
-			char buf[32];
-			int32_t len = ll2string(buf, sizeof(buf), *it);
-			rObj * o = createStringObject((const char*)buf, len);
-		
-			robj.push_back(o);
-			syncClusterSlot(robj);	
-			
-			
-		}
-
-
-		std::deque<rObj*> robj;
-		rObj * c = createStringObject("cluster", 7);
-		rObj * d = createStringObject("delimport", 9);
-		robj.push_back(c);
-		robj.push_back(d);
-		delClusterImport(robj);	
-			
 	}
 
-	LOG_INFO<<"Cluster aysncRepliction success";
+	LOG_INFO<<"cluster send  success";
 	
 }
 
@@ -324,9 +297,15 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 			}
 
 			redis->clustertcpconnMaps.insert(std::make_pair(conn->getSockfd(), conn));
-
 		}
-		LOG_INFO << "connect cluster suucess ";
+
+		std::shared_ptr<xSession> session(new xSession(redis, conn));
+		{
+			MutexLockGuard lk(redis->mutex);
+			redis->sessions[conn->getSockfd()] = session;
+		}
+
+		LOG_INFO << "connect cluster success ";
 
 	}
 	else
