@@ -999,9 +999,47 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			return false;
 		}
 
-	
+		if( !strcasecmp(obj[2]->ptr, "node") )
+		{
+			MutexLockGuard lk(clusterMutex);
+			std::string ipPort = obj[3]->ptr;
+			const char *start = obj[3]->ptr;
+			const char *end = obj[3]->ptr + sdsllen(obj[3]->ptr );
+			const  char *space = std::find(start,end,':');
+			if(space != end)
+			{
+				std::string ip(start,space);
+				std::string port(space + 2,end);
+				long long value;
+				string2ll(port.c_str(), port.length(), &value);
+				auto it = clus.clusterSlotNodes.find(slot);
+				if(it != clus.clusterSlotNodes.end())
+				{
+					it->second.ip = ip;
+					it->second.port = value;
+				}
 
-		if( ! strcasecmp(obj[2]->ptr, "importing") )
+				clus.importingSlotsFrom.erase(ipPort);
+
+				if(clus.importingSlotsFrom.size() == 0)
+				{
+					clusterRepliImportEnabeld = false;
+				}
+				
+			}
+			else
+			{
+			
+				addReplyErrorFormat(session->sendBuf, "std::find sourceid  error ");
+				return false;
+			}
+
+			LOG_INFO<<"importingSlotsFrom  erase ";
+			addReply(session->sendBuf, shared.ok);
+			return false;
+		}
+
+		if( !strcasecmp(obj[2]->ptr, "importing") && obj.size() == 4)
 		{
 			bool mark = false;
 			{
@@ -1049,7 +1087,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 
 			clusterRepliImportEnabeld = true;
 		}
-		else if (!strcasecmp(obj[2]->ptr, "migrating"))
+		else if (!strcasecmp(obj[2]->ptr, "migrating") && obj.size() == 4)
 		{
 			MutexLockGuard lk(clusterMutex);
 			auto it = clus.migratingSlosTos.find(nodeName);
@@ -1128,7 +1166,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			LOG_INFO << "addsync success:" << slot;
 			xClusterNode node;
 			node.ip = obj[2]->ptr;
-			node.port = (int16_t)p;
+			node.port = (int32_t)p;
 			clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
 
 		}

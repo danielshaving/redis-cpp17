@@ -36,5 +36,6 @@ public:
 	std::string commond;
 	xRedis *redis;
 	bool authEnabled;
+	bool  retrieveBuffer;
 };
 

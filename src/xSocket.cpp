@@ -33,7 +33,7 @@ int  xSocket::getListenFd()
 }
 
 
-bool xSocket::getpeerName(int32_t fd,std::string *ip, int16_t &port)
+bool xSocket::getpeerName(int32_t fd,std::string *ip, int32_t &port)
 {
 	struct sockaddr_in sa;
 	socklen_t len = sizeof(sa);

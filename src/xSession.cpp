@@ -8,7 +8,8 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
  argc(0),
  conn(conn),
  redis(redis),
- authEnabled(false)
+ authEnabled(false),
+ retrieveBuffer(false)
 {
 	 conn->setMessageCallback(
 	        std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
@@ -70,11 +71,11 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 		if(redis->clusterRepliImportEnabeld)
 		{
-			MutexLockGuard lock(redis->clusterMutex);
-			auto it = redis->clustertcpconnMaps.find(conn->getSockfd());
-			if(it != redis->clustertcpconnMaps.end())
+			
+			if(retrieveBuffer)
 			{
 				sendBuf.retrieveAll();
+				retrieveBuffer = false;
 			}
 		}
 			
@@ -146,55 +147,47 @@ int xSession::processCommand()
 
 	if (redis->clusterEnabled && redis->clusterSlotEnabled)
 	{
+		
 		if (!(strcasecmp(robjs[0]->ptr, "cluster")) || !(strcasecmp(robjs[0]->ptr, "migrate")))
 		{
-
+			
 		}
 		else
 		{
-			bool mark = false;
+		
 			if (robjs.size() >= 2)
 			{
-				std::string ipPort = conn->host + "::" + std::to_string(conn->port);
-				
 				const char * key = robjs[1]->ptr;
 				int hashslot = redis->clus.keyHashSlot((char*)key, sdsllen(key));
 				
 				MutexLockGuard mu(redis->clusterMutex);
 				if(redis->clusterRepliMigratEnabled)
 				{
-					
 					for(auto it = redis->clus.migratingSlosTos.begin(); it != redis->clus.migratingSlosTos.end(); it ++)
 					{
 						auto iter = it->second.find(hashslot);
 						if(iter != it->second.end())
 						{
-							mark = true;
-							break;
+							redis->structureRedisProtocol(redis->clusterMigratCached,robjs);
+							goto jump;
 						}
 					}
 				}
 
-				if(mark)
-				{
-					redis->structureRedisProtocol(redis->clusterMigratCached,robjs);
-					goto jump;
-				}
+				
 
+				if(redis->clusterRepliImportEnabeld)
 				{
+					for(auto it = redis->clus.importingSlotsFrom.begin(); it != redis->clus.importingSlotsFrom.end(); it ++)
 					{
-						auto it = redis->clus.importingSlotsFrom.find(ipPort);
-						if(it !=  redis->clus.importingSlotsFrom.end())
+						auto iter = it->second.find(hashslot);
+						if(iter !=  it->second.end())
 						{
-							auto iter = it->second.find(hashslot);
-							if(iter != it->second.end())
-							{
-								goto jump;
-							}
+							retrieveBuffer = true;
+							goto jump;
 						}
-					}
+					}	
 				}
-
 				
 				
 				if (redis->clus.clusterSlotNodes.size() == 0)

@@ -80,6 +80,6 @@ public:
 	void 				*data;
 	void 				*context;
 	std::string			host;
-	int16_t 			port;
+	int32_t 			port;
 
 };

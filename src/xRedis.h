@@ -169,9 +169,9 @@ public:
 	std::shared_ptr<std::thread > sentiThreads;
 	std::shared_ptr<std::thread>	 clusterThreads;
 
-	std::map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
-	std::map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;
-	std::map<int32_t,xTimer*> repliTimers;
+	std::unordered_map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
+	std::unordered_map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;
+	std::unordered_map<int32_t,xTimer*> repliTimers;
 	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
 	
 	xSocket socket;
