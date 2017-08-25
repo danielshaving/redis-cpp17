@@ -8,7 +8,7 @@ class xBuffer
 {
  public:
   static const size_t kCheapPrepend = 8;
-  static const size_t kInitialSize = 1024;
+  static const size_t kInitialSize = 1024 * 16;
 
   explicit xBuffer(size_t initialSize = kInitialSize)
     : buffer(kCheapPrepend + initialSize),

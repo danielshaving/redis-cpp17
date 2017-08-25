@@ -16,14 +16,7 @@ clusterRepliImportEnabeld(false),
 count(0),
 pingPong(false)
 {
-	init();
-	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
-	sentiThreads->detach();
-	repliThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
-	repliThreads->detach();
-	clusterThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
-	clusterThreads->detach();
-
+	initConifg();
 	createSharedObjects();
 	loadDataFromDisk();
 	server.init(&loop, host, port,this);
@@ -2020,7 +2013,7 @@ bool xRedis::hgetCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 2)
 	{
-		addReplyErrorFormat(session->sendBuf,"unknown  hget error");
+		addReplyErrorFormat(session->sendBuf,"unknown  hget  param error");
 		return false;
 	}
 	
@@ -2169,7 +2162,7 @@ bool xRedis::flushdbCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 0)
 	{
-		addReplyErrorFormat(session->sendBuf,"unknown  flushdb error");
+		addReplyErrorFormat(session->sendBuf,"unknown  flushdb  param error");
 		return false;
 	}
 
@@ -2190,7 +2183,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() <  2 || obj.size() > 8 )
 	{
-		addReplyErrorFormat(session->sendBuf,"unknown  param error");
+		addReplyErrorFormat(session->sendBuf,"unknown  set param error");
 		return false;
 	}
 
@@ -2263,6 +2256,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 	auto & setMap = setMapShards[index].setMap;
 	{
 		MutexLockGuard lock(mu);
+
 		auto it = setMap.find(obj[0]);
 		if(it == setMap.end())
 		{
@@ -2314,7 +2308,7 @@ bool xRedis::getCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1)
 	{
-		addReplyErrorFormat(session->sendBuf,"unknown  param error");
+		addReplyErrorFormat(session->sendBuf,"unknown  get param error");
 		return false;
 	}
 	
@@ -2325,6 +2319,7 @@ bool xRedis::getCommond(const std::deque <rObj*> & obj,xSession * session)
 	SetMap & setMap = setMapShards[index].setMap;
 	{
 		MutexLockGuard lock(mu);
+		
 		auto it = setMap.find(obj[0]);
 		if(it == setMap.end())
 		{
@@ -2348,9 +2343,8 @@ void xRedis::flush()
 
 
 
-void xRedis::init()
+void xRedis::initConifg()
 {
-
 	rObj * obj = createStringObject("set",3);
 	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("get",3);
@@ -2441,6 +2435,14 @@ void xRedis::init()
 	unorderedmapCommonds.insert(obj);
 	obj = createStringObject("flushdb",7);
 	unorderedmapCommonds.insert(obj);
+
+	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
+	sentiThreads->detach();
+	repliThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
+	repliThreads->detach();
+	clusterThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
+	clusterThreads->detach();
+	
 	
 }
 

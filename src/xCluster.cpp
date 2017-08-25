@@ -175,7 +175,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 			
 		if(it->second.size() == 0)
 		{
-			LOG_WARN<<"async slot error";
+			LOG_WARN<<"async slot size  error";
 			return ;
 		}
 
@@ -207,7 +207,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 		{
 			rObj * o = createStringObject("set", 3);
 			MutexLockGuard lock((*it).mutex);
-			for(auto iter = (*it).setMap.begin(); iter !=  (*it).setMap.end(); iter ++)
+			for(auto iter = (*it).setMap.begin(); iter !=  (*it).setMap.end(); )
 			{
 				unsigned int slot = keyHashSlot((char*)iter->first->ptr,sdsllen(iter->first->ptr));
 				auto iterr = uset.find(slot);
@@ -217,7 +217,13 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 					deques.push_back(iter->first);
 					deques.push_back(iter->second);
 					redis->structureRedisProtocol(sendBuf,deques);
-				}				
+					zfree(iter->first);
+					zfree(iter->second);
+					(*it).setMap.erase(iter++); 
+					 continue;
+				}
+				
+				iter ++;
 			}
 			zfree(o);
 		}

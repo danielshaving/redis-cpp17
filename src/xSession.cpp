@@ -221,6 +221,7 @@ int xSession::processCommand()
 
 		}
 	}
+	
 
 jump:
 		
@@ -305,6 +306,8 @@ jump:
 		}
 				
 	}
+	
+	
 
 	auto iter = redis->handlerCommondMap.find(robjs[0]);
 	if(iter == redis->handlerCommondMap.end() )
