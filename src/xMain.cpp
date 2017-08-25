@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 	else
 	{
 		//ProfilerStart("out.prof");
-		printf("%s\n",ascii_logo);
+		//printf("%s\n",ascii_logo);
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int16_t threadCount =  atoi(argv[3]);

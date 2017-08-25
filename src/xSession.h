@@ -16,7 +16,7 @@ public:
 	 void resetVlaue();
 	 void clearObj();
 	 void reset();
-	 void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
+	 inline void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	 int processMultibulkBuffer(xBuffer *recvBuf);
 	 int processInlineBuffer(xBuffer *recvBuf);
 	 int processCommand();
@@ -26,7 +26,7 @@ public:
 	int32_t 			reqtype;
 	int32_t 			multibulklen;
 	int64_t 			bulklen;
-	int32_t 		    argc;
+	int32_t 		        argc;
 	xBuffer 			sendBuf;
 	xBuffer 			sendSlaveBuf;
 	xBuffer 			sendPubSub;

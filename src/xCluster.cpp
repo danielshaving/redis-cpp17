@@ -266,7 +266,12 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 
 		for(auto it = uset.begin(); it != uset.end(); it ++)
 		{
-			clusterSlotNodes.erase(*it);
+			auto iter = clusterSlotNodes.find(*it);
+			if(iter !=  clusterSlotNodes.end())
+			{
+				iter->second.ip = ip;
+				iter->second.port = port;
+			}
 			std::deque<rObj*> robj;
 			rObj * c = createStringObject("cluster", 7);
 			rObj * s = createStringObject("setslot", 7);
@@ -280,6 +285,9 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 			robj.push_back(n);
 			rObj * t = createStringObject(ipPort.c_str(),ipPort.length());
 			robj.push_back(t);
+			std::string hp = redis->host +"::" +  std::to_string(redis->port);
+			rObj * h =  createStringObject(hp.c_str(),hp.length());
+			robj.push_back(h);
 			syncClusterSlot(robj);	
 			
 		}
@@ -344,11 +352,36 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 					break;
 				}
 			}
+			eraseClusterNode(conn->host,conn->port);
+			migratingSlosTos.erase(conn->host + std::to_string(conn->port));
+			importingSlotsFrom.erase(conn->host + std::to_string(conn->port));
 
 		}
 
 		LOG_INFO << "disconnect cluster ";
 	}
+}
+
+
+
+void xCluster::eraseImportSlot(int slot)
+{
+
+}
+
+void xCluster::eraseClusterNode(std::string host,int32_t port)
+{
+	for(auto it = clusterSlotNodes.begin(); it != clusterSlotNodes.end(); )
+	{
+		if(host == it->second.ip && port == it->second.port)
+		{
+			clusterSlotNodes.erase(it++);
+			continue;
+		}
+
+		it ++;
+	}
+
 }
 
 

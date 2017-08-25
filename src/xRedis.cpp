@@ -982,7 +982,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		addReplyLongLong(session->sendBuf, clus.keyHashSlot((char*)key, sdsllen(key)));
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr, "setslot") && obj.size() >= 3)
+	else if (!strcasecmp(obj[0]->ptr, "setslot") && obj.size() >= 4)
 	{
 		int slot;
 		if ((slot = clus.getSlotOrReply(session, obj[1])) == -1)
@@ -992,17 +992,12 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			return false;
 		}
 
-		std::string nodeName = obj[3]->ptr;
-		if (nodeName == host + "::" + std::to_string(port))
-		{
-			addReplyErrorFormat(session->sendBuf, "setslot self server error ");
-			return false;
-		}
-
+		
 		if( !strcasecmp(obj[2]->ptr, "node") )
 		{
 			MutexLockGuard lk(clusterMutex);
 			std::string ipPort = obj[3]->ptr;
+			std::string imipPort = obj[4]->ptr;
 			const char *start = obj[3]->ptr;
 			const char *end = obj[3]->ptr + sdsllen(obj[3]->ptr );
 			const  char *space = std::find(start,end,':');
@@ -1019,25 +1014,29 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 					it->second.port = value;
 				}
 
-				clus.importingSlotsFrom.erase(ipPort);
+				
+				clus.importingSlotsFrom.erase(imipPort);
 
 				if(clus.importingSlotsFrom.size() == 0)
 				{
 					clusterRepliImportEnabeld = false;
 				}
-				
+		
 			}
-			else
-			{
-			
-				addReplyErrorFormat(session->sendBuf, "std::find sourceid  error ");
-				return false;
-			}
-
+		
 			LOG_INFO<<"importingSlotsFrom  erase ";
-			addReply(session->sendBuf, shared.ok);
+			//addReply(session->sendBuf, shared.ok);
 			return false;
 		}
+
+
+		std::string nodeName = obj[3]->ptr;
+		if (nodeName == host + "::" + std::to_string(port))
+		{
+			addReplyErrorFormat(session->sendBuf, "setslot self server error ");
+			return false;
+		}
+
 
 		if( !strcasecmp(obj[2]->ptr, "importing") && obj.size() == 4)
 		{

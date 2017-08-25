@@ -34,6 +34,8 @@ public:
 	void clusterRedirectClient(xSession * session, xClusterNode * node,int hashSlot,int errCode);
 	void asyncReplicationToNode(std::string ip,int32_t port);
 	void delClusterImport(std::deque<rObj*> &robj);
+	void eraseClusterNode(std::string host,int32_t port);
+	void eraseImportSlot(int slot);
 
 public:
 	xEventLoop *loop;

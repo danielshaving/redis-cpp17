@@ -147,19 +147,19 @@ public:
 	mutable MutexLock clusterMutex;
 
 
-	std::atomic<int>	 salveCount;
-	std::atomic<bool> clusterEnabled;
-	std::atomic<bool> slaveEnabled;
-	std::atomic<bool> authEnabled;
-	std::atomic<bool> repliEnabled;
-	std::atomic<bool> sentinelEnabled;
+	std::atomic<int>	  salveCount;
+	std::atomic<bool>  clusterEnabled;
+	std::atomic<bool>  slaveEnabled;
+	std::atomic<bool>  authEnabled;
+	std::atomic<bool>  repliEnabled;
+	std::atomic<bool>  sentinelEnabled;
 	std::atomic<bool>  clusterSlotEnabled;
 	std::atomic<bool>  clusterRepliMigratEnabled;
 	std::atomic<bool>  clusterRepliImportEnabeld;
 
-	xBuffer		slaveCached;
-	xBuffer 		clusterMigratCached;
-	xBuffer		clusterImportCached;
+	xBuffer	slaveCached;
+	xBuffer	clusterMigratCached;
+	xBuffer	clusterImportCached;
 	
 	xReplication  repli;
 	xSentinel	   senti;
@@ -167,7 +167,7 @@ public:
 
 	std::shared_ptr<std::thread > repliThreads;
 	std::shared_ptr<std::thread > sentiThreads;
-	std::shared_ptr<std::thread>	 clusterThreads;
+	std::shared_ptr<std::thread>	clusterThreads;
 
 	std::unordered_map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
 	std::unordered_map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;
