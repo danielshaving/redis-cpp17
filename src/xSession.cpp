@@ -69,16 +69,11 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 	else
 	{
 
-		if(redis->clusterRepliImportEnabeld)
+		if(retrieveBuffer)
 		{
-			
-			if(retrieveBuffer)
-			{
-				sendBuf.retrieveAll();
-				retrieveBuffer = false;
-			}
+			sendBuf.retrieveAll();
+			retrieveBuffer = false;
 		}
-			
 		
 		if(sendBuf.readableBytes() > 0 )
 		{

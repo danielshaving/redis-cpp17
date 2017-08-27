@@ -33,6 +33,16 @@ xRedis::~xRedis()
 }
 
 
+
+
+bool xRedis::clearClusterMigradeCommond(void * data)
+{
+
+}
+void xRedis::replyCheck()
+{
+
+}
 void xRedis::test(void * data)
 {
 	count++;
@@ -2254,6 +2264,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 	int index = hash  % kShards;
 	MutexLock &mu = setMapShards[index].mutex;
 	auto & setMap = setMapShards[index].setMap;
+
 	{
 		MutexLockGuard lock(mu);
 
@@ -2279,27 +2290,27 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 			zfree(it->second);
 			it->second = obj[1];
 		}
-		
-		if (expire)
-		{
-			LOG_INFO<<"expire";
-			auto iter = expireTimers.find(obj[0]);
-			if(iter != expireTimers.end())
-			{
-				expireTimers.erase(iter);
-				loop.cancelAfter(iter->second);
-			}
+	}
 
-			xTimer * timer = loop.runAfter(milliseconds / 1000,(void *)(obj[0]),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
-			expireTimers.insert(std::make_pair(obj[0],timer));
+	if (expire)
+	{
+		MutexLockGuard lock(expireMutex);
+		auto iter = expireTimers.find(obj[0]);
+		if(iter != expireTimers.end())
+		{
+			expireTimers.erase(iter);
+			loop.cancelAfter(iter->second);
+		}
+
+		xTimer * timer = loop.runAfter(milliseconds / 1000,(void *)(obj[0]),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
+		expireTimers.insert(std::make_pair(obj[0],timer));
+
+		for(int i = 2; i < obj.size(); i++)
+		{
+			zfree(obj[i]);
 		}
 	}
 
-	for(int i = 2; i < obj.size(); i ++)
-	{
-		zfree(obj[i]);
-	}
-	
 	addReply(session->sendBuf,shared.ok);
 	return true;
 }
@@ -2442,7 +2453,7 @@ void xRedis::initConifg()
 	repliThreads->detach();
 	clusterThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
 	clusterThreads->detach();
-	
+
 	
 }
 

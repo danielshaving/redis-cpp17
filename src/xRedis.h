@@ -30,7 +30,7 @@ public:
 	void run();
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 	bool deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf,void  *data);
-
+	void replyCheck();
 	void loadDataFromDisk();
 	void flush();
 
@@ -79,6 +79,7 @@ public:
 	bool sentinelCommond(const std::deque<rObj*> & obj, xSession * session);
 	bool migrateCommond(const std::deque<rObj*> & obj, xSession * session);
 
+	bool clearClusterMigradeCommond(void * data);
 	bool save(xSession * session);
 	int removeCommond(rObj * obj,int &count);
 	void clearCommond();
@@ -92,6 +93,7 @@ public:
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commondFunction;
 	std::unordered_map<rObj*,commondFunction,Hash,EEqual> handlerCommondMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
+
 
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
@@ -167,7 +169,7 @@ public:
 
 	std::shared_ptr<std::thread > repliThreads;
 	std::shared_ptr<std::thread > sentiThreads;
-	std::shared_ptr<std::thread>	clusterThreads;
+	std::shared_ptr<std::thread>  clusterThreads;
 
 	std::unordered_map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
 	std::unordered_map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;

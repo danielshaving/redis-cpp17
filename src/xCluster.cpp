@@ -202,7 +202,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 	
 	redis->clusterRepliMigratEnabled = true;
 	std::deque<rObj*> deques;
-	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); it ++)
+	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end();it++)
 	{
 		{
 			rObj * o = createStringObject("set", 3);
@@ -219,8 +219,8 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 					redis->structureRedisProtocol(sendBuf,deques);
 					zfree(iter->first);
 					zfree(iter->second);
-					(*it).setMap.erase(iter++); 
-					 continue;
+					(*it).setMap.erase(iter++);
+					continue;
 				}
 				
 				iter ++;
@@ -295,7 +295,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 			rObj * h =  createStringObject(hp.c_str(),hp.length());
 			robj.push_back(h);
 			syncClusterSlot(robj);	
-			
+
 		}
 			
 
