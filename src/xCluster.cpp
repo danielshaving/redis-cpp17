@@ -201,6 +201,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 
 	
 	redis->clusterRepliMigratEnabled = true;
+
 	std::deque<rObj*> deques;
 	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end();it++)
 	{

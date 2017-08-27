@@ -85,7 +85,6 @@ public:
 	void clearCommond();
 	void clearRepliState(int32_t sockfd);
 	size_t getDbsize();
-
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 public:
 	

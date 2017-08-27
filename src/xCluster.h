@@ -42,7 +42,7 @@ public:
 	xRedis *redis;
 	xSocket socket;
 	std::vector<std::shared_ptr<xTcpClient>> tcpvectors;	
-	std::unordered_map<int32_t, xClusterNode> clusterSlotNodes;
+	std::map<int32_t, xClusterNode> clusterSlotNodes;
 	std::unordered_map<std::string, std::unordered_set<int32_t>> migratingSlosTos;
 	std::unordered_map<std::string, std::unordered_set<int32_t>> importingSlotsFrom;
 

@@ -39,10 +39,12 @@ bool xRedis::clearClusterMigradeCommond(void * data)
 {
 
 }
+
 void xRedis::replyCheck()
 {
 
 }
+
 void xRedis::test(void * data)
 {
 	count++;
@@ -959,7 +961,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			{
 				if (iter->second.ip == it->second->host && iter->second.port == it->second->port)
 				{
-					ni = sdscatprintf(sdsempty(), " :%d ",
+					ni = sdscatprintf(sdsempty(), "%d ",
 						iter->first);
 					ci = sdscatsds(ci, ni);
 					sdsfree(ni);
@@ -1198,6 +1200,12 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 				return false;
 			}
 
+			if(slot < 0 || slot > 16384 )
+			{
+				addReplyErrorFormat(session->sendBuf, "cluster delslots range error %d:",slot);
+				return false;
+			}
+
 			auto it = clus.clusterSlotNodes.find(slot);
 			if (it != clus.clusterSlotNodes.end())
 			{
@@ -1225,13 +1233,18 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 		int32_t  j, slot;
 		for (j = 1; j < obj.size(); j++)
 		{
+			if(slot < 0 || slot > 16384 )
+			{
+				addReplyErrorFormat(session->sendBuf, "cluster delslots range error %d:",slot);
+				return false;
+			}
+
 			if ((slot = clus.getSlotOrReply(session, obj[j])) == 0)
 			{
 				return false;
 			}
 
 			MutexLockGuard lk(clusterMutex);
-
 			if (clustertcpconnMaps.size() == 0)
 			{
 				addReplyErrorFormat(session->sendBuf, "execute cluster meet ip:port");
@@ -1267,6 +1280,7 @@ bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
 			else
 			{
 				addReplyErrorFormat(session->sendBuf, "Slot %d specified multiple times", slot);
+				return false;
 			}
 		}
 		clusterSlotEnabled = true;
