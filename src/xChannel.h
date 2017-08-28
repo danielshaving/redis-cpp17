@@ -9,7 +9,6 @@ class xChannel: noncopyable
 {
 public:
 	typedef std::function<void()> EventCallback;
-
 	xChannel(xEventLoop *loop,int fd);
 	~xChannel();
 
@@ -39,7 +38,6 @@ public:
 private:
 	void update();
 	void handleEventWithGuard();
-
 	EventCallback  readCallback;
 	EventCallback  writeCallback;
 	EventCallback  closeCallback;

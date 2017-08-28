@@ -32,6 +32,7 @@ char *ascii_logo =
 "          `-._        _.-'                                           \n"
 "              `-.__.-'                                               \n";
 
+
 int main(int argc, char* argv[])
 {
 	if (argc < 6)
@@ -58,59 +59,11 @@ int main(int argc, char* argv[])
 
 	}
 
-		return 0;
+	return 0;
 }
 
 
 
-//hiredis client test asyncbenchmark
-//#include "all.h"
-//#include "xEventLoop.h"
-//#include "xLog.h"
-//#include "xHiredis.h"
-//
-//
-//int main(int argc, char* argv[])
-//{
-//	 if (argc != 6)
-//	  {
-//	    fprintf(stderr, "Usage: client <host_ip> <port> <threads> <blocksize> ");
-//	    fprintf(stderr, "<sessions> \n");
-//	  }
-//	  else
-//	  {
-//	    const char* ip = argv[1];
-//	    uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
-//	    int threadCount = atoi(argv[3]);
-//	    int blockSize = atoi(argv[4]);
-//	    int sessionCount = atoi(argv[5]);
-//
-//	    xEventLoop loop;
-//	    xClient client(&loop, ip,port, blockSize, sessionCount, threadCount);
-//	    loop.run();
-//	  }
-//}
-
-//hiredis client test sync
-//#include "all.h"
-//#include "xLog.h"
-//#include "xHiredis.h"
-//
-//
-//int main(int argc, char* argv[])
-//{
-//	if (argc != 3)
-//	{
-//		fprintf(stderr, "Usage: client <host_ip> <port> \n ");
-//	}
-//	else
-//	{
-//		  const char* ip = argv[1];
-//		  uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
-//		  xClient client(ip,port);
-//	}
-//	return 0;
-//}
 
 
 
