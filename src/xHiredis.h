@@ -33,14 +33,30 @@ typedef struct redisReadTask {
 } redisReadTask;
 
 
+static redisReply * createReplyObject(int type);
+static void * createString(const redisReadTask * task, const char * str, size_t len);
+static void * createArray(const redisReadTask * task, int elements);
+static void * createInteger(const redisReadTask * task, long long value);
+static void * createNil(const redisReadTask * task);
+static void freeReply(void *reply);
+
 
 typedef struct redisReplyObjectFunctions
 {
-	void *(*createString)(const redisReadTask*, const char*, size_t);
-	void *(*createArray)(const redisReadTask*, int);
-	void *(*createInteger)(const redisReadTask*, long long);
-	void *(*createNil)(const redisReadTask*);
-	void (*freeObject)(void*);
+	redisReplyObjectFunctions()
+	{
+		createStringFuc = createString;
+	        createArrayFuc = createArray;
+		createIntegerFuc = createInteger;
+		createNilFuc = createNil;
+		freeObjectFuc = freeReply;
+	}
+	
+	std::function<void *(const redisReadTask *,const char *,size_t)> createStringFuc;
+	std::function<void *(const redisReadTask*, int)> createArrayFuc;
+	std::function<void *(const redisReadTask*, long long)> createIntegerFuc;
+	std::function<void *(const redisReadTask*)> createNilFuc;
+	std::function<void (void*)> freeObjectFuc;
 } redisReplyObjectFunctions;
 
 
@@ -49,14 +65,14 @@ class xRedisReader
 {
 public:
 	xRedisReader();
-    int err;
-    char errstr[128];
-    size_t pos;
+	int err;
+	char errstr[128];
+	size_t pos;
 	xBuffer *buf;
-    redisReadTask rstack[9];
-    int ridx;
-    void *reply;
-    redisReplyObjectFunctions *fn;
+	redisReadTask rstack[9];
+	int ridx;
+	void *reply;
+	std::shared_ptr<redisReplyObjectFunctions> fn;
     void *privdata;
 };
 
@@ -142,7 +158,7 @@ public:
 
 	if (threadCount > 1)
 	{
-	  threadPool.setThreadNum(threadCount);
+	  	threadPool.setThreadNum(threadCount);
 	}
 
 	threadPool.start();

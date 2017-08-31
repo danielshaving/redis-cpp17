@@ -24,11 +24,12 @@ public:
 	int  createNonBloackSocket();
 	int  connect(int sockfd,std::string ip, int16_t port);
 
-    bool  initialize();
-    int   getListenFd();
-    void  setkeepAlive(int fd,int idle);
-    bool  createTcpListenSocket();
-    bool  setSocketNonBlock(int socketFd);
+	bool  initialize();
+	int   getListenFd();
+	void  setkeepAlive(int fd,int idle);
+	bool  createTcpListenSocket();
+	bool  setSocketNonBlock(int socketFd);
+	bool  setSocketBlock(int socketFd);
 
 };
 

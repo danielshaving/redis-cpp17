@@ -4,6 +4,16 @@
 #include "xHiredis.h"
 
 
+/*for(int i = 0 ; i < 10;i++)
+{
+	std::string str = "set test" + std::to_string(conn->getSockfd()) + " "	+ " %b";
+	redisAsyncCommand(ac, nullptr, nullptr, str.c_str(),str.c_str(), str.length());
+	std::string str1 = "get test" + std::to_string(conn->getSockfd());
+	redisAsyncCommand(ac, getCallback, nullptr,str1.c_str());
+}
+*/
+
+
 int main(int argc, char* argv[])
 {
 	if (argc != 6)
@@ -14,9 +24,9 @@ int main(int argc, char* argv[])
 	{
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
-		int threadCount = atoi(argv[3]);
-		int blockSize = atoi(argv[4]);
-		int sessionCount = atoi(argv[5]);
+		int blockSize = atoi(argv[3]);
+		int sessionCount = atoi(argv[4]);
+		int threadCount = atoi(argv[5]);
 
 		xEventLoop loop;
 		xClient client(&loop, ip,port, blockSize, sessionCount, threadCount);

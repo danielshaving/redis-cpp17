@@ -159,6 +159,24 @@ bool xSocket::createTcpListenSocket()
     return true;
 }
 
+bool  xSocket::setSocketBlock(int socketFd)
+{
+    int opt = fcntl(socketFd, F_GETFL);
+    if (opt < 0)
+    {
+        LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+        return false;
+    }
+
+    opt = opt &~ O_NONBLOCK;
+    if (fcntl(socketFd, F_SETFL, opt) < 0)
+    {
+    	 LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+        return false;
+    }
+}
+
+
 bool xSocket::setSocketNonBlock(int socketFd)
 {
     int opt = fcntl(socketFd, F_GETFL);

@@ -154,8 +154,8 @@ void xRedis::loadDataFromDisk()
 	}
 	else if (errno != ENOENT)
 	{
-        LOG_WARN<<"Fatal error loading the DB:  Exiting."<<strerror(errno);
-    }
+        	LOG_WARN<<"Fatal error loading the DB:  Exiting."<<strerror(errno);
+ 	}
 
 }
 
