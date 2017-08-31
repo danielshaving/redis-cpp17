@@ -8,13 +8,13 @@
 #include "xLog.h"
 
 
-class client;
+class xClient;
 
-class session:noncopyable
+class xSession:noncopyable
 {
 public:
-	session(xEventLoop *loop,
-		const char *ip,uint16_t port,client *owner)
+	xSession(xEventLoop *loop,
+		const char *ip,uint16_t port,xClient *owner)
 		:cli(loop,nullptr),
 		ip(ip),
 		port(port),
@@ -23,9 +23,9 @@ public:
 		bytesWritten(0),
 		messagesRead(0)
 	{
-		cli.setConnectionCallback(std::bind(&session::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
-		cli.setMessageCallback(std::bind(&session::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-		cli.setConnectionErrorCallBack(std::bind(&session::connErrorCallBack, this));
+		cli.setConnectionCallback(std::bind(&xSession::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
+		cli.setMessageCallback(std::bind(&xSession::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+		cli.setConnectionErrorCallBack(std::bind(&xSession::connErrorCallBack, this));
 	}
 
 	void start()
@@ -61,24 +61,24 @@ private:
 	xTcpClient cli;
 	const char *ip;
 	uint16_t port;
-	client * owner;
+	xClient * owner;
 	int64_t bytesRead;
 	int64_t bytesWritten;
 	int64_t messagesRead;
   
 };
 
-class client:noncopyable
+class xClient:noncopyable
 {
 public:
-	client(xEventLoop *loop,const char *ip,uint16_t port,int blockSize,int sessionCount,
+	xClient(xEventLoop *loop,const char *ip,uint16_t port,int blockSize,int sessionCount,
 		int timeOut,int threadCount)
 		:loop(loop),
 		threadPool(loop),
 		sessionCount(sessionCount),
 		timeOut(timeOut)
 	{
-		loop->runAfter(timeOut,nullptr,false, std::bind(&client::handlerTimeout, this,std::placeholders::_1));
+		loop->runAfter(timeOut,nullptr,false, std::bind(&xClient::handlerTimeout, this,std::placeholders::_1));
 		if(threadCount > 1)
 		{
 			threadPool.setThreadNum(threadCount);
@@ -92,7 +92,7 @@ public:
 
 		for(int i = 0 ; i < sessionCount; i ++)
 		{
-			std::shared_ptr<session> vsession (new session(threadPool.getNextLoop(),ip,port,this));
+			std::shared_ptr<xSession> vsession (new xSession(threadPool.getNextLoop(),ip,port,this));
 			vsession->start();
      			sessions.push_back(vsession);
 			numConencted++;
@@ -126,7 +126,7 @@ public:
 			LOG_WARN << totalMessagesRead << " total messages read";
 			LOG_WARN << static_cast<double>(totalBytesRead) / static_cast<double>(totalMessagesRead)<< " average message size";
 			LOG_WARN << static_cast<double>(totalBytesRead) / (timeOut * 1024 * 1024) << " MiB/s throughput";
-			conn->getLoop()->queueInLoop(std::bind(&client::quit, this));
+			conn->getLoop()->queueInLoop(std::bind(&xClient::quit, this));
 		}
 	}
 
@@ -145,20 +145,20 @@ private:
 	void handlerTimeout(void * data)
 	{
 		 LOG_WARN << "stop";
-		 std::for_each(sessions.begin(),sessions.end(),std::mem_fn(&session::stop));
+		 std::for_each(sessions.begin(),sessions.end(),std::mem_fn(&xSession::stop));
 	}
 	
 	xEventLoop *loop;
 	xThreadPool threadPool;
 	int sessionCount;
 	int timeOut;
-	std::vector<std::shared_ptr<session>> sessions;
+	std::vector<std::shared_ptr<xSession>> sessions;
 	std::string message;
 	std::atomic<int> numConencted;
 };
 
 
-void session::connCallBack(const xTcpconnectionPtr & conn,void * data)
+void xSession::connCallBack(const xTcpconnectionPtr & conn,void * data)
 {
 	if (conn->connected())
 	{
@@ -176,12 +176,12 @@ int main(int argc,char * argv[])
 {
 	if (argc != 7)
 	{
-		fprintf(stderr, "Usage: client <host_ip> <port> <threads> <blocksize> ");
+		fprintf(stderr, "Usage: xClient <host_ip> <port> <threads> <blocksize> ");
 		fprintf(stderr, "<sessions> <time>\n");
 	}
 	else
 	{			
-		LOG_INFO << "ping pong client pid = " << getpid() << ", tid = " << xCurrentThread::tid();
+		LOG_INFO << "ping pong xClient pid = " << getpid() << ", tid = " << xCurrentThread::tid();
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int threadCount = atoi(argv[3]);
@@ -191,7 +191,7 @@ int main(int argc,char * argv[])
 
 		xEventLoop loop;
 
-		client cli(&loop, ip,port, blockSize, sessionCount, timeout, threadCount);
+		xClient cli(&loop, ip,port, blockSize, sessionCount, timeout, threadCount);
 		loop.run();
 	
 	}

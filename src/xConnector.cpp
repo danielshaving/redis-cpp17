@@ -82,10 +82,10 @@ void xConnector::connect(const char *ip, int16_t port)
     case EINPROGRESS:
     case EINTR:
     case EISCONN:
-      setState(kConnecting);
-      connecting(sockfd);
-      socket.setSocketNonBlock(sockfd);
-	  socket.setkeepAlive(sockfd,3);
+	setState(kConnecting);
+	connecting(sockfd);
+	socket.setSocketNonBlock(sockfd);
+	socket.setkeepAlive(sockfd,3);
       break;
     default:
 //
