@@ -450,24 +450,24 @@ static int processBulkItem(const xRedisReaderPtr  & r)
 			bytelen 			+= len + 2; 		/* include \r\n */
 
 			if (r->pos + bytelen <= r->buf->readableBytes())
-				{
+			{
 				if (r->fn && r->fn->createStringFuc)
 					obj = r->fn->createStringFuc(cur, s + 2, len);
 				else
 					obj = (void *)
 					REDIS_REPLY_STRING;
 
-				success 			= 1;
-				}
+				success  = 1;
 			}
+		}
 
 		/* Proceed when obj was created. */
 		if (success)
 		{
 			if (obj == nullptr)
 			{
-			//__redisReaderSetErrorOOM(r);
-			return REDIS_ERR;
+				LOG_WARN<<"obj == nullptr";
+				return REDIS_ERR;
 			}
 
 			r->pos				+= bytelen;
@@ -496,8 +496,7 @@ static int processMultiBulkItem(const xRedisReaderPtr  & r)
 	/* Set error for nested multi bulks with depth > 7 */
 	if (r->ridx == 8)
 	{
-	//__redisReaderSetError(r, REDIS_ERR_PROTOCOL,
-		//"No support for nested multi bulk replies with depth > 7");
+		LOG_WARN<<"REDIS_ERR_PROTOCOL";
 		return REDIS_ERR;
 	}
 
@@ -514,9 +513,9 @@ static int processMultiBulkItem(const xRedisReaderPtr  & r)
 				obj = (void *)
 				REDIS_REPLY_NIL;
 
-			if (obj == NULL)
+			if (obj == nullptr)
 			{
-				//__redisReaderSetErrorOOM(r);
+				LOG_WARN<<"obj == nullptr";
 				return REDIS_ERR;
 			}
 
@@ -530,11 +529,11 @@ static int processMultiBulkItem(const xRedisReaderPtr  & r)
 				obj = (void *)
 				REDIS_REPLY_ARRAY;
 
-			if (obj == NULL)
-				{
-				//__redisReaderSetErrorOOM(r);
+			if (obj == nullptr)
+			{
+				LOG_WARN<<"obj == nullptr";
 				return REDIS_ERR;
-				}
+			}
 
 			/* Modify task stack when there are more than 0 elements. */
 			if (elements > 0)
@@ -825,13 +824,14 @@ int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, voi
 	pvariant = (tolower(cstr[0]) == 'p') ? 1 : 0;
 	cstr += pvariant;
 	clen -= pvariant;
+	
 	{
 		std::unique_lock<std::mutex> lk(mutex);
 		ac->replies.push_back(std::move(cb));
+		ac->conn->send(stringPiepe(cmd,len));
 	}
-	ac->conn->send(stringPiepe(cmd,len));
-
-    return REDIS_OK;
+	
+   	return REDIS_OK;
 }
 
 
@@ -1076,7 +1076,7 @@ int redisvFormatCommand(char * *target, const char * format, va_list ap)
 err:
 	while (argc--)
 		sdsfree(curargv[argc]);
-	free(curargv);
+	zfree(curargv);
 	if (curarg != nullptr)
 		sdsfree(curarg);
 
@@ -1320,8 +1320,6 @@ int redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void 
 }
 
 
-
-
 static void * __redisBlockForReply(const xRedisContextPtr & c)
 {
 	void * reply;
@@ -1370,64 +1368,63 @@ int redisvAppendCommand(const xRedisContextPtr  & c, const char * format, va_lis
 
 void * redisCommand(const xRedisContextPtr & c, const char * format, ...)
 {
-
-		va_list ap;
-		void * reply		= NULL;
-		va_start(ap, format);
-		reply				= redisvCommand(c, format, ap);
-		va_end(ap);
-		return reply;
+	va_list ap;
+	void * reply	 = nullptr;
+	va_start(ap, format);
+	reply	= redisvCommand(c, format, ap);
+	va_end(ap);
+	return reply;
 }
 
 void * redisvCommand(const xRedisContextPtr & c, const char * format, va_list ap)
 {
 
 	if (redisvAppendCommand(c, format, ap) != REDIS_OK)
-			return NULL;
+		return nullptr;
 
-    return __redisBlockForReply(c);
+	  return __redisBlockForReply(c);
 }
 
 
 
 int redisFormatCommandArgv(char * *target, int argc, const char * *argv, const size_t * argvlen)
 {
-	char *			cmd = NULL; 					/* final command */
-	int 			pos;							/* position in final command */
-	size_t			len;
-	int 			totlen, j;
+	char * cmd = nullptr; 					/* final command */
+	int pos;							/* position in final command */
+	size_t	len;
+	int totlen, j;
 
 	/* Calculate number of bytes needed for the command */
-	totlen				= 1 + intlen(argc) + 2;
+	totlen = 1 + intlen(argc) + 2;
 
 	for (j = 0; j < argc; j++)
-		{
-		len 				= argvlen ? argvlen[j]: strlen(argv[j]);
-		totlen				+= bulklen(len);
-		}
+	{
+		len = argvlen ? argvlen[j]: strlen(argv[j]);
+		totlen += bulklen(len);
+	}
 
 	/* Build the command at protocol level */
-	cmd 				= (char*)zmalloc(totlen + 1);
+	cmd = (char*)zmalloc(totlen + 1);
 
 	if (cmd == NULL)
 		return - 1;
 
-	pos 				= sprintf(cmd, "*%d\r\n", argc);
+	pos = sprintf(cmd, "*%d\r\n", argc);
 
 	for (j = 0; j < argc; j++)
-		{
-		len 				= argvlen ? argvlen[j]: strlen(argv[j]);
-		pos 				+= sprintf(cmd + pos, "$%zu\r\n", len);
+	{
+		len = argvlen ? argvlen[j]: strlen(argv[j]);
+		pos += sprintf(cmd + pos, "$%zu\r\n", len);
 		memcpy(cmd + pos, argv[j], len);
-		pos 				+= len;
-		cmd[pos++]			= '\r';
-		cmd[pos++]			= '\n';
-		}
+		pos += len;
+		cmd[pos++] = '\r';
+		cmd[pos++] = '\n';
+	}
 
 	assert(pos == totlen);
-	cmd[pos]			= '\0';
+	cmd[pos] = '\0';
 
-	*target 			= cmd;
+	*target = cmd;
 	return totlen;
 }
 
@@ -1437,7 +1434,7 @@ int redisAppendCommandArgv(const xRedisContextPtr  & c, int argc, const char * *
 	char * cmd;
 	int len;
 
-	len 				= redisFormatCommandArgv(&cmd, argc, argv, argvlen);
+	len = redisFormatCommandArgv(&cmd, argc, argv, argvlen);
 
 	if (len == -1)
 	{
@@ -1459,7 +1456,7 @@ int redisAppendCommandArgv(const xRedisContextPtr  & c, int argc, const char * *
 void * redisCommandArgv(const xRedisContextPtr & c, int argc, const char * *argv, const size_t * argvlen)
 {
 	if (redisAppendCommandArgv(c, argc, argv, argvlen) != REDIS_OK)
-			return NULL;
+			return nullptr;
 
 	return __redisBlockForReply(c);
 }

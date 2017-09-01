@@ -110,6 +110,7 @@ public:
 		err = 0;
 		errstr = nullptr;
 		data = nullptr;
+		c->flags &= ~REDIS_CONNECTED;
 	}
 	int err;
 	char *errstr;
@@ -117,6 +118,13 @@ public:
 	xRedisContextPtr c;
 	xTcpconnectionPtr conn;
 	RedisCallbackList replies;
+
+	struct
+	{
+		RedisCallbackList invalid;
+		std::map<rObj *,redisCallback> channels;
+		std::map<rObj *,redisCallback> patterns;
+	}sub;
 };
 
 class xClient;

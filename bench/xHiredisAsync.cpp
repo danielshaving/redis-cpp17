@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 {
 	if (argc != 6)
 	{
-		fprintf(stderr, "Usage: client <host_ip> <port> <blockSize> <sessionCount> <timeOut> <threadCount> \n ");
+		fprintf(stderr, "Usage: client <host_ip> <port> <blockSize> <sessionCount> <threadCount> \n ");
 	}
 	else
 	{

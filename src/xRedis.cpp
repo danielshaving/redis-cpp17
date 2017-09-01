@@ -77,6 +77,13 @@ void xRedis::handleSalveRepliTimeOut(void * data)
 }
 
 
+
+void xRedis::clearClusterState(int32_t sockfd)
+{
+	
+}
+
+
 void xRedis::clearRepliState(int32_t sockfd)
 {
 	{
@@ -113,12 +120,16 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		//LOG_INFO<<"Client connect success";
+		LOG_INFO<<"Client connect success";
 	}
 	else
 	{
 		{
 			clearRepliState(conn->getSockfd());
+		}
+
+		{
+			clearClusterState(conn->getSockfd());
 		}
 	
 		{
@@ -126,8 +137,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			sessions.erase(conn->getSockfd());
 		}
 
-		
-		//LOG_INFO<<"Client disconnect";
+		LOG_INFO<<"Client disconnect";
 	}
 }
 

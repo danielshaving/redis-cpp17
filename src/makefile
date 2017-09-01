@@ -9,7 +9,7 @@ CXXOBJS=${patsubst %.cpp,../obj/%.o,$(cppfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB= # ../libjemalloc.a  #/usr/lib64/libprofiler.so
+LIB= ./libhiredis.a  # ../libjemalloc.a  #/usr/lib64/libprofiler.so
 
 
 

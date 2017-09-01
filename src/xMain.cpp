@@ -33,6 +33,7 @@ char *ascii_logo =
 "              `-.__.-'                                               \n";
 
 
+/*
 int main(int argc, char* argv[])
 {
 	if (argc < 6)
@@ -63,7 +64,7 @@ int main(int argc, char* argv[])
 }
 
 
-
+*/
 
 
 

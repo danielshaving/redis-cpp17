@@ -1,6 +1,7 @@
 #pragma once
 
 #include "all.h"
+#include "xLog.h"
 
 class xChannel;
 class xEventLoop;
@@ -21,12 +22,12 @@ public:
 	void  updateChannel(xChannel* channel);
 	void  removeChannel(xChannel* channel);
 	void  update(int operation, xChannel* channel);
-    void 	fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
+   	void 	fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
  private:
-	ChannelMap 				channels;
-	EventList 			    events;
-	xEventLoop 				*loop;
-	int                    		maxFd;;
-	int                     		epollFd;
+	ChannelMap channels;
+	EventList 	events;
+	xEventLoop  *loop;
+	int maxFd;;
+	int epollFd;
 };
 

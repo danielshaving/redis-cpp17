@@ -9,7 +9,7 @@ const int kDeleted = 2;
 
 
 xEpoll::xEpoll(xEventLoop * loop)
-:events(50000),
+:events(1024),
 loop(loop),
 maxFd(0),
 epollFd(-1)
@@ -25,11 +25,11 @@ xEpoll::~xEpoll()
 bool xEpoll::init(int fdCount)
 {
     maxFd = fdCount;
-    epollFd = epoll_create(100000);
+    epollFd = epoll_create(1024);
 
     if (epollFd < 0)
     {
-        //TRACE("create epollFd Failed! <epollFd:%d>! error:%s", epollFd, strerror(errno));
+        LOG_WARN<<"create epollFd Failed error " << epollFd <<strerror(errno);
         return false;
     }
 

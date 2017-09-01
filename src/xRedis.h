@@ -84,6 +84,7 @@ public:
 	int removeCommond(rObj * obj,int &count);
 	void clearCommond();
 	void clearRepliState(int32_t sockfd);
+	void clearClusterState(int32_t sockfd);
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 public:
