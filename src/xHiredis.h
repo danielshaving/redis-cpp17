@@ -90,9 +90,9 @@ class xRedisContext: noncopyable
 public:
 	xRedisContext():reader(new xRedisReader())
 	{
-		flags			&= ~REDIS_BLOCK;
-		err				= 0;
-		errstr[0]		= '\0';
+		flags	&= ~REDIS_BLOCK;
+		err = 0;
+		errstr[0] = '\0';
 	}
 	int err;
 	char errstr[128];

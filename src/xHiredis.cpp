@@ -361,8 +361,8 @@ static void moveToNextTask(const xRedisReaderPtr & r)
 		{
 			/* Reset the type because the next item can be anything */
 			assert(cur->idx < prv->elements);
-			cur->type			= -1;
-			cur->elements		= -1;
+			cur->type = -1;
+			cur->elements = -1;
 			cur->idx++;
 			return;
 		}
@@ -377,7 +377,7 @@ static int processLineItem(const xRedisReaderPtr  &r)
 	const char * p;
 	int len;
 
-	if ((p = readLine(r, &len)) != NULL)
+	if ((p = readLine(r, &len)) != nullptr)
 	{
 		if (cur->type == REDIS_REPLY_INTEGER)
 		{
@@ -396,7 +396,7 @@ static int processLineItem(const xRedisReaderPtr  &r)
 					obj = (void *) (size_t) (cur->type);
 			}
 
-			if (obj == NULL)
+			if (obj == nullptr)
 			{
 				//__redisReaderSetErrorOOM(r);
 				return REDIS_ERR;
@@ -573,9 +573,9 @@ static int processItem(const xRedisReaderPtr & r)
 	if (cur->type < 0)
 	{
 		if ((p = readBytes(r, 1)) != NULL)
-			{
+		{
 			switch (p[0])
-				{
+			{
 				case '-':
 					cur->type = REDIS_REPLY_ERROR;
 					break;
@@ -597,89 +597,89 @@ static int processItem(const xRedisReaderPtr & r)
 					break;
 
 				default:
-					//__redisReaderSetErrorProtocolByte(r, *p);
+					
 					return REDIS_ERR;
-				}
 			}
+		}
 		else
-			{
+		{
 			/* could not consume 1 byte */
 			return REDIS_ERR;
-			}
+		}
 	}
 
 /* process typed item */
 	switch (cur->type)
 	{
-	case REDIS_REPLY_ERROR:
-	case REDIS_REPLY_STATUS:
-	case REDIS_REPLY_INTEGER:
-		return processLineItem(r);
+		case REDIS_REPLY_ERROR:
+		case REDIS_REPLY_STATUS:
+		case REDIS_REPLY_INTEGER:
+			return processLineItem(r);
 
-	case REDIS_REPLY_STRING:
-		return processBulkItem(r);
+		case REDIS_REPLY_STRING:
+			return processBulkItem(r);
 
-	case REDIS_REPLY_ARRAY:
-		return processMultiBulkItem(r);
+		case REDIS_REPLY_ARRAY:
+			return processMultiBulkItem(r);
 
-	default:
-		assert(NULL);
-		return REDIS_ERR; /* Avoid warning. */
+		default:
+			assert(NULL);
+			return REDIS_ERR; /* Avoid warning. */
 	}
 }
 
 int redisReaderGetReply(const xRedisReaderPtr &r,void * *reply)
 {
 	/* Default target pointer to NULL. */
-		if (reply != NULL)
-			*reply = NULL;
+	if (reply != nullptr)
+		*reply = nullptr;
 
-		/* Return early when this reader is in an erroneous state. */
+	/* Return early when this reader is in an erroneous state. */
+	if (r->err)
+		return REDIS_ERR;
+
+	/* When the buffer is empty, there will never be a reply. */
+	if (r->buf->readableBytes() == 0)
+		return REDIS_OK;
+	/* Set first item to process when the stack is empty. */
+		if (r->ridx == -1)
+		{
+			r->rstack[0].type	= -1;
+			r->rstack[0].elements = -1;
+			r->rstack[0].idx	= -1;
+			r->rstack[0].obj	= nullptr;
+			r->rstack[0].parent = nullptr;
+			r->rstack[0].privdata = r->privdata;
+			r->ridx 			= 0;
+		}
+
+	/* Process items in reply. */
+		while (r->ridx >= 0)
+			if (processItem(r) != REDIS_OK)
+				break;
+
+	/* Return ASAP when an error occurred. */
 		if (r->err)
 			return REDIS_ERR;
 
-		/* When the buffer is empty, there will never be a reply. */
-		if (r->buf->readableBytes() == 0)
-			return REDIS_OK;
-		/* Set first item to process when the stack is empty. */
-			if (r->ridx == -1)
-			{
-				r->rstack[0].type	= -1;
-				r->rstack[0].elements = -1;
-				r->rstack[0].idx	= -1;
-				r->rstack[0].obj	= NULL;
-				r->rstack[0].parent = NULL;
-				r->rstack[0].privdata = r->privdata;
-				r->ridx 			= 0;
-			}
+		/* Discard part of the buffer when we've consumed at least 1k, to avoid
+		 * doing unnecessary calls to memmove() in sds.c. */
+		if (r->pos >= 1024)
+		{
+			r->buf->retrieve(r->pos);
+			r->pos				= 0;
+		}
 
-		/* Process items in reply. */
-			while (r->ridx >= 0)
-				if (processItem(r) != REDIS_OK)
-					break;
+		/* Emit a reply when there is one. */
+		if (r->ridx == -1)
+		{
+			if (reply != nullptr)
+				*reply = r->reply;
 
-		/* Return ASAP when an error occurred. */
-			if (r->err)
-				return REDIS_ERR;
+			r->reply = nullptr;
+		}
 
-			/* Discard part of the buffer when we've consumed at least 1k, to avoid
-			 * doing unnecessary calls to memmove() in sds.c. */
-			if (r->pos >= 1024)
-			{
-				r->buf->retrieve(r->pos);
-				r->pos				= 0;
-			}
-
-			/* Emit a reply when there is one. */
-			if (r->ridx == -1)
-			{
-				if (reply != NULL)
-					*reply = r->reply;
-
-				r->reply			= NULL;
-			}
-
-			return REDIS_OK;
+		return REDIS_OK;
 
 }
 
@@ -707,7 +707,7 @@ int redisBufferWrite(const xRedisContextPtr & c, int * done)
 
 	if (c->sender.readableBytes() > 0)
 	{
-		nwritten			=  ::write(c->fd, c->sender.peek(), c->sender.readableBytes());
+		nwritten =  ::write(c->fd, c->sender.peek(), c->sender.readableBytes());
 
 		if (nwritten  < 0 )
 		{
@@ -734,7 +734,7 @@ int redisBufferWrite(const xRedisContextPtr & c, int * done)
 		}
 	}
 
-	if (done != NULL)
+	if (done != nullptr)
 		*done =( c->sender.readableBytes() == 0);
 
 	return REDIS_OK;
@@ -746,7 +746,7 @@ int redisBufferRead(const xRedisContextPtr & c)
 	ssize_t n = c->reader->buf->readFd(c->fd, &savedErrno);
 	if (n > 0)
 	{
-		//messageCallback(shared_from_this(), &recvBuff,data);
+		
 	}
 	else if (n == 0)
 	{
@@ -770,15 +770,15 @@ int redisBufferRead(const xRedisContextPtr & c)
 }
 int redisGetReply(const xRedisContextPtr & c, void * *reply)
 {
-	int wdone			= 0;
-	void * aux			= NULL;
+	int wdone	= 0;
+	void * aux	= nullptr;
 
 	/* Try to read pending replies */
 	if (redisGetReplyFromReader(c, &aux) == REDIS_ERR)
 		return REDIS_ERR;
 
 	/* For the blocking context, flush output buffer and read reply */
-	if (aux == NULL && c->flags & REDIS_BLOCK)
+	if (aux == nullptr && c->flags & REDIS_BLOCK)
 	{
 		do
 		{
@@ -796,11 +796,11 @@ int redisGetReply(const xRedisContextPtr & c, void * *reply)
 			if (redisGetReplyFromReader(c, &aux) == REDIS_ERR)
 				return REDIS_ERR;
 		}
-		while(aux == NULL);
+		while(aux == nullptr);
 	}
 
 	/* Set reply object */
-	if (reply != NULL)
+	if (reply != nullptr)
 		*reply = aux;
 
 	return REDIS_OK;
@@ -819,7 +819,7 @@ int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, voi
 	cb.fn = fn;
 	cb.privdata = privdata;
 	p = nextArgument(cmd,&cstr,&clen);
-	assert(p != NULL);
+	assert(p != nullptr);
 	hasnext = (p[0] == '$');
 	pvariant = (tolower(cstr[0]) == 'p') ? 1 : 0;
 	cstr += pvariant;
@@ -1306,8 +1306,6 @@ int redisvAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void
 	zfree(cmd);
 	return status;
 }
-
-
 
 int redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void *privdata, const char *format, ...)
 {

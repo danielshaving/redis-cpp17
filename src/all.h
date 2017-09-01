@@ -331,6 +331,27 @@ class noncopyable
 
 
 
+class stringArg
+{
+public:
+	stringArg(const char * str)
+	:str(str)
+	{
+	
+	}
+
+	stringArg(const std::string & str)
+	:str(str.c_str())
+	{
+		
+	}
+
+	const char * c_str() const { return str; }
+private:
+	const char * str;
+};
+
+
 class stringPiepe
 {
  public:

@@ -182,7 +182,7 @@ int rdbTryIntegerEncoding(char *s, size_t len, unsigned char *enc)
 		return 0;	
 	}
 
-    return rdbEncodeInteger(value,enc);
+  	 return rdbEncodeInteger(value,enc);
 	
 }
 
