@@ -6,14 +6,14 @@ class xSocket: noncopyable
 {
 private:
 
-	xEventLoop		    *loop;
-	std::string				ip;
-	int16_t 				port;
+	xEventLoop		 *loop;
+	std::string		ip;
+	int16_t 		port;
 
-    int                     listenSocketFd;
-    int                     maxSocketFd;
-    int                     onlineNumber;
-    bool					 protocol;
+	int                     listenSocketFd;
+	int                     maxSocketFd;
+	int                     onlineNumber;
+	bool			 protocol;
 public:
     typedef std::function<void (int sockfd,const std::string &ip, int16_t port)> NewConnectionCallback;
 	xSocket();
@@ -30,6 +30,7 @@ public:
 	bool  createTcpListenSocket();
 	bool  setSocketNonBlock(int socketFd);
 	bool  setSocketBlock(int socketFd);
+	void setTcpNoDelay(int socketFd,bool on);
 
 };
 

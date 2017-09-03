@@ -159,6 +159,14 @@ bool xSocket::createTcpListenSocket()
     return true;
 }
 
+
+
+void xSocket::setTcpNoDelay(int socketFd, bool on)
+{
+	int optval = on ? 1 : 0;
+	::setsockopt(socketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
+}
+
 bool  xSocket::setSocketBlock(int socketFd)
 {
     int opt = fcntl(socketFd, F_GETFL);

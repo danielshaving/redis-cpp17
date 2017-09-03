@@ -116,11 +116,12 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
 	{
+		//socket.setTcpNoDelay(conn->getSockfd(),true);
 		socket.getpeerName(conn->getSockfd(),&(conn->host),conn->port);
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		LOG_INFO<<"Client connect success";
+		//LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -137,7 +138,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			sessions.erase(conn->getSockfd());
 		}
 
-		LOG_INFO<<"Client disconnect";
+		//LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -2214,17 +2215,17 @@ bool xRedis::quitCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
-{
+{	
 	if(obj.size() <  2 || obj.size() > 8 )
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown  set param error");
 		return false;
 	}
 
-    int j;
-    rObj *expire = NULL;
-    int unit = UNIT_SECONDS;	
-    int flags = OBJ_SET_NO_FLAGS;
+	int j;
+	rObj *expire = nullptr;
+	int unit = UNIT_SECONDS;	
+	int flags = OBJ_SET_NO_FLAGS;
 
 	for (j = 2; j < obj.size();j++)
 	{
@@ -2340,7 +2341,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 bool xRedis::getCommond(const std::deque <rObj*> & obj,xSession * session)
-{
+{	
 	if(obj.size() != 1)
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown  get param error");

@@ -22,7 +22,7 @@ static int intlen(int i)
 
 
 /* Create a reply object */
-static redisReply * createReplyObject(int type)
+redisReply * createReplyObject(int type)
 {
 	redisReply * r = (redisReply*)zcalloc( sizeof(*r));
 
@@ -1097,203 +1097,6 @@ xRedisReader::xRedisReader()
 }
 
 
-xHiredis::xHiredis(xClient * owner)
-:owner(owner),
-client(&sloop,this)
-{
-	client.setConnectionCallback(std::bind(&xHiredis::connSyncCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	client.setConnectionErrorCallBack(std::bind(&xHiredis::connErrorCallBack, this));
-}
-
-
-xHiredis::xHiredis(xEventLoop *loop,xClient * owner)
-:loop(loop),
- owner(owner),
- client(loop,this)
-{
-	client.setConnectionCallback(std::bind(&xHiredis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	client.setMessageCallback( std::bind(&xHiredis::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
-	client.setConnectionErrorCallBack(std::bind(&xHiredis::connErrorCallBack, this));
-}
-
-
-void xHiredis::connSyncCallBack(const xTcpconnectionPtr& conn,void *data)
-{
-	if(conn->connected())
-	{
-		xBuffer buffer;
-		xRedisContextPtr c (new (xRedisContext));
-
-		c->fd = conn->getSockfd();
-		c->flags			|= REDIS_BLOCK;
-		c->reader->buf = & buffer;
-		redisSyncs.insert(std::make_pair(conn->getSockfd(),c));
-
-		 redisReply *reply;
-
-		/* PING server */
-		reply = ( redisReply *)redisCommand(c,"PING");
-		printf("PING: %s\n", reply->str);
-		freeReply(reply);
-
-		/* Set a key */
-		reply =  ( redisReply *)redisCommand(c,"SET %s %s", "foo", "hello world");
-		printf("SET: %s\n", reply->str);
-		freeReply(reply);
-
-		/* Set a key using binary safe API */
-		reply =  ( redisReply *)redisCommand(c,"SET %b %b", "bar", (size_t) 3, "hello", (size_t) 5);
-		printf("SET (binary API): %s\n", reply->str);
-		freeReply(reply);
-
-		/* Try a GET and two INCR */
-		reply =  ( redisReply *)redisCommand(c,"GET foo");
-		printf("GET foo: %s\n", reply->str);
-		freeReply(reply);
-
-		reply =  ( redisReply *)redisCommand(c,"INCR counter");
-		printf("INCR counter: %lld\n", reply->integer);
-		freeReply(reply);
-		/* again ... */
-		reply = ( redisReply *) redisCommand(c,"INCR counter");
-		printf("INCR counter: %lld\n", reply->integer);
-		freeReply(reply);
-
-		/* Create a list of numbers, from 0 to 9 */
-		reply = ( redisReply *) redisCommand(c,"DEL mylist");
-		freeReply(reply);
-		for (int j = 0; j < 10; j++) {
-			char buf[64];
-
-			snprintf(buf,64,"%d",j);
-			reply =  ( redisReply *)redisCommand(c,"LPUSH mylist element-%s", buf);
-			freeReply(reply);
-		}
-
-		/* Let's check what we have inside the list */
-		reply =  ( redisReply *)redisCommand(c,"LRANGE mylist 0 -1");
-		if (reply->type == REDIS_REPLY_ARRAY) {
-			for (int j = 0; j < reply->elements; j++) {
-				printf("%u) %s\n", j, reply->element[j]->str);
-			}
-		}
-
-		freeReply(reply);
-
-	}
-	else
-	{
-		redisSyncs.erase(conn->getSockfd());
-	}
-}
-
-
-void xHiredis::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
-{
-
-	xRedisAsyncContextPtr redis;
-
-	{
-		std::unique_lock<std::mutex> lk(mutex);
-		auto it = redisAsyncs.find(conn->getSockfd());
-		if(it == redisAsyncs.end())
-		{
-			assert(false);
-		}
-
-		redis = it->second;
-	}
-
-	 redisCallback cb;
-
-	if(recvBuf->readableBytes() > 0 )
-	{
-		 xRedisContextPtr  c = (redis->c);
-		 void  *reply = NULL;
-		 int status;
-		 while((status = redisGetReply(c,&reply)) == REDIS_OK)
-		 {
-			 if(reply == nullptr)
-			 {
-				 break;
-			 }
-
-			 {
-				 std::unique_lock<std::mutex> lk(mutex);
-				 cb = std::move(redis->replies.front());
-			 }
-
-			 c->flags |= REDIS_IN_CALLBACK;
-			 if(cb.fn != nullptr)
-			 {
-				 cb.fn(redis,reply,cb.privdata);
-			 }
-
-		         c->reader->fn->freeObjectFuc(reply);
-
-			 c->flags &= ~REDIS_IN_CALLBACK;
-
-			 {
-				 std::unique_lock<std::mutex> lk(mutex);
-				 redis->replies.pop_front();
-			 }
-
-		 }
-	}
-}
-
-
-void xHiredis::start()
-{
-	client.connect(owner->ip,owner->port);
-}
-
-
-void xHiredis::connErrorCallBack()
-{
-	LOG_WARN<<"connect server failure";
-}
-
-
- static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
- {
-	redisReply *reply = (redisReply*)r;
-	if (reply == nullptr)
-	{
-		assert(false);
-	}
-
-	if(reply->type == REDIS_REPLY_NIL || reply->type == REDIS_REPLY_ERROR)
-	{
-		assert(false);
-	}
-
-}
-
-
-void xHiredis::connCallBack(const xTcpconnectionPtr& conn,void *data)
-{
-	if(conn->connected())
-	{
-		xSocket socket;
-		socket.setSocketNonBlock(conn->getSockfd());
-		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
-		ac->conn = conn;
-		ac->c->reader->buf = &conn->recvBuff;
-		ac->c->fd = conn->getSockfd();
-		{
-			std::unique_lock<std::mutex> lk(mutex);
-			redisAsyncs.insert(std::make_pair(conn->getSockfd(),ac));
-		}
-		
-	}
-	else
-	{
-		std::unique_lock<std::mutex> lk(mutex);
-		redisAsyncs.erase(conn->getSockfd());
-	}
-
-}
 
 
 int redisvAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void *privdata, const char *format, va_list ap)
@@ -1345,7 +1148,7 @@ int redisvAppendCommand(const xRedisContextPtr  & c, const char * format, va_lis
 	char * cmd;
 	int len;
 
-	len 				= redisvFormatCommand(&cmd, format, ap);
+	len = redisvFormatCommand(&cmd, format, ap);
 
 	if (len == -1)
 	{

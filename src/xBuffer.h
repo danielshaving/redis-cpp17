@@ -7,8 +7,8 @@ using namespace std;
 class xBuffer
 {
  public:
-  static const size_t kCheapPrepend = 8;
-  static const size_t kInitialSize = 1024 * 16;
+  static const size_t kCheapPrepend = 0;
+  static const size_t kInitialSize = 1024 * 64;
 
   explicit xBuffer(size_t initialSize = kInitialSize)
     : buffer(kCheapPrepend + initialSize),

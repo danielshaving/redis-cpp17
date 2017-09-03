@@ -6,7 +6,7 @@
 class MutexLock : noncopyable
 {
  public:
-  MutexLock()
+   MutexLock()
   {
     pthread_mutex_init(&mutex,nullptr);
   }

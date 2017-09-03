@@ -33,12 +33,12 @@ typedef struct redisReadTask {
 } redisReadTask;
 
 
-static redisReply * createReplyObject(int type);
-static void * createString(const redisReadTask * task, const char * str, size_t len);
-static void * createArray(const redisReadTask * task, int elements);
-static void * createInteger(const redisReadTask * task, long long value);
-static void * createNil(const redisReadTask * task);
-static void freeReply(void *reply);
+redisReply * createReplyObject(int type);
+void * createString(const redisReadTask * task, const char * str, size_t len);
+void * createArray(const redisReadTask * task, int elements);
+void * createInteger(const redisReadTask * task, long long value);
+void * createNil(const redisReadTask * task);
+void freeReply(void *reply);
 
 
 typedef struct redisReplyObjectFunctions
@@ -46,7 +46,7 @@ typedef struct redisReplyObjectFunctions
 	redisReplyObjectFunctions()
 	{
 		createStringFuc = createString;
-	        createArrayFuc = createArray;
+	    createArrayFuc = createArray;
 		createIntegerFuc = createInteger;
 		createNilFuc = createNil;
 		freeObjectFuc = freeReply;
@@ -127,88 +127,6 @@ public:
 	}sub;
 };
 
-class xClient;
-
-class xHiredis:noncopyable
-{
-public:
-	xHiredis(xEventLoop *loop,xClient * owner);
-	xHiredis(xClient * owner);
-	~xHiredis(){}
-	void start();
-
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
-	void connSyncCallBack(const xTcpconnectionPtr& conn,void *data);
-	void connCallBack(const xTcpconnectionPtr& conn,void *data);
-	void connErrorCallBack();
-
-private:
-	xEventLoop *loop;
-	xEventLoop sloop;
-	std::map<int32_t,xRedisAsyncContextPtr> redisAsyncs;
-	std::map<int32_t,xRedisContextPtr> redisSyncs;
-	xClient * owner;
-	xTcpClient client;
-	mutable std::mutex mutex;
-};
-
-
-class xClient:noncopyable
-{
-public:
-	xClient(xEventLoop *loop,const char *ip,uint16_t port,int blockSize,int sessionCount,int threadCount)
-	:loop(loop),
-	ip(ip),
-	port(port),
-	sessionCount(sessionCount),
-	threadPool(loop)
-{
-
-	if (threadCount > 1)
-	{
-	  	threadPool.setThreadNum(threadCount);
-	}
-
-	threadPool.start();
-	for (int i = 0; i < blockSize; ++i)
-	{
-		message.push_back(static_cast<char>(i % 128));
-	}
-
-	for(int i = 0; i < sessionCount ; i ++)
-	{
-		std::shared_ptr<xHiredis>   redis = std::shared_ptr<xHiredis>(new xHiredis(threadPool.getNextLoop(),this));
-		redis->start();
-		redisVectors.push_back(redis);
-	}
-}
-
-	xClient(const char *ip,uint16_t port)
-	:ip(ip),
-	port(port),
-	threadPool(loop)
-{
-	std::shared_ptr<xHiredis>   redis = std::shared_ptr<xHiredis>(new xHiredis(this));
-	redis->start();
-	redisVectors.push_back(redis);
-}
-
-
-
-~xClient()
-{
-	redisVectors.clear();
-}
-
-public:
-	xEventLoop *loop;
-	const char *ip;
-	uint16_t port;
-	int sessionCount;
-	xThreadPool threadPool;
-	std::string message;
-	std::vector<std::shared_ptr<xHiredis>>   redisVectors;
-};
 
 
 int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void *privdata, char *cmd, size_t len);
