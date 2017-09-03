@@ -1,4 +1,4 @@
-Single core absolute fair environment set get bench: redis overall performance faster than xredis 10%  qps （because STL costs 10%）
+single core absolute fair environment  less than 64k set get bench: redis overall performance faster than xredis 30-50% qps （because of the memory management cost of using STL,the smaller the memory, the greater the gap）
 
 cd xredis  mkdir obj  cd ./src/    
 make 
