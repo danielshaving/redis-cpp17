@@ -127,7 +127,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		{
 			LOG_INFO<<"slave read data sucess";
 			rdbSyncClose(fileName,fp);
-			redis->clearCommond();
+			redis->clearCommand();
 
 			if(rdbLoad(fileName,redis) == REDIS_OK)
 			{

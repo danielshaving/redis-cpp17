@@ -1,5 +1,5 @@
 #pragma once
-/*
+
 #include "all.h"
 #include "xLog.h"
 #include "xHiredis.h"
@@ -15,7 +15,8 @@ public:
 	void connSyncCallBack(const xTcpconnectionPtr& conn,void *data);
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 	void connErrorCallBack();
-
+	void testCommand(xRedisContextPtr c);
+	void testFormatCommand();
 private:
 	xTcpClient client;
 	xClient * owner;
@@ -50,4 +51,4 @@ public:
 	std::string message;
 	std::vector<std::shared_ptr<xHiredis>>   redisVectors;
 };
-*/
+

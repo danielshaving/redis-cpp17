@@ -29,13 +29,13 @@ pingPong(false)
 xRedis::~xRedis()
 {
 	destorySharedObjects();
-	clearCommond();
+	clearCommand();
 }
 
 
 
 
-bool xRedis::clearClusterMigradeCommond(void * data)
+bool xRedis::clearClusterMigradeCommand(void * data)
 {
 
 }
@@ -60,7 +60,7 @@ void xRedis::handleSetExpire(void * data)
 {
 	rObj * obj = (rObj*) data;
 	int count = 0 ;
-	removeCommond(obj,count);
+	removeCommand(obj,count);
 }
 
 
@@ -171,7 +171,7 @@ void xRedis::loadDataFromDisk()
 }
 
 
-bool xRedis::zrevrangeCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::zrevrangeCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size()  < 3  || obj.size() > 4)
 	{
@@ -216,7 +216,7 @@ bool xRedis::zrevrangeCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() < 3  ||   (obj.size() - 1 ) % 2  != 0)
 	{
@@ -332,18 +332,18 @@ bool xRedis::zaddCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::zcardCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::zcardCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	return false;
 }
 
-bool xRedis::zcountCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::zcountCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	return false;
 }
 
 
-bool xRedis::keysCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1 )
 	{
@@ -439,7 +439,7 @@ bool xRedis::keysCommond(const std::deque <rObj*> & obj,xSession * session)
 	return false;
 }
 
-bool xRedis::zrangeCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::zrangeCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size()  < 3  || obj.size() > 4)
 	{
@@ -477,13 +477,13 @@ bool xRedis::zrangeCommond(const std::deque <rObj*> & obj,xSession * session)
 	return false;
 }
 
-bool xRedis::zrankCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::zrankCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	return false;
 }
 
 
-bool xRedis::unsubscribeCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::unsubscribeCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1)
 	{
@@ -519,12 +519,12 @@ bool xRedis::unsubscribeCommond(const std::deque <rObj*> & obj,xSession * sessio
 }
 
 
-bool xRedis::sentinelCommond(const std::deque<rObj*> & obj, xSession * session)
+bool xRedis::sentinelCommand(const std::deque<rObj*> & obj, xSession * session)
 {
 	return false;
 }
 
-bool xRedis::memoryCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::memoryCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size()  > 2)
 	{
@@ -554,7 +554,7 @@ bool xRedis::memoryCommond(const std::deque <rObj*> & obj,xSession * session)
 	return false;
 }
 
-bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::infoCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size()  < 0)
 	{
@@ -652,7 +652,7 @@ bool xRedis::infoCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool xRedis::clientCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::clientCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 1)
 	{
@@ -666,7 +666,7 @@ bool xRedis::clientCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool xRedis::echoCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::echoCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 1)
 	{
@@ -678,7 +678,7 @@ bool xRedis::echoCommond(const std::deque <rObj*> & obj,xSession * session)
 	return false;
 }
 
-bool xRedis::publishCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::publishCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size()  != 2)
 	{
@@ -716,7 +716,7 @@ bool xRedis::publishCommond(const std::deque <rObj*> & obj,xSession * session)
 	return false;
 }
 
-bool xRedis::subscribeCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::subscribeCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size()  < 1)
 	{
@@ -759,7 +759,7 @@ bool xRedis::subscribeCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::authCommond(const std::deque <rObj*> & obj, xSession * session)
+bool xRedis::authCommand(const std::deque <rObj*> & obj, xSession * session)
 {
 	if (obj.size() > 1)
 	{
@@ -787,7 +787,7 @@ bool xRedis::authCommond(const std::deque <rObj*> & obj, xSession * session)
 	return false;
 }
 
-bool xRedis::configCommond(const std::deque <rObj*> & obj, xSession * session)
+bool xRedis::configCommand(const std::deque <rObj*> & obj, xSession * session)
 {
 
 	if (obj.size() > 3)
@@ -828,7 +828,7 @@ bool xRedis::configCommond(const std::deque <rObj*> & obj, xSession * session)
 
 }
 
-bool xRedis::migrateCommond(const std::deque<rObj*> & obj, xSession * session)
+bool xRedis::migrateCommand(const std::deque<rObj*> & obj, xSession * session)
 {
 	if (obj.size() < 2)
 	{
@@ -864,7 +864,7 @@ bool xRedis::migrateCommond(const std::deque<rObj*> & obj, xSession * session)
 	return false;
 }
 
-bool xRedis::clusterCommond(const std::deque <rObj*> & obj, xSession * session)
+bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 {
 	if (!clusterEnabled)
 	{
@@ -1353,7 +1353,7 @@ bool  xRedis::save(xSession * session)
 }
 
 
-bool xRedis::bgsaveCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::bgsaveCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	
 	if(obj.size() > 0)
@@ -1376,7 +1376,7 @@ bool xRedis::bgsaveCommond(const std::deque <rObj*> & obj,xSession * session)
 	
 }
 
-bool xRedis::saveCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::saveCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 0)
 	{
@@ -1397,7 +1397,7 @@ bool xRedis::saveCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::slaveofCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() !=  2)
 	{
@@ -1449,14 +1449,14 @@ bool xRedis::slaveofCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 
-bool xRedis::commandCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::commandCommand(const std::deque <rObj*> & obj,xSession * session)
 {	
 	addReply(session->sendBuf,shared.ok);
 	return false;
 }
 
 
-bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() >  0)
 	{
@@ -1517,7 +1517,7 @@ bool xRedis::syncCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool xRedis::psyncCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::psyncCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() >  0)
 	{
@@ -1586,7 +1586,7 @@ size_t xRedis::getDbsize()
 	return size;
 }
 
-bool xRedis::dbsizeCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::dbsizeCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 0)
 	{
@@ -1601,7 +1601,7 @@ bool xRedis::dbsizeCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 
-int  xRedis::removeCommond(rObj * obj,int &count)
+int  xRedis::removeCommand(rObj * obj,int &count)
 {
 	
 	{
@@ -1723,7 +1723,7 @@ int  xRedis::removeCommond(rObj * obj,int &count)
 }
 
 
-bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::delCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1)
 	{
@@ -1734,7 +1734,7 @@ bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
 	for(int i = 0 ; i < obj.size(); i ++)
 	{
 		obj[i]->calHash();		
-		removeCommond(obj[i],count);
+		removeCommand(obj[i],count);
 		zfree(obj[i]);
 	}
 
@@ -1744,13 +1744,13 @@ bool xRedis::delCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool setnxCommond(const std::deque <rObj*> & obj,xSession * session)
+bool setnxCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	return true;
 }
 
 
-bool xRedis::scardCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::scardCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1 )
 	{
@@ -1781,7 +1781,7 @@ bool xRedis::scardCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::saddCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::saddCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() < 2)
 	{
@@ -1842,7 +1842,7 @@ bool xRedis::saddCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::selectCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::selectCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1)
 	{
@@ -1860,7 +1860,7 @@ bool xRedis::selectCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::hkeysCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::hkeysCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1)
 	{
@@ -1897,7 +1897,7 @@ bool xRedis::hkeysCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool xRedis::ppingCommond(const std::deque <rObj*> & obj, xSession * session)
+bool xRedis::ppingCommand(const std::deque <rObj*> & obj, xSession * session)
 {
 	std::deque<rObj*>  robjs;
 	robjs.push_back(shared.ppong);
@@ -1905,19 +1905,19 @@ bool xRedis::ppingCommond(const std::deque <rObj*> & obj, xSession * session)
 	return true;
 }
 
-bool xRedis::ppongCommond(const std::deque <rObj*> & obj, xSession * session)
+bool xRedis::ppongCommand(const std::deque <rObj*> & obj, xSession * session)
 {
 	pingPong = true;
 	return true;
 }
 
 
-bool xRedis::pongCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::pongCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	return false;
 }
 
-bool xRedis::pingCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::pingCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 0)
 	{
@@ -1930,7 +1930,7 @@ bool xRedis::pingCommond(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-bool xRedis::hgetallCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::hgetallCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1)
 	{
@@ -1967,7 +1967,7 @@ bool xRedis::hgetallCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::hlenCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::hlenCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1)
 	{
@@ -1997,7 +1997,7 @@ bool xRedis::hlenCommond(const std::deque <rObj*> & obj,xSession * session)
 	return  true;
 }
 
-bool xRedis::hsetCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::hsetCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 3)
 	{
@@ -2044,7 +2044,7 @@ bool xRedis::hsetCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::hgetCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::hgetCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 2)
 	{
@@ -2082,7 +2082,7 @@ bool xRedis::hgetCommond(const std::deque <rObj*> & obj,xSession * session)
 
 
 
-void xRedis::clearCommond()
+void xRedis::clearCommand()
 {
 	{
 		for(auto it = setMapShards.begin(); it != setMapShards.end(); it++)
@@ -2193,7 +2193,7 @@ void xRedis::clearCommond()
 }
 
 
-bool xRedis::flushdbCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::flushdbCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() > 0)
 	{
@@ -2201,20 +2201,20 @@ bool xRedis::flushdbCommond(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	clearCommond();
+	clearCommand();
 
 	addReply(session->sendBuf,shared.ok);	
 	return true;
 }
 
-bool xRedis::quitCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::quitCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	session->conn->forceClose();
 	return true;
 }
 
 
-bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 {	
 	if(obj.size() <  2 || obj.size() > 8 )
 	{
@@ -2340,7 +2340,7 @@ bool xRedis::setCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::getCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::getCommand(const std::deque <rObj*> & obj,xSession * session)
 {	
 	if(obj.size() != 1)
 	{
@@ -2382,95 +2382,95 @@ void xRedis::flush()
 void xRedis::initConifg()
 {
 	rObj * obj = createStringObject("set",3);
-	handlerCommondMap[obj] =std::bind(&xRedis::setCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::setCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("get",3);
-	handlerCommondMap[obj] =std::bind(&xRedis::getCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::getCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("flushdb",7);
-	handlerCommondMap[obj] =std::bind(&xRedis::flushdbCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::flushdbCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("dbsize",6);
-	handlerCommondMap[obj] =std::bind(&xRedis::dbsizeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::dbsizeCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("hset",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::hsetCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::hsetCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("hget",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::hgetCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::hgetCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("hgetall",7);
-	handlerCommondMap[obj] =std::bind(&xRedis::hgetallCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::hgetallCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("ping",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::pingCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::pingCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("save",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::saveCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::saveCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("slaveof",7);
-	handlerCommondMap[obj] =std::bind(&xRedis::slaveofCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::slaveofCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("sync",4);
-	handlerCommondMap[obj] =std::bind(&xRedis::syncCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::syncCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("command",7);
-	handlerCommondMap[obj] =std::bind(&xRedis::commandCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] =std::bind(&xRedis::commandCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("config",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::configCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::configCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("auth",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::authCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::authCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("info",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::infoCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::infoCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("echo",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::echoCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::echoCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("client",5);
-	handlerCommondMap[obj] = std::bind(&xRedis::clientCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::clientCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("subscribe",9);
-	handlerCommondMap[obj] = std::bind(&xRedis::subscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::subscribeCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("hkeys",5);
-	handlerCommondMap[obj] = std::bind(&xRedis::hkeysCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::hkeysCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("select",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::selectCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::selectCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("sadd",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::saddCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::saddCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("scard",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::scardCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::scardCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("publish",7);
-	handlerCommondMap[obj] = std::bind(&xRedis::publishCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::publishCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("del",3);
-	handlerCommondMap[obj] = std::bind(&xRedis::delCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::delCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("unsubscribe",11);
-	handlerCommondMap[obj] = std::bind(&xRedis::unsubscribeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::unsubscribeCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("hlen",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::hlenCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::hlenCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("zadd",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::zaddCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::zaddCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("zcard",5);
-	handlerCommondMap[obj] = std::bind(&xRedis::zcardCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::zcardCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("zrange",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::zrangeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::zrangeCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("zrank",5);
-	handlerCommondMap[obj] = std::bind(&xRedis::zrankCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::zrankCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("zrevrange",9);
-	handlerCommondMap[obj] = std::bind(&xRedis::zrevrangeCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::zrevrangeCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("keys",4);
-	handlerCommondMap[obj] = std::bind(&xRedis::keysCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::keysCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("bgsave",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::bgsaveCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::bgsaveCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("memory",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::memoryCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::memoryCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("ppong",6);
-	handlerCommondMap[obj] = std::bind(&xRedis::ppongCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::ppongCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("pping", 6);
-	handlerCommondMap[obj] = std::bind(&xRedis::ppingCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::ppingCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("sentinel", 8);
-	handlerCommondMap[obj] = std::bind(&xRedis::ppingCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::ppingCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("cluster", 7);
-	handlerCommondMap[obj] = std::bind(&xRedis::clusterCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::clusterCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("migrate", 7);
-	handlerCommondMap[obj] = std::bind(&xRedis::migrateCommond, this, std::placeholders::_1, std::placeholders::_2);
+	handlerCommandMap[obj] = std::bind(&xRedis::migrateCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("set",3);
-	unorderedmapCommonds.insert(obj);
+	unorderedmapCommands.insert(obj);
 	obj = createStringObject("hset",4);
-	unorderedmapCommonds.insert(obj);
+	unorderedmapCommands.insert(obj);
 	obj = createStringObject("zadd",4);
-	unorderedmapCommonds.insert(obj);
+	unorderedmapCommands.insert(obj);
 	obj = createStringObject("sadd",4);
-	unorderedmapCommonds.insert(obj);
+	unorderedmapCommands.insert(obj);
 	obj = createStringObject("del",3);
-	unorderedmapCommonds.insert(obj);
+	unorderedmapCommands.insert(obj);
 	obj = createStringObject("flushdb",7);
-	unorderedmapCommonds.insert(obj);
+	unorderedmapCommands.insert(obj);
 
 	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
 	sentiThreads->detach();

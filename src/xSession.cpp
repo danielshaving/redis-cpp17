@@ -111,10 +111,10 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 
 
-bool xSession::checkCommond(rObj*  robjs)
+bool xSession::checkCommand(rObj*  robjs)
 {
-	auto it = redis->unorderedmapCommonds.find(robjs);
-	if(it == redis->unorderedmapCommonds.end())
+	auto it = redis->unorderedmapCommands.find(robjs);
+	if(it == redis->unorderedmapCommands.end())
 	{
 		return true;
 	}
@@ -288,12 +288,12 @@ jump:
 			}
 			else
 			{
-				if(!checkCommond(robjs[0]))
+				if(!checkCommand(robjs[0]))
 				{
 					if(redis->slaveEnabled)
 					{
 						clearObj();
-						addReplyErrorFormat(sendBuf,"slaveof mode commond unknown ");
+						addReplyErrorFormat(sendBuf,"slaveof mode command unknown ");
 						return REDIS_ERR;
 					}
 				}
@@ -305,8 +305,8 @@ jump:
 	
 	
 
-	auto iter = redis->handlerCommondMap.find(robjs[0]);
-	if(iter == redis->handlerCommondMap.end() )
+	auto iter = redis->handlerCommandMap.find(robjs[0]);
+	if(iter == redis->handlerCommandMap.end() )
 	{
 		clearObj();
 		addReplyErrorFormat(sendBuf,"command unknown eror");

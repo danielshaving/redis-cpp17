@@ -135,6 +135,7 @@ int redisvAsyncCommand(const xRedisAsyncContextPtr &ac, redisCallbackFn *fn, voi
 int redisAsyncCommand(const xRedisAsyncContextPtr &ac, redisCallbackFn *fn, void *privdata, const char *format, ...);
 
 
+int redisFormatCommand(char **target, const char *format, ...);
 int redisFormatCommandArgv(char * *target, int argc, const char * *argv, const size_t * argvlen);
 int redisAppendCommandArgv(const xRedisContextPtr  & c, int argc, const char * *argv, const size_t * argvlen);
 
