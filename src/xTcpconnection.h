@@ -44,7 +44,8 @@ public:
 
 	static void bindSendInLoop(xTcpconnection* conn, const stringPiepe& message);
 
-    //void sendInLoop(std::string & message);
+       //void sendInLoop(std::string & message);
+        void send(const void* message, int len);
 	void send(xBuffer* message);
 	//void send(std::string && message);
 	void send(const stringPiepe  &message);

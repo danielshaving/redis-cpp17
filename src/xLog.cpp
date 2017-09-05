@@ -160,19 +160,19 @@ void xLogFile::append_unlocked(const char* logline, int len)
 
 bool xLogFile::rollFile()
 {
-  time_t now = 0;
-  std::string filename = getLogFileName(basename, &now);
-  time_t start = now / kRollPerSeconds* kRollPerSeconds;
+	time_t now = 0;
+	std::string filename = getLogFileName(basename, &now);
+	time_t start = now / kRollPerSeconds* kRollPerSeconds;
 
-  if (now > lastRoll)
-  {
-    lastRoll = now;
-    lastFlush = now;
-    startOfPeriod = start;
-    file.reset(new AppendFile(filename));
-    return true;
-  }
-  return false;
+	if (now > lastRoll)
+	{
+		lastRoll = now;
+		lastFlush = now;
+		startOfPeriod = start;
+		file.reset(new AppendFile(filename));
+		return true;
+	}
+	return false;
 }
 
 std::string xLogFile::getLogFileName(const std::string& basename, time_t* now)

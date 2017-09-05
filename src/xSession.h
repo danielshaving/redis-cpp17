@@ -36,6 +36,7 @@ public:
 	std::string command;
 	xRedis *redis;
 	bool authEnabled;
-	bool  retrieveBuffer;
+	bool retrieveBuffer;
+	bool fromMaster;
 };
 

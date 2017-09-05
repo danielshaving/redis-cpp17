@@ -23,14 +23,14 @@ public:
 	static xTimestamp now()
 	{
 		struct timeval tv;
-		gettimeofday(&tv, NULL);
+		gettimeofday(&tv, nullptr);
 		int64_t seconds = tv.tv_sec;
 		return xTimestamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
 	}
 
 	  static xTimestamp invalid()
 	  {
-	    return xTimestamp();
+	    	return xTimestamp();
 	  }
 
 	static const int kMicroSecondsPerSecond = 1000 * 1000;
@@ -40,9 +40,18 @@ private:
 
 inline xTimestamp addTime(xTimestamp timestamp, double seconds)
 {
-  int64_t delta = static_cast<int64_t>(seconds * xTimestamp::kMicroSecondsPerSecond);
-  return xTimestamp(timestamp.getMicroSecondsSinceEpoch() + delta);
+	int64_t delta = static_cast<int64_t>(seconds * xTimestamp::kMicroSecondsPerSecond);
+	return xTimestamp(timestamp.getMicroSecondsSinceEpoch() + delta);
 }
+
+
+
+inline double timeDifference(xTimestamp high, xTimestamp low)
+{
+	int64_t diff = high.getMicroSecondsSinceEpoch() - low.getMicroSecondsSinceEpoch();
+	return static_cast<double>(diff) / xTimestamp::kMicroSecondsPerSecond;
+}
+
 
 class xTimer
 {

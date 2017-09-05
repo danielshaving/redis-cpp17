@@ -24,6 +24,7 @@ pingPong(false)
 	server.setThreadNum(threadCount);
 	server.start();
 	zmalloc_enable_thread_safeness();
+	loop.runAfter(10,nullptr,false,std::bind(&xRedis::handleTimeOut, this, std::placeholders::_1));
 }
 
 xRedis::~xRedis()
@@ -121,7 +122,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		MutexLockGuard mu(mutex);
 		sessions[conn->getSockfd()] = session;
-		//LOG_INFO<<"Client connect success";
+		LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -138,7 +139,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 			sessions.erase(conn->getSockfd());
 		}
 
-		//LOG_INFO<<"Client disconnect";
+		LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -2216,6 +2217,7 @@ bool xRedis::quitCommand(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 {	
+
 	if(obj.size() <  2 || obj.size() > 8 )
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown  set param error");
@@ -2342,6 +2344,7 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 
 bool xRedis::getCommand(const std::deque <rObj*> & obj,xSession * session)
 {	
+	
 	if(obj.size() != 1)
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown  get param error");

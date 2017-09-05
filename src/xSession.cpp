@@ -9,7 +9,8 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
  conn(conn),
  redis(redis),
  authEnabled(false),
- retrieveBuffer(false)
+ retrieveBuffer(false),
+ fromMaster(false)
 {
 	 conn->setMessageCallback(
 	        std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
@@ -60,11 +61,12 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 	}
 
 
-	if( (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
+	if(fromMaster)
 	{
 		sendBuf.retrieveAll();
 		sendSlaveBuf.retrieveAll();
 		sendPubSub.retrieveAll();
+		fromMaster = false;
 	}
 	else
 	{
@@ -265,7 +267,7 @@ jump:
 
 		if( (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
 		{
-
+			fromMaster = true;
 		}
 		else
 		{

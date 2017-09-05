@@ -138,6 +138,7 @@ int redisAsyncCommand(const xRedisAsyncContextPtr &ac, redisCallbackFn *fn, void
 int redisFormatCommand(char **target, const char *format, ...);
 int redisFormatCommandArgv(char * *target, int argc, const char * *argv, const size_t * argvlen);
 int redisAppendCommandArgv(const xRedisContextPtr  & c, int argc, const char * *argv, const size_t * argvlen);
+int redisFormatSdsCommandArgv(sds *target, int argc, const char ** argv, const size_t *argvlen);
 
 int redisvAppendCommand(const xRedisContextPtr  & c, const char * format, va_list ap);
 int __redisAppendCommand(const xRedisContextPtr & c, const char * cmd, size_t len);

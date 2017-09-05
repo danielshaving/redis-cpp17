@@ -182,6 +182,11 @@ int xTcpconnection::getSockfd()
 //}
 
 
+void xTcpconnection::send(const void* message, int len)
+{
+	send(stringPiepe(static_cast<const char*>(message), len));
+}
+
 
 void xTcpconnection::send(const stringPiepe & message)
 {
