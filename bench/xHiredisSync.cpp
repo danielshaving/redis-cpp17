@@ -205,6 +205,14 @@ void xHiredis::testFormatCommand()
 
 }
 
+
+void xHiredis::testReplyReader()
+{
+	std::shared_ptr<xRedisReader>  reader (new xRedisReader);
+	
+}
+
+
 void xHiredis::connSyncCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
@@ -217,6 +225,7 @@ void xHiredis::connSyncCallBack(const xTcpconnectionPtr& conn,void *data)
 		c->reader->buf = & buffer;
 		redisSyncs.insert(std::make_pair(conn->getSockfd(),c));
 		testFormatCommand();
+		testReplyReader();
 		testCommand(c);
 	}
 	else
@@ -242,5 +251,6 @@ int main(int argc, char* argv[])
 	}
 	return 0;
 }
+
 
 

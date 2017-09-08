@@ -79,7 +79,7 @@ void xHiredis::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 				 cb.fn(redis,reply,cb.privdata);
 			 }
 
-		     c->reader->fn->freeObjectFuc(reply);
+		    	 c->reader->fn->freeObjectFuc(reply);
 
 			 c->flags &= ~REDIS_IN_CALLBACK;
 

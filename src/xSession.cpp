@@ -127,9 +127,7 @@ bool xSession::checkCommand(rObj*  robjs)
 
 int xSession::processCommand()
 {
-	assert(robjs.size());
-	
-	if(redis->authEnabled)
+	/*if(redis->authEnabled)
 	{
 		if(!authEnabled)
 		{
@@ -304,7 +302,7 @@ jump:
 				
 	}
 
-	
+	*/
 	
 
 	auto iter = redis->handlerCommandMap.find(robjs[0]);
@@ -314,16 +312,20 @@ jump:
 		addReplyErrorFormat(sendBuf,"command unknown eror");
 		return REDIS_ERR;
 	}
-
+	
+	
 	rObj * obj = robjs.front();
 	robjs.pop_front();
 	zfree(obj);
 
+
+	
 	if(!iter->second(robjs,this))
 	{
 		clearObj();
 		return REDIS_ERR;
 	}
+	
 	
 	return REDIS_OK;
 }
@@ -335,7 +337,7 @@ void xSession::resetVlaue()
 
 void xSession::clearObj()
 {
-	for(auto it = robjs.begin(); it != robjs.end(); it++)
+	for(auto it = robjs.begin(); it != robjs.end(); ++it)
 	{
 		zfree(*it);
 	}	

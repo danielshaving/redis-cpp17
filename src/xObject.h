@@ -50,7 +50,7 @@ struct Hash
 {
 	size_t operator()(const rObj * x) const
 	{
-			return x->hash;
+		return x->hash;
 	}
 };
 

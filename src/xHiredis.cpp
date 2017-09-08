@@ -1104,15 +1104,6 @@ int redisFormatCommand(char **target, const char *format, ...)
 }
 
 
-xRedisReader::xRedisReader()
-{
-	pos = 0;
-	err = 0;
-	errstr[0] = '\0';
-	fn = std::shared_ptr<redisReplyObjectFunctions>(new redisReplyObjectFunctions());
-	ridx 	= -1;
-
-}
 
 
 
@@ -1335,7 +1326,7 @@ int redisAppendCommandArgv(const xRedisContextPtr  & c, int argc, const char * *
 void * redisCommandArgv(const xRedisContextPtr & c, int argc, const char * *argv, const size_t * argvlen)
 {
 	if (redisAppendCommandArgv(c, argc, argv, argvlen) != REDIS_OK)
-			return nullptr;
+		return nullptr;
 
 	return __redisBlockForReply(c);
 }

@@ -17,6 +17,7 @@ public:
 	void connErrorCallBack();
 	void testCommand(xRedisContextPtr c);
 	void testFormatCommand();
+	void testReplyReader();
 private:
 	xTcpClient client;
 	xClient * owner;

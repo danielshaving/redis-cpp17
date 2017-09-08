@@ -46,7 +46,7 @@ typedef struct redisReplyObjectFunctions
 	redisReplyObjectFunctions()
 	{
 		createStringFuc = createString;
-	    createArrayFuc = createArray;
+	   	createArrayFuc = createArray;
 		createIntegerFuc = createInteger;
 		createNilFuc = createNil;
 		freeObjectFuc = freeReply;
@@ -64,7 +64,15 @@ typedef struct redisReplyObjectFunctions
 class xRedisReader
 {
 public:
-	xRedisReader();
+	xRedisReader()
+	{
+		pos = 0;
+		err = 0;
+		errstr[0] = '\0';
+		fn = std::shared_ptr<redisReplyObjectFunctions>(new redisReplyObjectFunctions());
+		ridx 	= -1;
+	}
+	
 	int err;
 	char errstr[128];
 	size_t pos;
@@ -73,7 +81,7 @@ public:
 	int ridx;
 	void *reply;
 	std::shared_ptr<redisReplyObjectFunctions> fn;
-    void *privdata;
+    	void *privdata;
 };
 
 

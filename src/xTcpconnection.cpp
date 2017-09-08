@@ -163,25 +163,6 @@ int xTcpconnection::getSockfd()
 }
 
 
-//void xTcpconnection::send(std::string&& message)
-//{
-//	 if (state == kConnected)
-//	  {
-//	    if (loop->isInLoopThread())
-//	    {
-//	      sendInLoop(message);
-//	    }
-//	    else
-//	    {
-//	      loop->runInLoop(
-//	          boost::bind(&xTcpconnection::sendInLoop,
-//	                      this,
-//						  std::move(message)));
-//	    }
-//	  }
-//}
-
-
 void xTcpconnection::send(const void* message, int len)
 {
 	send(stringPiepe(static_cast<const char*>(message), len));
@@ -194,11 +175,11 @@ void xTcpconnection::send(const stringPiepe & message)
 	{
 		if (loop->isInLoopThread())
 		{
-		  sendInLoop(message.str,message.len);
+		  	sendInLoop(message.str,message.len);
 		}
 		else
 		{
-		  loop->runInLoop(
+		  	loop->runInLoop(
 				  std::bind(&bindSendInLoop,
 						  this, message.as_string()));
 		}
@@ -213,19 +194,19 @@ void xTcpconnection::bindSendInLoop(xTcpconnection* conn, const stringPiepe& mes
 
 void xTcpconnection::send(xBuffer* buf)
 {
-  if (state == kConnected)
-  {
-    if (loop->isInLoopThread())
-    {
-      sendInLoop(buf->peek(), buf->readableBytes());
-    }
-    else
-    {
-      loop->runInLoop(
-          std::bind(&bindSendInLoop,
-                      this, buf->retrieveAllAsString()));
-    }
-  }
+	if (state == kConnected)
+	{
+		if (loop->isInLoopThread())
+		{
+		  	sendInLoop(buf->peek(), buf->readableBytes());
+		}
+		else
+		{
+		  	loop->runInLoop(
+		    	  std::bind(&bindSendInLoop,
+		                  this, buf->retrieveAllAsString()));
+		}
+	}
 }
 
 void xTcpconnection::sendInLoop(const stringPiepe & message)
@@ -233,64 +214,60 @@ void xTcpconnection::sendInLoop(const stringPiepe & message)
 	sendInLoop(message.str,message.len);
 }
 
-//void xTcpconnection::sendInLoop(std::string & message)
-//{
-//	sendInLoop(message.data(),message.size());
-//}
 
 void xTcpconnection::sendInLoop(const void* data, size_t len)
 {
-  loop->assertInLoopThread();
-  ssize_t nwrote = 0;
-  size_t remaining = len;
-  bool faultError = false;
-  if (state == kDisconnected)
-  {
-    //TRACE("disconnected, give up writing");
-    return;
-  }
-  // if no thing in output queue, try writing directly
-  if (!channel->isWriting() && sendBuff.readableBytes() == 0)
-  {
-    nwrote = ::write(channel->getfd(), data, len);
-    if (nwrote >= 0)
-    {
-      remaining = len - nwrote;
-      if (remaining == 0 && writeCompleteCallback)
-      {
-        loop->queueInLoop(std::bind(writeCompleteCallback, shared_from_this()));
-      }
-    }
-    else // nwrote < 0
-    {
-      nwrote = 0;
-      if (errno != EWOULDBLOCK)
-      {
-        //TRACE_ERR("TcpConnection::sendInLoop");
-        if (errno == EPIPE || errno == ECONNRESET) // FIXME: any others?
-        {
-          faultError = true;
-        }
-      }
-    }
-  }
+	loop->assertInLoopThread();
+	ssize_t nwrote = 0;
+	size_t remaining = len;
+	bool faultError = false;
+	if (state == kDisconnected)
+	{
+		assert(false);
+		return;
+	}
 
-  assert(remaining <= len);
-  if (!faultError && remaining > 0)
-  {
-    size_t oldLen = sendBuff.readableBytes();
-    if (oldLen + remaining >= highWaterMark
-        && oldLen < highWaterMark
-        && highWaterMarkCallback)
-    {
-      loop->queueInLoop(std::bind(highWaterMarkCallback, shared_from_this(), oldLen + remaining));
-    }
-    sendBuff.append(static_cast<const char*>(data)+nwrote, remaining);
-    if (!channel->isWriting())
-    {
-      channel->enableWriting();
-    }
-  }
+	if (!channel->isWriting() && sendBuff.readableBytes() == 0)
+	{
+		nwrote = ::write(channel->getfd(), data, len);
+		if (nwrote >= 0)
+		{
+			remaining = len - nwrote;
+			if (remaining == 0 && writeCompleteCallback)
+			{
+				loop->queueInLoop(std::bind(writeCompleteCallback, shared_from_this()));
+			}
+		}
+		else // nwrote < 0
+		{
+			nwrote = 0;
+			if (errno != EWOULDBLOCK)
+			{
+				if (errno == EPIPE || errno == ECONNRESET) // FIXME: any others?
+				{
+				  	faultError = true;
+				}
+			}
+		}
+	}
+
+	assert(remaining <= len);
+	if (!faultError && remaining > 0)
+	{
+		size_t oldLen = sendBuff.readableBytes();
+		if (oldLen + remaining >= highWaterMark
+		    && oldLen < highWaterMark
+		    && highWaterMarkCallback)
+		{
+		  	loop->queueInLoop(std::bind(highWaterMarkCallback, shared_from_this(), oldLen + remaining));
+		}
+		
+		sendBuff.append(static_cast<const char*>(data)+nwrote, remaining);
+		if (!channel->isWriting())
+		{
+		  	channel->enableWriting();
+		}
+	}
 }
 
 void xTcpconnection::connectEstablished()
