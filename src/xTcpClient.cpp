@@ -40,17 +40,17 @@ xTcpClient::~xTcpClient()
 
 	  if (conn)
 	  {
-	    assert(loop == conn->getLoop());
-	    CloseCallback cb = std::bind(&detail::removeConnection, loop, conn);
-	    loop->runInLoop(std::bind(&xTcpconnection::setCloseCallback, conn, cb));
-	    if (unique)
-	    {
-	      conn->forceClose();
-	    }
+		assert(loop == conn->getLoop());
+		CloseCallback cb = std::bind(&detail::removeConnection, loop, conn);
+		loop->runInLoop(std::bind(&xTcpconnection::setCloseCallback, conn, cb));
+		if (unique)
+		{
+			conn->forceClose();
+		}
 	  }
 	  else
 	  {
-	    connector->stop();
+	   	 connector->stop();
 	  }
 }
 
@@ -100,7 +100,7 @@ void xTcpClient::newConnection(int sockfd)
 	  conn->setCloseCallback(std::bind(&xTcpClient::removeConnection, this,std::placeholders::_1));
 	  {
 		std::unique_lock<std::mutex> lk(mutex);
-	      connection = conn;
+	        connection = conn;
 	  }
 	  conn->connectEstablished();
 }

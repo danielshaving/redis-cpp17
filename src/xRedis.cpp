@@ -2045,6 +2045,32 @@ bool xRedis::hsetCommand(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
+
+ bool xRedis::debugCommand(const std::deque <rObj*> & obj, xSession * session)
+ {
+	if (obj.size() == 1)
+	{
+	    addReplyError(session->sendBuf,"You must specify a subcommand for DEBUG. Try DEBUG HELP for info.");
+	    return false;
+	}
+
+	if(!strcasecmp(obj[0]->ptr,"sleep"))
+	{
+		double dtime = strtod(obj[1]->ptr,nullptr);
+		long long utime = dtime*1000000;
+		struct timespec tv;
+
+		tv.tv_sec = utime / 1000000;
+		tv.tv_nsec = (utime % 1000000) * 1000;
+		nanosleep(&tv, nullptr);
+		addReply(session->sendBuf,shared.ok);
+		return false;
+	}
+	
+	addReply(session->sendBuf,shared.err);
+        return false;
+ }
+
 bool xRedis::hgetCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 2)
@@ -2462,6 +2488,8 @@ void xRedis::initConifg()
 	handlerCommandMap[obj] = std::bind(&xRedis::clusterCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("migrate", 7);
 	handlerCommandMap[obj] = std::bind(&xRedis::migrateCommand, this, std::placeholders::_1, std::placeholders::_2);
+	obj = createStringObject("debug", 5);
+	handlerCommandMap[obj] = std::bind(&xRedis::debugCommand, this, std::placeholders::_1, std::placeholders::_2);
 	obj = createStringObject("set",3);
 	unorderedmapCommands.insert(obj);
 	obj = createStringObject("hset",4);

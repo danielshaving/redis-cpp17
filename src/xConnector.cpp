@@ -38,8 +38,8 @@ void xConnector::startInLoop(const char *ip, int16_t port)
 
 void xConnector::stop()
 {
-  isconnect= false;
-  loop->queueInLoop(std::bind(&xConnector::stopInLoop, this));
+	isconnect= false;
+	loop->queueInLoop(std::bind(&xConnector::stopInLoop, this));
 }
 
 void xConnector::stopInLoop()
@@ -73,7 +73,7 @@ void xConnector::connecting(int sockfd)
 
 void xConnector::connect(const char *ip, int16_t port)
 {
-  int sockfd = socket.createNonBloackSocket();
+  int sockfd = socket.createSocket();
   int ret = socket.connect(sockfd, ip,port);
   int savedErrno = (ret == 0) ? 0 : errno;
   switch (savedErrno)
@@ -82,25 +82,13 @@ void xConnector::connect(const char *ip, int16_t port)
     case EINPROGRESS:
     case EINTR:
     case EISCONN:
+	socket.setSocketNonBlock(sockfd);
 	setState(kConnecting);
 	connecting(sockfd);
 	socket.setkeepAlive(sockfd,3);
       break;
     default:
-//
-//    case EAGAIN:
-//    case EADDRINUSE:
-//    case EADDRNOTAVAIL:
-//    case ECONNREFUSED:
-//    case ENETUNREACH:
-//    case EACCES:
-//    case EPERM:
-//    case EAFNOSUPPORT:
-//    case EALREADY:
-//    case EBADF:
-//    case EFAULT:
-//    case ENOTSOCK:
-      LOG_WARN<<"Connect savedErrno "<<savedErrno;
+      LOG_WARN<<strerror(savedErrno);
       ::close(sockfd);
       setState(kDisconnected);
       errorConnectionCallback();

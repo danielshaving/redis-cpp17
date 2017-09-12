@@ -8,16 +8,16 @@ xSocket::xSocket(xEventLoop *loop,std::string ip, int16_t port)
  ip(ip),
  port(port)
 {
-	   listenSocketFd          = -1;
-	   onlineNumber            = 0;
+	   listenSocketFd = -1;
+	   onlineNumber = 0;
 	   createTcpListenSocket();
 
 }
 
 xSocket::xSocket()
 {
-    listenSocketFd          = -1;
-    onlineNumber            = 0;
+    listenSocketFd = -1;
+    onlineNumber = 0;
 }
 
 xSocket::~xSocket()
@@ -52,7 +52,7 @@ bool xSocket::getpeerName(int32_t fd,std::string *ip, int32_t &port)
 }
 
 
-int  xSocket::createNonBloackSocket()
+int  xSocket::createSocket()
 {
 	return socket(AF_INET, SOCK_STREAM, 0);
 }
@@ -65,10 +65,23 @@ int xSocket::connect(int sockfd,std::string ip, int16_t port)
 	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = inet_addr(ip.c_str());
 
-	int ret = ::connect(sockfd, (struct sockaddr *)&sin, sizeof(sin));
-	return ret;
+	return  ::connect(sockfd, (struct sockaddr *)&sin, sizeof(sin));
 }
 
+bool xSocket::setTimeOut(int sockfd,const struct timeval tv)
+{
+    if (setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&tv,sizeof(tv)) == -1)
+    {
+        LOG_ERROR<<"setsockopt(SO_RCVTIMEO)";
+        return false;
+    }
+
+    if (setsockopt(sockfd,SOL_SOCKET,SO_SNDTIMEO,&tv,sizeof(tv)) == -1)
+    {
+        LOG_ERROR<<"setsockopt(SO_SNDTIMEO)";
+        return false;
+    }
+}
 
 void  xSocket::setkeepAlive(int fd,int idle)
 {
@@ -161,7 +174,7 @@ bool xSocket::createTcpListenSocket()
 
 
 
-void xSocket::setTcpNoDelay(int socketFd, bool on)
+bool xSocket::setTcpNoDelay(int socketFd, bool on)
 {
 	int optval = on ? 1 : 0;
 	::setsockopt(socketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
@@ -194,7 +207,7 @@ bool xSocket::setSocketNonBlock(int socketFd)
         return false;
     }
 
-    opt = opt | O_NONBLOCK | O_NDELAY;
+    opt = opt | O_NONBLOCK;
     if (fcntl(socketFd, F_SETFL, opt) < 0)
     {
     	 LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);

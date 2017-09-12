@@ -1,6 +1,4 @@
-#ifndef __ALL_
-#define __ALL_
-
+#pragma once
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,13 +49,35 @@
 #include <stdint.h>
 #include <sys/stat.h>
 #include <sys/timerfd.h>
-#include<sys/socket.h>
+#include <sys/socket.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <atomic>
 #include <stdarg.h>
 #include <sys/resource.h>
 #include <limits.h>
+#include <poll.h>
+
+
+#define REDIS_CONNECT_RETRIES  10
+
+
+/* Flag specific to the async API which means that the context should be clean
+ * up as soon as possible. */
+#define REDIS_FREEING 0x8
+
+/* Flag that is set when an async callback is executed. */
+#define REDIS_IN_CALLBACK 0x10
+
+/* Flag that is set when the async context has one or more subscriptions. */
+#define REDIS_SUBSCRIBED 0x20
+
+/* Flag that is set when monitor mode is active */
+#define REDIS_MONITORING 0x40
+
+/* Flag that is set when we should set SO_REUSEADDR before calling bind() */
+#define REDIS_REUSEADDR 0x80
+
 
 
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
@@ -366,5 +386,3 @@ class stringPiepe
 	const size_t len;
 };
 
-
-#endif

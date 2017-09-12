@@ -16,10 +16,8 @@ void xHiredis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	if(conn->connected())
 	{
 		xSocket socket;
-		socket.setSocketNonBlock(conn->getSockfd());
 		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
 		ac->conn = conn;
-		ac->c->reader->buf = &conn->recvBuff;
 		ac->c->fd = conn->getSockfd();
 		{
 			std::unique_lock<std::mutex> lk(mutex);
@@ -36,11 +34,8 @@ void xHiredis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 }
 
 
-
-
 void xHiredis::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
 {
-
 	xRedisAsyncContextPtr redis;
 
 	{
@@ -55,41 +50,42 @@ void xHiredis::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 	}
 
 	 redisCallback cb;
-
-	if(recvBuf->readableBytes() > 0 )
-	{
-		 xRedisContextPtr  c = (redis->c);
-		 void  *reply = NULL;
-		 int status;
-		 while((status = redisGetReply(c,&reply)) == REDIS_OK)
+	 xRedisContextPtr  c = (redis->c);
+	 void  *reply = nullptr;
+	 int status;
+	 while((status = redisGetReply(c,&reply)) == REDIS_OK)
+	 {
+		 if(reply == nullptr)
 		 {
-			 if(reply == nullptr)
-			 {
-				 break;
-			 }
-
-			 {
-				 std::unique_lock<std::mutex> lk(mutex);
-				 cb = std::move(redis->replies.front());
-			 }
-
-			 c->flags |= REDIS_IN_CALLBACK;
-			 if(cb.fn != nullptr)
-			 {
-				 cb.fn(redis,reply,cb.privdata);
-			 }
-
-		    	 c->reader->fn->freeObjectFuc(reply);
-
-			 c->flags &= ~REDIS_IN_CALLBACK;
-
-			 {
-				 std::unique_lock<std::mutex> lk(mutex);
-				 redis->replies.pop_front();
-			 }
-
+			 break;
 		 }
-	}
+
+		 {
+			 std::unique_lock<std::mutex> lk(mutex);
+			 cb = std::move(redis->replies.front());
+		 }
+
+		 c->flags |= REDIS_IN_CALLBACK;
+		 if(cb.fn)
+		 {
+			 cb.fn(redis,reply,cb.privdata);
+		 }
+		 else
+		 {
+			 redisAsyncs.erase(conn->getSockfd());
+		 }
+
+		 c->reader->fn->freeObjectFuc(reply);
+
+		 c->flags &= ~REDIS_IN_CALLBACK;
+
+		 {
+			 std::unique_lock<std::mutex> lk(mutex);
+			 redis->replies.pop_front();
+		 }
+
+	 }
+	
 }
 
 

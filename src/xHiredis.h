@@ -66,6 +66,7 @@ class xRedisReader
 public:
 	xRedisReader()
 	{
+		buf =  std::shared_ptr<xBuffer>(new xBuffer());
 		pos = 0;
 		err = 0;
 		errstr[0] = '\0';
@@ -76,7 +77,7 @@ public:
 	int err;
 	char errstr[128];
 	size_t pos;
-	xBuffer *buf;
+	std::shared_ptr<xBuffer> buf;
 	redisReadTask rstack[9];
 	int ridx;
 	void *reply;
@@ -98,15 +99,31 @@ class xRedisContext: noncopyable
 public:
 	xRedisContext():reader(new xRedisReader())
 	{
+		init();
+		sender =  std::shared_ptr<xBuffer>(new xBuffer());
+	}
+	~xRedisContext()
+	{
+		if(fd > 0)
+		{
+			::close(fd);
+		}
+		init();
+	}
+
+	void init()
+	{
 		flags	&= ~REDIS_BLOCK;
 		err = 0;
 		errstr[0] = '\0';
+		fd = 0 ;
 	}
+	
 	int err;
 	char errstr[128];
 	int fd;
 	int flags;
-	xBuffer sender;
+	std::shared_ptr<xBuffer> sender;
 	xRedisReaderPtr reader;
 };
 
@@ -119,6 +136,13 @@ public:
 		errstr = nullptr;
 		data = nullptr;
 		c->flags &= ~REDIS_CONNECTED;
+	}
+	~xRedisAsyncContext()
+	{
+		if(conn != nullptr)
+		{
+			conn->forceClose();
+		}
 	}
 	int err;
 	char *errstr;
@@ -136,6 +160,9 @@ public:
 };
 
 
+int redisContextConnectTcp(const xRedisContextPtr &c, const char *addr, int port, const struct timeval *timeout);
+xRedisContextPtr redisConnectWithTimeout(const char *ip, int port, const struct timeval tv);
+xRedisContextPtr redisConnect(const char *ip, int port);
 
 int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void *privdata, char *cmd, size_t len);
 int redisvFormatCommand(char * *target, const char * format, va_list ap);

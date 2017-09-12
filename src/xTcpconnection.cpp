@@ -121,7 +121,6 @@ void xTcpconnection::handleWrite()
 		else
 		{
 		  //TRACE_ERR("TcpConnection::handleWrite");
-
 		}
 
 	}

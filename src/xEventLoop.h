@@ -28,10 +28,10 @@ public:
     xTimer  *runAfter(double  when,void * data,bool repeat,xTimerCallback&& cb);
     void assertInLoopThread()
     {
-      if (!isInLoopThread())
-      {
-          abortNotInLoopThread();
-      }
+	  if (!isInLoopThread())
+	  {
+	      abortNotInLoopThread();
+	  }
     }
     bool isInLoopThread() const { return threadId == xCurrentThread::tid(); }
     bool geteventHandling() const { return eventHandling; }

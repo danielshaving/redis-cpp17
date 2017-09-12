@@ -56,17 +56,6 @@ public:
 	}
 }
 
-	xClient(const char *ip,uint16_t port)
-	:ip(ip),
-	port(port),
-	threadPool(loop)
-{
-	std::shared_ptr<xHiredis>   redis = std::shared_ptr<xHiredis>(new xHiredis(this));
-	redis->start();
-	redisVectors.push_back(redis);
-}
-
-
 
 ~xClient()
 {

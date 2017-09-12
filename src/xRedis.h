@@ -39,7 +39,7 @@ public:
 	bool pongCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool ppingCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool ppongCommand(const std::deque <rObj*> & obj, xSession * session);
-
+    bool debugCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool flushdbCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool dbsizeCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool quitCommand(const std::deque <rObj*> & obj,xSession * session);

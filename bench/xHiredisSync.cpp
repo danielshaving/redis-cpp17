@@ -1,44 +1,34 @@
-#include "xHiredisSync.h"
-
-/* The following lines make up our testing "framework" :) */
+#include "xHiredis.h"
 static int tests = 0, fails = 0;
 #define test(_s) { printf("#%02d ", ++tests); printf(_s); }
 #define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
 
+const char * ip;
+int32_t port;
 
-xHiredis::xHiredis(xEventLoop * loop,xClient * owner)
-:client(loop,this),
-owner(owner)
+
+xRedisContextPtr connect()
 {
-	client.setConnectionCallback(std::bind(&xHiredis::connSyncCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	client.setConnectionErrorCallBack(std::bind(&xHiredis::connErrorCallBack, this));
+	return redisConnect(ip,port);
+}
+
+void  disconnect(xRedisContextPtr c)
+{
+	if(c->fd)
+	{
+		::close(c->fd);
+	}
+	c->init();
+
 }
 
 
-xHiredis::~xHiredis()
-{
-	redisSyncs.clear();
-}
-void xHiredis::start()
-{
-	client.connect(owner->ip,owner->port);
-}
-
-
-void xHiredis::connErrorCallBack()
-{
-	LOG_WARN<<"connect server failure";
-}
-
-
-
-
-
-void xHiredis::testCommand(xRedisContextPtr c)
+void testCommand(xRedisContextPtr c)
 {
 	redisReply *reply;
 
 	reply = ( redisReply *)redisCommand(c,"PING");
+	if(reply != nullptr)
 	printf("PING: %s\n", reply->str);
 	freeReply(reply);
 
@@ -85,7 +75,7 @@ void xHiredis::testCommand(xRedisContextPtr c)
 
 }
 
-void xHiredis::testFormatCommand()
+void testFormatCommand()
 {
 	char *cmd;
 	int len;
@@ -206,32 +196,45 @@ void xHiredis::testFormatCommand()
 }
 
 
-void xHiredis::testReplyReader()
+void testReplyReader()
 {
 	std::shared_ptr<xRedisReader>  reader (new xRedisReader);
-	
 }
 
 
-void xHiredis::connSyncCallBack(const xTcpconnectionPtr& conn,void *data)
+void testBlockingConnectionTimeOuts(xRedisContextPtr c)
 {
-	if(conn->connected())
-	{
-		xBuffer buffer;
-		xRedisContextPtr c (new (xRedisContext));
+	redisReply *reply;
+	xSocket socket;
+	ssize_t s;
+	const char *cmd = "DEBUG SLEEP 3\r\n";
+	struct timeval tv;
+	test("Successfully completes a command when the timeout is not exceeded: ");
+	reply = (redisReply*)redisCommand(c,"SET foo fast");
+	freeReply(reply);
 
-		c->fd = conn->getSockfd();
-		c->flags	|= REDIS_BLOCK;
-		c->reader->buf = & buffer;
-		redisSyncs.insert(std::make_pair(conn->getSockfd(),c));
-		testFormatCommand();
-		testReplyReader();
-		testCommand(c);
-	}
-	else
-	{
-		redisSyncs.erase(conn->getSockfd());
-	}
+	tv.tv_sec = 0; 
+	tv.tv_usec = 10000;
+	socket.setTimeOut(c->fd,tv);
+	reply = (redisReply*)redisCommand(c,"GET foo");
+	test_cond(reply != nullptr && reply->type == REDIS_REPLY_STRING && memcmp(reply->str,"fast",4) == 0);
+	freeReply(reply);
+	disconnect(c);
+	c.reset();
+	c = connect();
+
+	tv.tv_sec = 0;
+	tv.tv_usec = 10000;
+	socket.setTimeOut(c->fd,tv);
+
+	test("Does not return a reply when the command times out: ");
+	s = ::write(c->fd,cmd,strlen(cmd));
+	reply =  (redisReply*)redisCommand(c, "GET foo");
+	test_cond(s > 0 && reply == nullptr && c->err == REDIS_ERR_IO && strcmp(c->errstr, "Resource temporarily unavailable") == 0);
+	freeReply(reply);
+	c.reset();
+	c = connect();
+
 }
 
 
@@ -243,14 +246,39 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		xEventLoop loop;
-		const char* ip = argv[1];
-		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
-		xClient client(&loop,ip,port);
-		loop.run();
+		
+		ip = argv[1];
+		port = static_cast<uint16_t>(atoi(argv[2]));
+		struct timeval timeout = { 1, 500000 }; // 1.5 seconds
+
+		xRedisContextPtr c;
+		redisReply *reply;
+	
+		c = redisConnectWithTimeout(ip, port, timeout);
+		if (c == nullptr || c->err)
+		{
+			if (c) 
+			{
+				printf("Connection error: %s\n", c->errstr);
+			} 
+			else
+			{
+				printf("Connection error: can't allocate redis context\n");
+			}
+			
+			exit(1);
+		}
+	
+		testBlockingConnectionTimeOuts(c);
+		testCommand(c);
+		testFormatCommand();
+		testReplyReader();
 	}
 	return 0;
 }
+
+
+
 
 
 

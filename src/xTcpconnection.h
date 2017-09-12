@@ -13,8 +13,8 @@ public:
 	xTcpconnection(xEventLoop *loop,int sockfd,void *data);
 	~xTcpconnection();
 
-	xEventLoop			*getLoop();
-	int 				getSockfd();
+	xEventLoop	 *getLoop();
+	int  getSockfd();
 
 
 	void setState(StateE s) { state  = s; }
@@ -44,10 +44,8 @@ public:
 
 	static void bindSendInLoop(xTcpconnection* conn, const stringPiepe& message);
 
-       //void sendInLoop(std::string & message);
         void send(const void* message, int len);
 	void send(xBuffer* message);
-	//void send(std::string && message);
 	void send(const stringPiepe  &message);
 
 	bool disconnected() const { return state == kDisconnected; }
@@ -65,22 +63,22 @@ public:
 	xBuffer * getSendBuff(){ return &sendBuff; }
 	
 public:
-	xEventLoop 			  *loop;
-	int 				  sockfd;
-	xBuffer               recvBuff;
-	xBuffer               sendBuff;
-	ConnectionCallback    connectionCallback;
+	xEventLoop  *loop;
+	int sockfd;
+	xBuffer recvBuff;
+	xBuffer sendBuff;
+	ConnectionCallback   connectionCallback;
 	MessageCallback 	  messageCallback;
 	WriteCompleteCallback writeCompleteCallback;
 	HighWaterMarkCallback highWaterMarkCallback;
-	CloseCallback 		  closeCallback;
+	CloseCallback closeCallback;
 
-	size_t 				      highWaterMark;
-	StateE 				  state;
+	size_t highWaterMark;
+	StateE state;
 	std::shared_ptr<xChannel> channel;
-	void 				*data;
-	void 				*context;
-	std::string			host;
-	int32_t 			port;
+	void 	*data;
+	void 	*context;
+	std::string host;
+	int32_t port;
 
 };
