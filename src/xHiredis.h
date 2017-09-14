@@ -8,6 +8,7 @@
 #include "xLog.h"
 #include "xThreadPool.h"
 
+static std::mutex hiMutex;
 class xRedisAsyncContext;
 typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, void*, void*);
 
@@ -57,7 +58,7 @@ typedef struct redisReplyObjectFunctions
 	std::function<void *(const redisReadTask*, long long)> createIntegerFuc;
 	std::function<void *(const redisReadTask*)> createNilFuc;
 	std::function<void (void*)> freeObjectFuc;
-} redisReplyObjectFunctions;
+} redisFunc;
 
 
 
@@ -66,23 +67,23 @@ class xRedisReader
 public:
 	xRedisReader()
 	{
-		buf =  std::shared_ptr<xBuffer>(new xBuffer());
+		fn = std::shared_ptr<redisFunc>(new redisFunc());
 		pos = 0;
 		err = 0;
 		errstr[0] = '\0';
-		fn = std::shared_ptr<redisReplyObjectFunctions>(new redisReplyObjectFunctions());
 		ridx 	= -1;
+		buf = nullptr;
 	}
 	
 	int err;
 	char errstr[128];
 	size_t pos;
-	std::shared_ptr<xBuffer> buf;
+	xBuffer  *buf;
 	redisReadTask rstack[9];
 	int ridx;
 	void *reply;
-	std::shared_ptr<redisReplyObjectFunctions> fn;
-    	void *privdata;
+	std::shared_ptr<redisFunc> fn;
+    void *privdata;
 };
 
 
@@ -101,6 +102,7 @@ public:
 	{
 		init();
 		sender =  std::shared_ptr<xBuffer>(new xBuffer());
+		reader = std::shared_ptr<xRedisReader>(new xRedisReader());
 	}
 	~xRedisContext()
 	{
@@ -123,7 +125,7 @@ public:
 	char errstr[128];
 	int fd;
 	int flags;
-	std::shared_ptr<xBuffer> sender;
+	xBufferPtr sender;
 	xRedisReaderPtr reader;
 };
 
@@ -132,6 +134,7 @@ class xRedisAsyncContext: noncopyable
 public:
 	xRedisAsyncContext():c(new (xRedisContext))
 	{
+		conn = nullptr;
 		err = 0;
 		errstr = nullptr;
 		data = nullptr;

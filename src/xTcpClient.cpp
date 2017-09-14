@@ -117,5 +117,4 @@ void xTcpClient::removeConnection(const xTcpconnectionPtr& conn)
 	}
 
 	loop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
-	connectionErrorCallBack(data);
 }

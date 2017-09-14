@@ -11,7 +11,7 @@ class xRedisReader;
 typedef std::shared_ptr<xRedisReader> xRedisReaderPtr;
 typedef std::shared_ptr<xRedisContext> xRedisContextPtr;
 typedef std::shared_ptr<xRedisAsyncContext> xRedisAsyncContextPtr;
-
+typedef std::shared_ptr<xBuffer> xBufferPtr;
 typedef std::shared_ptr<xTcpconnection> xTcpconnectionPtr;
 typedef std::shared_ptr<xConnector> xConnectorPtr;
 typedef std::function<void(void *)> xTimerCallback;

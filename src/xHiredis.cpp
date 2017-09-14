@@ -911,7 +911,7 @@ int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, voi
 	clen -= pvariant;
 	
 	{
-		std::unique_lock<std::mutex> lk(mutex);
+		std::unique_lock<std::mutex> lk(hiMutex);
 		ac->replies.push_back(std::move(cb));
 		ac->conn->send(stringPiepe(cmd,len));
 	}
