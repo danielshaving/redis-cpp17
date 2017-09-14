@@ -164,12 +164,14 @@ int redisContextConnectTcp(const xRedisContextPtr &c, const char *addr, int port
 xRedisContextPtr redisConnectWithTimeout(const char *ip, int port, const struct timeval tv);
 xRedisContextPtr redisConnect(const char *ip, int port);
 
+int redisAppendCommand(xRedisContextPtr c, const char *format, ...);
+
 int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void *privdata, char *cmd, size_t len);
 int redisvFormatCommand(char * *target, const char * format, va_list ap);
 int redisvAsyncCommand(const xRedisAsyncContextPtr &ac, redisCallbackFn *fn, void *privdata, const char *format, va_list ap);
 int redisAsyncCommand(const xRedisAsyncContextPtr &ac, redisCallbackFn *fn, void *privdata, const char *format, ...);
 
-
+int redisAppendFormattedCommand(xRedisContextPtr c, const char *cmd, size_t len);
 int redisFormatCommand(char **target, const char *format, ...);
 int redisFormatCommandArgv(char * *target, int argc, const char * *argv, const size_t * argvlen);
 int redisAppendCommandArgv(const xRedisContextPtr  & c, int argc, const char * *argv, const size_t * argvlen);

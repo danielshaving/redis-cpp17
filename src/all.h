@@ -57,6 +57,7 @@
 #include <sys/resource.h>
 #include <limits.h>
 #include <poll.h>
+#include <netdb.h>
 
 
 #define REDIS_CONNECT_RETRIES  10

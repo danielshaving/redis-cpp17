@@ -879,6 +879,20 @@ int redisGetReply(const xRedisContextPtr & c, void * *reply)
 
 
 
+
+int redisAppendCommand(xRedisContextPtr c, const char *format, ...)
+{
+    va_list ap;
+    int ret;
+
+    va_start(ap,format);
+    ret = redisvAppendCommand(c,format,ap);
+    va_end(ap);
+    return ret;
+}
+
+
+
 int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void *privdata, char *cmd, size_t len)
 {
 	redisCallback cb;
@@ -1155,6 +1169,17 @@ err:
 		zfree(cmd);
 	return - 1;
 
+}
+
+
+int redisAppendFormattedCommand(xRedisContextPtr c, const char *cmd, size_t len)
+{
+	if (__redisAppendCommand(c, cmd, len) != REDIS_OK) 
+	{
+		return REDIS_ERR;
+	}
+
+	return REDIS_OK;
 }
 
 
@@ -1490,6 +1515,20 @@ static int redisContextTimeoutMsec(const struct timeval *timeout, long *result)
 
 int redisContextConnectTcp(const xRedisContextPtr &c, const char *addr, int port, const struct timeval *timeout)
 {	
+	int rv;
+	struct addrinfo hints, *servinfo;
+	memset(&hints,0,sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	char _port[6];  /* strlen("65535"); */
+	snprintf(_port, 6, "%d", port);
+
+	if ((rv = getaddrinfo(addr,_port,&hints,&servinfo)) != 0)
+	{
+		__redisSetError(c,REDIS_ERR_OTHER,gai_strerror(rv));
+		return REDIS_ERR;
+	}
+
 	long timeoutMsec = -1;
 
 	if(timeout != nullptr)
@@ -1514,16 +1553,13 @@ int redisContextConnectTcp(const xRedisContextPtr &c, const char *addr, int port
 	
 	c->fd = sockfd;
 
-	if(timeout)
-	{
-		socket.setSocketNonBlock(sockfd);
-	}
+	socket.setSocketNonBlock(sockfd);
 
 	if( socket.connect(sockfd, addr,port) == -1)
 	{
 	 	 if (errno == EHOSTUNREACH) 
 		 {
-		 	::close(sockfd);
+		 	return REDIS_ERR;
 	 	 }
 		 else if(errno == EINPROGRESS && !blocking)
 		 {
@@ -1562,6 +1598,7 @@ xRedisContextPtr redisConnect(const char *ip, int port)
 	xRedisContextPtr c (new xRedisContext);
 	c->flags |= REDIS_BLOCK;
 	redisContextConnectTcp(c,ip,port,nullptr);
+
 	return c;
 }
 

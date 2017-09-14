@@ -81,6 +81,8 @@ bool xSocket::setTimeOut(int sockfd,const struct timeval tv)
         LOG_ERROR<<"setsockopt(SO_SNDTIMEO)";
         return false;
     }
+	
+    return true;
 }
 
 void  xSocket::setkeepAlive(int fd,int idle)

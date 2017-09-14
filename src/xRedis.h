@@ -39,7 +39,7 @@ public:
 	bool pongCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool ppingCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool ppongCommand(const std::deque <rObj*> & obj, xSession * session);
-    bool debugCommand(const std::deque <rObj*> & obj, xSession * session);
+        bool debugCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool flushdbCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool dbsizeCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool quitCommand(const std::deque <rObj*> & obj,xSession * session);
@@ -78,6 +78,9 @@ public:
 	bool memoryCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool sentinelCommand(const std::deque<rObj*> & obj, xSession * session);
 	bool migrateCommand(const std::deque<rObj*> & obj, xSession * session);
+
+
+
 	bool clearClusterMigradeCommand(void * data);
 	bool save(xSession * session);
 	int removeCommand(rObj * obj,int &count);
@@ -86,6 +89,8 @@ public:
 	void clearClusterState(int32_t sockfd);
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
+
+
 public:
 	
 	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommands;

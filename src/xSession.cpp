@@ -127,7 +127,7 @@ bool xSession::checkCommand(rObj*  robjs)
 
 int xSession::processCommand()
 {
-	/*if(redis->authEnabled)
+	if(redis->authEnabled)
 	{
 		if(!authEnabled)
 		{
@@ -145,7 +145,7 @@ int xSession::processCommand()
 		
 		if (!(strcasecmp(robjs[0]->ptr, "cluster")) || !(strcasecmp(robjs[0]->ptr, "migrate")))
 		{
-			
+				//FIXME
 		}
 		else
 		{
@@ -203,7 +203,7 @@ int xSession::processCommand()
 				{
 					if (redis->host == it->second.ip && redis->port == it->second.port)
 					{
-
+						//FIXME
 					}
 					else
 					{
@@ -302,8 +302,7 @@ jump:
 				
 	}
 
-	*/
-	
+
 
 	auto iter = redis->handlerCommandMap.find(robjs[0]);
 	if(iter == redis->handlerCommandMap.end() )

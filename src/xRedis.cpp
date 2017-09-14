@@ -539,12 +539,12 @@ bool xRedis::memoryCommand(const std::deque <rObj*> & obj,xSession * session)
 		size_t sz = sizeof(unsigned);
 		if (!je_mallctl("arenas.narenas", &narenas, &sz, NULL, 0))
 		{
-		sprintf(tmp, "arena.%d.purge", narenas);
-		if (!je_mallctl(tmp, NULL, 0, NULL, 0))
-		{
-			addReply(session->sendBuf, shared.ok);
-			return false;
-		}
+			sprintf(tmp, "arena.%d.purge", narenas);
+			if (!je_mallctl(tmp, NULL, 0, NULL, 0))
+			{
+				addReply(session->sendBuf, shared.ok);
+				return false;
+			}
 	}
 
 #endif
