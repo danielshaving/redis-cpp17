@@ -1,4 +1,5 @@
 #include "xRdb.h"
+#include "xObject.h"
 
 xRio::xRio()
 {
@@ -356,6 +357,8 @@ rObj *rdbLoadStringObject(xRio *rdb)
 
 int rdbSaveSSet(xRio *rdb,xRedis * redis)
 {
+	if (rdbSaveType(rdb,REDIS_RDB_SSET) == -1) return REDIS_ERR;
+
 	for(auto it = redis->setShards.begin(); it != redis->setShards.end(); it++)
 	{
 		auto &map = (*it).set;
@@ -390,6 +393,8 @@ int rdbSaveSSet(xRio *rdb,xRedis * redis)
 
 int rdbSaveSortSet(xRio *rdb,xRedis * redis)
 {
+	if (rdbSaveType(rdb,REDIS_RDB_SORT_SET) == -1) return REDIS_ERR;
+
 	for(auto it = redis->sortSetShards.begin(); it != redis->sortSetShards.end(); it++)
 	{
 		auto &map = (*it).set;
@@ -426,6 +431,9 @@ int rdbSaveSortSet(xRio *rdb,xRedis * redis)
 
 int rdbSaveSet(xRio *rdb,xRedis * redis)
 {
+	if (rdbSaveType(rdb,REDIS_RDB_SET) == -1) return REDIS_ERR;
+
+
 	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); it++)
 	{
 		auto &map = (*it).setMap;
@@ -447,6 +455,8 @@ int rdbSaveSet(xRio *rdb,xRedis * redis)
 
 int rdbSaveHset(xRio *rdb,xRedis * redis)
 {
+	if (rdbSaveType(rdb,REDIS_RDB_HSET) == -1) return REDIS_ERR;
+
 	for(auto it = redis->hsetMapShards.begin(); it != redis->hsetMapShards.end(); it++)
 	{
 		auto &map = (*it).hsetMap;
@@ -696,7 +706,7 @@ int rdbLoadSortSet(xRio * rdb,xRedis * redis)
 		key->calHash();
 		size_t hash = key->hash;
 		MutexLock &mu = redis->sortSetShards[hash% redis->kShards].mutex;
-		auto & set = redis->sortSetShards[hash % redis->kShards].set;
+		auto &set = redis->sortSetShards[hash % redis->kShards].set;
 		auto &sset =  redis->sortSetShards[hash % redis->kShards].sset;
 		{
 			MutexLockGuard lock(mu);	
@@ -944,13 +954,13 @@ int rdbLoad(char *filename,xRedis * redis)
 	{
 		return REDIS_ERR;
 	}
+
 	rioInitWithFile(&rdb,fp);
 	if(rioRead(&rdb,buf,9) == 0)
 	{
 		return REDIS_ERR;
 	}
 	buf[9] = '\0';
-
 	if(memcmp(buf,"REDIS",5) !=0)
 	{
 		fclose(fp);
@@ -960,32 +970,70 @@ int rdbLoad(char *filename,xRedis * redis)
 
 	struct stat sb;
 	if(fstat(fileno(fp),&sb) == -1)
-	{	
+	{
 		return REDIS_ERR;
 	}
 	else
 	{
-		LOG_INFO<<"load dump.rdb "<<sb.st_size;
+		LOG_INFO<<"dump.rdb file size "<<sb.st_size;
 	}
 
-	if(rdbLoadSet(&rdb,redis) != REDIS_OK )
+	while(1)
 	{
-		return REDIS_ERR;
-	}
-	
-	if(rdbLoadHset(&rdb,redis) != REDIS_OK)
-	{
-		return REDIS_ERR;
-	}
-	
-	if(rdbLoadSSet(&rdb,redis) != REDIS_OK)
-	{
-		return REDIS_ERR;
-	}
+		if ((type = rdbLoadType(&rdb)) == -1)
+		{
+			return  REDIS_ERR;
+		}
 
-	if(rdbLoadSortSet(&rdb,redis) != REDIS_OK)
-	{
-		return REDIS_ERR;
+		if(type == RDB_OPCODE_EOF )
+		{
+			break;
+		}
+
+		switch(type)
+		{
+			case REDIS_RDB_SET:
+			{
+				if(rdbLoadSet(&rdb,redis) != REDIS_OK )
+				{
+					return REDIS_ERR;
+				}
+
+				break;
+			}
+
+			case REDIS_RDB_HSET:
+			{
+				if(rdbLoadHset(&rdb,redis) != REDIS_OK)
+				{
+					return REDIS_ERR;
+				}
+
+				break;
+			}
+
+			case REDIS_RDB_SSET:
+			{
+				if(rdbLoadSSet(&rdb,redis) != REDIS_OK)
+				{
+					return REDIS_ERR;
+				}
+
+				break;
+			}
+
+			case REDIS_RDB_SORT_SET:
+			{
+				if(rdbLoadSortSet(&rdb,redis) != REDIS_OK)
+				{
+					return REDIS_ERR;
+				}
+
+				break;
+			}
+			default:
+			break;
+		}
 	}
 
 
@@ -994,7 +1042,7 @@ int rdbLoad(char *filename,xRedis * redis)
 	{
 		return REDIS_ERR;
 	}
-	
+	memrev64ifbe(&cksum);
 	if (cksum == 0)
 	{
 		LOG_WARN<<"RDB file was saved with checksum disabled: no check performed";
@@ -1275,7 +1323,13 @@ int rdbSaveRio(xRio *rdb,int *error,xRedis * redis)
 	rdbSaveSSet(rdb,redis);
 	rdbSaveSortSet(rdb,redis);
 
+	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1)
+	{
+		return REDIS_ERR;
+	}
+
 	cksum = rdb->cksum;
+	memrev64ifbe(&cksum);
 	if(rioWrite(rdb,&cksum,8) == 0)
 	{
 		*error = errno;

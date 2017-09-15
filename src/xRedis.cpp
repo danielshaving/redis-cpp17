@@ -24,7 +24,6 @@ pingPong(false)
 	server.setThreadNum(threadCount);
 	server.start();
 	zmalloc_enable_thread_safeness();
-	loop.runAfter(10,nullptr,false,std::bind(&xRedis::handleTimeOut,this,std::placeholders::_1));
 }
 
 xRedis::~xRedis()
@@ -159,10 +158,13 @@ void xRedis::run()
 void xRedis::loadDataFromDisk()
 {
 	char rdb_filename[] = "dump.rdb";
-	  
+
+	int64_t  start= mstime();
 	if(rdbLoad(rdb_filename,this) == REDIS_OK)
 	{
-		LOG_INFO<<"load rdb success";
+		int64_t end = mstime();
+
+		LOG_INFO<<"DB loaded from disk " << end - start << " milliseconds";
 	}
 	else if (errno != ENOENT)
 	{
@@ -1340,15 +1342,17 @@ bool  xRedis::save(xSession * session)
 		char filename[] = "dump.rdb";
 		if(rdbSave(filename,this) == REDIS_OK)
 		{
-			LOG_INFO<<"Save rdb success";
+			int64_t end = mstime();
+			LOG_INFO<<"DB saved on disk: "<<(end - start) <<" milliseconds";
 		}
 		else
 		{
-			LOG_INFO<<"Save rdb failure";
+			LOG_INFO<<"DB saved on disk error";
 
 			return false;
 		}
 	}
+
 
 	return true;
 }
@@ -2410,98 +2414,56 @@ void xRedis::flush()
 
 void xRedis::initConifg()
 {
-	rObj * obj = createStringObject("set",3);
-	handlerCommandMap[obj] =std::bind(&xRedis::setCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("get",3);
-	handlerCommandMap[obj] =std::bind(&xRedis::getCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("flushdb",7);
-	handlerCommandMap[obj] =std::bind(&xRedis::flushdbCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("dbsize",6);
-	handlerCommandMap[obj] =std::bind(&xRedis::dbsizeCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hset",4);
-	handlerCommandMap[obj] =std::bind(&xRedis::hsetCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hget",4);
-	handlerCommandMap[obj] =std::bind(&xRedis::hgetCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hgetall",7);
-	handlerCommandMap[obj] =std::bind(&xRedis::hgetallCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("ping",4);
-	handlerCommandMap[obj] =std::bind(&xRedis::pingCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("save",4);
-	handlerCommandMap[obj] =std::bind(&xRedis::saveCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("slaveof",7);
-	handlerCommandMap[obj] =std::bind(&xRedis::slaveofCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("sync",4);
-	handlerCommandMap[obj] =std::bind(&xRedis::syncCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("command",7);
-	handlerCommandMap[obj] =std::bind(&xRedis::commandCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("config",6);
-	handlerCommandMap[obj] = std::bind(&xRedis::configCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("auth",4);
-	handlerCommandMap[obj] = std::bind(&xRedis::authCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("info",4);
-	handlerCommandMap[obj] = std::bind(&xRedis::infoCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("echo",4);
-	handlerCommandMap[obj] = std::bind(&xRedis::echoCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("client",5);
-	handlerCommandMap[obj] = std::bind(&xRedis::clientCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("subscribe",9);
-	handlerCommandMap[obj] = std::bind(&xRedis::subscribeCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hkeys",5);
-	handlerCommandMap[obj] = std::bind(&xRedis::hkeysCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("select",6);
-	handlerCommandMap[obj] = std::bind(&xRedis::selectCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("sadd",4);
-	handlerCommandMap[obj] = std::bind(&xRedis::saddCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("scard",6);
-	handlerCommandMap[obj] = std::bind(&xRedis::scardCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("publish",7);
-	handlerCommandMap[obj] = std::bind(&xRedis::publishCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("del",3);
-	handlerCommandMap[obj] = std::bind(&xRedis::delCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("unsubscribe",11);
-	handlerCommandMap[obj] = std::bind(&xRedis::unsubscribeCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("hlen",4);
-	handlerCommandMap[obj] = std::bind(&xRedis::hlenCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zadd",4);
-	handlerCommandMap[obj] = std::bind(&xRedis::zaddCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zcard",5);
-	handlerCommandMap[obj] = std::bind(&xRedis::zcardCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zrange",6);
-	handlerCommandMap[obj] = std::bind(&xRedis::zrangeCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zrank",5);
-	handlerCommandMap[obj] = std::bind(&xRedis::zrankCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("zrevrange",9);
-	handlerCommandMap[obj] = std::bind(&xRedis::zrevrangeCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("keys",4);
-	handlerCommandMap[obj] = std::bind(&xRedis::keysCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("bgsave",6);
-	handlerCommandMap[obj] = std::bind(&xRedis::bgsaveCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("memory",6);
-	handlerCommandMap[obj] = std::bind(&xRedis::memoryCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("ppong",6);
-	handlerCommandMap[obj] = std::bind(&xRedis::ppongCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("pping", 6);
-	handlerCommandMap[obj] = std::bind(&xRedis::ppingCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("sentinel", 8);
-	handlerCommandMap[obj] = std::bind(&xRedis::ppingCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("cluster", 7);
-	handlerCommandMap[obj] = std::bind(&xRedis::clusterCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("migrate", 7);
-	handlerCommandMap[obj] = std::bind(&xRedis::migrateCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("debug", 5);
-	handlerCommandMap[obj] = std::bind(&xRedis::debugCommand, this, std::placeholders::_1, std::placeholders::_2);
-	obj = createStringObject("set",3);
-	unorderedmapCommands.insert(obj);
-	obj = createStringObject("hset",4);
-	unorderedmapCommands.insert(obj);
-	obj = createStringObject("zadd",4);
-	unorderedmapCommands.insert(obj);
-	obj = createStringObject("sadd",4);
-	unorderedmapCommands.insert(obj);
-	obj = createStringObject("del",3);
-	unorderedmapCommands.insert(obj);
-	obj = createStringObject("flushdb",7);
-	unorderedmapCommands.insert(obj);
+#define REGISTER_REDIS_COMMAND(msgId, func) \
+	handlerCommandMap[msgId] = std::bind(&xRedis::func, this, std::placeholders::_1, std::placeholders::_2);
+	REGISTER_REDIS_COMMAND(createStringObject("set",3),setCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("get",3),getCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("flushdb",7),flushdbCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("dbsize",6),dbsizeCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("hset",4),hsetCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("hget",4),hgetCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("hgetall",7),hgetallCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("ping",4),pingCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("save",4),saveCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("slaveof",7),slaveofCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("sync",4),syncCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("command",7),commandCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("config",6),configCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("auth",4),authCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("info",4),infoCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("echo",4),echoCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("client",5),clientCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("subscribe",8),subscribeCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("hkeys",5),hkeysCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("select",5),selectCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("sadd",4),saddCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("scard",5),scardCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("publish",5),publishCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("del",3),delCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("unsubscribe",11),unsubscribeCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("hlen",4),hlenCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("zadd",4),zaddCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("zcard",5),zcardCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("zrange",6),zrangeCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("zrank",4),zrankCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("zrevrange",9),zrevrangeCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("keys",4),keysCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("bgsave",5),bgsaveCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("memory",6),memoryCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("ppong",5),ppongCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("pping",5),ppingCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("cluster",6),clusterCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("migrate",7),migrateCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("debug",5),debugCommand);
+
+#define REGISTER_REDIS_CHECK_COMMAND(msgId) \
+	unorderedmapCommands.insert(msgId);
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("set",3));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("hset",4));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("zadd",4));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("sadd",4));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("del",3));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("flushdb",7));
 
 	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
 	sentiThreads->detach();

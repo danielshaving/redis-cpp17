@@ -376,7 +376,8 @@ static size_t bulklen(size_t len)
 
 static char *nextArgument(char *start, char **str, size_t *len) {
     char *p = start;
-    if (p[0] != '$') {
+    if (p[0] != '$')
+    {
         p = strchr(p,'$');
         if (p == nullptr) return nullptr;
     }

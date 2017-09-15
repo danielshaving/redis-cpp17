@@ -35,8 +35,6 @@ public:
   void resetChannel();
   int  removeAndResetChannel();
 
-
-
 private:
  enum States { kDisconnected, kConnecting, kConnected };
 public:

@@ -9,11 +9,12 @@
 sds sdsnewlen(const void *init, size_t initlen) {
     struct sdshdr *sh;
     // T = O(N)
-    if (init) {
-
+    if (init)
+     {
         sh = (sdshdr*)zmalloc(sizeof(struct sdshdr)+initlen+1);
-    } else {
-
+    }
+    else
+    {
         sh = (sdshdr*)zcalloc(sizeof(struct sdshdr)+initlen+1);
     }
 

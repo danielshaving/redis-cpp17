@@ -303,7 +303,6 @@ jump:
 	}
 
 
-
 	auto iter = redis->handlerCommandMap.find(robjs[0]);
 	if(iter == redis->handlerCommandMap.end() )
 	{
@@ -318,14 +317,12 @@ jump:
 	zfree(obj);
 
 
-	
 	if(!iter->second(robjs,this))
 	{
 		clearObj();
 		return REDIS_ERR;
 	}
-	
-	
+
 	return REDIS_OK;
 }
 

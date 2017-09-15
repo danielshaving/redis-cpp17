@@ -35,6 +35,7 @@ public:
 	void remove();
 	int  getIndex(){ return index; }
 	xEventLoop *ownerLoop() { return loop; }
+
 private:
 	void update();
 	void handleEventWithGuard();

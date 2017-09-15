@@ -10,6 +10,7 @@
 
 static std::mutex hiMutex;
 class xRedisAsyncContext;
+
 typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, void*, void*);
 
 

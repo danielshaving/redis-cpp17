@@ -18,7 +18,6 @@
 class xRedis : noncopyable
 {
 public:
-	
 	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false,bool enabledSentinel = false);
 	~xRedis();
 	void initConifg();
@@ -39,7 +38,7 @@ public:
 	bool pongCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool ppingCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool ppongCommand(const std::deque <rObj*> & obj, xSession * session);
-        bool debugCommand(const std::deque <rObj*> & obj, xSession * session);
+    bool debugCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool flushdbCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool dbsizeCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool quitCommand(const std::deque <rObj*> & obj,xSession * session);
@@ -97,7 +96,6 @@ public:
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commandFunction;
 	std::unordered_map<rObj*,commandFunction,Hash,EEqual> handlerCommandMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
-
 
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;

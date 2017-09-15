@@ -7,8 +7,6 @@
 #include "xTimer.h"
 
 
-
-
 const size_t frameLen = 2*sizeof(int64_t);
 
 void serverConnectionCallback(const xTcpconnectionPtr& conn, void *data)

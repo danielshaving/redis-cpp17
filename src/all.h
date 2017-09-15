@@ -199,7 +199,7 @@
 
 /* The current RDB version. When the format changes in a way that is no longer
  * backward compatible this number gets incremented. */
-#define REDIS_RDB_VERSION 6
+#define REDIS_RDB_VERSION 1
 
 /* Defines related to the dump file format. To store 32 bits lengths for short
  * keys requires a lot of space, so we check the most significant 2 bits of
@@ -259,6 +259,9 @@
 #define REDIS_RDB_HSET 101
 #define REDIS_RDB_SSET 102
 #define REDIS_RDB_SORT_SET 103
+
+
+#define RDB_OPCODE_EOF 110
 
 /* Protocol and I/O related defines */
 #define PROTO_MAX_QUERYBUF_LEN  (1024*1024*1024) /* 1GB max query buffer. */

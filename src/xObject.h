@@ -6,6 +6,7 @@
 #include "xBuffer.h"
 #include "xLog.h"
 
+
 unsigned int dictGenHashFunction(const void *key, int len) ;
 unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len);
 #define sdsEncodedObject(objptr) (objptr->encoding == REDIS_ENCODING_RAW || objptr->encoding == REDIS_ENCODING_EMBSTR)
@@ -127,6 +128,9 @@ void addReplySds(xBuffer &sendBuf,sds s);
 long long ustime(void);
 long long mstime(void);
 long long setime(void) ;
+
+
+void memrev64(void *p);
 
 #define memrev16ifbe(p) memrev16(p)
 #define memrev32ifbe(p) memrev32(p)

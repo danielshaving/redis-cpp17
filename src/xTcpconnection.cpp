@@ -21,8 +21,8 @@ xTcpconnection::xTcpconnection(xEventLoop *loop,int sockfd,void *data)
 
 xTcpconnection::~xTcpconnection()
 {
-	assert(state == kDisconnected);
-	::close(sockfd);
+    assert(state == kDisconnected);
+    ::close(sockfd);
 }
 
 
@@ -32,11 +32,11 @@ void xTcpconnection::setData(void *data)
 }
 void xTcpconnection::shutdown()
 {
-  if (state == kConnected)
-  {
-    setState(kDisconnecting);
-    loop->runInLoop(std::bind(&xTcpconnection::shutdownInLoop, this));
-  }
+    if (state == kConnected)
+    {
+        setState(kDisconnecting);
+        loop->runInLoop(std::bind(&xTcpconnection::shutdownInLoop, this));
+     }
 }
 
 
@@ -55,21 +55,21 @@ void xTcpconnection::forceCloseInLoop()
   loop->assertInLoopThread();
   if (state== kConnected   ||  state == kDisconnecting)
   {
-    // as if we received 0 byte in handleRead();
-    handleClose();
+        // as if we received 0 byte in handleRead();
+        handleClose();
   }
 }
 
 void xTcpconnection::shutdownInLoop()
 {
-  loop->assertInLoopThread();
-  if (!channel->isWriting())
-  {
-	if (::shutdown(sockfd, SHUT_WR) < 0)
-	{
-		//TRACE_ERR("sockets::shutdownWrite");
-	}
-  }
+    loop->assertInLoopThread();
+    if (!channel->isWriting())
+    {
+        if (::shutdown(sockfd, SHUT_WR) < 0)
+        {
+            //TRACE_ERR("sockets::shutdownWrite");
+        }
+    }
 }
 
 void xTcpconnection::handleRead()
