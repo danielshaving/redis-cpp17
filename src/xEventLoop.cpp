@@ -123,6 +123,18 @@ void xEventLoop::wakeup()
 }
 
 
+void xEventLoop::runPipeInLoop(Functor&& cb)
+{
+	if (isInLoopThread())
+	{
+		cb();
+	}
+	else
+	{
+		queueInLoop(std::move(cb));
+	}
+}
+
 void xEventLoop::runInLoop(Functor&& cb)
 {
 	if (isInLoopThread())
@@ -135,6 +147,25 @@ void xEventLoop::runInLoop(Functor&& cb)
 	}
 
 }
+
+
+
+void xEventLoop::queuePipeInLoop(Functor&& cb)
+{
+	{
+	 std::unique_lock<std::mutex> lk(mutex);
+	 pendingPipeFunctors.push_back(std::move(cb));
+
+	}
+
+	if (!isInLoopThread() || callingPendingFunctors)
+	{
+		wakeup();
+	}
+
+}
+
+
 void xEventLoop::queueInLoop(Functor&& cb)
 {
 	{
@@ -160,13 +191,13 @@ void xEventLoop::doPendingFunctors()
 	{
 		std::unique_lock<std::mutex> lk(mutex);
 		functors.swap(pendingFunctors);
-		//functors = std::move(pendingFunctors);
 	}
 
 	for (size_t i = 0; i < functors.size(); ++i)
 	{
 		functors[i]();
 	}
+
 	callingPendingFunctors = false;
 }
 

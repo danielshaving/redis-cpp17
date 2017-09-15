@@ -59,15 +59,18 @@ void connCallBack(const xTcpconnectionPtr& conn,void *data)
 			LOG_INFO<<"All conneted";
 			int count = 0;
 
-			for(auto it = maps.begin(); it != maps.end(); ++it)
+			for(int i = 0; i < maps.size(); i ++)
 			{
-				count ++;
-				std::string key = "key";
-				std::string str = "set " + key + std::to_string(count) +  " " + std::to_string(it->second->conn->getLoop()->getThreadId());
-				redisAsyncCommand(it->second,nullptr,nullptr,str.c_str());
-				str.clear();
-				str = "get " + key + std::to_string(count);
-				redisAsyncCommand(it->second,getCallback,nullptr,str.c_str());
+				for(auto it = maps.begin(); it != maps.end(); ++it)
+				{
+					count ++;
+					std::string key = "key";
+					std::string str = "set " + key + std::to_string(count) +  " " + std::to_string(it->second->conn->getLoop()->getThreadId());
+					redisAsyncCommand(it->second,nullptr,nullptr,str.c_str());
+					str.clear();
+					str = "get " + key + std::to_string(count);
+					redisAsyncCommand(it->second,getCallback,nullptr,str.c_str());
+				}
 			}
 
 		}
@@ -109,24 +112,19 @@ void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
 		 }
 
 		 {
-			 std::unique_lock<std::mutex> lk(hiMutex);
+			 std::unique_lock<std::mutex> lk(redis->hiMutex);
 			 cb = std::move(redis->replies.front());
-
+			 redis->replies.pop_front();
 		 }
 
-		 c->flags |= REDIS_IN_CALLBACK;
+		 //c->flags |= REDIS_IN_CALLBACK;
 		 if(cb.fn)
 		 {
 			 cb.fn(redis,reply,cb.privdata);
 		 }
 
-		 {
-			 std::unique_lock<std::mutex> lk(hiMutex);
-			 redis->replies.pop_front();
-		 }
-
 		 c->reader->fn->freeObjectFuc(reply);
-		 c->flags &= ~REDIS_IN_CALLBACK;
+		//c->flags &= ~REDIS_IN_CALLBACK;
 
 	 }
 	

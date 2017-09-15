@@ -8,12 +8,8 @@
 #include "xLog.h"
 #include "xThreadPool.h"
 
-static std::mutex hiMutex;
 class xRedisAsyncContext;
-
 typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, void*, void*);
-
-
 typedef struct redisReply 
 {
     int type;
@@ -154,7 +150,7 @@ public:
 	xRedisContextPtr c;
 	xTcpconnectionPtr conn;
 	RedisCallbackList replies;
-
+	std::mutex hiMutex;
 	struct
 	{
 		RedisCallbackList invalid;

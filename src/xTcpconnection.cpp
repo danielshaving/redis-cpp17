@@ -161,6 +161,22 @@ int xTcpconnection::getSockfd()
 	return sockfd;
 }
 
+void xTcpconnection::sendPipe(const stringPiepe & message)
+{
+	if (state == kConnected)
+	{
+		if (loop->isInLoopThread())
+		{
+			sendPipeInLoop(message.str,message.len);
+		}
+		else
+		{
+			loop->runInLoop(
+						  std::bind(&bindSendPipeInLoop,
+								  this, message.as_string()));
+		}
+	}
+}
 
 void xTcpconnection::send(const void* message, int len)
 {
@@ -174,7 +190,7 @@ void xTcpconnection::send(const stringPiepe & message)
 	{
 		if (loop->isInLoopThread())
 		{
-		  	sendInLoop(message.str,message.len);
+		  	sendPipeInLoop(message.str,message.len);
 		}
 		else
 		{
@@ -183,6 +199,27 @@ void xTcpconnection::send(const stringPiepe & message)
 						  this, message.as_string()));
 		}
 	}
+}
+
+void xTcpconnection::sendPipeInLoop(const stringPiepe & message)
+{
+	sendPipeInLoop(message.str, message.len);
+}
+
+
+
+void xTcpconnection::sendPipeInLoop(const void* message, size_t len)
+{
+	sendBuff.append(message,len);
+	if (!channel->isWriting())
+	{
+		channel->enableWriting();
+	}
+}
+
+void xTcpconnection::bindSendPipeInLoop(xTcpconnection* conn, const stringPiepe& message)
+{
+	conn->sendPipeInLoop(message.str, message.len);
 }
 
 

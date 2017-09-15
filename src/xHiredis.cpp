@@ -897,24 +897,13 @@ int redisAppendCommand(xRedisContextPtr c, const char *format, ...)
 int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void *privdata, char *cmd, size_t len)
 {
 	redisCallback cb;
-	int pvariant, hasnext;
-	char *cstr, *astr;
-	size_t clen, alen;
-	char *p;
-	sds sname;
 	cb.fn = fn;
 	cb.privdata = privdata;
-	p = nextArgument(cmd,&cstr,&clen);
-	assert(p != nullptr);
-	hasnext = (p[0] == '$');
-	pvariant = (tolower(cstr[0]) == 'p') ? 1 : 0;
-	cstr += pvariant;
-	clen -= pvariant;
-	
+
 	{
-		std::unique_lock<std::mutex> lk(hiMutex);
+		std::unique_lock<std::mutex> lk(ac->hiMutex);
 		ac->replies.push_back(std::move(cb));
-		ac->conn->send(stringPiepe(cmd,len));
+		ac->conn->sendPipe(stringPiepe(cmd,len));
 	}
 	
    	return REDIS_OK;

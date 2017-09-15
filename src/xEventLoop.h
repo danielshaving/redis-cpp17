@@ -18,7 +18,9 @@ public:
     void quit();
     void run();
     void handleRead();
+    void runPipeInLoop(Functor&& cb);
     void runInLoop(Functor&& cb);
+    void queuePipeInLoop(Functor&& cb);
     void queueInLoop(Functor&& cb);
     void wakeup();
     void updateChannel(xChannel* channel);
@@ -57,6 +59,7 @@ private:
     bool eventHandling;
     bool callingPendingFunctors;
     std::vector<Functor> pendingFunctors;
+    std::vector<Functor> pendingPipeFunctors;
 
 };
 
