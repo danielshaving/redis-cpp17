@@ -7,10 +7,9 @@ static int tests = 0, fails = 0;
 std::map<int32_t ,xRedisAsyncContextPtr> maps;
 std::vector<std::shared_ptr<xTcpClient>> vectors;
 int sessionCount = 0;
-int connetCount = 0;
 
 std::mutex  tmutex;
-
+std::atomic<int64_t >  connetCount;
 static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 {
 	redisReply *reply = (redisReply*) r;
@@ -32,10 +31,13 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 	    assert(false);
 	}
 
-	if(++connetCount == sessionCount )
+	if(++ connetCount ==   maps.size() * sessionCount )
 	{
-		LOG_INFO<<"All callback success";
+		test("Redis async multithreaded safe test");
+		test_cond(connetCount ==   maps.size() * sessionCount);
 	}
+
+
 }
 
 void connCallBack(const xTcpconnectionPtr& conn,void *data)
@@ -55,11 +57,13 @@ void connCallBack(const xTcpconnectionPtr& conn,void *data)
 
 		if(++connetCount == sessionCount )
 		{
+			test("Redis async test ");
+			test_cond(connetCount == sessionCount);
 			connetCount = 0;
-			LOG_INFO<<"All conneted";
 			int count = 0;
 
-			for(int i = 0; i < maps.size(); i ++)
+
+			for(int i = 0; i < maps.size() ; i ++)
 			{
 				for(auto it = maps.begin(); it != maps.end(); ++it)
 				{
@@ -72,7 +76,6 @@ void connCallBack(const xTcpconnectionPtr& conn,void *data)
 					redisAsyncCommand(it->second,getCallback,nullptr,str.c_str());
 				}
 			}
-
 		}
 
 	}
@@ -145,6 +148,8 @@ void connErrorCallBack(void * data)
  	}
  	else
  	{
+
+ 		connetCount = 0;
  		const char* ip = argv[1];
  		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
  		sessionCount = atoi(argv[3]);
