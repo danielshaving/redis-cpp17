@@ -21,7 +21,6 @@ public:
 	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false,bool enabledSentinel = false);
 	~xRedis();
 	void initConifg();
-	void test(void * data);
 	void handleTimeOut(void * data);
 	void handleSalveRepliTimeOut(void * data);
 	void handleSetExpire(void * data);

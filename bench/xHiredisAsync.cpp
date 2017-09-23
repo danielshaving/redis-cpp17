@@ -1,5 +1,6 @@
 #include "xHiredis.h"
 
+
 static int tests = 0, fails = 0;
 #define test(_s) { printf("#%02d ", ++tests); printf(_s); }
 #define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
@@ -9,7 +10,7 @@ std::vector<std::shared_ptr<xTcpClient>> vectors;
 int sessionCount = 0;
 
 std::mutex  tmutex;
-std::atomic<int64_t >  connetCount;
+std::atomic<int64_t>  connetCount;
 static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 {
 	redisReply *reply = (redisReply*) r;
@@ -120,14 +121,12 @@ void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
 			 redis->replies.pop_front();
 		 }
 
-		 //c->flags |= REDIS_IN_CALLBACK;
 		 if(cb.fn)
 		 {
 			 cb.fn(redis,reply,cb.privdata);
 		 }
 
 		 c->reader->fn->freeObjectFuc(reply);
-		//c->flags &= ~REDIS_IN_CALLBACK;
 
 	 }
 	

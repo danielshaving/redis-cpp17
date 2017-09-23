@@ -45,12 +45,6 @@ void xRedis::replyCheck()
 
 }
 
-void xRedis::test(void * data)
-{
-	count++;
-	LOG_INFO << count;
-}
-
 void xRedis::handleTimeOut(void * data)
 {
 	loop.quit();

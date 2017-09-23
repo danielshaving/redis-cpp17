@@ -14,14 +14,6 @@ void xPriorityQueue::dtor()
 {
 	if(p)
 	{
-		for(int i = 0 ; i < a; i ++)
-		{
-			if(p[i] == nullptr)
-			{
-				continue;
-			}
-			zfree(p[i]);
-		}
 		zfree(p);
 	}
 }

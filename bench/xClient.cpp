@@ -10,10 +10,10 @@
 
 class xClient;
 
-class xSession:noncopyable
+class xConnect:noncopyable
 {
 public:
-	xSession(xEventLoop *loop,
+	xConnect(xEventLoop *loop,
 		const char *ip,uint16_t port,xClient *owner)
 		:cli(loop,nullptr),
 		ip(ip),
@@ -23,9 +23,9 @@ public:
 		bytesWritten(0),
 		messagesRead(0)
 	{
-		cli.setConnectionCallback(std::bind(&xSession::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
-		cli.setMessageCallback(std::bind(&xSession::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-		cli.setConnectionErrorCallBack(std::bind(&xSession::connErrorCallBack, this));
+		cli.setConnectionCallback(std::bind(&xConnect::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
+		cli.setMessageCallback(std::bind(&xConnect::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+		cli.setConnectionErrorCallBack(std::bind(&xConnect::connErrorCallBack, this));
 	}
 
 	void start()
@@ -40,12 +40,12 @@ public:
 
 	int64_t getBytesRead() {  return bytesRead; }
 	int64_t getMessagesRead() { return messagesRead; }
-	
+
 private:
 
 	void connCallBack(const xTcpconnectionPtr& conn, void *data);
 	void connErrorCallBack()
-	{	
+	{
 		//LOG_WARN<<"tcp connect failure";
 	}
 
@@ -57,7 +57,7 @@ private:
 		conn->send(buf);
 		buf->retrieveAll();
 	}
-	
+
 	xTcpClient cli;
 	const char *ip;
 	uint16_t port;
@@ -65,7 +65,7 @@ private:
 	int64_t bytesRead;
 	int64_t bytesWritten;
 	int64_t messagesRead;
-  
+
 };
 
 class xClient:noncopyable
@@ -92,9 +92,9 @@ public:
 
 		for(int i = 0 ; i < sessionCount; i ++)
 		{
-			std::shared_ptr<xSession> vsession (new xSession(threadPool.getNextLoop(),ip,port,this));
+			std::shared_ptr<xConnect> vsession (new xConnect(threadPool.getNextLoop(),ip,port,this));
 			vsession->start();
-     			sessions.push_back(vsession);
+    			sessions.push_back(vsession);
 			numConencted++;
 		}
 	}
@@ -107,7 +107,7 @@ public:
 		}
 	}
 
-	 
+
 	void onDisconnect(const xTcpconnectionPtr& conn)
 	{
 		numConencted--;
@@ -139,26 +139,25 @@ private:
 	void quit()
 	{
 		loop->queueInLoop(std::bind(&xEventLoop::quit,loop));
-		
 	}
 
 	void handlerTimeout(void * data)
 	{
 		 LOG_WARN << "stop";
-		 std::for_each(sessions.begin(),sessions.end(),std::mem_fn(&xSession::stop));
+		 std::for_each(sessions.begin(),sessions.end(),std::mem_fn(&xConnect::stop));
 	}
-	
+
 	xEventLoop *loop;
 	xThreadPool threadPool;
 	int sessionCount;
 	int timeOut;
-	std::vector<std::shared_ptr<xSession>> sessions;
+	std::vector<std::shared_ptr<xConnect>> sessions;
 	std::string message;
 	std::atomic<int> numConencted;
 };
 
 
-void xSession::connCallBack(const xTcpconnectionPtr & conn,void * data)
+void xConnect::connCallBack(const xTcpconnectionPtr & conn,void * data)
 {
 	if (conn->connected())
 	{
@@ -180,7 +179,7 @@ int main(int argc,char * argv[])
 		fprintf(stderr, "<sessions> <time>\n");
 	}
 	else
-	{			
+	{
 		LOG_INFO << "ping pong xClient pid = " << getpid() << ", tid = " << xCurrentThread::tid();
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
@@ -193,7 +192,7 @@ int main(int argc,char * argv[])
 
 		xClient cli(&loop, ip,port, blockSize, sessionCount, timeout, threadCount);
 		loop.run();
-	
+
 	}
 	return 0;
 }

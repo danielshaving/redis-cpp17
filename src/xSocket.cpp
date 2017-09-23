@@ -29,7 +29,6 @@ xSocket::~xSocket()
 int  xSocket::getListenFd()
 {
 	return listenSocketFd;
-
 }
 
 

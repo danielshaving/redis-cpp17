@@ -1,11 +1,11 @@
 #include "xHiredis.h"
-static int tests = 0, fails = 0;
-#define test(_s) { printf("#%02d ", ++tests); printf(_s); }
-#define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
 
 const char * ip;
 int32_t port;
 
+static int tests = 0, fails = 0;
+#define test(_s) { printf("#%02d ", ++tests); printf(_s); }
+#define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
 
 void testCommand(xRedisContextPtr c)
 {
