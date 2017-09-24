@@ -2,15 +2,13 @@
 #include "xHiredis.h"
 
 int clients = 100;
-int requests = 1000000;
+int requests = 10000;
 int threadCount = 4;
 int valueLen = 3;
 std::mutex mtx;
 std::condition_variable condition;
-
+std::atomic<int> connShutDown;
 std::atomic<int> connectCount;
-std::atomic<int> ack;
-std::atomic<int> sent;
 class xClient : noncopyable
 {
 public:
@@ -22,25 +20,36 @@ public:
 
 	xClient(xEventLoop *loop,const char *ip,uint16_t port,Operation  op)
 	:client(loop,nullptr),
-	 operation(op)
+	 operation(op),
+	 ack(0),
+	 sent(0)
 	{
 		client.setConnectionCallback(std::bind(&xClient::connCallBack,this,std::placeholders::_1,std::placeholders::_2));
 		client.setMessageCallback(std::bind(&xClient::readCallBack,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
 		client.connect(ip,port);
 	}
 
+
+	void countDown()
+	{
+		connShutDown++;
+		std::unique_lock <std::mutex> lck(mtx);
+		condition.notify_one();
+	}
+
 	void connCallBack(const xTcpconnectionPtr& conn,void *data)
 	{
 		if(conn->connected())
 		{
-				connectCount++;
-				this->conn = conn;
-				std::unique_lock <std::mutex> lck(mtx);
-				condition.notify_one();
+			connectCount++;
+			this->conn = conn;
+			std::unique_lock <std::mutex> lck(mtx);
+			condition.notify_one();
 		}
 		else
 		{
-			//this->conn.reset();
+			this->conn.reset();
+			client.getLoop()->queueInLoop(std::bind(&xClient::countDown, this));
 		}
 	}
 
@@ -97,8 +106,7 @@ public:
 
 		if(ack == requests)
 		{
-			std::unique_lock <std::mutex> lck(mtx);
-			condition.notify_one();
+			conn->shutdown();
 		}
 	}
 
@@ -133,6 +141,9 @@ public:
 	xTcpconnectionPtr conn;
 	Operation operation;
 
+	int ack;
+	int sent;
+
 };
 
 std::vector<std::shared_ptr<xClient>> clientPtr;
@@ -147,8 +158,7 @@ int main(int argc, char* argv[])
 	{
 		LOG_INFO<<"Connecting";
 		connectCount = 0;
-		ack = 0;
-		sent = 0;
+		connShutDown = 0;
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		std::string op  = argv[3];
@@ -193,13 +203,11 @@ int main(int argc, char* argv[])
 
 		{
 			std::unique_lock <std::mutex> lck(mtx);
-			while(ack < requests)
+			while(connShutDown  < clients)
 			{
 				condition.wait(lck);
 			}
 		}
-
-		clientPtr.clear();
 
 		xTimestamp end = xTimestamp::now();
 		LOG_WARN<<"All finished";

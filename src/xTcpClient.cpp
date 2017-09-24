@@ -24,7 +24,12 @@ namespace detail
 
 	void removeConnection(xEventLoop* loop, const xTcpconnectionPtr& conn)
 	{
-	  loop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
+	 	loop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
+	}
+
+	void removeConnector(const xConnectorPtr& connector)
+	{
+
 	}
 
 }
@@ -51,6 +56,7 @@ xTcpClient::~xTcpClient()
 	  else
 	  {
 	   	 connector->stop();
+	   	 loop->runAfter(1, nullptr,false,std::bind(&detail::removeConnector, connector));
 	  }
 }
 

@@ -22,7 +22,7 @@ public:
 	void setMessageCallback(MessageCallback&&  cb){ messageCallback = std::move(cb); }
 	void setWriteCompleteCallback(WriteCompleteCallback&& cb) { writeCompleteCallback = std::move(cb); }
 
-
+	xEventLoop * getLoop(){ return loop; }
 public:
 
 	void errorConnection();
