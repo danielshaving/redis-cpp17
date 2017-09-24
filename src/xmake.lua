@@ -1,4 +1,3 @@
-
 -- define target: libxredis.a
 target("xredis")
 
@@ -6,7 +5,7 @@ target("xredis")
     set_kind("static")
 
     -- add files
-    add_files("*.cpp")
+    add_files("*.cpp|xMain.cpp")
 
     -- add headers
     add_headers("*.h")
@@ -31,6 +30,6 @@ target("xredis_server")
     add_deps("xredis")
 
     -- add files
-    add_files("*.cpp")
+    add_files("xMain.cpp")
 
 
