@@ -4,6 +4,9 @@ set_targetdir("$(buildir)/bench")
 -- define target
 target("bench")
 
+    -- do not build by default
+    set_default(false)
+
     -- set kind
     set_kind("static")
 
@@ -25,6 +28,9 @@ for _, name in ipairs({"xHiredisClient", "xServer", "xBench", "xHiredisSync",
                        "xHiredisAsync", "xLogBench", "xRoundTrip", "xSdsBench", "xRedisBenchMark", "xClient"}) do
     target(name)
 
+        -- do not build by default
+        set_default(false)
+
         -- set kind
         set_kind("binary")
 
@@ -40,3 +46,9 @@ for _, name in ipairs({"xHiredisClient", "xServer", "xBench", "xHiredisSync",
         end
 end
 
+-- define targets
+target("benchmark")
+    set_default(false)
+    add_deps("xHiredisClient", "xServer", "xBench")
+    add_deps("xHiredisSync", "xHiredisAsync", "xLogBench")
+    add_deps("xRoundTrip", "xSdsBench", "xRedisBenchMark", "xClient")
