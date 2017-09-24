@@ -28,13 +28,14 @@ xThread::xThread(const ThreadInitCallback& cb)
 
 xThread::~xThread()
 {
-	delete xthread;
+
 }
 
 
 xEventLoop *xThread::startLoop()
 {
-	xthread = new std::thread(std::bind(&xThread::threadFunc,this));
+	threads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xThread::threadFunc,this)));
+	threads->detach();
 	{
 		std::unique_lock<std::mutex> lk(mutex);
 		while (loop == nullptr)

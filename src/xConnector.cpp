@@ -91,7 +91,10 @@ void xConnector::connect(const char *ip, int16_t port)
       LOG_WARN<<strerror(savedErrno);
       ::close(sockfd);
       setState(kDisconnected);
-      errorConnectionCallback();
+      if(errorConnectionCallback)
+      {
+    	  	  errorConnectionCallback();
+      }
       break;
   }
 }

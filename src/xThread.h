@@ -18,7 +18,7 @@ private:
 	void threadFunc();
 	xEventLoop *loop;
 	bool exiting;
-	std::thread * xthread;
+	std::shared_ptr<std::thread> threads;
 	mutable std::mutex mutex;
 	std::condition_variable condition;
 	ThreadInitCallback callback;

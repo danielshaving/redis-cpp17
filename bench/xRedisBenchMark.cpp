@@ -1,46 +1,215 @@
-//#pragma once
-//#include "xHiredis.h"
-//
-//class xClient : noncopyable
-//{
-//public:
-//	xClient(xEventLoop *loop,int requests,int valueLen)
-//	{
-//
-//	}
-//
-//};
-//
-//int main(int argc, char* argv[])
-//{
-//	if (argc < 2)
-//	{
-//		fprintf(stderr, "Usage: server <address> <port>\n");
-//	}
-//	else
-//	{
-//
-//		LOG_INFO<<"Connecting";
-//		int clients = 100;
-//		int requests = 100000;
-//		int threadCount = 4;
-//		int valueLen =3;
-//
-//		xEventLoop loop;
-//		xThreadPool pool(&loop);
-//		pool.start();
-//
-//		for(int i = 0; i< clients; i++)
-//		{
-//			std::shared_ptr<xClient> client(new xClient());
-//
-//		}
-//		LOG_INFO<<"Client all connected";
-//
-//	}
-//
-//	return 0;
-//}
-//
-//
-//
+#pragma once
+#include "xHiredis.h"
+
+int clients = 100;
+int requests = 1000000;
+int threadCount = 4;
+int valueLen = 3;
+std::mutex mtx;
+std::condition_variable condition;
+
+std::atomic<int> connectCount;
+std::atomic<int> ack;
+std::atomic<int> sent;
+class xClient : noncopyable
+{
+public:
+	enum Operation
+	{
+		kGet,
+		kSet,
+	};
+
+	xClient(xEventLoop *loop,const char *ip,uint16_t port,Operation  op)
+	:client(loop,nullptr),
+	 operation(op)
+	{
+		client.setConnectionCallback(std::bind(&xClient::connCallBack,this,std::placeholders::_1,std::placeholders::_2));
+		client.setMessageCallback(std::bind(&xClient::readCallBack,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+		client.connect(ip,port);
+	}
+
+	void connCallBack(const xTcpconnectionPtr& conn,void *data)
+	{
+		if(conn->connected())
+		{
+				connectCount++;
+				this->conn = conn;
+				std::unique_lock <std::mutex> lck(mtx);
+				condition.notify_one();
+		}
+		else
+		{
+			//this->conn.reset();
+		}
+	}
+
+	void readCallBack(const xTcpconnectionPtr& conn,xBuffer * buffer,void *data)
+	{
+		if(operation == kSet)
+		{
+			while(buffer->readableBytes() > 0)
+			{
+				const char * end = static_cast<const char*>(memmem(buffer->peek(),
+                        buffer->readableBytes(),
+                        "+OK\r\n", 5));
+
+				if(end)
+				{
+					buffer->retrieveUntil(end+5);
+					 ++ack;
+					 if (sent < requests)
+					  {
+						send();
+					  }
+
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+		else
+		{
+			while(buffer->readableBytes() > 0)
+			{
+				const char * end = static_cast<const char*>(memmem(buffer->peek(),
+						buffer->readableBytes(),
+						"$3\r\nbar\r\n", 9));
+
+				if(end)
+				{
+					buffer->retrieveUntil(end+9);
+					 ++ack;
+					 if (sent < requests)
+					  {
+						send();
+					  }
+
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
+		if(ack == requests)
+		{
+			std::unique_lock <std::mutex> lck(mtx);
+			condition.notify_one();
+		}
+	}
+
+
+	void send()
+	{
+		char *cmd;
+		int argc;
+		const char *argv[3];
+		if(operation == kSet)
+		{
+			argv[0] = "SET";
+			argv[1] = "foo\0xxx";
+			argv[2] = "bar";
+			argc = 3;
+		}
+		else
+		{
+			argv[0] = "GET";
+			argv[1] = "foo\0xxx";
+			argc = 2;
+		}
+
+		sent++;
+		int len = redisFormatCommandArgv(&cmd,argc,argv,nullptr);
+		conn->send(cmd,len);
+		zfree(cmd);
+
+	}
+
+	xTcpClient client;
+	xTcpconnectionPtr conn;
+	Operation operation;
+
+};
+
+std::vector<std::shared_ptr<xClient>> clientPtr;
+
+int main(int argc, char* argv[])
+{
+	if (argc < 3)
+	{
+		fprintf(stderr, "Usage: server <address> <port> <set,get>\n");
+	}
+	else
+	{
+		LOG_INFO<<"Connecting";
+		connectCount = 0;
+		ack = 0;
+		sent = 0;
+		const char* ip = argv[1];
+		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
+		std::string op  = argv[3];
+		xEventLoop loop;
+		xThreadPool pool(&loop);
+		pool.setThreadNum(threadCount);
+		pool.start();
+
+		xClient::Operation opertion;
+		if(op == "set")
+		{
+			opertion = xClient::kSet;
+		}
+		else
+		{
+			opertion = xClient::kGet;
+		}
+
+
+		for(int i = 0; i< clients; i++)
+		{
+			std::shared_ptr<xClient> client(new xClient(pool.getNextLoop(),ip,port,opertion));
+			clientPtr.push_back(client);
+		}
+
+
+		{
+			std::unique_lock <std::mutex> lck(mtx);
+			while(connectCount < clients)
+			{
+				condition.wait(lck);
+			}
+		}
+
+		LOG_INFO<<"Client all connected";
+
+		xTimestamp start = xTimestamp::now();
+		for(auto it = clientPtr.begin(); it != clientPtr.end(); ++it)
+		{
+			(*it)->send();
+		}
+
+		{
+			std::unique_lock <std::mutex> lck(mtx);
+			while(ack < requests)
+			{
+				condition.wait(lck);
+			}
+		}
+
+		clientPtr.clear();
+
+		xTimestamp end = xTimestamp::now();
+		LOG_WARN<<"All finished";
+		double seconds = timeDifference(end, start);
+		LOG_WARN << seconds << " sec";
+		LOG_WARN << 1.0 * clients * requests / seconds << " QPS";
+	}
+
+	return 0;
+}
+
+
+
