@@ -36,7 +36,7 @@ public:
   int  removeAndResetChannel();
 
 private:
- enum States { kDisconnected, kConnecting, kConnected };
+  enum States { kDisconnected, kConnecting, kConnected };
 public:
   void setState(States  s) { state = s; }
   xEventLoop* loop;

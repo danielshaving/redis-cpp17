@@ -2,9 +2,9 @@
 #include "all.h"
 
 class xBuffer;
+class xRedisAsyncContext;
 class xTcpconnection;
 class xConnector;
-class xRedisAsyncContext;
 class xRedisContext;
 class xRedisReader;
 

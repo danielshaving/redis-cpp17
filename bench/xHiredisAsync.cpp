@@ -5,12 +5,12 @@ static int tests = 0, fails = 0;
 #define test(_s) { printf("#%02d ", ++tests); printf(_s); }
 #define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
 
-std::map<int32_t ,xRedisAsyncContextPtr> maps;
 std::vector<std::shared_ptr<xTcpClient>> vectors;
 int sessionCount = 0;
 
-std::mutex  tmutex;
 std::atomic<int64_t>  connetCount;
+
+
 static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 {
 	redisReply *reply = (redisReply*) r;
@@ -28,109 +28,18 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 	string2ll(reply->str,reply->len,&threadId);
 	if(threadId != c->conn->getLoop()->getThreadId())
 	{
-		printf(" %d %d\n",threadId,c->conn->getLoop()->getThreadId());
+		printf(" %d %d\n",threadId, getpid());
 	    assert(false);
 	}
 
-	if(++ connetCount ==   maps.size() * sessionCount )
+	if(++ connetCount ==   sessionCount )
 	{
-		test("Redis async multithreaded safe test");
-		test_cond(connetCount ==   maps.size() * sessionCount);
+		test_cond(true);
 	}
 
 
 }
 
-void connCallBack(const xTcpconnectionPtr& conn,void *data)
-{
-	if(conn->connected())
-	{
-		//LOG_INFO<<"Connect success";
-		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
-		ac->c->reader->buf = &(conn->recvBuff);
-		ac->conn = conn;
-		ac->c->fd = conn->getSockfd();
-
-		{
-			std::unique_lock<std::mutex> lk(tmutex);
-			maps.insert(std::make_pair(conn->getSockfd(),ac));
-		}
-
-		if(++connetCount == sessionCount )
-		{
-			test("Redis async test ");
-			test_cond(connetCount == sessionCount);
-			connetCount = 0;
-			int count = 0;
-
-
-			for(int i = 0; i < maps.size() ; i ++)
-			{
-				for(auto it = maps.begin(); it != maps.end(); ++it)
-				{
-					count ++;
-					std::string key = "key";
-					std::string str = "set " + key + std::to_string(count) +  " " + std::to_string(it->second->conn->getLoop()->getThreadId());
-					redisAsyncCommand(it->second,nullptr,nullptr,str.c_str());
-					str.clear();
-					str = "get " + key + std::to_string(count);
-					redisAsyncCommand(it->second,getCallback,nullptr,str.c_str());
-				}
-			}
-		}
-
-	}
-	else
-	{
-		//LOG_INFO<<"Connect disconnect";
-		std::unique_lock<std::mutex> lk(tmutex);
-		maps.erase(conn->getSockfd());
-	}
-
-}
-
-
-void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
-{
-	xRedisAsyncContextPtr redis;
-	{
-		std::unique_lock<std::mutex> lk(mutex);
-		auto it = maps.find(conn->getSockfd());
-		if(it == maps.end())
-		{
-			assert(false);
-		}
-
-		redis = it->second;
-	}
-
-	 redisCallback cb;
-	 xRedisContextPtr  c = (redis->c);
-	 void  *reply = nullptr;
-	 int status;
-	 while((status = redisGetReply(c,&reply)) == REDIS_OK)
-	 {
-		 if(reply == nullptr)
-		 {
-			 break;
-		 }
-
-		 {
-			 std::unique_lock<std::mutex> lk(redis->hiMutex);
-			 cb = std::move(redis->replies.front());
-			 redis->replies.pop_front();
-		 }
-
-		 if(cb.fn)
-		 {
-			 cb.fn(redis,reply,cb.privdata);
-		 }
-
-		 c->reader->fn->freeObjectFuc(reply);
-
-	 }
-	
-}
 
 
 void connErrorCallBack(void * data)
@@ -155,22 +64,21 @@ void connErrorCallBack(void * data)
  		int threadCount = atoi(argv[4]);
 
  		xEventLoop loop;
- 		xThreadPool pool(&loop);
-		if(threadCount > 1)
+ 		test("Redis async test ");
+		xHiredisAsync redisAsync(&loop,threadCount,sessionCount,ip,port);
+		int count = 0;
+		test_cond(true);
+		test("Redis async multithreaded safe test");
+		for(auto it = redisAsync.redisMaps.begin(); it != redisAsync.redisMaps.end(); it ++)
 		{
-			pool.setThreadNum(threadCount);
+			count ++;
+			std::string key = "key";
+			std::string str = "set " + key + std::to_string(count) +  " " + std::to_string(it->second->conn->getLoop()->getThreadId());
+			redisAsyncCommand(it->second,nullptr,nullptr,str.c_str());
+			str.clear();
+			str = "get " + key + std::to_string(count);
+			redisAsyncCommand(it->second,getCallback,nullptr,str.c_str());
 		}
-
-		pool.start();
-
- 		for(int i = 0; i < sessionCount; i++)
- 		{
- 			std::shared_ptr<xTcpClient> client(new xTcpClient(pool.getNextLoop(),nullptr));
- 			client->setConnectionCallback(connCallBack);
- 			client->setMessageCallback(readCallBack);
- 			client->connect(ip,port);
- 			vectors.push_back(client);
- 		}
 
  		loop.run();
  	}

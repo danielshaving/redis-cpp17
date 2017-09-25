@@ -193,7 +193,115 @@ int redisReaderGetReply(const xRedisReaderPtr & r,void * *reply);
 void __redisSetError(const xRedisContextPtr & c, int type, const char * str);
 
 
+class  xHiredisAsync
+{
+public:
+	xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port)
+	:connectCount(0),
+	loop(loop),
+	pool(loop)
+	{
+		if(threadCount > 1)
+		{
+			pool.setThreadNum(threadCount);
+		}
+
+		pool.start();
+
+ 		for(int i = 0; i < sessionCount; i++)
+ 		{
+ 			std::shared_ptr<xTcpClient> client(new xTcpClient(pool.getNextLoop(),nullptr));
+ 			client->setConnectionCallback(std::bind(&xHiredisAsync::redisconnCallBack,this,std::placeholders::_1,std::placeholders::_2));
+ 			client->setMessageCallback(std::bind(&xHiredisAsync::redisReadCallBack,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+ 			client->connect(ip,port);
+ 			vectors.push_back(client);
+ 		}
+
+ 		{
+ 			std::unique_lock <std::mutex> lck(rtx);
+			while(connectCount  < sessionCount)
+			{
+				condition.wait(lck);
+			}
+ 		}
+	}
+
+	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
+	{
+		xRedisAsyncContextPtr redis;
+		{
+			std::unique_lock <std::mutex> lck(rmutex);
+			auto it = redisMaps.find(conn->getSockfd());
+			assert(it != redisMaps.end());
+			redis = it->second;
+		}
+
+		 redisCallback cb;
+		 void  *reply = nullptr;
+		 int status;
+		 while((status = redisGetReply(redis->c,&reply)) == REDIS_OK)
+		 {
+			 if(reply == nullptr)
+			 {
+				 break;
+			 }
+
+			 {
+				 std::unique_lock<std::mutex> lk(redis->hiMutex);
+				 cb = std::move(redis->replies.front());
+				 redis->replies.pop_front();
+			 }
+
+			 if(cb.fn)
+			 {
+				 cb.fn(redis,reply,cb.privdata);
+			 }
+
+			 redis->c->reader->fn->freeObjectFuc(reply);
+
+		 }
+
+	}
+
+	void redisconnCallBack(const xTcpconnectionPtr& conn,void *data)
+	{
+		if(conn->connected())
+		{
+			xRedisAsyncContextPtr ac (new xRedisAsyncContext());
+			ac->c->reader->buf = &(conn->recvBuff);
+			ac->conn = conn;
+			ac->c->fd = conn->getSockfd();
+
+			{
+				std::unique_lock<std::mutex> lk(rmutex);
+				redisMaps.insert(std::make_pair(conn->getSockfd(),ac));
+			}
+
+			{
+				std::unique_lock <std::mutex> lck(rtx);
+				connectCount++;
+				condition.notify_one();
+			}
+
+		}
+		else
+		{
+			{
+					std::unique_lock<std::mutex> lk(rmutex);
+					redisMaps.erase(conn->getSockfd());
+			}
+		}
+
+	}
 
 
-
-
+public:
+	int connectCount;
+	xEventLoop *loop;
+	xThreadPool pool;
+	std::vector<std::shared_ptr<xTcpClient>> vectors;
+	std::map<int32_t,xRedisAsyncContextPtr> redisMaps;
+	std::mutex rmutex;
+	std::mutex rtx;
+	std::condition_variable condition;
+};
