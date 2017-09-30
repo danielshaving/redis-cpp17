@@ -98,7 +98,7 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 		if(redis->repliEnabled)
 		{
-			MutexLockGuard mu(redis->slaveMutex);
+			std::unique_lock <std::mutex> lck(redis->slaveMutex);
 			for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); it++)
 			{
 				if(sendSlaveBuf.readableBytes() > 0 )
@@ -155,7 +155,7 @@ int xSession::processCommand()
 				const char * key = robjs[1]->ptr;
 				int hashslot = redis->clus.keyHashSlot((char*)key, sdsllen(key));
 				
-				MutexLockGuard mu(redis->clusterMutex);
+				std::unique_lock <std::mutex> lck(redis->clusterMutex);
 				if(redis->clusterRepliMigratEnabled)
 				{
 					for(auto it = redis->clus.migratingSlosTos.begin(); it != redis->clus.migratingSlosTos.end(); it ++)
@@ -225,7 +225,7 @@ jump:
 	if(redis->repliEnabled)
 	{
 		{
-			MutexLockGuard mu(redis->slaveMutex);
+			std::unique_lock <std::mutex> lck(redis->slaveMutex);
 			auto it = redis->salvetcpconnMaps.find(conn->getSockfd());
 			if(it !=  redis->salvetcpconnMaps.end())
 			{
@@ -273,7 +273,7 @@ jump:
 			{
 				if(!fromSalve)
 				{
-					MutexLockGuard mu(redis->slaveMutex);
+					std::unique_lock <std::mutex> lck(redis->slaveMutex);
 					if(redis->salveCount <  redis->salvetcpconnMaps.size())
 					{
 						redis->structureRedisProtocol(redis->slaveCached,robjs);

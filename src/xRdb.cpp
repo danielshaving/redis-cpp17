@@ -362,8 +362,8 @@ int rdbSaveSSet(xRio *rdb,xRedis * redis)
 	for(auto it = redis->setShards.begin(); it != redis->setShards.end(); it++)
 	{
 		auto &map = (*it).set;
-		MutexLock & mu = (*it).mutex;
-		MutexLockGuard lock(mu);
+		std::mutex & mu = (*it).mtx;
+		std::unique_lock <std::mutex> lck(mu);
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
@@ -398,8 +398,8 @@ int rdbSaveSortSet(xRio *rdb,xRedis * redis)
 	for(auto it = redis->sortSetShards.begin(); it != redis->sortSetShards.end(); it++)
 	{
 		auto &map = (*it).set;
-		MutexLock & mu = (*it).mutex;
-		MutexLockGuard lock(mu);
+		std::mutex & mu = (*it).mtx;
+		std::unique_lock <std::mutex> lck(mu);
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
@@ -437,8 +437,8 @@ int rdbSaveSet(xRio *rdb,xRedis * redis)
 	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); it++)
 	{
 		auto &map = (*it).setMap;
-		MutexLock & mu = (*it).mutex;
-		MutexLockGuard lock(mu);
+		std::mutex & mu = (*it).mtx;
+		std::unique_lock <std::mutex> lck(mu);
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			 if (rdbSaveKeyValuePair(rdb,iter->first,iter->second,0) == -1)
@@ -460,8 +460,8 @@ int rdbSaveHset(xRio *rdb,xRedis * redis)
 	for(auto it = redis->hsetMapShards.begin(); it != redis->hsetMapShards.end(); it++)
 	{
 		auto &map = (*it).hsetMap;
-		MutexLock & mu = (*it).mutex;
-		MutexLockGuard lock(mu);
+		std::mutex & mu = (*it).mtx;
+		std::unique_lock <std::mutex> lck(mu);
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
@@ -521,10 +521,10 @@ int rdbLoadSet(xRio *rdb,xRedis * redis)
 
 		key->calHash();
 		size_t hash = key->hash;
-		MutexLock &mu = redis->setMapShards[hash% redis->kShards].mutex;
+		std::mutex &mu = redis->setMapShards[hash% redis->kShards].mtx;
 		auto & setMap = redis->setMapShards[hash % redis->kShards].setMap;
 		{
-			MutexLockGuard lock(mu);
+			std::unique_lock <std::mutex> lck(mu);
 			auto it = setMap.find(key);
 			if(it == setMap.end())
 			{
@@ -584,9 +584,9 @@ int rdbLoadHset(xRio *rdb,xRedis * redis)
 
 		key->calHash();
 		size_t hash = key->hash;
-		MutexLock &mu = redis->hsetMapShards[hash% redis->kShards].mutex;
+		std::mutex &mu = redis->hsetMapShards[hash% redis->kShards].mtx;
 		auto & hsetMap = redis->hsetMapShards[hash % redis->kShards].hsetMap;
-		MutexLockGuard lock(mu);
+		std::unique_lock <std::mutex> lck(mu);
 		auto it = hsetMap.find(key);
 		if(it == hsetMap.end())
 		{
@@ -655,9 +655,9 @@ int rdbLoadSSet(xRio * rdb,xRedis * redis)
 
 		key->calHash();
 		size_t hash = key->hash;
-		MutexLock &mu = redis->setShards[hash% redis->kShards].mutex;
+		std::mutex &mu = redis->setShards[hash% redis->kShards].mtx;
 		auto & set = redis->setShards[hash % redis->kShards].set;
-		MutexLockGuard lock(mu);
+		std::unique_lock <std::mutex> lck(mu);
 		auto it = set.find(key);
 		if(it == set.end())
 		{
@@ -705,11 +705,11 @@ int rdbLoadSortSet(xRio * rdb,xRedis * redis)
 
 		key->calHash();
 		size_t hash = key->hash;
-		MutexLock &mu = redis->sortSetShards[hash% redis->kShards].mutex;
+		std::mutex &mu = redis->sortSetShards[hash% redis->kShards].mtx;
 		auto &set = redis->sortSetShards[hash % redis->kShards].set;
 		auto &sset =  redis->sortSetShards[hash % redis->kShards].sset;
 		{
-			MutexLockGuard lock(mu);	
+			std::unique_lock <std::mutex> lck(mu);	
 			auto it = set.find(key);
 			if(it == set.end())
 			{

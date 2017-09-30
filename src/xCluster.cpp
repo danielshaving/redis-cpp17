@@ -25,7 +25,7 @@ void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, voi
 			{
 				std::shared_ptr<xSession> session(new xSession(redis, conn));
 				{
-					MutexLockGuard lk(redis->mutex);
+					std::unique_lock <std::mutex> lck(redis->mtx);
 					redis->sessions[conn->getSockfd()] = session;
 				}
 
@@ -165,7 +165,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 	int32_t fd = 0;
 	std::string ipPort = ip + "::" + std::to_string(port);
 	{
-		MutexLockGuard lk(redis->clusterMutex);
+		std::unique_lock <std::mutex> lck(redis->clusterMutex);
 		auto it = migratingSlosTos.find(ipPort);
 		if(it == migratingSlosTos.end())
 		{
@@ -207,7 +207,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 	{
 		{
 			rObj * o = createStringObject("set", 3);
-			MutexLockGuard lock((*it).mutex);
+			std::unique_lock <std::mutex> lck((*it).mtx);
 			for(auto iter = (*it).setMap.begin(); iter !=  (*it).setMap.end(); )
 			{
 				unsigned int slot = keyHashSlot((char*)iter->first->ptr,sdsllen(iter->first->ptr));
@@ -230,7 +230,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 		}
 
 		{
-			MutexLockGuard lock(redis->clusterMutex);
+			std::unique_lock <std::mutex> lck(redis->clusterMutex);
 			auto iter = redis->clustertcpconnMaps.find(fd);
 			if(iter == redis->clustertcpconnMaps.end())
 			{
@@ -253,7 +253,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 	
 	{
 
-		MutexLockGuard lock(redis->clusterMutex);	
+		std::unique_lock <std::mutex> lck(redis->clusterMutex);	
 		if(redis->clusterMigratCached.readableBytes()> 0 )
 		{
 			
@@ -322,7 +322,7 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 			robj.push_back(c);
 			robj.push_back(m);
 
-			MutexLockGuard lk(redis->clusterMutex);
+			std::unique_lock <std::mutex> lck(redis->clusterMutex);
 			for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); it++)
 			{
 				structureProtocolSetCluster(it->second->host, it->second->port, sendBuf, robj,conn);
@@ -339,7 +339,7 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 
 		std::shared_ptr<xSession> session(new xSession(redis, conn));
 		{
-			MutexLockGuard lk(redis->mutex);
+			std::unique_lock <std::mutex> lck(redis->mtx);
 			redis->sessions[conn->getSockfd()] = session;
 		}
 
@@ -349,7 +349,7 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 	else
 	{
 		{
-			MutexLockGuard lc(redis->clusterMutex);
+			std::unique_lock <std::mutex> lck(redis->clusterMutex);
 			redis->clustertcpconnMaps.erase(conn->getSockfd());
 			for (auto it = tcpvectors.begin(); it != tcpvectors.end(); it++)
 			{

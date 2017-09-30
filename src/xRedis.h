@@ -8,7 +8,6 @@
 #include "xSession.h"
 #include "xObject.h"
 #include "xRdb.h"
-#include "xPosix.h"
 #include "xLog.h"
 #include "xSocket.h"
 #include "xReplication.h"
@@ -106,32 +105,33 @@ public:
 	struct SetMapLock
 	{		
 		SetMap setMap;
-		mutable MutexLock mutex;
+		mutable std::mutex mtx;
+		
 	};
 
 	struct HsetMapLock
 	{
 		HsetMap hsetMap;
-		mutable MutexLock mutex;
+		mutable std::mutex mtx;
 	};
 
 	struct SetLock
 	{
 		Set set;
-		mutable MutexLock mutex;
+		mutable std::mutex mtx;
 	};
 
 	struct SortSetLock
 	{
 		SortSet set;
 		SSet sset;
-		mutable MutexLock mutex;
+		mutable std::mutex mtx;
 	};
 
 	struct PubSubLock
 	{
 		PubSub pubSub;
-		mutable MutexLock mutex;
+		mutable std::mutex mtx;
 	};
 
 	const static int kShards = 4096;
@@ -143,11 +143,11 @@ public:
 
 	xEventLoop loop;
 	xTcpServer server;
-	mutable MutexLock mutex;
-	mutable MutexLock slaveMutex;
-	mutable MutexLock expireMutex;
-	mutable MutexLock sentinelMutex;
-	mutable MutexLock clusterMutex;
+	mutable  std::mutex mtx;
+	mutable  std::mutex slaveMutex;
+	mutable  std::mutex expireMutex;
+	mutable  std::mutex sentinelMutex;
+	mutable  std::mutex clusterMutex;
 
 
 	std::atomic<int>	  salveCount;

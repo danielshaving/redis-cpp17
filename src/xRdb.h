@@ -4,7 +4,6 @@
 #include "xCrc64.h"
 #include "xObject.h"
 #include "xLzf.h"
-#include "xPosix.h"
 #include "xRedis.h"
 
 

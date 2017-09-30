@@ -143,7 +143,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 
 			conn->send(stringPiepe(shared.ok->ptr,sdsllen(shared.ok->ptr)));
 			std::shared_ptr<xSession> session (new xSession(redis,conn));
-			MutexLockGuard mu(redis->mutex);
+			std::unique_lock <std::mutex> lck(redis->mtx);
 			redis->sessions[conn->getSockfd()] = session;
 			conn->send(stringPiepe(shared.pping->ptr,sdsllen(shared.pping->ptr)));
 			timer = loop->runAfter(1,nullptr,true,std::bind(&xReplication::handleTimer,this,std::placeholders::_1));
@@ -180,7 +180,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		redis->masterPort = 0;
 		redis->slaveEnabled =  false;
 		redis->repliEnabled = false;
-		MutexLockGuard mu(redis->mutex);
+		std::unique_lock <std::mutex> lck(redis->mtx);
 		redis->sessions.erase(conn->getSockfd());
 		
 		if(timer)
@@ -231,7 +231,7 @@ void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)
 
 	if(redis->repliEnabled)
 	{
-		MutexLockGuard mu(redis->slaveMutex);
+		std::unique_lock <std::mutex> lck(redis->slaveMutex);
 		for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); it ++)
 		{
 			it->second->forceClose();
