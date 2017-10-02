@@ -159,7 +159,7 @@ void xCluster::delClusterImport(std::deque<rObj*> &robj)
 }
 
 
-void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
+bool  xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 {
 	std::unordered_set<int32_t>  uset;
 	int32_t fd = 0;
@@ -167,18 +167,11 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 	{
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
 		auto it = migratingSlosTos.find(ipPort);
-		if(it == migratingSlosTos.end())
+		if(it == migratingSlosTos.end() ||it->second.size() == 0 )
 		{
-			LOG_WARN<<"async slot error";
-			return ;
+			return false;
 		}
 			
-		if(it->second.size() == 0)
-		{
-			LOG_WARN<<"async slot size  error";
-			return ;
-		}
-
 		 uset = it->second;
 
 		 for(auto iter = redis->clustertcpconnMaps.begin(); iter != redis->clustertcpconnMaps.end(); iter++)
@@ -192,16 +185,7 @@ void xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 	}
 
 	xBuffer sendBuf;
-	
-	if(fd == 0)
-	{
-		LOG_WARN<<"clustertcpconnMaps error";
-		return ;
-	}
-
-	
 	redis->clusterRepliMigratEnabled = true;
-
 	std::deque<rObj*> deques;
 	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end();it++)
 	{
@@ -329,7 +313,7 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 			}
 
 			structureProtocolSetCluster(redis->host, redis->port, sendBuf, robj,conn);
-			for (auto it = robj.begin(); it != robj.end(); it++)
+			for (auto it = robj.begin(); it != robj.end(); ++it)
 			{
 				zfree(*it);
 			}
@@ -343,7 +327,7 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 			redis->sessions[conn->getSockfd()] = session;
 		}
 
-		LOG_INFO << "connect cluster success ";
+		LOG_INFO << "connect cluster success "<<"ip:"<<conn->host<<" port:"<<conn->port;
 
 	}
 	else
@@ -365,7 +349,7 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 
 		}
 
-		LOG_INFO << "disconnect cluster ";
+		LOG_INFO << "disconnect cluster "<<"ip:"<<conn->host<<" port:"<<conn->port;
 	}
 }
 
@@ -392,9 +376,8 @@ void xCluster::eraseClusterNode(std::string host,int32_t port)
 }
 
 
-void xCluster::connSetCluster(std::string ip, int32_t port,xRedis * redis)
+void xCluster::connSetCluster(std::string ip, int32_t port)
 {
-	this->redis = redis;
 	std::shared_ptr<xTcpClient> client(new xTcpClient(loop, this));
 	client->setConnectionCallback(std::bind(&xCluster::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
 	client->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -413,19 +396,16 @@ void xCluster::connectCluster()
 void xCluster::reconnectTimer(void * data)
 {
 	LOG_INFO << "Reconnect..........";
-
 }
-
-
 
 void xCluster::connErrorCallBack()
 {
 	return;
 }
 
-void xCluster::init()
+void xCluster::init(xRedis * redis)
 {
-
+	this->redis = redis;
 }
 
 

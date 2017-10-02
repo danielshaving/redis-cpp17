@@ -93,7 +93,7 @@ void xConnector::connect(const char *ip, int16_t port)
       setState(kDisconnected);
       if(errorConnectionCallback)
       {
-    	  	  errorConnectionCallback();
+    	 errorConnectionCallback();
       }
       break;
   }

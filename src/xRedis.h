@@ -13,13 +13,15 @@
 #include "xReplication.h"
 #include "xSentinel.h"
 #include "xCluster.h"
+#include "xRdb.h"
 
 class xRedis : noncopyable
 {
 public:
-	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false,bool enabledSentinel = false);
+	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false);
 	~xRedis();
-	void initConifg();
+	
+	void initConfig();
 	void handleTimeOut(void * data);
 	void handleSalveRepliTimeOut(void * data);
 	void handleSetExpire(void * data);
@@ -36,7 +38,7 @@ public:
 	bool pongCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool ppingCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool ppongCommand(const std::deque <rObj*> & obj, xSession * session);
-        bool debugCommand(const std::deque <rObj*> & obj, xSession * session);
+	bool debugCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool flushdbCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool dbsizeCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool quitCommand(const std::deque <rObj*> & obj,xSession * session);
@@ -57,19 +59,7 @@ public:
 	bool infoCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool clientCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool echoCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool subscribeCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool publishCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool selectCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool hkeysCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool scardCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool saddCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool unsubscribeCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool zaddCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool zcardCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool zcountCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool zrangeCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool zrankCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool zrevrangeCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool keysCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool bgsaveCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool memoryCommand(const std::deque <rObj*> & obj,xSession * session);
@@ -94,13 +84,10 @@ public:
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commandFunction;
 	std::unordered_map<rObj*,commandFunction,Hash,EEqual> handlerCommandMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
-
+	std::unordered_set<rObj*,Hash,EEqual> cluterMaps;
+	
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
-	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
-	typedef std::unordered_map<rObj*,std::unordered_map<rObj *,rObj *,Hash,Equal>,Hash,Equal> SortSet;
-	typedef std::unordered_map<rObj*,std::set<rSObj>,Hash,Equal> SSet;
-	typedef std::unordered_map<rObj*,std::list<xTcpconnectionPtr>,Hash,Equal> PubSub;
 
 	struct SetMapLock
 	{		
@@ -115,31 +102,9 @@ public:
 		mutable std::mutex mtx;
 	};
 
-	struct SetLock
-	{
-		Set set;
-		mutable std::mutex mtx;
-	};
-
-	struct SortSetLock
-	{
-		SortSet set;
-		SSet sset;
-		mutable std::mutex mtx;
-	};
-
-	struct PubSubLock
-	{
-		PubSub pubSub;
-		mutable std::mutex mtx;
-	};
-
 	const static int kShards = 4096;
 	std::array<SetMapLock, kShards> setMapShards;
 	std::array<HsetMapLock, kShards> hsetMapShards;
-	std::array<SetLock, kShards> setShards;
-	std::array<SortSetLock,kShards> sortSetShards;
-	std::array<PubSubLock, kShards> pubSubShards;
 
 	xEventLoop loop;
 	xTcpServer server;
@@ -167,6 +132,7 @@ public:
 	xReplication  repli;
 	xSentinel	   senti;
 	xCluster	   clus;
+	xRdb 		   rdb;
 
 	std::shared_ptr<std::thread > repliThreads;
 	std::shared_ptr<std::thread > sentiThreads;

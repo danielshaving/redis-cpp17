@@ -20,8 +20,8 @@ class xCluster : noncopyable
 public:
 	xCluster();
 	~xCluster();
-	void init();
-	void connSetCluster(std::string ip, int32_t port, xRedis * redis);
+	void init(xRedis * redis);
+	void connSetCluster(std::string ip, int32_t port);
 	void connectCluster();
 	void connErrorCallBack();
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data);
@@ -32,7 +32,7 @@ public:
 	unsigned int keyHashSlot(char *key, int keylen);
 	void syncClusterSlot(std::deque<rObj*> &robj);
 	void clusterRedirectClient(xSession * session, xClusterNode * node,int hashSlot,int errCode);
-	void asyncReplicationToNode(std::string ip,int32_t port);
+	bool asyncReplicationToNode(std::string ip,int32_t port);
 	void delClusterImport(std::deque<rObj*> &robj);
 	void eraseClusterNode(std::string host,int32_t port);
 	void eraseImportSlot(int slot);

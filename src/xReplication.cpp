@@ -62,7 +62,7 @@ void xReplication::handleTimer(void * data)
 void xReplication::syncWrite(const xTcpconnectionPtr& conn)
 {
 	conn->send(stringPiepe(shared.sync->ptr,sdsllen(shared.sync->ptr)));
-	fp = createFile();
+	fp = redis->rdb.createFile();
 	if(fp == nullptr)
 	{
 		conn->forceClose();
@@ -97,7 +97,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 			{
 				isreconnect = false;
 				LOG_WARN<<"Length is too large";
-				closeFile(fp);
+				redis->rdb.closeFile(fp);
 				conn->forceClose();
 				break;
 			}
@@ -111,14 +111,14 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 
 		
 		char fileName[] = "dump.rdb";
-		rdbSyncWrite(recvBuf->peek(),fp,recvBuf->readableBytes());
+		redis->rdb.rdbSyncWrite(recvBuf->peek(),fp,recvBuf->readableBytes());
 		salveReadLen += recvBuf->readableBytes();
 		recvBuf->retrieveAll();
 
 		if(salveReadLen > salveLen)
 		{
 			LOG_WARN<<"slave read data failure";
-			closeFile(fp);
+			redis->rdb.closeFile(fp);
 			conn->forceClose();
 			
 		}
@@ -126,16 +126,16 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 		if(salveLen == salveReadLen)
 		{
 			LOG_INFO<<"slave read data sucess";
-			rdbSyncClose(fileName,fp);
+			redis->rdb.rdbSyncClose(fileName,fp);
 			redis->clearCommand();
 
-			if(rdbLoad(fileName,redis) == REDIS_OK)
+			if(redis->rdb.rdbLoad(fileName) == REDIS_OK)
 			{
 				LOG_INFO<<"Replication load rdb success";
 			}
 			else
 			{
-				closeFile(fp);
+				redis->rdb.closeFile(fp);
 				conn->forceClose();
 				LOG_INFO<<"Replication load rdb failure";
 				return ;

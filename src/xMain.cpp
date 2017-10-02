@@ -38,9 +38,9 @@ char *ascii_logo =
 
 int main(int argc, char* argv[])
 {
-	if (argc < 6)
+	if (argc < 5)
 	{
-		fprintf(stderr, "Usage: server <address> <port> <threads> <cluster> <sentinel>\n");
+		fprintf(stderr, "Usage: server <address> <port> <threads> <cluster>\n");
 	}
 	else
 	{
@@ -50,13 +50,12 @@ int main(int argc, char* argv[])
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int16_t threadCount =  atoi(argv[3]);
 		uint16_t clusterEnbaled =  atoi(argv[4]);
-		uint16_t sentinelEnabled =  atoi(argv[3]);
 		xLogger::setOutput(asyncOutput);
 
 		xAsyncLogging log("xredis", 20000);
 		log.start();
 		g_asyncLog = &log;
-		xRedis redis(ip,port,threadCount,clusterEnbaled,sentinelEnabled);
+		xRedis redis(ip,port,threadCount,clusterEnbaled);
 		redis.run();
 		//ProfilerStop();
 
