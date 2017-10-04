@@ -17,12 +17,12 @@ public:
 	~xEpoll();
 
 	bool	init(int fdCount);
-	void  epollWait(ChannelList* activeChannels,int msTime = 10);
+	void	epollWait(ChannelList* activeChannels,int msTime = 10);
 	bool	hasChannel(xChannel* channel);
-	void  updateChannel(xChannel* channel);
-	void  removeChannel(xChannel* channel);
-	void  update(int operation, xChannel* channel);
-   	void 	fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
+	void	updateChannel(xChannel* channel);
+	void	removeChannel(xChannel* channel);
+	void	update(int operation, xChannel* channel);
+	void 	fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
  private:
 	ChannelMap channels;
 	EventList 	events;

@@ -211,7 +211,7 @@ public:
  		for(int i = 0; i < sessionCount; i++)
  		{
  			std::shared_ptr<xTcpClient> client(new xTcpClient(pool.getNextLoop(),nullptr));
- 			client->setConnectionCallback(std::bind(&xHiredisAsync::redisconnCallBack,this,std::placeholders::_1,std::placeholders::_2));
+ 			client->setConnectionCallback(std::bind(&xHiredisAsync::redisConnCallBack,this,std::placeholders::_1,std::placeholders::_2));
  			client->setMessageCallback(std::bind(&xHiredisAsync::redisReadCallBack,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
  			client->connect(ip,port);
  			vectors.push_back(client);
@@ -263,7 +263,7 @@ public:
 
 	}
 
-	void redisconnCallBack(const xTcpconnectionPtr& conn,void *data)
+	void redisConnCallBack(const xTcpconnectionPtr& conn,void *data)
 	{
 		if(conn->connected())
 		{
@@ -287,8 +287,8 @@ public:
 		else
 		{
 			{
-					std::unique_lock<std::mutex> lk(rmutex);
-					redisMaps.erase(conn->getSockfd());
+				std::unique_lock<std::mutex> lk(rmutex);
+				redisMaps.erase(conn->getSockfd());
 			}
 		}
 

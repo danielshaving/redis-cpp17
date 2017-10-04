@@ -3,7 +3,7 @@ single core absolute fair environment  less than 64k set get bench: redis overal
 
 cd xredis  mkdir obj  cd ./src/    
 make 
-./redis-server 0.0.0.0 6379 0 0 0
+./redis-server 0.0.0.0 6379 0 0 
 
 xredis is a compatible redis protocol with multithreaded client server
 

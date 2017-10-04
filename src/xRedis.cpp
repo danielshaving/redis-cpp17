@@ -215,10 +215,6 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-
-
-
-
 bool xRedis::sentinelCommand(const std::deque<rObj*> & obj, xSession * session)
 {
 	return false;
@@ -531,7 +527,13 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 				}
 			}
 		}
-		clus.connSetCluster(obj[1]->ptr, port);
+		
+		if(!clus.connSetCluster(obj[1]->ptr, port))
+		{
+			addReplyErrorFormat(session->sendBuf,"Invaild node address specified: %s:%s",(char*)obj[1]->ptr,(char*)obj[2]->ptr);
+			return false;
+		}
+		
 	}
 	else if (!strcasecmp(obj[0]->ptr, "connect") && obj.size() == 3)
 	{
@@ -1793,10 +1795,10 @@ void xRedis::initConfig()
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("del",3));
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("flushdb",7));
 
-#define REGISTER_REDIS_CHECK_COMMAND(msgId) \
-	cluterMaps.insert(createStringObject("cluster",7));
-	cluterMaps.insert(createStringObject("migrate",7));
-	
+#define REGISTER_REDIS_CLUSTER_CHECK_COMMAND(msgId) \
+	cluterMaps.insert(msgId);
+	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("cluster",7));
+	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("migrate",7));
 
 	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
 	sentiThreads->detach();

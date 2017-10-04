@@ -3,7 +3,8 @@
 #include "xLog.h"
 #include "xCrc16.h"
 
-xCluster::xCluster()
+xCluster::xCluster():state(true),
+isConnect(false)
 {
 
 }
@@ -219,7 +220,7 @@ bool  xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 			if(iter == redis->clustertcpconnMaps.end())
 			{
 				LOG_WARN<<"cluster disconnect error";
-				return ;
+				return false;
 			}
 			
 			if(sendBuf.readableBytes() > 0)
@@ -245,7 +246,7 @@ bool  xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 			if(iter == redis->clustertcpconnMaps.end())
 			{
 				LOG_WARN<<"cluster disconnect error";
-				return ;
+				return false;
 			}
 			
 			iter->second->send(&redis->clusterMigratCached);
@@ -297,6 +298,13 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 {
 	if (conn->connected())
 	{
+		isConnect = true;
+		state = false;
+		{
+			std::unique_lock <std::mutex> lck(cmtex);
+			condition.notify_one();
+		}
+
 		socket.getpeerName(conn->getSockfd(), &(conn->host), conn->port);
 		{
 			xBuffer sendBuf;
@@ -376,7 +384,7 @@ void xCluster::eraseClusterNode(std::string host,int32_t port)
 }
 
 
-void xCluster::connSetCluster(std::string ip, int32_t port)
+bool  xCluster::connSetCluster(std::string ip, int32_t port)
 {
 	std::shared_ptr<xTcpClient> client(new xTcpClient(loop, this));
 	client->setConnectionCallback(std::bind(&xCluster::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
@@ -384,6 +392,24 @@ void xCluster::connSetCluster(std::string ip, int32_t port)
 	client->setConnectionErrorCallBack(std::bind(&xCluster::connErrorCallBack, this));
 	client->connect(ip.c_str(), port);
 	tcpvectors.push_back(client);
+
+	std::unique_lock <std::mutex> lck(cmtex);
+	while(state)
+	{
+		condition.wait(lck);
+	}
+	
+	state = true;
+
+	if(isConnect)
+	{
+		isConnect = false;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 void xCluster::connectCluster()
@@ -400,7 +426,13 @@ void xCluster::reconnectTimer(void * data)
 
 void xCluster::connErrorCallBack()
 {
-	return;
+	state = false;
+	isConnect = false;
+
+	{
+		std::unique_lock <std::mutex> lck(cmtex);
+		condition.notify_one();
+	}
 }
 
 void xCluster::init(xRedis * redis)

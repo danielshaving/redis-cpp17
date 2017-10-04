@@ -207,7 +207,6 @@ xTimer  * xTimerQueue::addTimer(double when, void * data,bool repeat,xTimerCallb
 	xTimestamp time(addTime(xTimestamp::now(), when));
 	xTimer * timer = (xTimer*)zmalloc(sizeof(xTimer));
 	new(timer)xTimer(std::move(cb), std::move(time), repeat, when, data);
-	//xTimer * timer = new xTimer(std::move(cb),std::move(time),repeat,when,data);
 	loop->runInLoop(std::bind(&xTimerQueue::addTimerInLoop,this,timer));
 	return timer;
 }

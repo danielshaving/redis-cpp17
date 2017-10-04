@@ -67,7 +67,6 @@ public:
 	bool migrateCommand(const std::deque<rObj*> & obj, xSession * session);
 
 
-
 	bool clearClusterMigradeCommand(void * data);
 	bool save(xSession * session);
 	int removeCommand(rObj * obj,int &count);
@@ -79,7 +78,6 @@ public:
 
 
 public:
-	
 	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommands;
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commandFunction;
 	std::unordered_map<rObj*,commandFunction,Hash,EEqual> handlerCommandMap;
@@ -93,7 +91,6 @@ public:
 	{		
 		SetMap setMap;
 		mutable std::mutex mtx;
-		
 	};
 
 	struct HsetMapLock
@@ -129,7 +126,7 @@ public:
 	xBuffer	clusterMigratCached;
 	xBuffer	clusterImportCached;
 	
-	xReplication  repli;
+	xReplication   repli;
 	xSentinel	   senti;
 	xCluster	   clus;
 	xRdb 		   rdb;
@@ -152,7 +149,7 @@ public:
 	int16_t threadCount;
 	std::string masterHost;
 	std::atomic<int>	masterPort ;
-	
+	int curSelect;
 };
 
 

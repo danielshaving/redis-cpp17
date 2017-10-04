@@ -10,9 +10,9 @@ xTcpClient::xTcpClient()
 xTcpClient::xTcpClient(xEventLoop *loop,void *data)
 : connector(new xConnector(loop)),
 loop(loop),
- isconnect(false),
- nextConnId(0),
- data(data)
+isconnect(false),
+nextConnId(0),
+data(data)
 {
 	  connector->setNewConnectionCallback(std::bind(&xTcpClient::newConnection, this, std::placeholders::_1));
 	  connector->setConnectionErrorCallBack(std::bind(&xTcpClient::errorConnection,this));
