@@ -260,7 +260,7 @@ void destorySharedObjects()
 
 void createSharedObjects()
 {
-	 int j;
+    int j;
 
     shared.crlf = createObject(REDIS_STRING,sdsnew("\r\n"));
     shared.ok = createObject(REDIS_STRING,sdsnew("+OK\r\n"));

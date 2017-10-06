@@ -65,6 +65,10 @@ public:
 	void shutdownInLoop();
 	void forceClose();
 	xBuffer * getSendBuff(){ return &sendBuff; }
+
+	xBuffer* inputBuffer(){ return &recvBuff; }
+	xBuffer* outputBuffer(){ return &sendBuff; }
+
 	
 public:
 	xEventLoop  *loop;

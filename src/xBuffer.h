@@ -154,7 +154,7 @@ class xBuffer
 
   void append(const stringPiepe & str)
   {
-	 append(str.str, str.len);
+	 append(str.data(), str.size());
   }
 
   void append(const void* /*restrict*/ data, size_t len)
@@ -302,6 +302,20 @@ class xBuffer
     const char* d = static_cast<const char*>(data);
     std::copy(d, d+len, begin()+readerIndex);
   }
+
+
+   stringPiepe toStringPiece() const
+  {
+    return stringPiepe(peek(), static_cast<int>(readableBytes()));
+  }
+   
+  void shrink(size_t reserve)
+  {
+    xBuffer other;
+    other.ensureWritableBytes(readableBytes()+reserve);
+    other.append(toStringPiece());
+    swap(other);
+}
 
 
   size_t internalCapacity() const

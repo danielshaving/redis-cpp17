@@ -167,7 +167,7 @@ void xTcpconnection::sendPipe(const stringPiepe & message)
 	{
 		if (loop->isInLoopThread())
 		{
-			sendPipeInLoop(message.str,message.len);
+			sendPipeInLoop(message.data(),message.size());
 		}
 		else
 		{
@@ -190,7 +190,7 @@ void xTcpconnection::send(const stringPiepe & message)
 	{
 		if (loop->isInLoopThread())
 		{
-		  	sendPipeInLoop(message.str,message.len);
+		  	sendPipeInLoop(message.data(),message.size());
 		}
 		else
 		{
@@ -203,7 +203,7 @@ void xTcpconnection::send(const stringPiepe & message)
 
 void xTcpconnection::sendPipeInLoop(const stringPiepe & message)
 {
-	sendPipeInLoop(message.str, message.len);
+	sendPipeInLoop(message.data(),message.size());
 }
 
 
@@ -219,13 +219,13 @@ void xTcpconnection::sendPipeInLoop(const void* message, size_t len)
 
 void xTcpconnection::bindSendPipeInLoop(xTcpconnection* conn, const stringPiepe& message)
 {
-	conn->sendPipeInLoop(message.str, message.len);
+	conn->sendPipeInLoop(message.data(),message.size());
 }
 
 
 void xTcpconnection::bindSendInLoop(xTcpconnection* conn, const stringPiepe& message)
 {
-	 conn->sendInLoop(message.str, message.len);
+	 conn->sendInLoop(message.data(),message.size());
 }
 
 void xTcpconnection::send(xBuffer* buf)
@@ -247,7 +247,7 @@ void xTcpconnection::send(xBuffer* buf)
 
 void xTcpconnection::sendInLoop(const stringPiepe & message)
 {
-	sendInLoop(message.str,message.len);
+	sendInLoop(message.data(),message.size());
 }
 
 

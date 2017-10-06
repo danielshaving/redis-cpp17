@@ -143,14 +143,14 @@
 #define REDIS_SHARED_SELECT_CMDS 10
 #define REDIS_SHARED_INTEGERS 10000
 #define REDIS_SHARED_BULKHDR_LEN 32
-#define REDIS_MAX_LOGMSG_LEN    1024 /* Default maximum length of syslog messages */
+#define REDIS_MAX_LOGMSG_LEN    1024 /* Default maximum lengthgth of syslog messages */
 #define REDIS_AOF_REWRITE_PERC  100
 #define REDIS_AOF_REWRITE_MIN_SIZE (64*1024*1024)
 #define REDIS_AOF_REWRITE_ITEMS_PER_CMD 64
 #define REDIS_SLOWLOG_LOG_SLOWER_THAN 10000
-#define REDIS_SLOWLOG_MAX_LEN 128
+#define REDIS_SLOWLOG_MAX_length 128
 #define REDIS_MAX_CLIENTS 10000
-#define REDIS_AUTHPASS_MAX_LEN 512
+#define REDIS_AUTHPASS_MAX_length 512
 #define REDIS_DEFAULT_SLAVE_PRIORITY 100
 #define REDIS_REPL_TIMEOUT 60
 #define REDIS_REPL_PING_SLAVE_PERIOD 10
@@ -171,20 +171,20 @@
 #define REDIS_DEFAULT_STOP_WRITES_ON_BGSAVE_ERROR 1
 #define REDIS_DEFAULT_RDB_COMPRESSION 1
 #define REDIS_DEFAULT_RDB_CHECKSUM 1
-#define REDIS_DEFAULT_RDB_FILENAME "dump.rdb"
+#define REDIS_DEFAULT_RDB_FIlengthAME "dump.rdb"
 #define REDIS_DEFAULT_SLAVE_SERVE_STALE_DATA 1
 #define REDIS_DEFAULT_SLAVE_READ_ONLY 1
 #define REDIS_DEFAULT_REPL_DISABLE_TCP_NODELAY 0
 #define REDIS_DEFAULT_MAXMEMORY 0
 #define REDIS_DEFAULT_MAXMEMORY_SAMPLES 5
-#define REDIS_DEFAULT_AOF_FILENAME "appendonly.aof"
+#define REDIS_DEFAULT_AOF_FIlengthAME "appendonly.aof"
 #define REDIS_DEFAULT_AOF_NO_FSYNC_ON_REWRITE 0
 #define REDIS_DEFAULT_ACTIVE_REHASHING 1
 #define REDIS_DEFAULT_AOF_REWRITE_INCREMENTAL_FSYNC 1
 #define REDIS_DEFAULT_MIN_SLAVES_TO_WRITE 0
 #define REDIS_DEFAULT_MIN_SLAVES_MAX_LAG 10
-#define REDIS_IP_STR_LEN INET6_ADDRSTRLEN
-#define REDIS_PEER_ID_LEN (REDIS_IP_STR_LEN+32) /* Must be enough for ip:port */
+#define REDIS_IP_STR_length INET6_ADDRSTRlength
+#define REDIS_PEER_ID_length (REDIS_IP_STR_length+32) /* Must be enough for ip:port */
 #define REDIS_BINDADDR_MAX 16
 #define REDIS_MIN_RESERVED_FDS 32
 #define REDIS_ENCODING_RAW 0     /* Raw representation */
@@ -201,18 +201,18 @@
  * backward compatible this number gets incremented. */
 #define REDIS_RDB_VERSION 1
 
-/* Defines related to the dump file format. To store 32 bits lengths for short
+/* Defines related to the dump file format. To store 32 bits lengthgths for short
  * keys requires a lot of space, so we check the most significant 2 bits of
- * the first byte to interpreter the length:
+ * the first byte to interpreter the lengthgth:
  *
- * 00|000000 => if the two MSB are 00 the len is the 6 bits of this byte
- * 01|000000 00000000 =>  01, the len is 14 byes, 6 bits + 8 bits of next byte
- * 10|000000 [32 bit integer] => if it's 01, a full 32 bit len will follow
+ * 00|000000 => if the two MSB are 00 the length is the 6 bits of this byte
+ * 01|000000 00000000 =>  01, the length is 14 byes, 6 bits + 8 bits of next byte
+ * 10|000000 [32 bit integer] => if it's 01, a full 32 bit length will follow
  * 11|000000 this means: specially encoded object will follow. The six bits
  *           number specify the kind of object that follows.
  *           See the REDIS_RDB_ENC_* defines.
  *
- * Lengths up to 63 are stored using a single byte, most DB keys, and may
+ * lengthgths up to 63 are stored using a single byte, most DB keys, and may
  * values, will fit inside. */
 #define REDIS_RDB_6BITLEN 0
 #define REDIS_RDB_14BITLEN 1
@@ -220,7 +220,7 @@
 #define REDIS_RDB_ENCVAL 3
 #define REDIS_RDB_LENERR UINT_MAX
 
-/* When a length of a string object stored on disk has the first two bits
+/* When a lengthgth of a string object stored on disk has the first two bits
  * set, the remaining two bits specify a special encoding for the object
  * accordingly to the following defines: */
 #define REDIS_RDB_ENC_INT8 0        /* 8 bit signed integer */
@@ -264,8 +264,8 @@
 #define RDB_OPCODE_EOF 110
 
 /* Protocol and I/O related defines */
-#define PROTO_MAX_QUERYBUF_LEN  (1024*1024*1024) /* 1GB max query buffer. */
-#define PROTO_IOBUF_LEN         (1024*16)  /* Generic I/O buffer size */
+#define PROTO_MAX_QUERYBUF_length  (1024*1024*1024) /* 1GB max query buffer. */
+#define PROTO_IOBUF_length         (1024*16)  /* Generic I/O buffer size */
 #define PROTO_REPLY_CHUNK_BYTES (16*1024) /* 16k output buffer */
 #define PROTO_INLINE_MAX_SIZE   (1024*64) /* Max size of inline reads */
 #define PROTO_MBULK_BIG_ARG     (1024*32)
@@ -326,7 +326,7 @@
 #define CLUSTER_SLOTS 16384
 #define CLUSTER_OK 0          /* Everything looks ok */
 #define CLUSTER_FAIL 1        /* The cluster can't work */
-#define CLUSTER_NAMELEN 40    /* sha1 hex length */
+#define CLUSTER_NAMElength 40    /* sha1 hex lengthgth */
 #define CLUSTER_PORT_INCR 10000 /* Cluster port = baseport + PORT_INCR */
 
 
@@ -379,15 +379,89 @@ private:
 class stringPiepe
 {
  public:
+	stringPiepe()
+	: ptr(NULL), length(0) { }
 	stringPiepe(const char* str)
-	: str(str), len(static_cast<int>(strlen(str))) { }
+	: ptr(str), length(static_cast<int>(strlen(ptr))) { }
+	stringPiepe(const unsigned char* str)
+	: ptr(reinterpret_cast<const char*>(str)),
+	length(static_cast<int>(strlen(ptr))) { }
 	stringPiepe(const std::string& str)
-	:str(str.data()), len(static_cast<int>(str.size())) { }
-	stringPiepe(const char* str, size_t len)
-	:str(str),len(len) {}
-	std::string as_string() const { return std::string(str,len);}
-	const char* str;
-	const size_t len;
+	: ptr(str.data()), length(static_cast<int>(str.size())) { }
+	stringPiepe(const char* offset, int length)
+	: ptr(offset), length(length) { }
+	
+	std::string as_string() const { return std::string(data(),size());}
+	const char* ptr;
+	int length;
+
+	bool empty() const { return length == 0; }
+	
+	const char * begin() const  { return ptr; }
+	const char * end() const { return ptr + length; }
+	int size() const { return length; }
+	const char * data() const { return ptr; }
+
+	void removePrefix(int n)
+	{
+		ptr += n;
+		length -= n;
+	}
+
+	void removeSuffix(int n)
+	{
+		length -= n;
+	}
+
+	void clear() { ptr = nullptr; length = 0; }
+	void set(const char* buffer, int len) { ptr = buffer; length = len; }
+	void set(const char* str) 
+	{
+		ptr = str;
+		length = static_cast<int>(strlen(str));
+	}
+	void set(const void* buffer, int len) 
+	{
+		ptr = reinterpret_cast<const char*>(buffer);
+		length = len;
+	}
+
+  	char operator[](int i) const { return ptr[i]; }
+  
+	
+	bool operator==(const stringPiepe& x) const 
+	{
+	  	 return ((length == x.length) &&
+			   (memcmp(ptr, x.ptr, length) == 0));
+	 }
+	 bool operator!=(const stringPiepe& x) const 
+	 {
+	  	 return !(*this == x);
+	 }
+
+	int compare(const stringPiepe& x) const 
+	{
+		int r = memcmp(ptr, x.ptr, length < x.length ? length : x.length);
+		if (r == 0)
+		{
+			if (length < x.length) r = -1;
+			else if (length > x.length) r = +1;
+		}
+		
+		return r;
+	}
+	 
+
+	void copyToString(std::string* target) const 
+	{
+		target->assign(ptr, length);
+	}
+
+	bool startsWith(const stringPiepe& x) const 
+	{
+		return ((length >= x.length) && (memcmp(ptr, x.ptr, x.length) == 0));
+	}
+	  
 };
 
 

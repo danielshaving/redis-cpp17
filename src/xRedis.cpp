@@ -128,7 +128,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		}
 	
 		{
-			std::unique_lock <std::mutex> lck(mtx);;
+			std::unique_lock <std::mutex> lck(mtx);
 			sessions.erase(conn->getSockfd());
 		}
 
