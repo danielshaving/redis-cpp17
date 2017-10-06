@@ -34,7 +34,7 @@ char *ascii_logo =
 "              `-.__.-'                                               \n";
 
 
-
+/*
 
 int main(int argc, char* argv[])
 {
@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
 
 
 
-
+*/
 
 
 
