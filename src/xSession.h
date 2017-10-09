@@ -33,8 +33,8 @@ public:
 	xTcpconnectionPtr 	conn;
 	std::vector<xTcpconnectionPtr> pubSubTcpconn;
 	std::deque<rObj*>  robjs;
-	std::string command;
 	xRedis *redis;
+	rObj * command;
 	bool authEnabled;
 	bool retrieveBuffer;
 	bool fromMaster;

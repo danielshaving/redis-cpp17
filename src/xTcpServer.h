@@ -6,7 +6,7 @@
 
 class xEventLoop;
 
-class xTcpServer
+class xTcpServer: noncopyable
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;

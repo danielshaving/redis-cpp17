@@ -34,7 +34,7 @@ char *ascii_logo =
 "              `-.__.-'                                               \n";
 
 
-/*
+
 
 int main(int argc, char* argv[])
 {
@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
 		uint16_t clusterEnbaled =  atoi(argv[4]);
 		xLogger::setOutput(asyncOutput);
 
-		xAsyncLogging log("xredis", 20000);
+		xAsyncLogging log("xredis", 4096);
 		log.start();
 		g_asyncLog = &log;
 		xRedis redis(ip,port,threadCount,clusterEnbaled);
@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
 
 
 
-*/
+
 
 
 

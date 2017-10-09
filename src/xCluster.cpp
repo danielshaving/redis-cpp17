@@ -128,10 +128,10 @@ int xCluster::getSlotOrReply(xSession  * session,rObj * o)
 
 void xCluster::structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, std::deque<rObj*> &robj,const xTcpconnectionPtr & conn)
 {
-	rObj * ip = createStringObject(host.c_str(), host.length());
+	rObj * ip = createStringObject((char*)(host.c_str()), host.length());
 	char buf[32];
 	int32_t len = ll2string(buf, sizeof(buf), port);
-	rObj * p = createStringObject((const char*)buf, len);
+	rObj * p = createStringObject(buf, len);
 	robj.push_back(ip);
 	robj.push_back(p);
 	redis->structureRedisProtocol(sendBuf, robj);
@@ -271,14 +271,14 @@ bool  xCluster::asyncReplicationToNode(std::string ip,int32_t port)
 			robj.push_back(s);
 			char buf[32];
 			int32_t len = ll2string(buf, sizeof(buf), *it);
-			rObj * o = createStringObject((const char*)buf, len);
+			rObj * o = createStringObject(buf, len);
 			robj.push_back(o);
 			rObj * n = createStringObject("node", 4);
 			robj.push_back(n);
-			rObj * t = createStringObject(ipPort.c_str(),ipPort.length());
+			rObj * t = createStringObject((char*)(ipPort.c_str()),ipPort.length());
 			robj.push_back(t);
 			std::string hp = redis->host +"::" +  std::to_string(redis->port);
-			rObj * h =  createStringObject(hp.c_str(),hp.length());
+			rObj * h =  createStringObject((char*)(hp.c_str()),hp.length());
 			robj.push_back(h);
 			syncClusterSlot(robj);	
 

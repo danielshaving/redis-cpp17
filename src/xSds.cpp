@@ -19,7 +19,7 @@ sds sdsnewlen(const void *init, size_t initlen) {
     }
 
 
-    if (sh == NULL) return NULL;
+    if (sh == nullptr) return nullptr;
     sh->len = initlen;
     sh->free = 0;
     // T = O(N)
@@ -37,7 +37,7 @@ sds sdsempty(void) {
 
 /* Create a new sds string starting from a null termined C string. */
 sds sdsnew(const char *init) {
-    size_t initlen = (init == NULL) ? 0 : strlen(init);
+    size_t initlen = (init == nullptr) ? 0 : strlen(init);
     return sdsnewlen(init, initlen);
 }
 
@@ -46,7 +46,7 @@ sds sdsdup(const sds s) {
 }
 
 void sdsfree(sds s) {
-    if (s == NULL) return;
+    if (s == nullptr) return;
     zfree(s-sizeof(struct sdshdr));
 }
 
@@ -79,7 +79,7 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
         newlen += SDS_MAX_PREALLOC;
     // T = O(N)
     newsh = (sdshdr*)zrealloc(sh, sizeof(struct sdshdr)+newlen+1);
-    if (newsh == NULL) return NULL;
+    if (newsh == nullptr) return nullptr;
     newsh->free = newlen - len;
     return newsh->buf;
 }
@@ -137,7 +137,7 @@ sds sdsgrowzero(sds s, size_t len) {
 
     // T = O(N)
     s = sdsMakeRoomFor(s,len-curlen);
-    if (s == NULL) return NULL;
+    if (s == nullptr) return nullptr;
 
   
     sh = (sdshdr*)(s-(sizeof(struct sdshdr)));
@@ -163,7 +163,7 @@ sds sdscatlen(sds s, const void *t, size_t len) {
     // T = O(N)
     s = sdsMakeRoomFor(s,len);
 
-    if (s == NULL) return NULL;
+    if (s == nullptr) return nullptr;
 
     // T = O(N)
     sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
@@ -203,7 +203,7 @@ sds sdscpylen(sds s, const char *t, size_t len) {
     if (totlen < len) {
         // T = O(N)
         s = sdsMakeRoomFor(s,len-sh->len);
-        if (s == NULL) return NULL;
+        if (s == nullptr) return nullptr;
         sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
         totlen = sh->free+sh->len;
     }
@@ -312,7 +312,7 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
      * If not possible we revert to heap allocation. */
     if (buflen > sizeof(staticbuf)) {
         buf = (char*)zmalloc(buflen);
-        if (buf == NULL) return NULL;
+        if (buf == nullptr) return nullptr;
     } else {
         buflen = sizeof(staticbuf);
     }
@@ -328,7 +328,7 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
             if (buf != staticbuf) zfree(buf);
             buflen *= 2;
             buf = (char*)zmalloc(buflen);
-            if (buf == NULL) return NULL;
+            if (buf == nullptr) return nullptr;
             continue;
         }
         break;
@@ -619,10 +619,10 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
     int elements = 0, slots = 5, start = 0, j;
     sds *tokens;
 
-    if (seplen < 1 || len < 0) return NULL;
+    if (seplen < 1 || len < 0) return nullptr;
 
     tokens = (sds*)zmalloc(sizeof(sds)*slots);
-    if (tokens == NULL) return NULL;
+    if (tokens == nullptr) return nullptr;
 
     if (len == 0) {
         *count = 0;
@@ -637,14 +637,14 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
 
             slots *= 2;
             newtokens = (sds*)zrealloc(tokens,sizeof(sds)*slots);
-            if (newtokens == NULL) goto cleanup;
+            if (newtokens == nullptr) goto cleanup;
             tokens = newtokens;
         }
         /* search the separator */
         // T = O(N)
         if ((seplen == 1 && *(s+j) == sep[0]) || (memcmp(s+j,sep,seplen) == 0)) {
             tokens[elements] = sdsnewlen(s+start,j-start);
-            if (tokens[elements] == NULL) goto cleanup;
+            if (tokens[elements] == nullptr) goto cleanup;
             elements++;
             start = j+seplen;
             j = j+seplen-1; /* skip the separator */
@@ -652,7 +652,7 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
     }
     /* Add the final element. We are sure there is room in the tokens array. */
     tokens[elements] = sdsnewlen(s+start,len-start);
-    if (tokens[elements] == NULL) goto cleanup;
+    if (tokens[elements] == nullptr) goto cleanup;
     elements++;
     *count = elements;
     return tokens;
@@ -663,12 +663,12 @@ cleanup:
         for (i = 0; i < elements; i++) sdsfree(tokens[i]);
         zfree(tokens);
         *count = 0;
-        return NULL;
+        return nullptr;
     }
 }
 
 
-/* Free the result returned by sdssplitlen(), or do nothing if 'tokens' is NULL. */
+/* Free the result returned by sdssplitlen(), or do nothing if 'tokens' is nullptr. */
 void sdsfreesplitres(sds *tokens, int count) {
     if (!tokens) return;
     while(count--)
@@ -747,8 +747,8 @@ int hex_digit_to_int(char c) {
 
 sds *sdssplitargs(const char *line, int *argc) {
     const char *p = line;
-    char *current = NULL;
-    char **vector = NULL;
+    char *current = nullptr;
+    char **vector = nullptr;
 
     *argc = 0;
     while(1) {
@@ -763,7 +763,7 @@ sds *sdssplitargs(const char *line, int *argc) {
             int insq=0; /* set to 1 if we are in 'single quotes' */
             int done=0;
 
-            if (current == NULL) current = sdsempty();
+            if (current == nullptr) current = sdsempty();
 
             // T = O(N)
             while(!done) {
@@ -844,10 +844,10 @@ sds *sdssplitargs(const char *line, int *argc) {
             vector = (char **)zrealloc(vector,((*argc)+1)*sizeof(char*));
             vector[*argc] = current;
             (*argc)++;
-            current = NULL;
+            current = nullptr;
         } else {
-            /* Even on empty input string return something not NULL. */
-            if (vector == NULL) vector = (char **)zmalloc(sizeof(void*));
+            /* Even on empty input string return something not nullptr. */
+            if (vector == nullptr) vector = (char **)zmalloc(sizeof(void*));
             return vector;
         }
     }
@@ -858,7 +858,7 @@ err:
     zfree(vector);
     if (current) sdsfree(current);
     *argc = 0;
-    return NULL;
+    return nullptr;
 }
 
 sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen) {

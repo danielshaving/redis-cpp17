@@ -91,11 +91,11 @@ int ll2string(char *s, size_t len, long long value)
 
 
 
-rObj * createObject(int type, const void *ptr)
+rObj * createObject(int type, void *ptr)
 {
 	rObj * o = (rObj*)zmalloc(sizeof(rObj));
 	o->type = REDIS_ENCODING_RAW;
-	o->ptr  = (const char*)ptr;
+	o->ptr  = (char*)ptr;
 	return o;
 }
 
@@ -171,7 +171,7 @@ rObj *createStringObjectFromLongLong(long long value)
 		{
 			o = createObject(REDIS_STRING, NULL);
             o->encoding = REDIS_ENCODING_INT;
-            o->ptr = (const char *)(value);
+            o->ptr = (char*)value;
 		}
 		else
 		{
@@ -368,26 +368,26 @@ void createSharedObjects()
 
 
 
-rObj * createStringObject(const char *ptr, size_t len)
+rObj * createStringObject(char *ptr, size_t len)
 {
    	return createEmbeddedStringObject(ptr,len);
 }
 
 
 
-rObj *createRawStringObject(const char *ptr, size_t len)
+rObj *createRawStringObject(char *ptr, size_t len)
 {
     return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
 
-rObj * createEmbeddedStringObject(const char *ptr, size_t len)
+rObj * createEmbeddedStringObject(char *ptr, size_t len)
 {
     rObj *o = (rObj*)zmalloc(sizeof(rObj)+sizeof(struct sdshdr)+len+1);
     struct sdshdr *sh = (sdshdr*)(o+1);
 
     o->type = REDIS_STRING;
     o->encoding = REDIS_ENCODING_EMBSTR;
-    o->ptr = (const char*)(sh+1);
+    o->ptr = (char*)(sh+1);
     o->hash = 0;
     sh->len = len;
     sh->free = 0;

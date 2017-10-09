@@ -7,7 +7,7 @@
 #include "xSession.h"
 
 class xRedis;
-class xRio
+class xRio: noncopyable
 {
 public:
 	xRio();
@@ -50,7 +50,7 @@ public:
 };
 
 
-class xRdb
+class xRdb: noncopyable
 {
 public:
 	void init(xRedis * redis);

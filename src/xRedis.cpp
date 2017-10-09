@@ -890,10 +890,10 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 				xClusterNode  node;
 				node.ip = host;
 				node.port = this->port;
-				rObj * i = createStringObject(host.c_str(), host.length());
+				rObj * i = createStringObject((char*)(host.c_str()), host.length());
 				char buf[32];
 				int32_t len = ll2string(buf, sizeof(buf), this->port);
-				rObj * p = createStringObject((const char*)buf, len);
+				rObj * p = createStringObject(buf, len);
 
 				std::deque<rObj*> robj;
 				rObj * c = createStringObject("cluster", 7);

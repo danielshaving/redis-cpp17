@@ -5,7 +5,7 @@
 #include "xCallback.h"
 
 
-class xTcpClient
+class xTcpClient: noncopyable
 {
 public:
 	xTcpClient();

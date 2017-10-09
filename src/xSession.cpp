@@ -12,13 +12,14 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
  retrieveBuffer(false),
  fromMaster(false)
 {
+	command = createStringObject(nullptr,10);
 	 conn->setMessageCallback(
 	        std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
 }
 
 xSession::~xSession()
 {
-
+	zfree(command);
 }
 
 void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
@@ -301,7 +302,7 @@ jump:
 	}
 
 
-	auto iter = redis->handlerCommandMap.find(robjs[0]);
+	auto iter = redis->handlerCommandMap.find(command);
 	if(iter == redis->handlerCommandMap.end() )
 	{
 		clearObj();
@@ -309,10 +310,6 @@ jump:
 		return REDIS_ERR;
 	}
 	
-	
-	rObj * obj = robjs.front();
-	robjs.pop_front();
-	zfree(obj);
 
 
 	if(!iter->second(robjs,this))
@@ -384,8 +381,15 @@ int xSession::processInlineBuffer(xBuffer *recvBuf)
 
 	for (j = 0; j  < argc; j++)
 	{
-		rObj * obj = (rObj*)createStringObject(argv[j],sdslen(argv[j]));
-		robjs.push_back(obj);
+		if(j == 0)
+		{
+			sdscpylen((sds)(command->ptr),argv[j],sdslen(argv[j]));
+		}
+		else
+		{
+			rObj * obj = (rObj*)createStringObject(argv[j],sdslen(argv[j]));
+					robjs.push_back(obj);
+		}
 		sdsfree(argv[j]);
 	}
 
@@ -445,6 +449,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 
 	}
 	
+	int count  = 0;
 	while(multibulklen)
 	{
 		if(bulklen == -1)
@@ -500,8 +505,16 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		}
 		else
 		{
-			rObj * obj = (rObj*)createStringObject(queryBuf + pos,bulklen);
-			robjs.push_back(obj);
+			if(++count == 1)
+			{
+				sdscpylen((command->ptr),queryBuf + pos,bulklen);
+			}
+			else
+			{
+				rObj * obj = (rObj*)createStringObject((char*)(queryBuf + pos),bulklen);
+				robjs.push_back(obj);
+			}
+
 			pos += bulklen+2;
 			bulklen = -1;
 			multibulklen --;

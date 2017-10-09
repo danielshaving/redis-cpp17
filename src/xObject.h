@@ -20,7 +20,7 @@ typedef struct redisObject
 	unsigned type:4;
 	unsigned encoding:4;
 	size_t hash;
-	const char *ptr;
+	char *ptr;
 } rObj;
 
 typedef struct redisSortObject
@@ -96,10 +96,10 @@ extern sharedObjectsStruct shared;
 
 int ll2string(char *s, size_t len, long long value);
 int string2ll(const char * s,size_t slen, long long * value);
-rObj *createRawStringObject(const char *ptr, size_t len);
-rObj *createObject(int type, const void *ptr);
-rObj *createStringObject(const char *ptr, size_t len);
-rObj *createEmbeddedStringObject(const char *ptr, size_t len);
+rObj *createRawStringObject(char *ptr, size_t len);
+rObj *createObject(int type, void *ptr);
+rObj *createStringObject(char *ptr, size_t len);
+rObj *createEmbeddedStringObject(char *ptr, size_t len);
 void createSharedObjects();
 void destorySharedObjects();
 void freeStringObject(rObj *o) ;

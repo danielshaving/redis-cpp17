@@ -262,14 +262,14 @@ rObj * xRdb::rdbLoadIntegerObject(xRio *rdb, int enctype, int encode)
 	else if(enctype == REDIS_RDB_ENC_INT16)
 	{
 		uint16_t v;
-        if (rioRead(rdb,enc,2) == 0) return NULL;
+        if (rioRead(rdb,enc,2) == 0) return nullptr;
         v = enc[0]|(enc[1]<<8);
         val = (int16_t)v;
 	}
 	else if (enctype == REDIS_RDB_ENC_INT32)
 	{
         uint32_t v;
-        if (rioRead(rdb,enc,4) == 0) return NULL;
+        if (rioRead(rdb,enc,4) == 0) return nullptr;
         v = enc[0]|(enc[1]<<8)|(enc[2]<<16)|(enc[3]<<24);
         val = (int32_t)v;
     } 
@@ -298,13 +298,13 @@ rObj * xRdb::rdbLoadLzfStringObject(xRio *rdb)
 {
     rObj * obj = nullptr;
     unsigned int len, clen;
-    unsigned char *c = NULL;
-    sds val = NULL;
+    unsigned char *c = nullptr;
+    sds val = nullptr;
 
-    if ((clen = rdbLoadLen(rdb,NULL)) == REDIS_RDB_LENERR) return NULL;
-    if ((len = rdbLoadLen(rdb,NULL)) == REDIS_RDB_LENERR) return NULL;
-    if ((c = (unsigned char *)zmalloc(clen)) == NULL) goto err;
-    if ((val = sdsnewlen(NULL,len)) == NULL) goto err;
+    if ((clen = rdbLoadLen(rdb,nullptr)) == REDIS_RDB_LENERR) return nullptr;
+    if ((len = rdbLoadLen(rdb,nullptr)) == REDIS_RDB_LENERR) return nullptr;
+    if ((c = (unsigned char *)zmalloc(clen)) == nullptr) goto err;
+    if ((val = sdsnewlen(nullptr,len)) == nullptr) goto err;
     if (rioRead(rdb,c,clen) == 0) goto err;
     if (lzf_decompress(c,clen,val,len) == 0) goto err;
 
@@ -315,7 +315,7 @@ rObj * xRdb::rdbLoadLzfStringObject(xRio *rdb)
 err:
     zfree(c);
     sdsfree(val);
-    return NULL;
+    return nullptr;
 }
 
 
@@ -347,7 +347,7 @@ rObj * xRdb::rdbGenericLoadStringObject(xRio *rdb, int encode)
 		return nullptr;
     }
 
-    o = createStringObject(NULL,len);
+    o = createStringObject(nullptr,len);
     if (len && rioRead(rdb,(void*)o->ptr,len) == 0) 
 	{
         return nullptr;
@@ -915,7 +915,7 @@ rObj * xRdb::rdbLoadObject(int rdbtype, xRio *rdb)
 	{
 		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
 		{
-			return nullptr;	
+			return nullptr;
 		}
 	}
 	else

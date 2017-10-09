@@ -16,8 +16,6 @@ xReplication::xReplication()
 
 xReplication::~xReplication()
 {
-	client->disconnect();
-	loop->quit();
 
 }
 
