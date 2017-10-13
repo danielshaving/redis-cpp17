@@ -161,6 +161,24 @@ int xTcpconnection::getSockfd()
 	return sockfd;
 }
 
+
+void xTcpconnection::sendPipe(xBuffer* buf)
+{
+	if (state == kConnected)
+	{
+		if (loop->isInLoopThread())
+		{
+			sendPipeInLoop(buf->peek(),buf->readableBytes());
+		}
+		else
+		{
+			loop->runInLoop(
+						  std::bind(&bindSendPipeInLoop,
+								  this, buf->retrieveAllAsString()));
+		}
+	}
+}
+
 void xTcpconnection::sendPipe(const stringPiepe & message)
 {
 	if (state == kConnected)

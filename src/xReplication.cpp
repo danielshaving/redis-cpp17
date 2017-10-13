@@ -53,13 +53,20 @@ void xReplication::handleTimer(void * data)
 			LOG_INFO<<"ping ping ";	
 		}
 		
-		conn->send(stringPiepe(shared.pping->ptr,sdsllen(shared.pping->ptr)));
+		conn->send(stringPiepe(shared.pping->ptr,sdslen(shared.pping->ptr)));
 	}
 }
 
+
+void xReplication::disconnect()
+{
+	client->disconnect();
+}
+
+
 void xReplication::syncWrite(const xTcpconnectionPtr& conn)
 {
-	conn->send(stringPiepe(shared.sync->ptr,sdsllen(shared.sync->ptr)));
+	conn->send(stringPiepe(shared.sync->ptr,sdslen(shared.sync->ptr)));
 	fp = redis->rdb.createFile();
 	if(fp == nullptr)
 	{
@@ -139,11 +146,11 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 				return ;
 			}
 
-			conn->send(stringPiepe(shared.ok->ptr,sdsllen(shared.ok->ptr)));
+			conn->send(stringPiepe(shared.ok->ptr,sdslen(shared.ok->ptr)));
 			std::shared_ptr<xSession> session (new xSession(redis,conn));
 			std::unique_lock <std::mutex> lck(redis->mtx);
 			redis->sessions[conn->getSockfd()] = session;
-			conn->send(stringPiepe(shared.pping->ptr,sdsllen(shared.pping->ptr)));
+			conn->send(stringPiepe(shared.pping->ptr,sdslen(shared.pping->ptr)));
 			timer = loop->runAfter(1,nullptr,true,std::bind(&xReplication::handleTimer,this,std::placeholders::_1));
 	
 		}

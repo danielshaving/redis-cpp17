@@ -927,7 +927,7 @@ rObj * xRdb::rdbLoadObject(int rdbtype, xRio *rdb)
 
 int xRdb::rdbSaveStringObject(xRio *rdb, rObj *obj)
 {
-	return rdbSaveRawString(rdb,obj->ptr,sdsllen(obj->ptr));
+	return rdbSaveRawString(rdb,obj->ptr,sdslen(obj->ptr));
 }
 
 

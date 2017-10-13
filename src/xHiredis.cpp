@@ -1606,7 +1606,8 @@ xRedisContextPtr  redisConnectWithTimeout(const char *ip, int port, const struct
 xHiredisAsync::xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port)
 :connectCount(0),
 loop(loop),
-pool(loop)
+pool(loop),
+clusterMode(false)
 {
 	if(threadCount > 1)
 	{
@@ -1644,9 +1645,9 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 	}
 
 	 redisCallback cb;
-	 void  *reply = nullptr;
+	 redisReply  *reply = nullptr;
 	 int status;
-	 while((status = redisGetReply(redis->c,&reply)) == REDIS_OK)
+	 while((status = redisGetReply(redis->c,(void**)&reply)) == REDIS_OK)
 	 {
 		 if(reply == nullptr)
 		 {
@@ -1659,6 +1660,24 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 			 redis->replies.pop_front();
 		 }
 
+		 
+		 if(clusterMode && reply->type == REDIS_REPLY_ERROR && (!strncmp(reply->str,"MOVED",5) || !strcmp(reply->str,"ASK") ))
+		 {	
+			char *p = reply->str, *s;
+			int slot;
+			s = strchr(p,' ');    
+			p = strchr(s+1,' ');  
+			*p = '\0';
+			slot = atoi(s+1);
+			s = strrchr(p+1,':'); 
+			*s = '\0';
+			
+			char *ip = sdsnew(p+1);
+			int port = atoi(s+1);			
+			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<*ip<<" "<<port;
+			sdsfree(ip);
+		 }
+		
 		 if(cb.fn)
 		 {
 			 cb.fn(redis,reply,cb.privdata);

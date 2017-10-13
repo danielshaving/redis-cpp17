@@ -36,6 +36,7 @@ public:
 	void delClusterImport(std::deque<rObj*> &robj);
 	void eraseClusterNode(std::string host,int32_t port);
 	void eraseImportSlot(int slot);
+	void getKeyInSlot(int slot,rObj **keys,int count);
 
 public:
 	xEventLoop *loop;

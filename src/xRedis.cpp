@@ -24,6 +24,7 @@ pingPong(false)
 	server.setThreadNum(threadCount);
 	server.start();
 	zmalloc_enable_thread_safeness();
+	
 }
 
 xRedis::~xRedis()
@@ -189,7 +190,7 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
 			std::unique_lock <std::mutex> lck(mu);
 			for(auto iter = map.begin(); iter != map.end(); iter++)
 			{
-				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdsllen(iter->first->ptr));
+				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
 			}
 
 		}
@@ -204,7 +205,7 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
 			std::unique_lock <std::mutex> lck(mu);
 			for(auto iter = map.begin(); iter!=map.end(); iter++)
 			{
-				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdsllen(iter->first->ptr));
+				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
 			}
 
 		}
@@ -507,7 +508,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			return false;
 		}
 
-		if (host.c_str() && !memcmp(host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr))
+		if (host.c_str() && !memcmp(host.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr))
 			&& this->port == port)
 		{
 			LOG_WARN << "cluster  meet  connect self error .";
@@ -519,7 +520,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
 			{
-				if (port == it->second->port && !memcmp(it->second->host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr)))
+				if (port == it->second->port && !memcmp(it->second->host.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)))
 				{
 					LOG_WARN << "cluster  meet  already exists .";
 					addReplyErrorFormat(session->sendBuf, "cluster  meet  already exists ");
@@ -549,7 +550,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
 			{
-				if (port == it->second->port && !memcmp(it->second->host.c_str(), obj[1]->ptr, sdsllen(obj[1]->ptr)))
+				if (port == it->second->port && !memcmp(it->second->host.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)))
 				{
 					return false;
 				}
@@ -561,49 +562,50 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 	}
 	else if (!strcasecmp(obj[0]->ptr, "info") && obj.size() == 1)
 	{
-		std::unique_lock <std::mutex> lck(clusterMutex);
 		sds ci = sdsempty(), ni = sdsempty();
 
 		ci = sdscatprintf(sdsempty(), "%s %s:%d ------connetc slot:",
 			(host + "::" + std::to_string(port)).c_str(),
 			host.c_str(),
 			port);
-
-		for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); it++)
 		{
-			if (it->second.ip == host && it->second.port == port)
+			std::unique_lock <std::mutex> lck(clusterMutex);
+			for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); it++)
 			{
-				ni = sdscatprintf(sdsempty(), "%d ",
-					it->first);
-				ci = sdscatsds(ci, ni);
-				sdsfree(ni);
-			}
-		}
-		ci = sdscatlen(ci, "\n", 1);
-
-		for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
-		{
-			ni = sdscatprintf(sdsempty(), "%s %s:%d ------connetc slot:",
-				(it->second->host +  "::" + std::to_string(it->second->port)).c_str(),
-				it->second->host.c_str(),
-				it->second->port);
-
-			ci = sdscatsds(ci, ni);
-			sdsfree(ni);
-		
-			for (auto iter = clus.clusterSlotNodes.begin(); iter != clus.clusterSlotNodes.end(); iter++)
-			{
-				if (iter->second.ip == it->second->host && iter->second.port == it->second->port)
+				if (it->second.ip == host && it->second.port == port)
 				{
 					ni = sdscatprintf(sdsempty(), "%d ",
-						iter->first);
+						it->first);
 					ci = sdscatsds(ci, ni);
 					sdsfree(ni);
 				}
-				
 			}
 			ci = sdscatlen(ci, "\n", 1);
 
+			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
+			{
+				ni = sdscatprintf(sdsempty(), "%s %s:%d ------connetc slot:",
+					(it->second->host +  "::" + std::to_string(it->second->port)).c_str(),
+					it->second->host.c_str(),
+					it->second->port);
+
+				ci = sdscatsds(ci, ni);
+				sdsfree(ni);
+			
+				for (auto iter = clus.clusterSlotNodes.begin(); iter != clus.clusterSlotNodes.end(); iter++)
+				{
+					if (iter->second.ip == it->second->host && iter->second.port == it->second->port)
+					{
+						ni = sdscatprintf(sdsempty(), "%d ",
+							iter->first);
+						ci = sdscatsds(ci, ni);
+						sdsfree(ni);
+					}
+					
+				}
+				ci = sdscatlen(ci, "\n", 1);
+
+			}
 		}
 
 		rObj *o = createObject(OBJ_STRING, ci);
@@ -611,59 +613,115 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 		decrRefCount(o);
 		return false;
 	}
+	else if(!strcasecmp(obj[0]->ptr,"getkeysinslot") && obj.size() == 3)
+	{
+		long long maxkeys, slot;
+		unsigned int numkeys, j;
+		rObj **keys;
+
+		if (getLongLongFromObjectOrReply(session->sendBuf,obj[1],&slot,nullptr) != REDIS_OK)
+			return false;
+			
+
+		if (getLongLongFromObjectOrReply(session->sendBuf,obj[2],&maxkeys,nullptr)!= REDIS_OK)
+			return false;
+	
+		if (slot < 0 || slot >= 16384 || maxkeys < 0) 
+		{
+			addReplyError(session->sendBuf,"Invalid slot or number of keys");
+			return false;
+		}
+		
+		keys = (rObj**)zmalloc(sizeof(rObj*) * maxkeys);
+		
+		clus.getKeyInSlot(slot,keys,maxkeys);
+		addReplyMultiBulkLen(session->sendBuf,numkeys);
+		for (j = 0; j < numkeys; j++)
+			addReplyBulk(session->sendBuf,keys[j]);
+		zfree(keys);
+		return false;
+		
+	}
 	else if (!strcasecmp(obj[0]->ptr, "slots") && obj.size() == 1)
 	{
 
 	}
 	else if (!strcasecmp(obj[0]->ptr, "keyslot") && obj.size() == 2)
 	{
-		const char * key = obj[1]->ptr;
-		addReplyLongLong(session->sendBuf, clus.keyHashSlot((char*)key, sdsllen(key)));
+		char * key = obj[1]->ptr;
+		addReplyLongLong(session->sendBuf, clus.keyHashSlot((char*)key, sdslen(key)));
 		return false;
 	}
 	else if (!strcasecmp(obj[0]->ptr, "setslot") && obj.size() >= 4)
-	{
+	{		
+		if( !strcasecmp(obj[1]->ptr, "node") )
+		{
+			std::string imipPort = obj[2]->ptr;
+
+			{
+				std::unique_lock <std::mutex> lck(clusterMutex);
+				clus.importingSlotsFrom.erase(imipPort);
+				if(clus.importingSlotsFrom.size() == 0)
+				{
+					clusterRepliImportEnabeld = false;
+				}
+			}
+
+			std::string fromIp;
+			int  fromPort;
+			const char *start = obj[3]->ptr;
+			const char *end = obj[3]->ptr + sdslen(obj[3]->ptr );
+			const  char *space = std::find(start,end,':');
+			if(space != end)
+			{
+				std::string ip(start,space);
+				fromIp = ip;
+				std::string port(space + 2,end);
+				long long value;
+				string2ll(port.c_str(), port.length(), &value);
+				fromPort = value;
+			}
+			else
+			{
+				
+				 addReply(session->sendBuf, shared.err);
+				 return false;
+			}
+			
+				
+			for(int i  = 4; i < obj.size(); i++)
+			{
+				int slot;
+				if ((slot = clus.getSlotOrReply(session, obj[i])) == -1)
+				{
+					addReplyErrorFormat(session->sendBuf, "Invalid slot %d",
+						(char*)obj[i]->ptr);
+					return false;
+				}
+				
+				std::unique_lock <std::mutex> lck(clusterMutex);
+				auto it = clus.clusterSlotNodes.find(slot);
+				if(it != clus.clusterSlotNodes.end())
+				{
+					it->second.ip = fromIp;
+					it->second.port = fromPort;
+				}
+				
+				
+			}
+		
+			LOG_INFO<<"cluster async replication success "<<imipPort;
+			addReply(session->sendBuf, shared.ok);
+			return false;
+
+		}
+
+		
 		int slot;
 		if ((slot = clus.getSlotOrReply(session, obj[1])) == -1)
 		{
 			addReplyErrorFormat(session->sendBuf, "Invalid slot %d",
 				(char*)obj[1]->ptr);
-			return false;
-		}
-
-		
-		if( !strcasecmp(obj[2]->ptr, "node") )
-		{
-			std::unique_lock <std::mutex> lck(clusterMutex);
-			std::string ipPort = obj[3]->ptr;
-			std::string imipPort = obj[4]->ptr;
-			const char *start = obj[3]->ptr;
-			const char *end = obj[3]->ptr + sdsllen(obj[3]->ptr );
-			const  char *space = std::find(start,end,':');
-			if(space != end)
-			{
-				std::string ip(start,space);
-				std::string port(space + 2,end);
-				long long value;
-				string2ll(port.c_str(), port.length(), &value);
-				auto it = clus.clusterSlotNodes.find(slot);
-				if(it != clus.clusterSlotNodes.end())
-				{
-					it->second.ip = ip;
-					it->second.port = value;
-				}
-
-				
-				clus.importingSlotsFrom.erase(imipPort);
-
-				if(clus.importingSlotsFrom.size() == 0)
-				{
-					clusterRepliImportEnabeld = false;
-				}
-		
-			}
-		
-			LOG_INFO<<"importingSlotsFrom  erase ";
 			return false;
 		}
 
@@ -674,7 +732,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			addReplyErrorFormat(session->sendBuf, "setslot self server error ");
 			return false;
 		}
-
+		
 
 		if( !strcasecmp(obj[2]->ptr, "importing") && obj.size() == 4)
 		{
@@ -847,7 +905,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 				rObj * d = createStringObject("delsync", 7);
 				robj.push_back(c);
 				robj.push_back(d);
-				rObj * o = createStringObject(obj[j]->ptr, sdsllen(obj[j]->ptr));
+				rObj * o = createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr));
 				robj.push_back(o);
 				clus.syncClusterSlot(robj);
 				clus.clusterSlotNodes.erase(slot);
@@ -901,7 +959,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			
 				robj.push_back(c);
 				robj.push_back(a);
-				rObj * o = createStringObject(obj[j]->ptr, sdsllen(obj[j]->ptr));
+				rObj * o = createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr));
 				robj.push_back(o);
 				robj.push_back(i);
 				robj.push_back(p);
@@ -943,11 +1001,11 @@ void xRedis::structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs
 	for (int i = 0; i < robjs.size(); i++)
 	{
 		buf[0] = '$';
-		len = 1 + ll2string(buf + 1, sizeof(buf) - 1, sdsllen(robjs[i]->ptr));
+		len = 1 + ll2string(buf + 1, sizeof(buf) - 1, sdslen(robjs[i]->ptr));
 		buf[len++] = '\r';
 		buf[len++] = '\n';
 		sendBuf.append(buf, len);
-		sendBuf.append(robjs[i]->ptr, sdsllen(robjs[i]->ptr));
+		sendBuf.append(robjs[i]->ptr, sdslen(robjs[i]->ptr));
 		sendBuf.append("\r\n", 2);
 	}
 }
@@ -1034,8 +1092,7 @@ bool xRedis::slaveofCommand(const std::deque <rObj*> & obj,xSession * session)
 		if (masterHost.c_str() && masterPort) 
 		{
 			LOG_WARN<<"MASTER MODE enabled (user request from "<<masterHost.c_str()<<":"<<masterPort;
-			repli.client->disconnect();
-			repli.isreconnect = false;
+			repli.disconnect();
 		}
 
 	}
@@ -1045,7 +1102,7 @@ bool xRedis::slaveofCommand(const std::deque <rObj*> & obj,xSession * session)
 		if ((getLongFromObjectOrReply(session->sendBuf, obj[1], &port, nullptr) != REDIS_OK))
 			return false;
 
-		if (host.c_str() && !memcmp(host.c_str(), obj[0]->ptr,sdsllen(obj[0]->ptr))
+		if (host.c_str() && !memcmp(host.c_str(), obj[0]->ptr,sdslen(obj[0]->ptr))
 		&& this->port == port)
 		{
 			LOG_WARN<<"SLAVE OF connect self error .";
@@ -1297,7 +1354,7 @@ bool xRedis::hkeysCommand(const std::deque <rObj*> & obj,xSession * session)
 
 		for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
 		{
-			addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdsllen(iter->first->ptr));
+			addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
 		}
 	}
 
@@ -1366,8 +1423,8 @@ bool xRedis::hgetallCommand(const std::deque <rObj*> & obj,xSession * session)
 
 		for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
 		{
-			addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdsllen(iter->first->ptr));
-			addReplyBulkCBuffer(session->sendBuf,iter->second->ptr,sdsllen(iter->second->ptr));
+			addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+			addReplyBulkCBuffer(session->sendBuf,iter->second->ptr,sdslen(iter->second->ptr));
 		}
 	}
 
@@ -1799,7 +1856,8 @@ void xRedis::initConfig()
 	cluterMaps.insert(msgId);
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("cluster",7));
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("migrate",7));
-
+	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("command",7));
+	
 	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
 	sentiThreads->detach();
 	repliThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));

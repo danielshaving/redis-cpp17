@@ -29,7 +29,7 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 	if(threadId != c->conn->getLoop()->getThreadId())
 	{
 		printf(" %d %d\n",threadId, getpid());
-	    assert(false);
+	    	assert(false);
 	}
 
 	if(++ connetCount ==   sessionCount )

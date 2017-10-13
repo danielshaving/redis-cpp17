@@ -14,7 +14,7 @@ typedef struct redisObject
 {		
 	void calHash()
 	{
-		hash = dictGenHashFunction(ptr,sdsllen(ptr));
+		hash = dictGenHashFunction(ptr,sdslen(ptr));
 	}
 
 	unsigned type:4;
@@ -27,14 +27,14 @@ typedef struct redisSortObject
 {
 	bool operator <(const redisSortObject & r) const
 	{	
-		int cmp = memcmp(key->ptr,r.key->ptr,sdsllen(key->ptr));
+		int cmp = memcmp(key->ptr,r.key->ptr,sdslen(key->ptr));
 		if( cmp < 0)
 		{
 			return true;
 		}
 		else if(cmp == 0)
 		{
-			return memcmp(value->ptr,r.value->ptr,sdsllen(value->ptr)) < 0;
+			return memcmp(value->ptr,r.value->ptr,sdslen(value->ptr)) < 0;
 		}
 		else
 		{
@@ -60,8 +60,8 @@ struct Equal
 {
 	bool operator()(const rObj * x, const rObj * y) const
 	{
-		 return ((sdsllen(x->ptr) == sdsllen(y->ptr)) &&
-            (memcmp(x->ptr, y->ptr, sdsllen(y->ptr))== 0));
+		 return ((sdslen(x->ptr) == sdslen(y->ptr)) &&
+            (memcmp(x->ptr, y->ptr, sdslen(y->ptr))== 0));
 	}
 
 };

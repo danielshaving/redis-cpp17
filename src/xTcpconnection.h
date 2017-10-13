@@ -43,14 +43,17 @@ public:
 	void sendInLoop(const stringPiepe & message);
 	void sendPipeInLoop(const void* message, size_t len);
 	void sendPipeInLoop(const stringPiepe & message);
+	
 
 	static void bindSendInLoop(xTcpconnection* conn, const stringPiepe& message);
 	static void bindSendPipeInLoop(xTcpconnection* conn, const stringPiepe& message);
-
+	
 	void sendPipe(const stringPiepe & message);
-    void send(const void* message, int len);
+	void sendPipe(xBuffer* message);
+        void send(const void* message, int len);
 	void send(xBuffer* message);
 	void send(const stringPiepe  &message);
+
 
 	bool disconnected() const { return state == kDisconnected; }
 	bool connected();
@@ -65,7 +68,6 @@ public:
 	void shutdownInLoop();
 	void forceClose();
 	xBuffer * getSendBuff(){ return &sendBuff; }
-
 	xBuffer* inputBuffer(){ return &recvBuff; }
 	xBuffer* outputBuffer(){ return &sendBuff; }
 

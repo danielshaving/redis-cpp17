@@ -13,7 +13,7 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
  fromMaster(false)
 {
 	command = createStringObject(nullptr,10);
-	 conn->setMessageCallback(
+	conn->setMessageCallback(
 	        std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
 }
 
@@ -71,6 +71,12 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 	}
 	else
 	{
+	
+		if(sendBuf.readableBytes() > 0 )
+		{
+			conn->send(&sendBuf);
+			sendBuf.retrieveAll();
+		}
 
 		if(retrieveBuffer)
 		{
@@ -78,12 +84,6 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 			retrieveBuffer = false;
 		}
 		
-		if(sendBuf.readableBytes() > 0 )
-		{
-			conn->send(&sendBuf);
-			sendBuf.retrieveAll();
-		}
-
 		if(sendPubSub.readableBytes() > 0 )
 		{
 			for(auto iter = pubSubTcpconn.begin(); iter != pubSubTcpconn.end(); iter ++)
@@ -109,6 +109,7 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 			}
 			sendSlaveBuf.retrieveAll();
 		}
+		
 	}
 }
 
@@ -144,15 +145,15 @@ int xSession::processCommand()
 	if (redis->clusterEnabled && redis->clusterSlotEnabled)
 	{
 		{
-			auto it = redis->cluterMaps.find(robjs[0]);
-			if(it != redis->cluterMaps.end() || robjs.size() < 2)
+			auto it = redis->cluterMaps.find(command);
+			if(it != redis->cluterMaps.end())
 			{
 				goto jump;
 			}
 		}
 		
-		const char * key = robjs[1]->ptr;
-		int hashslot = redis->clus.keyHashSlot((char*)key, sdsllen(key));
+		char * key = robjs[0]->ptr;
+		int hashslot = redis->clus.keyHashSlot((char*)key, sdslen(key));
 		
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
 		if(redis->clusterRepliMigratEnabled)
@@ -229,7 +230,7 @@ jump:
 			if(it !=  redis->salvetcpconnMaps.end())
 			{
 				fromSalve = true;
-				if(memcmp(robjs[0]->ptr,shared.ok->ptr,3) == 0)
+				if(memcmp(command,shared.ok->ptr,3) == 0)
 				{
 					if(++redis->salveCount >= redis->salvetcpconnMaps.size())
 					{
@@ -287,7 +288,7 @@ jump:
 			}
 			else
 			{
-				if(!checkCommand(robjs[0]))
+				if(!checkCommand(command))
 				{
 					if(redis->slaveEnabled)
 					{
@@ -301,6 +302,8 @@ jump:
 				
 	}
 
+	
+	
 
 	auto iter = redis->handlerCommandMap.find(command);
 	if(iter == redis->handlerCommandMap.end() )

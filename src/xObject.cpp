@@ -109,7 +109,7 @@ int getLongLongFromObject(rObj *o, long long   *target) {
 	else {
 
 		if (sdsEncodedObject(o)) {
-			if (string2ll(o->ptr, sdsllen(o->ptr), &value) == 0) return REDIS_ERR;
+			if (string2ll(o->ptr, sdslen(o->ptr), &value) == 0) return REDIS_ERR;
 		}
 		else {
 			LOG_ERROR << "Unknown string encoding";

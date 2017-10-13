@@ -176,6 +176,8 @@ public:
 	std::mutex rmutex;
 	std::mutex rtx;
 	std::condition_variable condition;
+	bool clusterMode;
+	
 };
 
 

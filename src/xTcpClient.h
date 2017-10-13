@@ -1,4 +1,4 @@
-#pragma once
+	#pragma once
 
 #include "all.h"
 #include "xEventLoop.h"
@@ -32,7 +32,8 @@ public:
 	xConnectorPtr connector;
 	xEventLoop *loop;
 
-
+	std::string host;
+	int port;
 	bool isconnect;
 	int nextConnId;
 	mutable std::mutex mutex;

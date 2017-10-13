@@ -64,6 +64,8 @@ xTcpClient::~xTcpClient()
 void xTcpClient::connect(const char *ip,int32_t port)
 {
 	 isconnect = true;
+	 this->host= ip;
+	 this->port = port;
 	 connector->start(ip,port);
 }
 

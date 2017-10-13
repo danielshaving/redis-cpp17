@@ -24,6 +24,7 @@ public:
 	void syncWithMaster(const xTcpconnectionPtr& conn);
 	void replicationCron();
 	void syncWrite(const xTcpconnectionPtr& conn);
+	void disconnect();
 
 public:
 
