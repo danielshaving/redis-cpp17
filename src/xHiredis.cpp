@@ -1606,12 +1606,8 @@ xRedisContextPtr  redisConnectWithTimeout(const char *ip, int port, const struct
 xHiredisAsync::xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port)
 :connectCount(0),
 loop(loop),
-<<<<<<< HEAD
 pool(loop),
 clusterMode(false)
-=======
-pool(loop)
->>>>>>> f1085e667d818484b6888f92564c958a9c437e9b
 {
 	if(threadCount > 1)
 	{
@@ -1649,15 +1645,9 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 	}
 
 	 redisCallback cb;
-<<<<<<< HEAD
 	 redisReply  *reply = nullptr;
 	 int status;
 	 while((status = redisGetReply(redis->c,(void**)&reply)) == REDIS_OK)
-=======
-	 void  *reply = nullptr;
-	 int status;
-	 while((status = redisGetReply(redis->c,&reply)) == REDIS_OK)
->>>>>>> f1085e667d818484b6888f92564c958a9c437e9b
 	 {
 		 if(reply == nullptr)
 		 {
@@ -1670,8 +1660,6 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 			 redis->replies.pop_front();
 		 }
 
-<<<<<<< HEAD
-		 
 		 if(clusterMode && reply->type == REDIS_REPLY_ERROR && (!strncmp(reply->str,"MOVED",5) || !strcmp(reply->str,"ASK") ))
 		 {	
 			char *p = reply->str, *s;
@@ -1689,8 +1677,7 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 			sdsfree(ip);
 		 }
 		
-=======
->>>>>>> f1085e667d818484b6888f92564c958a9c437e9b
+
 		 if(cb.fn)
 		 {
 			 cb.fn(redis,reply,cb.privdata);
