@@ -1,4 +1,4 @@
-single core absolute fair environment  less than 64k set get bench: redis overall performance faster than xredis 10 - 50% range qps 
+single core absolute fair environment  less than 100k set get bench: redis overall performance faster than xredis 10 - 25% range qps 
 （because of the memory management cost of using STL,the smaller the memory, the greater the gap） kernel bottleneck 80-90% cpu benchmark.pdf 
 
 cd xredis  mkdir obj  cd ./src/    
