@@ -183,12 +183,12 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
 	addReplyMultiBulkLen(session->sendBuf,getDbsize());
 
 	{
-		for(auto it = setMapShards.begin(); it != setMapShards.end(); it++)
+		for(auto it = setMapShards.begin(); it != setMapShards.end(); ++it)
 		{
 			auto &map = (*it).setMap;
 			std::mutex &mu =  (*it).mtx;
 			std::unique_lock <std::mutex> lck(mu);
-			for(auto iter = map.begin(); iter != map.end(); iter++)
+			for(auto iter = map.begin(); iter != map.end(); ++iter)
 			{
 				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
 			}
@@ -198,12 +198,12 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	{
-		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); it++)
+		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); ++it)
 		{
 			auto &map = (*it).hsetMap;
 			std::mutex &mu =  (*it).mtx;
 			std::unique_lock <std::mutex> lck(mu);
-			for(auto iter = map.begin(); iter!=map.end(); iter++)
+			for(auto iter = map.begin(); iter!=map.end(); ++iter)
 			{
 				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
 			}
@@ -329,7 +329,7 @@ bool xRedis::infoCommand(const std::deque <rObj*> & obj,xSession * session)
 
 	{
 		std::unique_lock <std::mutex> lck(slaveMutex);
-		for(auto it = salvetcpconnMaps.begin(); it != salvetcpconnMaps.end(); it ++)
+		for(auto it = salvetcpconnMaps.begin(); it != salvetcpconnMaps.end(); ++it )
 		{
 			info = sdscat(info,"\r\n");
 			info = sdscatprintf(info,
@@ -518,7 +518,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 
 		{
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
+			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); ++it)
 			{
 				if (port == it->second->port && !memcmp(it->second->host.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)))
 				{
@@ -570,7 +570,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			port);
 		{
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); it++)
+			for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); ++it)
 			{
 				if (it->second.ip == host && it->second.port == port)
 				{
@@ -582,7 +582,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			}
 			ci = sdscatlen(ci, "\n", 1);
 
-			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
+			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); ++it)
 			{
 				ni = sdscatprintf(sdsempty(), "%s %s:%d ------connetc slot:",
 					(it->second->host +  "::" + std::to_string(it->second->port)).c_str(),
@@ -592,7 +592,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 				ci = sdscatsds(ci, ni);
 				sdsfree(ni);
 			
-				for (auto iter = clus.clusterSlotNodes.begin(); iter != clus.clusterSlotNodes.end(); iter++)
+				for (auto iter = clus.clusterSlotNodes.begin(); iter != clus.clusterSlotNodes.end(); ++iter)
 				{
 					if (iter->second.ip == it->second->host && iter->second.port == it->second->port)
 					{
@@ -739,7 +739,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			bool mark = false;
 			{
 				std::unique_lock <std::mutex> lck(clusterMutex);
-				for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); it++)
+				for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); ++it)
 				{
 					std::string node = it->second.ip + "::" + std::to_string(it->second.port);
 					if (node == nodeName && slot == it->first)
@@ -1215,7 +1215,7 @@ size_t xRedis::getDbsize()
 	size_t size = 0;
 	{
 
-		for(auto it = setMapShards.begin(); it != setMapShards.end(); it++)
+		for(auto it = setMapShards.begin(); it != setMapShards.end(); ++it)
 		{
 			std::mutex &mu = (*it).mtx;
 			std::unique_lock <std::mutex> lck(mu);
@@ -1224,7 +1224,7 @@ size_t xRedis::getDbsize()
 	}
 
 	{
-		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); it++)
+		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); ++it)
 		{
 			std::mutex &mu = (*it).mtx;
 			std::unique_lock <std::mutex> lck(mu);
@@ -1287,7 +1287,7 @@ int  xRedis::removeCommand(rObj * obj,int &count)
 			if(hmap != hsetMap.end())
 			{
 				count ++;
-				for(auto iter = hmap->second.begin(); iter != hmap->second.end(); iter++)
+				for(auto iter = hmap->second.begin(); iter != hmap->second.end(); ++iter)
 				{
 					zfree(iter->first);
 					zfree(iter->second);
@@ -1339,7 +1339,7 @@ bool xRedis::hkeysCommand(const std::deque <rObj*> & obj,xSession * session)
 	size_t hash= obj[0]->hash;
 
 
-    	std::mutex &mu = hsetMapShards[hash% kShards].mtx;
+    std::mutex &mu = hsetMapShards[hash% kShards].mtx;
 	auto &hsetMap = hsetMapShards[hash% kShards].hsetMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -1353,7 +1353,7 @@ bool xRedis::hkeysCommand(const std::deque <rObj*> & obj,xSession * session)
 
 		addReplyMultiBulkLen(session->sendBuf,it->second.size());
 
-		for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+		for(auto iter = it->second.begin(); iter != it->second.end(); ++iter)
 		{
 			addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
 		}
@@ -1422,7 +1422,7 @@ bool xRedis::hgetallCommand(const std::deque <rObj*> & obj,xSession * session)
 
 		addReplyMultiBulkLen(session->sendBuf,it->second.size() * 2);
 
-		for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+		for(auto iter = it->second.begin(); iter != it->second.end(); ++iter)
 		{
 			addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
 			addReplyBulkCBuffer(session->sendBuf,iter->second->ptr,sdslen(iter->second->ptr));
@@ -1578,12 +1578,12 @@ bool xRedis::hgetCommand(const std::deque <rObj*> & obj,xSession * session)
 void xRedis::clearCommand()
 {
 	{
-		for(auto it = setMapShards.begin(); it != setMapShards.end(); it++)
+		for(auto it = setMapShards.begin(); it != setMapShards.end(); ++it)
 		{
 			auto &map = (*it).setMap;
 			std::mutex &mu =  (*it).mtx;
 			std::unique_lock <std::mutex> lck(mu);
-			for(auto iter = map.begin(); iter !=map.end(); iter++)
+			for(auto iter = map.begin(); iter !=map.end(); ++iter)
 			{
 				auto iterr = expireTimers.find(iter->first);
 				if(iterr != expireTimers.end())
@@ -1601,15 +1601,15 @@ void xRedis::clearCommand()
 	}
 
 	{
-		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); it++)
+		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); ++it)
 		{
 			auto &map = (*it).hsetMap;
 			std::mutex &mu =  (*it).mtx;
 			std::unique_lock <std::mutex> lck(mu);
-			for(auto iter = map.begin(); iter!=map.end(); iter++)
+			for(auto iter = map.begin(); iter!=map.end(); ++iter)
 			{
 				auto  &mmap = iter->second;
-				for(auto iterr = mmap.begin(); iterr!=mmap.end(); iterr++)
+				for(auto iterr = mmap.begin(); iterr!=mmap.end(); ++iterr)
 				{
 					zfree(iterr->first);
 					zfree(iterr->second);
@@ -1665,7 +1665,7 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 	for (j = 2; j < obj.size();j++)
 	{
 		const char *a = obj[j]->ptr;
-		rObj *next = (j == obj.size() - 2) ? nullptr : obj[j + 1];
+		rObj *next = (j == obj.size() - 1) ? nullptr : obj[j + 1];
 
 		if ((a[0] == 'n' || a[0] == 'N') &&
 		(a[1] == 'x' || a[1] == 'X') && a[2] == '\0' &&
@@ -1767,6 +1767,7 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 	{
 		{
 			std::unique_lock <std::mutex> (expireMutex);
+			ex->calHash();
 			auto iter = expireTimers.find(ex);
 			if(iter != expireTimers.end())
 			{
@@ -1776,6 +1777,7 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 			}
 
 			xTimer * timer = loop.runAfter(milliseconds / 1000,(void *)(ex),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
+			
 			expireTimers.insert(std::make_pair(ex,timer));
 		}
 

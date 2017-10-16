@@ -68,19 +68,18 @@ public:
 	int rioFileFlush(xRio *r);
 
 	void rioInitWithFile(xRio *r, FILE *fp);
-	void rioInitWithBuffer(xRio *r, sds s);
 
 	FILE * createFile();
 	int  closeFile(FILE * fp);
 
-
+	int rdbSaveMillisecondTime(xRio *rdb, long long t);
 	int rdbSaveType(xRio *rdb, unsigned char type);
 	int rdbSaveLen(xRio *rdb, uint32_t len);
 	int rdbSave(char *filename);
 	int rdbSaveRio(xRio *rdb, int *error);
 	int rdbSaveObject(xRio *rdb, rObj *o);
 	int rdbSaveStringObject(xRio *rdb, rObj *obj);
-	int rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long now);
+	int rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long expireTime);
 	size_t rdbSaveRawString(xRio *rdb, const char *s, size_t len);
 	int rdbSaveLzfStringObject(xRio *rdb, unsigned char *s, size_t len);
 	int rdbSaveValue(xRio *rdb, rObj *value,long long now);
@@ -95,8 +94,10 @@ public:
 	rObj *rdbLoadIntegerObject(xRio *rdb, int enctype, int encode);
 	rObj *rdbLoadEncodedStringObject(xRio *rdb);
 	rObj *rdbLoadLzfStringObject(xRio *rdb);
+	long long rdbLoadMillisecondTime(xRio *rdb);
 	int rdbLoadSet(xRio *rdb);
 	int rdbLoadHset(xRio *rdb);
+	int rdbLoadExpire(xRio * rdb);
 	uint32_t rdbLoadLen(xRio *rdb, int *isencoded);
 	int rdbLoad(char *filename);
 	bool  rdbReplication(char *filename,xSession *session);
