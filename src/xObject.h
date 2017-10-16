@@ -93,7 +93,7 @@ struct sharedObjectsStruct
 };
 
 extern sharedObjectsStruct shared;
-
+extern std::map<std::string,std::string> configs;
 int ll2string(char *s, size_t len, long long value);
 int string2ll(const char * s,size_t slen, long long * value);
 rObj *createRawStringObject(char *ptr, size_t len);
@@ -125,6 +125,8 @@ void addReplyBulkCBuffer(xBuffer &sendBuf,const char *p, size_t len);
 void addReplyLongLong(xBuffer &sendBuf,size_t len);
 void addReplySds(xBuffer &sendBuf,sds s);
 
+int trim(char s[]);
+int loadConfig(const char* path);
 long long ustime(void);
 long long mstime(void);
 long long setime(void) ;

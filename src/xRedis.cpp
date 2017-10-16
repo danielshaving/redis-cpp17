@@ -1266,6 +1266,7 @@ int  xRedis::removeCommand(rObj * obj,int &count)
 				{
 					expireTimers.erase(iter);
 					loop.cancelAfter(iter->second);
+					zfree(iter->first);
 				}
 
 				count ++;
@@ -1656,14 +1657,15 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 	}
 
 	int j;
-	rObj *expire = nullptr;
+	rObj * expire = nullptr;
+	rObj * ex = nullptr;
 	int unit = UNIT_SECONDS;	
 	int flags = OBJ_SET_NO_FLAGS;
 
 	for (j = 2; j < obj.size();j++)
 	{
 		const char *a = obj[j]->ptr;
-		rObj *next = (j == obj.size() - 2) ? NULL : obj[j + 1];
+		rObj *next = (j == obj.size() - 2) ? nullptr : obj[j + 1];
 
 		if ((a[0] == 'n' || a[0] == 'N') &&
 		(a[1] == 'x' || a[1] == 'X') && a[2] == '\0' &&
@@ -1722,7 +1724,6 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 	int index = hash  % kShards;
 	std::mutex &mu = setMapShards[index].mtx;
 	auto & setMap = setMapShards[index].setMap;
-
 	{
 		std::unique_lock <std::mutex>  lck (mu);
 		auto it = setMap.find(obj[0]);
@@ -1733,7 +1734,14 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 				addReply(session->sendBuf,shared.nullbulk);
 				return false;
 			}
+
 			setMap.insert(std::make_pair(obj[0],obj[1]));
+
+			if (expire)
+			{
+				ex  = createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
+			}
+
 		}
 		else
 		{
@@ -1743,24 +1751,33 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 				return false;
 			}
 
+			if (expire)
+			{
+				ex  = createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
+			}
+
 			zfree(obj[0]);
 			zfree(it->second);
 			it->second = obj[1];
+
 		}
 	}
 
 	if (expire)
 	{
-		std::unique_lock <std::mutex> (expireMutex);
-		auto iter = expireTimers.find(obj[0]);
-		if(iter != expireTimers.end())
 		{
-			expireTimers.erase(iter);
-			loop.cancelAfter(iter->second);
-		}
+			std::unique_lock <std::mutex> (expireMutex);
+			auto iter = expireTimers.find(ex);
+			if(iter != expireTimers.end())
+			{
+				expireTimers.erase(iter);
+				loop.cancelAfter(iter->second);
+				zfree(iter->first);
+			}
 
-		xTimer * timer = loop.runAfter(milliseconds / 1000,(void *)(obj[0]),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
-		expireTimers.insert(std::make_pair(obj[0],timer));
+			xTimer * timer = loop.runAfter(milliseconds / 1000,(void *)(ex),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
+			expireTimers.insert(std::make_pair(ex,timer));
+		}
 
 		for(int i = 2; i < obj.size(); i++)
 		{
@@ -1788,7 +1805,6 @@ bool xRedis::getCommand(const std::deque <rObj*> & obj,xSession * session)
 	SetMap & setMap = setMapShards[index].setMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
-		
 		auto it = setMap.find(obj[0]);
 		if(it == setMap.end())
 		{

@@ -1,7 +1,7 @@
 
 #include "xObject.h"
 sharedObjectsStruct shared;
-
+std::map<std::string,std::string> configs;
 
 
 int string2ll(const char * s,size_t slen, long long * value)
@@ -711,6 +711,96 @@ void bytesToHuman(char *s, unsigned long long n) {
         sprintf(s,"%lluB",n);
     }
 }
+
+int trim(char s[])
+{
+    int n;
+    for(n = strlen(s) - 1; n >= 0; n--)
+    {
+        if(s[n]!=' ' && s[n]!='\t' && s[n]!='\n')
+            break;
+        s[n+1] = '\0';
+    }
+    return n;
+}
+
+int loadConfig(const char* path)
+{
+	FILE * file = fopen(path, "r");
+	if (file == nullptr)
+	{
+		LOG_ERROR<<"open" << path << " failed";
+		return -1;
+	}
+
+
+	char buf[1024];
+	int comment = 0;
+	while(fgets(buf, 4096, file) != nullptr)
+	{
+		trim(buf);
+		// to skip text comment with flags /* ... */
+		if (buf[0] != '#' && (buf[0] != '/' || buf[1] != '/'))
+		{
+			if (strstr(buf, "/*") != nullptr)
+			{
+				comment = 1;
+				continue;
+			}
+			else if (strstr(buf, "*/") != nullptr)
+			{
+				comment = 0;
+				continue;
+			}
+		}
+		if (comment == 1)
+		{
+			continue;
+		}
+
+
+		int bufLen = strlen(buf);
+		// ignore and skip the line with first chracter '#', '=' or '/'
+		if (bufLen <= 1 || buf[0] == '#' || buf[0] == '=' || buf[0] == '/')
+		{
+			continue;
+		}
+		buf[bufLen-1] = '\0';
+
+
+		char paramk[64] = {0}, paramv[256] = {0};
+		int kv=0, klen=0, vlen=0;
+		int i = 0;
+		for (i=0; i<bufLen; ++i)
+		{
+			if (buf[i] == ' ')
+				continue;
+			// scan param key name
+			if (kv == 0 && buf[i] != '=')
+			{
+				if (klen >= 64)
+					break;
+				    paramk[klen++] = buf[i];
+				    continue;
+			}
+			else if (buf[i] == '=')
+			{
+				kv = 1;
+				continue;
+			}
+			// scan param key value
+			if (vlen >= 256 || buf[i] == '#')
+				break;
+			paramv[vlen++] = buf[i];
+		}
+		if (strcmp(paramk, "")==0 || strcmp(paramv, "")==0)
+			continue;
+		configs.insert(std::make_pair(paramk,paramv));
+
+	}
+	return 0;
+}
+
 
 
 

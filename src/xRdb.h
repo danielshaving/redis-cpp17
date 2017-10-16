@@ -87,6 +87,7 @@ public:
 	int rdbSaveKey(xRio *rdb, rObj *value,long long now);
 	int rdbSaveSet(xRio *rdb);
 	int rdbSaveHset(xRio *rdb);
+	int rdbSaveExpire(xRio * rdb);
 	int rdbSaveObjectType(xRio *rdb, rObj *o);
 
 	int rdbLoadType(xRio *rdb);

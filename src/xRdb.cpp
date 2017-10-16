@@ -391,6 +391,15 @@ int xRdb::rdbSaveSet(xRio *rdb)
 	return REDIS_OK;
 }
 
+
+int xRdb::rdbSaveExpire(xRio * rdb)
+{
+	if (rdbSaveType(rdb,REDIS_EXPIRE_TIME) == -1) return REDIS_ERR;
+
+	if (rdbSaveType(rdb,REDIS_EXPIRE_TIME) == -1) return REDIS_ERR;
+
+}
+
 int xRdb::rdbSaveHset(xRio *rdb)
 {
 	if (rdbSaveType(rdb,REDIS_RDB_HSET) == -1) return REDIS_ERR;
@@ -1052,6 +1061,7 @@ int xRdb::rdbSaveRio(xRio *rdb,int *error)
 
 	rdbSaveSet(rdb);
 	rdbSaveHset(rdb);
+	rdbSaveExpire(rdb);
 
 	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1)
 	{

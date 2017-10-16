@@ -143,23 +143,32 @@ bool xSocket::createTcpListenSocket()
     }
 
     int optval = 1;
+	
+	if (setsockopt(listenSocketFd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
+    {
+    	LOG_SYSERR<<"Set SO_REUSEPORT socket  failed! error "<<strerror(errno);
+        close(listenSocketFd);
+        return false;
+    }
+	
+  
     if (setsockopt(listenSocketFd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
     {
-    	LOG_WARN<<"Set listen socket<%d> failed! error "<<strerror(errno);
+    	LOG_SYSERR<<"Set SO_REUSEADDR socket  failed! error "<<strerror(errno);
         close(listenSocketFd);
         return false;
     }
 
     if (bind(listenSocketFd, (struct sockaddr*)&serverAdress, sizeof(serverAdress)) < 0 )
     {
-        LOG_WARN<<"Bind listen socket<%d> failed! error "<<strerror(errno);
+        LOG_SYSERR<<"Bind bind socket failed! error "<<strerror(errno);
         close(listenSocketFd);
         return false;
     }
 
     if (listen(listenSocketFd, SOMAXCONN))
     {
-        LOG_WARN<<"Listen listen socket<%d> failed! error "<<strerror(errno);
+        LOG_SYSERR<<"Listen listen socket failed! error "<<strerror(errno);
         close(listenSocketFd);
         return false;
     }

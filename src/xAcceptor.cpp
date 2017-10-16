@@ -42,8 +42,7 @@
 	}
 	else
 	{
-		int savedErrno = errno;
-		//TRACE("errno %d",errno);
+		 LOG_SYSERR << "in xAcceptor::handleRead";
 	}
  }
 
