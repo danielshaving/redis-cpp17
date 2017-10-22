@@ -13,6 +13,7 @@ salveCount(0),
 clusterSlotEnabled(false),
 clusterRepliMigratEnabled(false),
 clusterRepliImportEnabeld(false),
+rdbChildPid(-1),
 count(0),
 pingPong(false)
 {
@@ -24,6 +25,7 @@ pingPong(false)
 	server.setThreadNum(threadCount);
 	server.start();
 	zmalloc_enable_thread_safeness();
+	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
 	
 }
 
@@ -44,6 +46,62 @@ bool xRedis::clearClusterMigradeCommand(void * data)
 void xRedis::replyCheck()
 {
 
+}
+
+
+
+void xRedis::serverCron(void * data)
+{
+	if(rdbChildPid != -1)
+	{
+		 pid_t pid;
+		int statloc;
+
+		if ((pid = wait3(&statloc,WNOHANG,nullptr)) != 0)
+		{
+				 int exitcode = WEXITSTATUS(statloc);
+				 int bysignal = 0;
+
+				 if (WIFSIGNALED(statloc)) bysignal = WTERMSIG(statloc);
+
+				 if (pid == rdbChildPid)
+				 {
+
+						if (!bysignal && exitcode == 0)
+						{
+							LOG_INFO<<"Background saving terminated with success";
+						}
+						else if (!bysignal && exitcode != 0)
+						{
+							LOG_INFO<<"Background saving error";
+						}
+						else
+						{
+							LOG_WARN<<"Background saving terminated by signal "<< bysignal;
+
+							char tmpfile[256];
+
+							snprintf(tmpfile,256,"temp-%d.rdb", (int) rdbChildPid);
+							unlink(tmpfile);
+
+
+							if (bysignal != SIGUSR1)
+							{
+
+							}
+
+						 }
+
+				 }
+				 else
+				 {
+					 LOG_WARN<<"Warning, detected child with unmatched pid: "<<pid;
+				 }
+
+		}
+
+		rdbChildPid = -1;
+	}
 }
 
 void xRedis::handleTimeOut(void * data)
@@ -1034,25 +1092,74 @@ bool  xRedis::save(xSession * session)
 }
 
 
+
+int xRedis::rdbSaveBackground(xSession * session)
+{
+	if(rdbChildPid != -1)
+	{
+		return REDIS_ERR;
+	}
+
+	pid_t childpid;
+	if ((childpid = fork()) == 0)
+	{
+		 int retval;
+		 for(auto it = sessions.begin(); it != sessions.end(); ++it)
+		 {
+			 it->second->conn->forceClose();
+		 }
+
+		 retval = rdb.rdbSave("dump.rdb");
+		 if(retval == REDIS_OK)
+		 {
+			 size_t privateDirty = zmalloc_get_private_dirty();
+			 if (privateDirty)
+			 {
+				 LOG_INFO<<"RDB: "<< privateDirty/(1024*1024)<<"MB of memory used by copy-on-write";
+			 }
+		 }
+
+		 exit((retval == REDIS_OK) ? 0 : 1);
+
+
+	}
+	else
+	{
+		if (childpid == -1)
+		{
+			addReply(session->sendBuf,shared.err);
+			return REDIS_ERR;
+		}
+
+		rdbChildPid = childpid;
+	}
+
+	return REDIS_OK; /* unreached */
+}
+
 bool xRedis::bgsaveCommand(const std::deque <rObj*> & obj,xSession * session)
 {
-	
 	if(obj.size() > 0)
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown bgsave error");
 		return false;
 	}
 	
-	if(save(session))
+	if(rdbChildPid != -1)
 	{
-		addReply(session->sendBuf,shared.ok);
-			
+		addReplyError(session->sendBuf,"Background save already in progress");
+		return false;
+	}
+
+
+	if(rdbSaveBackground(session) == REDIS_OK)
+	{
+		 addReplyStatus(session->sendBuf,"Background saving started");
 	}
 	else
 	{
-		addReply(session->sendBuf,shared.err);
+		  addReply(session->sendBuf,shared.err);
 	}
-
 	return true;
 	
 }
@@ -1170,26 +1277,18 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-
-	bool mark  = true;
-	char rdbFileName[] = "dump.rdb";
+	if(!rdb.rdbReplication("dump.rdb",session))
 	{
-		{
-			std::unique_lock <std::mutex> lck(mtx);
-			mark = rdb.rdbReplication(rdbFileName,session);
-		}
-
-		if(!mark)
 		{
 			std::unique_lock <std::mutex> lck(slaveMutex);
 			if(timer)
 			{
 				session->conn->getLoop()->cancelAfter(timer);
 			}
-			session->conn->forceClose();
-			LOG_INFO<<"master sync send failure";
-			return false;
 		}
+		session->conn->forceClose();
+		LOG_INFO<<"master sync send failure";
+		return false;
 	}
 
 	LOG_INFO<<"master sync send success ";
@@ -1361,27 +1460,6 @@ bool xRedis::hkeysCommand(const std::deque <rObj*> & obj,xSession * session)
 
 	return false;
 
-}
-
-
-bool xRedis::ppingCommand(const std::deque <rObj*> & obj, xSession * session)
-{
-	std::deque<rObj*>  robjs;
-	robjs.push_back(shared.ppong);
-	structureRedisProtocol(session->sendBuf,robjs);
-	return true;
-}
-
-bool xRedis::ppongCommand(const std::deque <rObj*> & obj, xSession * session)
-{
-	pingPong = true;
-	return true;
-}
-
-
-bool xRedis::pongCommand(const std::deque <rObj*> & obj,xSession * session)
-{
-	return false;
 }
 
 bool xRedis::pingCommand(const std::deque <rObj*> & obj,xSession * session)
@@ -1823,6 +1901,29 @@ bool xRedis::getCommand(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
+
+bool xRedis::ttlCommand(const std::deque<rObj*> & obj, xSession * session)
+{
+	if (obj.size() != 1)
+	{
+		addReplyErrorFormat(session->sendBuf, "unknown  ttl param error");
+		return false;
+	}
+
+	obj[0]->calHash();
+	std::unique_lock <std::mutex> lck(expireMutex);
+	auto it = expireTimers.find(obj[0]);
+	if (it == expireTimers.end())
+	{
+		addReplyLongLong(session->sendBuf, -2);
+		return false;
+	}
+	
+	int64_t ttl = it->second->getExpiration().getMicroSecondsSinceEpoch() - xTimestamp::now().getMicroSecondsSinceEpoch();
+	
+	addReplyLongLong(session->sendBuf, ttl / 1000000);
+	return false;
+}
 void xRedis::flush()
 {
 
@@ -1855,13 +1956,12 @@ void xRedis::initConfig()
 	REGISTER_REDIS_COMMAND(createStringObject("del",3),delCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("hlen",4),hlenCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("keys",4),keysCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("bgsave",5),bgsaveCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("bgsave",6),bgsaveCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("memory",6),memoryCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("ppong",5),ppongCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("pping",5),ppingCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("cluster",7),clusterCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("migrate",7),migrateCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("debug",5),debugCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("ttl", 3), ttlCommand);
 
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
 	unorderedmapCommands.insert(msgId);

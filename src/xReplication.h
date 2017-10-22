@@ -12,7 +12,6 @@ public:
 	xReplication();
 	~xReplication();
 
-	void handleTimer(void * data);
 	void connectMaster();
 	void replicationSetMaster(xRedis * redis,rObj * obj,int32_t port);
 

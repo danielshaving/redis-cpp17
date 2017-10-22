@@ -25,7 +25,6 @@ public:
   }
 
   void start(const char *ip, int16_t port);
-  void restart();
   void stop();
 
   void startInLoop(const char *ip, int16_t port);

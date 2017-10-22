@@ -124,7 +124,8 @@ void addReplyErrorFormat(xBuffer &sendBuf,const char *fmt, ...);
 void addReplyBulkCBuffer(xBuffer &sendBuf,const char *p, size_t len);
 void addReplyLongLong(xBuffer &sendBuf,size_t len);
 void addReplySds(xBuffer &sendBuf,sds s);
-
+void addReplyStatus(xBuffer &sendBuf, char *status);
+void addReplyStatusLength(xBuffer &sendBuf, char *s, size_t len);
 int trim(char s[]);
 int loadConfig(const char* path);
 long long ustime(void);

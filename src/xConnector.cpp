@@ -53,9 +53,19 @@ void xConnector::stopInLoop()
 	}
 }
 
+
+void xConnector::resetChannel()
+{
+	channel.reset();
+}
 int  xConnector::removeAndResetChannel()
 {
-	return -1;
+	channel->disableAll();
+	channel->remove();
+	int sockfd = channel->getfd();
+	// Can't reset channel_ here, because we are inside Channel::handleEvent
+	loop->queueInLoop(std::bind(&xConnector::resetChannel, this)); // FIXME: unsafe
+	return sockfd;
 }
 
 void xConnector::connecting(int sockfd)

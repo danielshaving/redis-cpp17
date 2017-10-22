@@ -23,6 +23,7 @@ public:
 	
 	void initConfig();
 	void handleTimeOut(void * data);
+	void serverCron(void * data);
 	void handleSalveRepliTimeOut(void * data);
 	void handleSetExpire(void * data);
 	
@@ -35,9 +36,6 @@ public:
 
 	bool saveCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool pingCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool pongCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool ppingCommand(const std::deque <rObj*> & obj, xSession * session);
-	bool ppongCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool debugCommand(const std::deque <rObj*> & obj, xSession * session);
 	bool flushdbCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool dbsizeCommand(const std::deque <rObj*> & obj,xSession * session);
@@ -65,8 +63,10 @@ public:
 	bool memoryCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool sentinelCommand(const std::deque<rObj*> & obj, xSession * session);
 	bool migrateCommand(const std::deque<rObj*> & obj, xSession * session);
+	bool ttlCommand(const std::deque<rObj*> & obj, xSession * session);
 
 
+	int rdbSaveBackground(xSession * session);
 	bool clearClusterMigradeCommand(void * data);
 	bool save(xSession * session);
 	int removeCommand(rObj * obj,int &count);
@@ -117,7 +117,7 @@ public:
 	mutable  std::mutex clusterMutex;
 
 
-	std::atomic<int>	  salveCount;
+	std::atomic<int>   salveCount;
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  authEnabled;
@@ -126,6 +126,7 @@ public:
 	std::atomic<bool>  clusterSlotEnabled;
 	std::atomic<bool>  clusterRepliMigratEnabled;
 	std::atomic<bool>  clusterRepliImportEnabeld;
+	std::atomic<int>  rdbChildPid;
 
 	xBuffer	slaveCached;
 	xBuffer	clusterMigratCached;

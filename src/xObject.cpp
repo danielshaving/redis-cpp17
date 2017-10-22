@@ -477,6 +477,19 @@ void addReplyLongLong(xBuffer &sendBuf,size_t len)
 	else
 		addReplyLongLongWithPrefix(sendBuf,len,':');
 }
+
+void addReplyStatusLength(xBuffer &sendBuf, char *s, size_t len)
+{
+	addReplyString(sendBuf,"+",1);
+	addReplyString(sendBuf,s,len);
+	addReplyString(sendBuf,"\r\n",2);
+}
+
+void addReplyStatus(xBuffer &sendBuf, char *status)
+{
+    addReplyStatusLength(sendBuf,status,strlen(status));
+}
+
 void addReplyError(xBuffer &sendBuf,const char *str)
 {
 	addReplyErrorLength(sendBuf,str,strlen(str));

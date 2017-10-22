@@ -40,24 +40,6 @@ void xReplication::replicationCron()
 
 
 
-void xReplication::handleTimer(void * data)
-{
-	if(conn)
-	{
-		if(!redis->pingPong)
-		{
-			LOG_WARN<<"ping pong handleTimer timeout";
-		}
-		else
-		{
-			LOG_INFO<<"ping ping ";	
-		}
-		
-		conn->send(stringPiepe(shared.pping->ptr,sdslen(shared.pping->ptr)));
-	}
-}
-
-
 void xReplication::disconnect()
 {
 	client->disconnect();
@@ -150,8 +132,6 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 			std::shared_ptr<xSession> session (new xSession(redis,conn));
 			std::unique_lock <std::mutex> lck(redis->mtx);
 			redis->sessions[conn->getSockfd()] = session;
-			conn->send(stringPiepe(shared.pping->ptr,sdslen(shared.pping->ptr)));
-			timer = loop->runAfter(1,nullptr,true,std::bind(&xReplication::handleTimer,this,std::placeholders::_1));
 	
 		}
 		
@@ -188,11 +168,6 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		std::unique_lock <std::mutex> lck(redis->mtx);
 		redis->sessions.erase(conn->getSockfd());
 		
-		if(timer)
-		{
-			loop->cancelAfter(timer);
-		}
-		
 		LOG_INFO<<"Connect  master disconnect";
 	}
 }
@@ -207,25 +182,6 @@ void xReplication::connErrorCallBack()
 {
 	return;
 
-	/*
-	if(!isreconnect)
-	{
-		return ;
-	}
-	
-	if(connectCount >= REDIS_RECONNECT_COUNT)
-	{
-		LOG_WARN<<"Reconnect failure";
-		ip.clear();
-		port = 0;
-		isreconnect = true;
-		return ;
-	}
-	
-	++connectCount;
-	loop->runAfter(5,nullptr,false,std::bind(&xReplication::reconnectTimer,this,std::placeholders::_1));
-	*/
-	
 }
 
 void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)

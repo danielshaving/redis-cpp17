@@ -653,6 +653,15 @@ bool   xRdb::rdbReplication(char *filename,xSession *session)
 		LOG_INFO<<"load dump.rdb size :"<<sb.st_size;
 	}
 
+	int fd;
+	fd = fileno(fp);
+	if (-1 == fd)
+	{
+		LOG_WARN<<"fp to fd error";
+		return false;
+	}
+
+
 	size_t len = REDIS_SLAVE_SYNC_SIZE;
 	
 	char str[4];
@@ -663,25 +672,26 @@ bool   xRdb::rdbReplication(char *filename,xSession *session)
 	session->conn->send(&session->sendBuf);
 	session->sendBuf.retrieveAll();
 	
+	size_t sendSize;
+	off_t offset = 0;
+	ssize_t nwrote = 0;
 	while(sendBytes)
 	{
-		if(sendBytes <  len)
-		{
-			len = sendBytes;
-		}
-	
-		char buf[len ];
-		size_t readBytes = rioRepliRead(&rdb,(void*)buf,len);
-		if(readBytes == 0)
-		{
-			fclose(fp);
-			return false;
-		}
-		session->sendBuf.append((const char *)buf,readBytes);
-		session->conn->send(&session->sendBuf);
-		session->sendBuf.retrieveAll();
+			if(sendBytes <  len)
+			{
+				len = sendBytes;
+			}
 
-		sendBytes -=readBytes;
+			nwrote = ::sendfile(session->conn->getSockfd(),fd,&offset,len);
+
+			if(nwrote >=0)
+			{
+				sendBytes -=nwrote;
+			}
+			else
+			{
+				//FIXME
+			}
 	}
 
 	fclose(fp);
