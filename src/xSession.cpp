@@ -10,7 +10,8 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
  redis(redis),
  authEnabled(false),
  retrieveBuffer(false),
- fromMaster(false)
+ fromMaster(false),
+ fromSlave(false)
 {
 	command = createStringObject(nullptr,10);
 	conn->setMessageCallback(
@@ -100,7 +101,7 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 		if(redis->repliEnabled)
 		{
 			std::unique_lock <std::mutex> lck(redis->slaveMutex);
-			for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); it++)
+			for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); ++it)
 			{
 				if(sendSlaveBuf.readableBytes() > 0 )
 				{
@@ -120,10 +121,10 @@ bool xSession::checkCommand(rObj*  robjs)
 	auto it = redis->unorderedmapCommands.find(robjs);
 	if(it == redis->unorderedmapCommands.end())
 	{
-		return true;
+		return false;
 	}
 		
-	return false;
+	return true;
 }
 
 
@@ -158,7 +159,7 @@ int xSession::processCommand()
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
 		if(redis->clusterRepliMigratEnabled)
 		{
-			for(auto it = redis->clus.migratingSlosTos.begin(); it != redis->clus.migratingSlosTos.end(); it ++)
+			for(auto it = redis->clus.migratingSlosTos.begin(); it != redis->clus.migratingSlosTos.end(); ++it)
 			{
 				auto iter = it->second.find(hashslot);
 				if(iter != it->second.end())
@@ -173,7 +174,7 @@ int xSession::processCommand()
 
 		if(redis->clusterRepliImportEnabeld)
 		{
-			for(auto it = redis->clus.importingSlotsFrom.begin(); it != redis->clus.importingSlotsFrom.end(); it ++)
+			for(auto it = redis->clus.importingSlotsFrom.begin(); it != redis->clus.importingSlotsFrom.end(); ++it)
 			{
 				auto iter = it->second.find(hashslot);
 				if(iter !=  it->second.end())
@@ -220,8 +221,7 @@ int xSession::processCommand()
 
 jump:
 		
-	bool fromSalve = false;
-	
+
 	if(redis->repliEnabled)
 	{
 		{
@@ -229,8 +229,7 @@ jump:
 			auto it = redis->salvetcpconnMaps.find(conn->getSockfd());
 			if(it !=  redis->salvetcpconnMaps.end())
 			{
-				fromSalve = true;
-				if(memcmp(command,shared.ok->ptr,3) == 0)
+				if(memcmp(command->ptr,shared.ok->ptr,sdslen(command->ptr)) == 0)
 				{
 					if(++redis->salveCount >= redis->salvetcpconnMaps.size())
 					{
@@ -256,7 +255,6 @@ jump:
 					}
 
 					redis->repliTimers.erase(conn->getSockfd());
-					clearObj();
 					return REDIS_OK;
 				}
 			}
@@ -266,12 +264,27 @@ jump:
 		if( (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
 		{
 			fromMaster = true;
+			if(!checkCommand(command))
+			{
+				clearObj();
+				LOG_WARN<<"master sync command unknow " << command;
+				return REDIS_ERR;
+			}
+		}
+		else if( redis->masterHost.length() > 0 && redis->masterPort > 0 )
+		{
+			if(checkCommand(command))
+			{
+				clearObj();
+				addReplyErrorFormat(sendBuf,"slaveof command unknown");
+				return REDIS_ERR;
+			}
 		}
 		else
 		{
-			if( redis->masterPort == 0 )
+			if(checkCommand(command))
 			{
-				if(!fromSalve)
+				robjs.push_front(command);
 				{
 					std::unique_lock <std::mutex> lck(redis->slaveMutex);
 					if(redis->salveCount <  redis->salvetcpconnMaps.size())
@@ -282,28 +295,14 @@ jump:
 					{
 						redis->structureRedisProtocol(sendSlaveBuf,robjs);
 					}
-				}
-				
-
-			}
-			else
-			{
-				if(!checkCommand(command))
-				{
-					if(redis->slaveEnabled)
-					{
-						clearObj();
-						addReplyErrorFormat(sendBuf,"slaveof mode command unknown ");
-						return REDIS_ERR;
-					}
+					robjs.pop_front();
 				}
 			}
 		}
-				
+
 	}
 
-	
-	
+
 
 	auto iter = redis->handlerCommandMap.find(command);
 	if(iter == redis->handlerCommandMap.end() )
@@ -510,7 +509,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		{
 			if(++count == 1)
 			{
-				sdscpylen((command->ptr),queryBuf + pos,bulklen);
+				sdscpylen(command->ptr,queryBuf + pos,bulklen);
 			}
 			else
 			{

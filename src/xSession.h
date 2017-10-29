@@ -38,5 +38,6 @@ public:
 	bool authEnabled;
 	bool retrieveBuffer;
 	bool fromMaster;
+	bool fromSlave;
 };
 

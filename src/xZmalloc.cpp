@@ -121,7 +121,7 @@ void *zrealloc(void *ptr, size_t size) {
     size_t oldsize;
     void *newptr;
 
-    if (ptr == NULL) return zmalloc(size);
+    if (ptr == nullptr) return zmalloc(size);
 #ifdef HAVE_MALLOC_SIZE
     oldsize = zmalloc_size(ptr);
     newptr = realloc(ptr,size);
@@ -163,7 +163,7 @@ void zfree(void *ptr) {
     size_t oldsize;
 #endif
 
-    if (ptr == NULL) return;
+    if (ptr == nullptr) return;
 #ifdef HAVE_MALLOC_SIZE
     update_zmalloc_stat_free(zmalloc_size(ptr));
     free(ptr);
@@ -253,7 +253,7 @@ size_t zmalloc_get_rss(void) {
     if (!x) return 0;
     *x = '\0';
 
-    rss = strtoll(p,NULL,10);
+    rss = strtoll(p,nullptr,10);
     rss *= page;
     return rss;
 }
@@ -267,7 +267,7 @@ size_t zmalloc_get_rss(void) {
 #include <mach/mach_init.h>
 
 size_t zmalloc_get_rss(void) {
-    task_t task = MACH_PORT_NULL;
+    task_t task = MACH_PORT_nullptr;
     struct task_basic_info t_info;
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
 
@@ -307,12 +307,12 @@ size_t zmalloc_get_smap_bytes_by_field(char *field) {
     int flen = strlen(field);
 
     if (!fp) return 0;
-    while(fgets(line,sizeof(line),fp) != NULL) {
+    while(fgets(line,sizeof(line),fp) != nullptr) {
         if (strncmp(line,field,flen) == 0) {
             char *p = strchr(line,'k');
             if (p) {
                 *p = '\0';
-                bytes += strtol(line+flen,NULL,10) * 1024;
+                bytes += strtol(line+flen,nullptr,10) * 1024;
             }
         }
     }
@@ -356,7 +356,7 @@ size_t zmalloc_get_memory_size(void) {
 #endif
     int64_t size = 0;               /* 64-bit */
     size_t len = sizeof(size);
-    if (sysctl( mib, 2, &size, &len, NULL, 0) == 0)
+    if (sysctl( mib, 2, &size, &len, nullptr, 0) == 0)
         return (size_t)size;
     return 0L;          /* Failed? */
 
@@ -375,7 +375,7 @@ size_t zmalloc_get_memory_size(void) {
 #endif
     unsigned int size = 0;      /* 32-bit */
     size_t len = sizeof(size);
-    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0)
+    if (sysctl(mib, 2, &size, &len, nullptr, 0) == 0)
         return (size_t)size;
     return 0L;          /* Failed? */
 #else

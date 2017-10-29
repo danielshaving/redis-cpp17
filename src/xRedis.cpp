@@ -98,9 +98,11 @@ void xRedis::serverCron(void * data)
 					 LOG_WARN<<"Warning, detected child with unmatched pid: "<<pid;
 				 }
 
+				 rdbChildPid = -1;
+
 		}
 
-		rdbChildPid = -1;
+
 	}
 }
 

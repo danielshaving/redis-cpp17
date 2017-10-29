@@ -128,10 +128,12 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 				return ;
 			}
 
+			{
+				std::shared_ptr<xSession> session (new xSession(redis,conn));
+				std::unique_lock <std::mutex> lck(redis->mtx);
+				redis->sessions[conn->getSockfd()] = session;
+			}
 			conn->send(stringPiepe(shared.ok->ptr,sdslen(shared.ok->ptr)));
-			std::shared_ptr<xSession> session (new xSession(redis,conn));
-			std::unique_lock <std::mutex> lck(redis->mtx);
-			redis->sessions[conn->getSockfd()] = session;
 	
 		}
 		
