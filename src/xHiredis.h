@@ -68,13 +68,14 @@ public:
 		err = 0;
 		errstr[0] = '\0';
 		ridx 	= -1;
-		buf = nullptr;
+		buf = &buffer;
 	}
 	
 	int err;
 	char errstr[128];
 	size_t pos;
 	xBuffer  *buf;
+	xBuffer buffer;
 	redisReadTask rstack[9];
 	int ridx;
 	void *reply;
@@ -106,7 +107,6 @@ public:
 		{
 			::close(fd);
 		}
-		init();
 	}
 
 	void init()
