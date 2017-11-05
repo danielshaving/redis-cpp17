@@ -121,6 +121,8 @@ public:
 	char errstr[128];
 	int fd;
 	int flags;
+	const char *addr;
+	int port;
 	xBufferPtr sender;
 	xRedisReaderPtr reader;
 };

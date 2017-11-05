@@ -1223,7 +1223,7 @@ static void * __redisBlockForReply(const xRedisContextPtr & c)
 		return reply;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 
@@ -1577,6 +1577,8 @@ int redisContextConnectTcp(const xRedisContextPtr &c, const char *addr, int port
 
 	socket.setSocketBlock(sockfd);
 	socket.setTcpNoDelay(sockfd,true);
+	c->addr = addr;
+	c->port= port;
 	return REDIS_OK;
 	
 	
