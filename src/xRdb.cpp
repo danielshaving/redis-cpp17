@@ -633,7 +633,7 @@ int xRdb::rdbLoadHset(xRio *rdb)
 }
 
 
-bool   xRdb::rdbReplication(char *filename,xSession *session)
+bool   xRdb::rdbReplication(char *filename,const xTcpconnectionPtr &conn)
 {
 	xRio rdb;
 	FILE *fp ;
@@ -664,14 +664,17 @@ bool   xRdb::rdbReplication(char *filename,xSession *session)
 
 	size_t len = REDIS_SLAVE_SYNC_SIZE;
 	
+	
 	char str[4];
 	int32_t * sendLen = (int32_t*)str;
 	*sendLen = sb.st_size;
 	int32_t sendBytes  = * sendLen ;
-	session->sendBuf.append((const char*)str,4);
-	session->conn->send(&session->sendBuf);
-	session->sendBuf.retrieveAll();
-	
+	ssize_t n = ::write(conn->getSockfd(), str, 4);
+	if (n < 0)
+	{
+		return false;
+	}
+
 	size_t sendSize;
 	off_t offset = 0;
 	ssize_t nwrote = 0;
@@ -682,7 +685,7 @@ bool   xRdb::rdbReplication(char *filename,xSession *session)
 				len = sendBytes;
 			}
 
-			nwrote = ::sendfile(session->conn->getSockfd(),fd,&offset,len);
+			nwrote = ::sendfile(conn->getSockfd(),fd,&offset,len);
 
 			if(nwrote >=0)
 			{

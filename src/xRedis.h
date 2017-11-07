@@ -66,8 +66,9 @@ public:
 	bool ttlCommand(const std::deque<rObj*> & obj, xSession * session);
 
 
-	int rdbSaveBackground(xSession * session);
+	int rdbSaveBackground(xSession * session, bool enabled);
 	bool clearClusterMigradeCommand(void * data);
+	bool bgsave(xSession * session, bool enabled = false);
 	bool save(xSession * session);
 	int removeCommand(rObj * obj,int &count);
 	void clearCommand();
@@ -126,7 +127,8 @@ public:
 	std::atomic<bool>  clusterSlotEnabled;
 	std::atomic<bool>  clusterRepliMigratEnabled;
 	std::atomic<bool>  clusterRepliImportEnabeld;
-	std::atomic<int>  rdbChildPid;
+	std::atomic<int>   rdbChildPid;
+	std::atomic<int>   slavefd;
 
 	xBuffer	slaveCached;
 	xBuffer	clusterMigratCached;

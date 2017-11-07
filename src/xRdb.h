@@ -100,7 +100,7 @@ public:
 	int rdbLoadExpire(xRio * rdb);
 	uint32_t rdbLoadLen(xRio *rdb, int *isencoded);
 	int rdbLoad(char *filename);
-	bool  rdbReplication(char *filename,xSession *session);
+	bool  rdbReplication(char *filename,const xTcpconnectionPtr &conn);
 	rObj *rdbLoadObject(int type, xRio *rdb);
 	rObj *rdbLoadStringObject(xRio *rdb);
 

@@ -35,6 +35,12 @@ char *ascii_logo =
 
 int main(int argc, char* argv[])
 {
+	xLogger::setOutput(asyncOutput);
+	xAsyncLogging log("xredis", 4096);
+	log.start();
+	g_asyncLog = &log;
+	printf("%s\n", ascii_logo);
+
 	if(argc == 5)
 	{
 		const char* ip;
@@ -44,18 +50,18 @@ int main(int argc, char* argv[])
 		ip = argv[1];
 		port = static_cast<uint16_t>(atoi(argv[2]));
 		threadCount = atoi(argv[3]);
-		clusterEnbaled =  atoi(argv[4]);
-		printf("%s\n",ascii_logo);
-		xLogger::setOutput(asyncOutput);
-		xAsyncLogging log("xredis", 4096);
-		log.start();
-		g_asyncLog = &log;
+		clusterEnbaled =  atoi(argv[4]);		
 		xRedis redis(ip,port,threadCount,clusterEnbaled);
 		redis.run();
 	}
+	else if (argc == 1)
+	{
+		 xRedis redis("127.0.0.1", 6379, 0, 0);
+		 redis.run();
+	}
 	else
 	{
-		 fprintf(stderr, "Usage: client <host_ip> <port> <threads> <cluster>\n");
+		fprintf(stderr, "Usage: client <host_ip> <port> <threads> <cluster>\n");
 	}
 
 

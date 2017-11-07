@@ -14,6 +14,7 @@ clusterSlotEnabled(false),
 clusterRepliMigratEnabled(false),
 clusterRepliImportEnabeld(false),
 rdbChildPid(-1),
+slavefd(-1),
 count(0),
 pingPong(false)
 {
@@ -70,6 +71,35 @@ void xRedis::serverCron(void * data)
 						if (!bysignal && exitcode == 0)
 						{
 							LOG_INFO<<"Background saving terminated with success";
+
+							if(slavefd != -1)
+							{
+								{
+									std::unique_lock <std::mutex> lck(slaveMutex);
+									auto it = salvetcpconnMaps.find(slavefd);
+									if(it == salvetcpconnMaps.end())
+									{
+										LOG_WARN<<"master sync send failure";
+									}
+									else
+									{
+
+										if(!rdb.rdbReplication("dump.rdb",it->second))
+										{
+											it->second->forceClose();
+											LOG_WARN<<"master sync send failure";
+										}
+										else
+										{
+											LOG_INFO<<"master sync send success ";
+										}
+
+									}
+								}
+
+								slavefd = -1;
+
+							}
 						}
 						else if (!bysignal && exitcode != 0)
 						{
@@ -91,6 +121,7 @@ void xRedis::serverCron(void * data)
 							}
 
 						 }
+
 
 				 }
 				 else
@@ -1071,6 +1102,42 @@ void xRedis::structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs
 }
 
 
+
+bool xRedis::bgsave(xSession * session,bool enabled)
+{
+
+	if(rdbChildPid != -1)
+	{
+		if (!enabled)
+		{
+			addReplyError(session->sendBuf, "Background save already in progress");
+			LOG_WARN << "rdbChildPid == -1";
+		}
+		return false;
+	}
+
+
+	if(rdbSaveBackground(session, enabled) == REDIS_OK)
+	{
+		if (!enabled)
+		{
+			addReplyStatus(session->sendBuf, "Background saving started");
+		}
+	}
+	else
+	{
+		if (!enabled)
+		{
+			addReply(session->sendBuf, shared.err);
+		}
+
+
+		return false;
+	}
+
+	return true;
+}
+
 bool  xRedis::save(xSession * session)
 {
 	xTimestamp start(xTimestamp::now());
@@ -1095,21 +1162,40 @@ bool  xRedis::save(xSession * session)
 
 
 
-int xRedis::rdbSaveBackground(xSession * session)
+int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 {
 	if(rdbChildPid != -1)
 	{
 		return REDIS_ERR;
 	}
 
+	LOG_INFO << "rdbSaveBackground";
+
 	pid_t childpid;
 	if ((childpid = fork()) == 0)
 	{
+		 LOG_INFO << "childpid";
 		 int retval;
 		 for(auto it = sessions.begin(); it != sessions.end(); ++it)
 		 {
 			 it->second->conn->forceClose();
 		 }
+
+		 sessions.clear();
+
+		 for (auto it = salvetcpconnMaps.begin(); it != salvetcpconnMaps.end(); ++it)
+		 {
+			 it->second->forceClose();
+		 }
+
+		 salvetcpconnMaps.clear();
+
+		 for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); ++it)
+		 {
+			 it->second->forceClose();
+		 }
+
+		 clustertcpconnMaps.clear();
 
 		 retval = rdb.rdbSave("dump.rdb");
 		 if(retval == REDIS_OK)
@@ -1120,20 +1206,29 @@ int xRedis::rdbSaveBackground(xSession * session)
 				 LOG_INFO<<"RDB: "<< privateDirty/(1024*1024)<<"MB of memory used by copy-on-write";
 			 }
 		 }
+		 else
+		 {
+			 LOG_WARN << "rdbSave failure";
+		 }
 
 		 exit((retval == REDIS_OK) ? 0 : 1);
-
-
 	}
 	else
 	{
+		LOG_INFO << "father";
 		if (childpid == -1)
 		{
-			addReply(session->sendBuf,shared.err);
+			LOG_WARN << "childpid error";
+			if (!enabled)
+			{
+				addReply(session->sendBuf, shared.err);
+			}
+			
 			return REDIS_ERR;
 		}
 
 		rdbChildPid = childpid;
+		repliEnabled = enabled;
 	}
 
 	return REDIS_OK; /* unreached */
@@ -1147,21 +1242,10 @@ bool xRedis::bgsaveCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 	
-	if(rdbChildPid != -1)
-	{
-		addReplyError(session->sendBuf,"Background save already in progress");
-		return false;
-	}
+
+	bgsave(session);
 
 
-	if(rdbSaveBackground(session) == REDIS_OK)
-	{
-		 addReplyStatus(session->sendBuf,"Background saving started");
-	}
-	else
-	{
-		  addReply(session->sendBuf,shared.err);
-	}
 	return true;
 	
 }
@@ -1263,37 +1347,30 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 			session->conn->forceClose();
 			return false;
 		}
-
-		int32_t sockfd = session->conn->getSockfd();
-		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,(void *)&sockfd,
+		
+		slavefd = session->conn->getSockfd();
+		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,(void *)&slavefd,
 				false,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
 		salvetcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
-		repliEnabled = true;
 	}
 
-	if(!save(session))
+	if(!bgsave(session,true))
 	{
-		repli.isreconnect =false;
-		session->conn->forceClose();
-		return false;
-	}
-
-	if(!rdb.rdbReplication("dump.rdb",session))
-	{
+		LOG_WARN << "bgsave failure";
 		{
 			std::unique_lock <std::mutex> lck(slaveMutex);
-			if(timer)
-			{
-				session->conn->getLoop()->cancelAfter(timer);
-			}
+			repliTimers.erase(session->conn->getSockfd());
+			session->conn->getLoop()->cancelAfter(timer);
+			salvetcpconnMaps.erase(session->conn->getSockfd());
 		}
+		slavefd = -1;
 		session->conn->forceClose();
-		LOG_INFO<<"master sync send failure";
 		return false;
 	}
 
-	LOG_INFO<<"master sync send success ";
+
+
 	return true;
 }
 

@@ -42,8 +42,8 @@ public:
 	FILE * fp ;
 	int32_t salveLen;
 	int32_t salveReadLen;
-	std::atomic<bool>  slaveSyncEnabled;
 	xTcpconnectionPtr conn;
 	xTimer *timer;
+	std::atomic<bool>  slaveSyncEnabled;
 };
 

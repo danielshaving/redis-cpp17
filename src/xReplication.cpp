@@ -75,69 +75,66 @@ void xReplication::syncWithMaster(const xTcpconnectionPtr& conn)
 
 void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
 {
-	while(recvBuf->readableBytes() >= 4)
+	while (recvBuf->readableBytes() >= 4)
 	{
-		if(!slaveSyncEnabled)
+		if (salveLen == 0)
 		{
 			salveLen = *(int32_t*)(recvBuf->peek());
-			if(salveLen >= INT_MAX || salveLen<=0)
+			LOG_INFO << "recv len " << salveLen;
+			if (salveLen >= INT_MAX || salveLen <= 0)
 			{
-				isreconnect = false;
-				LOG_WARN<<"Length is too large";
+				LOG_WARN << "Length is too large";
 				redis->rdb.closeFile(fp);
 				conn->forceClose();
 				break;
 			}
-			slaveSyncEnabled = true;
+
 			recvBuf->retrieveInt32();
-			if(recvBuf->readableBytes() == 0)
+			if (recvBuf->readableBytes() == 0)
 			{
 				break;
 			}
 		}
-
-		
 		char fileName[] = "dump.rdb";
-		redis->rdb.rdbSyncWrite(recvBuf->peek(),fp,recvBuf->readableBytes());
+		redis->rdb.rdbSyncWrite(recvBuf->peek(), fp, recvBuf->readableBytes());
 		salveReadLen += recvBuf->readableBytes();
 		recvBuf->retrieveAll();
 
-		if(salveReadLen > salveLen)
+		if (salveReadLen > salveLen)
 		{
-			LOG_WARN<<"slave read data failure";
+			LOG_WARN << "slave read data failure";
 			redis->rdb.closeFile(fp);
 			conn->forceClose();
-			
+			salveLen = 0;
 		}
 
-		if(salveLen == salveReadLen)
+		if (salveLen == salveReadLen)
 		{
-			LOG_INFO<<"slave read data sucess";
-			redis->rdb.rdbSyncClose(fileName,fp);
+			redis->rdb.rdbSyncClose(fileName, fp);
 			redis->clearCommand();
 
-			if(redis->rdb.rdbLoad(fileName) == REDIS_OK)
+			if (redis->rdb.rdbLoad(fileName) == REDIS_OK)
 			{
-				LOG_INFO<<"Replication load rdb success";
+				LOG_INFO << "Replication load rdb success";
+				salveLen = 0;
 			}
 			else
 			{
 				redis->rdb.closeFile(fp);
 				conn->forceClose();
-				LOG_INFO<<"Replication load rdb failure";
-				return ;
+				LOG_INFO << "Replication load rdb failure";
+				salveLen = 0;
+				return;
 			}
 
 			{
-				std::shared_ptr<xSession> session (new xSession(redis,conn));
+				std::shared_ptr<xSession> session(new xSession(redis, conn));
 				std::unique_lock <std::mutex> lck(redis->mtx);
 				redis->sessions[conn->getSockfd()] = session;
 			}
-			conn->send(stringPiepe(shared.ok->ptr,sdslen(shared.ok->ptr)));
-	
-		}
-		
+			conn->send(stringPiepe(shared.ok->ptr, sdslen(shared.ok->ptr)));
 
+		}
 	}
 	
 }
@@ -160,7 +157,6 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	else
 	{
 		this->conn = nullptr;
-		slaveSyncEnabled = false;
 		salveReadLen = 0;
 		salveLen = 0;
 		redis->masterHost.clear();
