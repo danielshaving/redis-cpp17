@@ -270,7 +270,7 @@ bool xRedis::scardCommond(const std::deque <rObj*> & obj,xSession * session)
 	obj[0]->calHash();
 	size_t hash= obj[0]->hash;
 	int count = 0;
-	MutexLock &mu = setShards[hash% kShards].mutex;
+	std::mutex &mu = setShards[hash% kShards].mtx;
 	auto &set = setShards[hash% kShards].set;
 	{
 		std::unique_lock <std::mutex> lck(mtx);
@@ -281,7 +281,7 @@ bool xRedis::scardCommond(const std::deque <rObj*> & obj,xSession * session)
 		}
 	}
 
-	 addReplyLongLong(session->sendBuf,count);
+	addReplyLongLong(session->sendBuf,count);
 
 	for(auto it = obj.begin(); it != obj.end(); it ++)
 	{
@@ -303,7 +303,7 @@ bool xRedis::saddCommond(const std::deque <rObj*> & obj,xSession * session)
 	size_t hash= obj[0]->hash;
 
 	int count = 0;
-	MutexLock &mu = setShards[hash% kShards].mutex;
+	std::mutex &mu = setShards[hash% kShards].mtx;
 	auto &set = setShards[hash% kShards].set;
 	{
 		std::unique_lock <std::mutex> lck(mtx);
@@ -1439,7 +1439,6 @@ size_t xRedis::getDbsize()
 {
 	size_t size = 0;
 	{
-
 		for(auto it = setMapShards.begin(); it != setMapShards.end(); ++it)
 		{
 			std::mutex &mu = (*it).mtx;
@@ -1465,6 +1464,17 @@ size_t xRedis::getDbsize()
 			size += (*it).listMap.size();
 		}
 	}
+
+
+	{
+		for (auto it = setShards.begin(); it != setShards.end(); ++it)
+		{
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			size += (*it).set.size();
+		}
+	}
+
 
 
 	return size;
@@ -1556,6 +1566,28 @@ int  xRedis::removeCommand(rObj * obj,int &count)
 
 		}
 	}
+
+
+	{
+		    std::mutex &mu = setShards[obj->hash% kShards].mtx;
+			auto &set = setShards[obj->hash% kShards].set;
+			{
+				std::unique_lock <std::mutex> lck(mu);
+				auto it = set.find(obj);
+				if(it != set.end())
+				{
+					count ++;
+					for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+					{
+						zfree(*iter);
+					}
+
+					zfree(it->first);
+					set.erase(it);
+				}
+			}
+		}
+
 
 
 	return  count;
@@ -1880,6 +1912,9 @@ void xRedis::clearCommand()
 	}
 
 
+
+
+
 	
 }
 
@@ -1941,6 +1976,22 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
 
 		}
 	}
+
+	{
+		for(auto it = setShards.begin(); it != setShards.end(); ++it)
+		{
+			auto &map = (*it).set;
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			for(auto iter = map.begin(); iter != map.end();  ++iter)
+			{
+				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+			}
+
+		}
+	}
+
+
 
 	return false;
 }

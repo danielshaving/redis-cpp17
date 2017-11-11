@@ -84,8 +84,10 @@ public:
 	int rdbSaveLzfStringObject(xRio *rdb, unsigned char *s, size_t len);
 	int rdbSaveValue(xRio *rdb, rObj *value,long long now);
 	int rdbSaveKey(xRio *rdb, rObj *value,long long now);
-	int rdbSaveSet(xRio *rdb);
+	int rdbSaveString(xRio *rdb);
 	int rdbSaveHset(xRio *rdb);
+	int rdbSaveList(xRio *rdb);
+	int rdbSaveSet(xRio *rdb);
 	int rdbSaveExpire(xRio * rdb);
 	int rdbSaveObjectType(xRio *rdb, rObj *o);
 
@@ -95,8 +97,11 @@ public:
 	rObj *rdbLoadEncodedStringObject(xRio *rdb);
 	rObj *rdbLoadLzfStringObject(xRio *rdb);
 	long long rdbLoadMillisecondTime(xRio *rdb);
-	int rdbLoadSet(xRio *rdb);
+	int rdbLoadString(xRio *rdb);
 	int rdbLoadHset(xRio *rdb);
+	int rdbLoadSet(xRio *rdb);
+	int rdbLoadList(xRio *rdb);
+
 	int rdbLoadExpire(xRio * rdb);
 	uint32_t rdbLoadLen(xRio *rdb, int *isencoded);
 	int rdbLoad(char *filename);

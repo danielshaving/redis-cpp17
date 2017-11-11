@@ -70,8 +70,6 @@ public:
 	bool rpushCommand(const std::deque<rObj*> & obj, xSession * session);
 	bool rpopCommand(const std::deque<rObj*> & obj, xSession * session);
 	bool llenCommand(const std::deque<rObj*> & obj, xSession * session);
-
-
 	bool scardCommond(const std::deque <rObj*> & obj,xSession * session);
 	bool saddCommond(const std::deque <rObj*> & obj,xSession * session);
 
@@ -120,7 +118,7 @@ public:
 	struct SetLock
 	{
 		Set set;
-		mutable std::mutex mutex;
+		mutable std::mutex mtx;
 	};
 
 
