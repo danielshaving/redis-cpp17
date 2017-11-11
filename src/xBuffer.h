@@ -42,7 +42,7 @@ class xBuffer
   const char* findCRLF() const
   {
     const char* crlf = std::search(peek(), beginWrite(), kCRLF, kCRLF+2);
-    return crlf == beginWrite() ? NULL : crlf;
+    return crlf == beginWrite() ? nullptr : crlf;
   }
 
   const char* findCRLF(const char* start) const
@@ -50,13 +50,13 @@ class xBuffer
     assert(peek() <= start);
     assert(start <= beginWrite());
     const char* crlf = std::search(start, beginWrite(), kCRLF, kCRLF+2);
-    return crlf == beginWrite() ? NULL : crlf;
+    return crlf == beginWrite() ? nullptr : crlf;
   }
 
   const char* findCRLFCRLF() const
    {
  	  const char* crlfcrlf = std::search(peek(), beginWrite(), kCRLFCRLF, kCRLFCRLF+4);
- 	  return crlfcrlf == beginWrite() ? NULL : crlfcrlf;
+ 	  return crlfcrlf == beginWrite() ? nullptr : crlfcrlf;
    }
 
   const char* findEOL() const
@@ -68,7 +68,7 @@ class xBuffer
   const char* findCONTENT()const
    {
  	  const char* content = std::search(peek(), beginWrite(), CONTENT, CONTENT+14);
- 	  return content == beginWrite() ? NULL : content;
+ 	  return content == beginWrite() ? nullptr : content;
    }
 
 

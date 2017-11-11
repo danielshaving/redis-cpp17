@@ -259,52 +259,99 @@ void xRedis::loadDataFromDisk()
 }
 
 
-bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::scardCommond(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1 )
 	{
-		addReplyErrorFormat(session->sendBuf,"unknown keys  error");
+		addReplyErrorFormat(session->sendBuf,"unknown  scard error");
 		return false;
 	}
 
-	std::string des  = "*";
-	std::string src = obj[0]->ptr;
-
-
-	addReplyMultiBulkLen(session->sendBuf,getDbsize());
-
+	obj[0]->calHash();
+	size_t hash= obj[0]->hash;
+	int count = 0;
+	MutexLock &mu = setShards[hash% kShards].mutex;
+	auto &set = setShards[hash% kShards].set;
 	{
-		for(auto it = setMapShards.begin(); it != setMapShards.end(); ++it)
+		std::unique_lock <std::mutex> lck(mtx);
+		auto it = set.find(obj[0]);
+		if(it != set.end())
 		{
-			auto &map = (*it).setMap;
-			std::mutex &mu =  (*it).mtx;
-			std::unique_lock <std::mutex> lck(mu);
-			for(auto iter = map.begin(); iter != map.end(); ++iter)
-			{
-				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
-			}
-
+			count = it->second.size();
 		}
-
 	}
 
+	 addReplyLongLong(session->sendBuf,count);
+
+	for(auto it = obj.begin(); it != obj.end(); it ++)
 	{
-		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); ++it)
-		{
-			auto &map = (*it).hsetMap;
-			std::mutex &mu =  (*it).mtx;
-			std::unique_lock <std::mutex> lck(mu);
-			for(auto iter = map.begin(); iter!=map.end(); ++iter)
-			{
-				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
-			}
-
-		}
-
+		zfree(*it);
 	}
 
-	return false;
+	return true;
 }
+
+bool xRedis::saddCommond(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size() < 2)
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown  sadd error");
+		return false;
+	}
+
+	obj[0]->calHash();
+	size_t hash= obj[0]->hash;
+
+	int count = 0;
+	MutexLock &mu = setShards[hash% kShards].mutex;
+	auto &set = setShards[hash% kShards].set;
+	{
+		std::unique_lock <std::mutex> lck(mtx);
+		auto it = set.find(obj[0]);
+		if(it == set.end())
+		{
+			std::unordered_set<rObj*,Hash,Equal> uset;
+			for(int i = 1; i < obj.size(); i ++)
+			{
+				obj[i]->calHash();
+				auto iter = uset.find(obj[i]);
+				if(iter == uset.end())
+				{
+					count++;
+					uset.insert(obj[i]);
+				}
+				else
+				{
+					zfree(obj[i]);
+				}
+				set.insert(std::make_pair(obj[0],std::move(uset)));
+			}
+		}
+		else
+		{
+			zfree(obj[0]);
+			for(int i = 1; i < obj.size(); i ++)
+			{
+				obj[i]->calHash();
+				auto iter = it->second.find(obj[i]);
+				if(iter == it->second.end())
+				{
+					count++;
+					it->second.insert(obj[i]);
+				}
+				else
+				{
+					zfree(obj[i]);
+				}
+			}
+		}
+	}
+
+	addReplyLongLong(session->sendBuf,count);
+
+	return true;
+}
+
 
 
 bool xRedis::sentinelCommand(const std::deque<rObj*> & obj, xSession * session)
@@ -1410,6 +1457,16 @@ size_t xRedis::getDbsize()
 		}
 	}
 
+	{
+		for (auto it = listMapShards.begin(); it != listMapShards.end(); ++it)
+		{
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			size += (*it).listMap.size();
+		}
+	}
+
+
 	return size;
 }
 
@@ -1442,15 +1499,15 @@ int  xRedis::removeCommand(rObj * obj,int &count)
 				auto iter = expireTimers.find(obj);
 				if(iter != expireTimers.end())
 				{
-					expireTimers.erase(iter);
-					loop.cancelAfter(iter->second);
 					zfree(iter->first);
+					loop.cancelAfter(iter->second);
+					expireTimers.erase(iter);
 				}
 
 				count ++;
-				setMap.erase(it);
 				zfree(it->first);
 				zfree(it->second);
+				setMap.erase(it);
 			}
 
 		}
@@ -1461,23 +1518,45 @@ int  xRedis::removeCommand(rObj * obj,int &count)
 		auto &hsetMap = hsetMapShards[obj->hash% kShards].hsetMap;
 		{
 			std::unique_lock <std::mutex> lck(mu);
-			auto hmap = hsetMap.find(obj);
-			if(hmap != hsetMap.end())
+			auto it = hsetMap.find(obj);
+			if(it != hsetMap.end())
 			{
 				count ++;
-				for(auto iter = hmap->second.begin(); iter != hmap->second.end(); ++iter)
+				for(auto iter = it->second.begin(); iter != it->second.end(); ++iter)
 				{
 					zfree(iter->first);
 					zfree(iter->second);
 				}
 
-				hsetMap.erase(hmap);
-				zfree(hmap->first);
-			}
+				zfree(it->first);
+				hsetMap.erase(it);
 
+			}
+		}
+	}
+
+
+	{
+		std::mutex &mu = listMapShards[obj->hash% kShards].mtx;
+		auto &listMap = listMapShards[obj->hash% kShards].listMap;
+		{
+			std::unique_lock <std::mutex> lck(mu);
+			auto it = listMap.find(obj);
+			if(it != listMap.end())
+			{
+				count ++;
+				for(auto iter = it->second.begin(); iter != it->second.end(); ++iter)
+				{
+					zfree(*iter);
+				}
+
+				zfree(it->first);
+				listMap.erase(it);
+			}
 
 		}
 	}
+
 
 	return  count;
 }
@@ -1485,9 +1564,10 @@ int  xRedis::removeCommand(rObj * obj,int &count)
 
 bool xRedis::delCommand(const std::deque <rObj*> & obj,xSession * session)
 {
-	if(obj.size() != 1)
+	if(obj.size() < 1)
 	{
 		addReplyErrorFormat(session->sendBuf,"unknown  del error");
+		return false;
 	}
 
 	int count = 0;
@@ -1550,7 +1630,7 @@ bool xRedis::pingCommand(const std::deque <rObj*> & obj,xSession * session)
 	}
 	
 	addReply(session->sendBuf,shared.pong);
-	return true;
+	return false;
 }
 
 
@@ -1779,7 +1859,90 @@ void xRedis::clearCommand()
 
 	}
 
+	{
+		for (auto it = listMapShards.begin(); it != listMapShards.end(); ++it)
+		{
+			auto &list = (*it).listMap;
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			for (auto iter = list.begin(); iter != list.end(); ++iter)
+			{
+				for (auto iterr = iter->second.begin(); iterr != iter->second.end(); ++iterr)
+				{
+					zfree(*iterr);
+				}
+				zfree(iter->first);
+			}
+
+			list.clear();
+		}
+
+	}
+
+
 	
+}
+
+
+bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
+{
+	if(obj.size() != 1 )
+	{
+		addReplyErrorFormat(session->sendBuf,"unknown keys  error");
+		return false;
+	}
+
+	std::string des  = "*";
+	std::string src = obj[0]->ptr;
+
+	addReplyMultiBulkLen(session->sendBuf,getDbsize());
+
+	{
+		for(auto it = setMapShards.begin(); it != setMapShards.end(); ++it)
+		{
+			auto &map = (*it).setMap;
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			for(auto iter = map.begin(); iter != map.end(); ++iter)
+			{
+				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+			}
+
+		}
+
+	}
+
+	{
+		for(auto it = hsetMapShards.begin(); it != hsetMapShards.end(); ++it)
+		{
+			auto &map = (*it).hsetMap;
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			for(auto iter = map.begin(); iter!=map.end(); ++iter)
+			{
+				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+			}
+
+		}
+
+	}
+
+
+	{
+		for(auto it = listMapShards.begin(); it != listMapShards.end(); ++it)
+		{
+			auto &map = (*it).listMap;
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			for(auto iter = map.begin(); iter != map.end();  ++iter)
+			{
+				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+			}
+
+		}
+	}
+
+	return false;
 }
 
 
@@ -2003,6 +2166,274 @@ bool xRedis::ttlCommand(const std::deque<rObj*> & obj, xSession * session)
 	addReplyLongLong(session->sendBuf, ttl / 1000000);
 	return false;
 }
+
+
+bool xRedis::lpushCommand(const std::deque<rObj*> & obj, xSession * session)
+{
+	if (obj.size()  <  2)
+	{
+		addReplyErrorFormat(session->sendBuf, "unknown  lpush  param error");
+		return false;
+	}
+
+	obj[0]->calHash();
+	size_t hash = obj[0]->hash;
+	int index = hash  % kShards;
+	std::mutex &mu = listMapShards[index].mtx;
+	int64_t pushed = 0;
+	auto & listMap = listMapShards[index].listMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = listMap.find(obj[0]);
+		if (it == listMap.end())
+		{
+			std::deque<rObj*> list;
+			for (int i = 1; i < obj.size(); ++i)
+			{
+				pushed++;
+				list.push_back(obj[i]);
+			}
+			listMap.insert(std::make_pair(obj[0], std::move(list)));
+		}
+		else
+		{
+			zfree(obj[0]);
+			for (int i = 1; i < obj.size(); ++i)
+			{
+				pushed++;
+				it->second.push_back(obj[i]);
+			}
+		}
+	}
+
+	addReplyLongLong(session->sendBuf, pushed);
+	return true;
+}
+
+
+bool xRedis::lpopCommand(const std::deque<rObj*> & obj, xSession * session)
+{
+	if (obj.size() != 1)
+	{
+		addReplyErrorFormat(session->sendBuf, "unknown  lpop  param error");
+		return false;
+	}
+
+	obj[0]->calHash();
+	size_t hash = obj[0]->hash;
+	int index = hash % kShards;
+	std::mutex &mu = listMapShards[index].mtx;
+	auto & listMap = listMapShards[index].listMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = listMap.find(obj[0]);
+		if (it == listMap.end())
+		{
+			addReply(session->sendBuf, shared.nullbulk);
+		}
+		else
+		{
+			addReplyBulk(session->sendBuf, it->second.back());
+			zfree(it->second.back());
+			it->second.pop_back();
+			if (it->second.empty())
+			{
+				zfree(it->first);
+				listMap.erase(it);
+			}
+		}
+	}
+
+	return false;
+}
+
+
+bool xRedis::lrangeCommand(const std::deque<rObj*> & obj, xSession * session)
+{
+	if (obj.size() != 3)
+	{
+		addReplyErrorFormat(session->sendBuf, "unknown  lrange  param error");
+		return false;
+	}
+
+	long  start;
+	long end;
+	if ((getLongFromObjectOrReply(session->sendBuf, obj[1], &start, nullptr) != REDIS_OK) || 
+		(getLongFromObjectOrReply(session->sendBuf, obj[2], &end,nullptr) != REDIS_OK))
+	{
+		return false;
+	}
+
+	obj[0]->calHash();
+	size_t hash = obj[0]->hash;
+	int index = hash % kShards;
+	std::mutex &mu = listMapShards[index].mtx;
+	auto & listMap = listMapShards[index].listMap;
+	
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = listMap.find(obj[0]);
+		if (it == listMap.end())
+		{
+			addReply(session->sendBuf, shared.nullbulk);
+			return false;
+		}
+
+
+		int64_t listSize = it->second.size();
+
+		if (start < 0)
+		{
+			start = listSize + start;
+		}
+
+		if (end < 0)
+		{
+			end = listSize + end;
+		}
+
+		if (start < 0)
+		{
+			start = 0;
+		}
+
+		if (start > end || start >= listSize)
+		{
+			addReply(session->sendBuf, shared.emptymultibulk);
+			return false;
+		}
+
+		if (end >= listSize)
+		{
+			end = listSize - 1;
+		}
+
+		int64_t rangelen =  (end - start) + 1;
+		addReplyMultiBulkLen(session->sendBuf, rangelen);
+
+		while(rangelen--)
+		{
+			addReplyBulkCBuffer(session->sendBuf, it->second[start]->ptr, sdslen(it->second[start]->ptr));
+			start++;
+		}
+
+	}
+	
+
+	return false;
+}
+
+bool xRedis::rpushCommand(const std::deque<rObj*> & obj, xSession * session)
+{
+	if (obj.size()  != 2)
+	{
+		addReplyErrorFormat(session->sendBuf, "unknown  rpush  param error");
+		return false;
+	}
+
+	obj[0]->calHash();
+	size_t hash = obj[0]->hash;
+	int index = hash % kShards;
+	std::mutex &mu = listMapShards[index].mtx;
+	int64_t pushed = 0;
+	auto & listMap = listMapShards[index].listMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = listMap.find(obj[0]);
+		if (it == listMap.end())
+		{
+			std::deque<rObj*> list;
+			for (int i = 1; i < obj.size(); ++i)
+			{
+				pushed++;
+				list.push_front(obj[i]);
+			}
+
+			listMap.insert(std::make_pair(obj[0], std::move(list)));
+		}
+		else
+		{
+			zfree(obj[0]);
+			for (int i = 1; i < obj.size(); ++i)
+			{
+				pushed++;
+				it->second.push_front(obj[i]);
+			}
+		}
+	}
+
+	addReplyLongLong(session->sendBuf, pushed);
+
+	return true;
+}
+
+
+bool xRedis::llenCommand(const std::deque<rObj*> & obj, xSession * session)
+{
+	if (obj.size() != 1)
+	{
+		addReplyErrorFormat(session->sendBuf, "unknown  llen  param error");
+		return false;
+	}
+
+	obj[0]->calHash();
+	size_t hash = obj[0]->hash;
+	int index = hash % kShards;
+	std::mutex &mu = listMapShards[index].mtx;
+	auto & listMap = listMapShards[index].listMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = listMap.find(obj[0]);
+		if (it == listMap.end())
+		{
+			addReplyLongLong(session->sendBuf,0);
+			return false;
+		}
+
+		addReplyLongLong(session->sendBuf, it->second.size());
+	}
+	return false;
+}
+
+
+bool xRedis::rpopCommand(const std::deque<rObj*> & obj, xSession * session)
+{
+	if (obj.size()  !=  1)
+	{
+		addReplyErrorFormat(session->sendBuf, "unknown  rpop  param error");
+		return false;
+	}
+
+	obj[0]->calHash();
+	size_t hash = obj[0]->hash;
+	int index = hash % kShards;
+	std::mutex &mu = listMapShards[index].mtx;
+	auto & listMap = listMapShards[index].listMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = listMap.find(obj[0]);
+		if (it == listMap.end())
+		{
+			addReply(session->sendBuf, shared.nullbulk);
+		}
+		else
+		{
+			addReplyBulk(session->sendBuf, it->second.front());
+			zfree(it->second.front());
+			it->second.pop_front();
+			if (it->second.empty())
+			{
+				zfree(it->first);
+				listMap.erase(obj[0]);
+			}
+
+		}
+	}
+
+
+	return false;
+}
+
 void xRedis::flush()
 {
 
@@ -2041,6 +2472,13 @@ void xRedis::initConfig()
 	REGISTER_REDIS_COMMAND(createStringObject("migrate",7),migrateCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("debug",5),debugCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("ttl", 3), ttlCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("lpush", 5), lpushCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("lpop", 4), lpopCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("rpush",5 ), rpushCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("lrange", 6), lrangeCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("rpush", 5), rpushCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("rpop", 4), rpopCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("llen", 4), llenCommand);
 
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
 	unorderedmapCommands.insert(msgId);

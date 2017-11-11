@@ -4,7 +4,7 @@
 #include "xSds.h"
 
 
-class xLock
+class xLock : noncopyable
 {
 public:
 	xLock();
@@ -16,7 +16,7 @@ public:
 };
 
 
-class xRedLock
+class xRedLock : noncopyable
 {
 public:
 	xRedLock();

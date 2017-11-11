@@ -347,6 +347,9 @@
 #define CLUSTER_SYNCING  1
 #define CLUSTER_SYNCED 2
 
+
+#define sdsEncodedObject(objptr) (objptr->encoding == REDIS_ENCODING_RAW || objptr->encoding == REDIS_ENCODING_EMBSTR)
+
 class noncopyable
 {
  protected:

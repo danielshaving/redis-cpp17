@@ -64,7 +64,16 @@ public:
 	bool sentinelCommand(const std::deque<rObj*> & obj, xSession * session);
 	bool migrateCommand(const std::deque<rObj*> & obj, xSession * session);
 	bool ttlCommand(const std::deque<rObj*> & obj, xSession * session);
+	bool lpushCommand(const std::deque<rObj*> & obj, xSession * session);
+	bool lpopCommand(const std::deque<rObj*> & obj, xSession * session);
+	bool lrangeCommand(const std::deque<rObj*> & obj, xSession * session);
+	bool rpushCommand(const std::deque<rObj*> & obj, xSession * session);
+	bool rpopCommand(const std::deque<rObj*> & obj, xSession * session);
+	bool llenCommand(const std::deque<rObj*> & obj, xSession * session);
 
+
+	bool scardCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool saddCommond(const std::deque <rObj*> & obj,xSession * session);
 
 	int rdbSaveBackground(xSession * session, bool enabled);
 	bool clearClusterMigradeCommand(void * data);
@@ -87,9 +96,8 @@ public:
 	
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
-
-
-
+	typedef std::unordered_map<rObj*, std::deque<rObj*>, Hash, Equal> ListMap;
+	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
 
 	struct SetMapLock
 	{		
@@ -103,11 +111,24 @@ public:
 		mutable std::mutex mtx;
 	};
 
+	struct ListMapLock
+	{
+		ListMap listMap;
+		mutable std::mutex mtx;
+	};
+
+	struct SetLock
+	{
+		Set set;
+		mutable std::mutex mutex;
+	};
+
 
 	const static int kShards = 4096;
 	std::array<SetMapLock, kShards> setMapShards;
 	std::array<HsetMapLock, kShards> hsetMapShards;
-
+	std::array<ListMapLock, kShards> listMapShards;
+	std::array<SetLock, kShards> setShards;
 
 	xEventLoop loop;
 	xTcpServer server;

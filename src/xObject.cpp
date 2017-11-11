@@ -316,7 +316,7 @@ void createSharedObjects()
     shared.plus = createObject(REDIS_STRING,sdsnew("+"));
 
 
-    /*for (j = 0; j < REDIS_SHARED_SELECT_CMDS; j++) {
+    for (j = 0; j < REDIS_SHARED_SELECT_CMDS; j++) {
         char dictid_str[64];
         int dictid_len;
 
@@ -327,7 +327,7 @@ void createSharedObjects()
                 dictid_len, dictid_str));
     }
 
-    */
+
 
     shared.messagebulk = createStringObject("$7\r\nmessage\r\n",13);
     shared.pmessagebulk = createStringObject("$8\r\npmessage\r\n",14);
@@ -337,18 +337,16 @@ void createSharedObjects()
     shared.punsubscribebulk = createStringObject("$12\r\npunsubscribe\r\n",19);
 
 
-  /*  shared.del = createStringObject("DEL",3);
+    shared.del = createStringObject("DEL",3);
     shared.rpop = createStringObject("RPOP",4);
     shared.lpop = createStringObject("LPOP",4);
     shared.lpush = createStringObject("LPUSH",5);
-    */
 
-  /*  for (j = 0; j < REDIS_SHARED_INTEGERS; j++) {
+
+    for (j = 0; j < REDIS_SHARED_INTEGERS; j++) {
         shared.integers[j] = createObject(REDIS_STRING,(void*)(long)j);
         shared.integers[j]->encoding = REDIS_ENCODING_INT;
     }
-    */
-
 
 
     for (j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++) {
@@ -358,8 +356,8 @@ void createSharedObjects()
             sdscatprintf(sdsempty(),"$%d\r\n",j));
     }
 
-	//shared.minstring = createStringObject("minstring",9);
-    //shared.maxstring = createStringObject("maxstring",9);
+	shared.minstring = createStringObject("minstring",9);
+    shared.maxstring = createStringObject("maxstring",9);
     shared.sync = createObject(REDIS_STRING,sdsnew("sync\r\n"));
 
 

@@ -5,11 +5,11 @@
 /* Turn the plain C strings into Sds strings */
 static char **convertToSds(int count, char** args)
 {
-    int j;
-    char **sds = (char**)zmalloc(sizeof(char*)*count);
-    for(j = 0; j < count; j++)
-        sds[j] = sdsnew(args[j]);
-    return sds;
+	int j;
+	char **sds = (char**)zmalloc(sizeof(char*)*count);
+	for(j = 0; j < count; j++)
+		sds[j] = sdsnew(args[j]);
+	return sds;
 }
 
 xLock::xLock()
@@ -60,23 +60,23 @@ xRedLock::~xRedLock()
 
 sds	 xRedLock::getUniqueLockId()
 {
-	  unsigned char buffer[20];
-	  if(::read(fd,buffer,sizeof(buffer)) == sizeof(buffer))
-	  {
-		  sds s;
-		  s = sdsempty();
+	unsigned char buffer[20];
+	if(::read(fd,buffer,sizeof(buffer)) == sizeof(buffer))
+	{
+		sds s;
+		s = sdsempty();
 		for (int i = 0; i < 20; i++)
 		{
 			s = sdscatprintf(s, "%02X", buffer[i]);
 		}
 		return s;
-	  }
-	  else
-	  {
-		  LOG_WARN<<"Error: GetUniqueLockId";
-	  }
+	}
+	else
+	{
+		LOG_WARN<<"Error: GetUniqueLockId";
+	}
 
-	  return nullptr;
+	return nullptr;
 }
 
 
