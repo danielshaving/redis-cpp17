@@ -70,8 +70,8 @@ public:
 	bool rpushCommand(const std::deque<rObj*> & obj, xSession * session);
 	bool rpopCommand(const std::deque<rObj*> & obj, xSession * session);
 	bool llenCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool scardCommond(const std::deque <rObj*> & obj,xSession * session);
-	bool saddCommond(const std::deque <rObj*> & obj,xSession * session);
+	bool scardCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool saddCommand(const std::deque <rObj*> & obj,xSession * session);
 
 	int rdbSaveBackground(xSession * session, bool enabled);
 	bool clearClusterMigradeCommand(void * data);

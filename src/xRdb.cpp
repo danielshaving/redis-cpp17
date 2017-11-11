@@ -458,7 +458,7 @@ int xRdb::rdbSaveList(xRio *rdb)
 {
 	if (rdbSaveType(rdb,REDIS_RDB_LIST) == -1) return REDIS_ERR;
 
-	for(auto it = redis->listMapShards.begin(); it != redis->listMapShards.end(); it++)
+	for(auto it = redis->listMapShards.begin(); it != redis->listMapShards.end(); ++it)
 	{
 		auto &map = (*it).listMap;
 		std::mutex &mu =  (*it).mtx;
@@ -475,7 +475,7 @@ int xRdb::rdbSaveList(xRio *rdb)
 				return REDIS_ERR;
 			}
 
-			for(auto iterr = iter->second.begin(); iterr != iter->second.end(); iterr++)
+			for(auto iterr = iter->second.begin(); iterr != iter->second.end(); ++iterr)
 			{
 				 if (rdbSaveValue(rdb,*iterr,0) == -1)
 				 {
@@ -495,7 +495,7 @@ int xRdb::rdbSaveSet(xRio *rdb)
 {
 	if (rdbSaveType(rdb,REDIS_RDB_SET) == -1) return REDIS_ERR;
 
-	for(auto it = redis->setShards.begin(); it != redis->setShards.end(); it++)
+	for(auto it = redis->setShards.begin(); it != redis->setShards.end(); ++it)
 	{
 		auto &map = (*it).set;
 		std::mutex &mu =  (*it).mtx;
@@ -512,7 +512,7 @@ int xRdb::rdbSaveSet(xRio *rdb)
 				return REDIS_ERR;
 			}
 
-			for(auto iterr = iter->second.begin(); iterr != iter->second.end(); iterr++)
+			for(auto iterr = iter->second.begin(); iterr != iter->second.end(); ++iterr)
 			{
 				 if (rdbSaveValue(rdb,*iterr,0) == -1)
 				 {
@@ -1053,9 +1053,9 @@ int xRdb::rdbLoad(char *filename)
 
 		switch(type)
 		{
-			case REDIS_RDB_SET:
+			case REDIS_RDB_STRING:
 			{
-				if(rdbLoadSet(&rdb) != REDIS_OK )
+				if(rdbLoadString(&rdb) != REDIS_OK )
 				{
 					return REDIS_ERR;
 				}
@@ -1072,6 +1072,28 @@ int xRdb::rdbLoad(char *filename)
 
 				break;
 			}
+
+			case REDIS_RDB_LIST:
+			{
+				if(rdbLoadList(&rdb) != REDIS_OK)
+				{
+					return REDIS_ERR;
+				}
+
+				break;
+			}
+
+
+			case REDIS_RDB_SET:
+			{
+				if(rdbLoadSet(&rdb) != REDIS_OK)
+				{
+					return REDIS_ERR;
+				}
+
+				break;
+			}
+
 
 			case REDIS_EXPIRE_TIME:
 			{
@@ -1384,8 +1406,11 @@ int xRdb::rdbSaveRio(xRio *rdb,int *error)
 		return REDIS_ERR;
 	}
 
+	rdbSaveString(rdb);
 	rdbSaveSet(rdb);
 	rdbSaveHset(rdb);
+	rdbSaveList(rdb);
+
 	rdbSaveExpire(rdb);
 
 	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1)

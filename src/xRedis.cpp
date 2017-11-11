@@ -259,7 +259,7 @@ void xRedis::loadDataFromDisk()
 }
 
 
-bool xRedis::scardCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::scardCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() != 1 )
 	{
@@ -291,7 +291,7 @@ bool xRedis::scardCommond(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-bool xRedis::saddCommond(const std::deque <rObj*> & obj,xSession * session)
+bool xRedis::saddCommand(const std::deque <rObj*> & obj,xSession * session)
 {
 	if(obj.size() < 2)
 	{
@@ -2530,11 +2530,18 @@ void xRedis::initConfig()
 	REGISTER_REDIS_COMMAND(createStringObject("rpush", 5), rpushCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("rpop", 4), rpopCommand);
 	REGISTER_REDIS_COMMAND(createStringObject("llen", 4), llenCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("sadd", 4), saddCommand);
+	REGISTER_REDIS_COMMAND(createStringObject("scard", 5), scardCommand);
 
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
 	unorderedmapCommands.insert(msgId);
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("set",3));
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("hset",4));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("lpush",5));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("rpush",5));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("sadd",4));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("lpop",4));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("rpop",4));
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("del",3));
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("flushdb",7));
 
