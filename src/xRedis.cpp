@@ -1216,12 +1216,11 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 		return REDIS_ERR;
 	}
 
-	LOG_INFO << "rdbSaveBackground";
+	repliEnabled = enabled;
 
 	pid_t childpid;
 	if ((childpid = fork()) == 0)
 	{
-		 LOG_INFO << "childpid";
 		 int retval;
 		 for(auto it = sessions.begin(); it != sessions.end(); ++it)
 		 {
@@ -1262,7 +1261,6 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 	}
 	else
 	{
-		LOG_INFO << "father";
 		if (childpid == -1)
 		{
 			LOG_WARN << "childpid error";
@@ -1275,7 +1273,6 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 		}
 
 		rdbChildPid = childpid;
-		repliEnabled = enabled;
 	}
 
 	return REDIS_OK; /* unreached */
@@ -1912,6 +1909,26 @@ void xRedis::clearCommand()
 	}
 
 
+	{
+		for (auto it = setShards.begin(); it != setShards.end(); ++it)
+		{
+			auto &set = (*it).set;
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			for (auto iter = set.begin(); iter != set.end(); ++iter)
+			{
+				for (auto iterr = iter->second.begin(); iterr != iter->second.end(); ++iterr)
+				{
+					zfree(*iterr);
+				}
+				zfree(iter->first);
+			}
+
+			set.clear();
+		}
+
+	}
+
 
 
 
@@ -2544,6 +2561,11 @@ void xRedis::initConfig()
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("rpop",4));
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("del",3));
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("flushdb",7));
+
+#define REGISTER_REDIS_REPLI_COMMAND(msgId) \
+	stopRepliCached.insert(msgId);
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("rpush",5));
+	REGISTER_REDIS_CHECK_COMMAND(createStringObject("lpush",5));
 
 #define REGISTER_REDIS_CLUSTER_CHECK_COMMAND(msgId) \
 	cluterMaps.insert(msgId);

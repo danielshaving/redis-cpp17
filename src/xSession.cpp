@@ -237,7 +237,6 @@ jump:
 						if(redis->slaveCached.readableBytes() > 0)
 						{
 							conn->send(&redis->slaveCached);
-							redis->slaveCached.retrieveAll();
 							xBuffer buffer;
 							redis->slaveCached.swap(buffer);
 						}
@@ -280,7 +279,7 @@ jump:
 				return REDIS_ERR;
 			}
 		}
-		else
+ 		else
 		{
 			if(checkCommand(command))
 			{

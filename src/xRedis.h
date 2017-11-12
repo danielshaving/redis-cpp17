@@ -87,6 +87,7 @@ public:
 
 public:
 	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommands;
+	std::unordered_set<rObj*,Hash,EEqual>  stopRepliCached;
 	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commandFunction;
 	std::unordered_map<rObj*,commandFunction,Hash,EEqual> handlerCommandMap;
 	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
