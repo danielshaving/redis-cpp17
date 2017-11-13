@@ -32,8 +32,10 @@ pingPong(false)
 
 xRedis::~xRedis()
 {
+	clear();
 	destorySharedObjects();
 	clearCommand();
+
 }
 
 
@@ -1187,9 +1189,13 @@ bool xRedis::bgsave(xSession * session,bool enabled)
 
 bool  xRedis::save(xSession * session)
 {
+	if(rdbChildPid != -1)
+	{
+		return false;
+	}
+
 	xTimestamp start(xTimestamp::now());
 	{
-		std::unique_lock <std::mutex> lck(mtx);
 		char filename[] = "dump.rdb";
 		if(rdb.rdbSave(filename) == REDIS_OK)
 		{
@@ -1211,6 +1217,7 @@ bool  xRedis::save(xSession * session)
 
 int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 {
+	LOG_INFO<<"rdbSaveBackground";
 	if(rdbChildPid != -1)
 	{
 		return REDIS_ERR;
@@ -1221,6 +1228,7 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 	pid_t childpid;
 	if ((childpid = fork()) == 0)
 	{
+		 LOG_INFO<<"child";
 		 int retval;
 		 for(auto it = sessions.begin(); it != sessions.end(); ++it)
 		 {
@@ -1261,6 +1269,8 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 	}
 	else
 	{
+		LOG_INFO<<"father";
+
 		if (childpid == -1)
 		{
 			LOG_WARN << "childpid error";
@@ -1310,6 +1320,7 @@ bool xRedis::saveCommand(const std::deque <rObj*> & obj,xSession * session)
 	{
 		addReply(session->sendBuf,shared.err);
 	}
+
 
 	return true;
 }
@@ -1800,7 +1811,7 @@ bool xRedis::hsetCommand(const std::deque <rObj*> & obj,xSession * session)
 	}
 	
 	addReply(session->sendBuf,shared.err);
-        return false;
+    return false;
  }
 
 bool xRedis::hgetCommand(const std::deque <rObj*> & obj,xSession * session)
@@ -1840,6 +1851,26 @@ bool xRedis::hgetCommand(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
+
+
+void xRedis::clear()
+{
+	for(auto it = handlerCommandMap.begin(); it != handlerCommandMap.end(); ++it)
+	{
+		zfree(it->first);
+	}
+
+	handlerCommandMap.clear();
+
+
+	for(auto it = unorderedmapCommands.begin(); it != unorderedmapCommands.end(); ++it)
+	{
+		zfree(*it);
+	}
+
+	unorderedmapCommands.clear();
+
+}
 
 void xRedis::clearCommand()
 {
@@ -2561,11 +2592,6 @@ void xRedis::initConfig()
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("rpop",4));
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("del",3));
 	REGISTER_REDIS_CHECK_COMMAND(createStringObject("flushdb",7));
-
-#define REGISTER_REDIS_REPLI_COMMAND(msgId) \
-	stopRepliCached.insert(msgId);
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("rpush",5));
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("lpush",5));
 
 #define REGISTER_REDIS_CLUSTER_CHECK_COMMAND(msgId) \
 	cluterMaps.insert(msgId);

@@ -79,6 +79,7 @@ public:
 	bool save(xSession * session);
 	int removeCommand(rObj * obj,int &count);
 	void clearCommand();
+	void clear();
 	void clearRepliState(int32_t sockfd);
 	void clearClusterState(int32_t sockfd);
 	size_t getDbsize();

@@ -1116,6 +1116,7 @@ int xRdb::rdbLoad(char *filename)
 	{
 		return REDIS_ERR;
 	}
+
 	memrev64ifbe(&cksum);
 	if (cksum == 0)
 	{

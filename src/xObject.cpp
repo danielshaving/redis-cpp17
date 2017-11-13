@@ -248,9 +248,13 @@ void destorySharedObjects()
 	
 	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
 	{
-		freeStringObject(shared.mbulkhdr[j]);
-		freeStringObject(shared.bulkhdr[j]);
+		freeStringObject(shared.integers[j]);
 	}
+
+    for (int j = 0; j < REDIS_SHARED_INTEGERS; j++)
+    {
+    	freeStringObject(shared.mbulkhdr[j]);
+    }
 
 	freeStringObject(shared.sync);
 
@@ -316,19 +320,6 @@ void createSharedObjects()
     shared.plus = createObject(REDIS_STRING,sdsnew("+"));
 
 
-    for (j = 0; j < REDIS_SHARED_SELECT_CMDS; j++) {
-        char dictid_str[64];
-        int dictid_len;
-
-        dictid_len = ll2string(dictid_str,sizeof(dictid_str),j);
-        shared.select[j] = createObject(REDIS_STRING,
-            sdscatprintf(sdsempty(),
-                "*2\r\n$6\r\nSELECT\r\n$%d\r\n%s\r\n",
-                dictid_len, dictid_str));
-    }
-
-
-
     shared.messagebulk = createStringObject("$7\r\nmessage\r\n",13);
     shared.pmessagebulk = createStringObject("$8\r\npmessage\r\n",14);
     shared.subscribebulk = createStringObject("$9\r\nsubscribe\r\n",15);
@@ -336,11 +327,11 @@ void createSharedObjects()
     shared.psubscribebulk = createStringObject("$10\r\npsubscribe\r\n",17);
     shared.punsubscribebulk = createStringObject("$12\r\npunsubscribe\r\n",19);
 
-
-    shared.del = createStringObject("DEL",3);
-    shared.rpop = createStringObject("RPOP",4);
-    shared.lpop = createStringObject("LPOP",4);
-    shared.lpush = createStringObject("LPUSH",5);
+//
+//    shared.del = createStringObject("DEL",3);
+//    shared.rpop = createStringObject("RPOP",4);
+//    shared.lpop = createStringObject("LPOP",4);
+//    shared.lpush = createStringObject("LPUSH",5);
 
 
     for (j = 0; j < REDIS_SHARED_INTEGERS; j++) {
@@ -355,9 +346,9 @@ void createSharedObjects()
         shared.bulkhdr[j] = createObject(REDIS_STRING,
             sdscatprintf(sdsempty(),"$%d\r\n",j));
     }
-
-	shared.minstring = createStringObject("minstring",9);
-    shared.maxstring = createStringObject("maxstring",9);
+//
+	//shared.minstring = createStringObject("minstring",9);
+    //shared.maxstring = createStringObject("maxstring",9);
     shared.sync = createObject(REDIS_STRING,sdsnew("sync\r\n"));
 
 

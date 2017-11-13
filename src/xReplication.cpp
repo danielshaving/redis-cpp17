@@ -115,6 +115,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 
 			if (redis->rdb.rdbLoad(fileName) == REDIS_OK)
 			{
+
 				LOG_INFO << "Replication load rdb success";
 				salveLen = 0;
 			}
