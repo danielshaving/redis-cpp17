@@ -92,16 +92,14 @@ void xCluster::clusterRedirectClient(xSession * session, xClusterNode * n, int h
 
 void xCluster::syncClusterSlot(std::deque<rObj*> &robj)
 {
-	{
-		std::unique_lock <std::mutex> lck(redis->clusterMutex);
-		for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); it++)
-		{
-			xBuffer sendBuf;
-			redis->structureRedisProtocol(sendBuf, robj);
-			it->second->send(&sendBuf);
-		}
-	}
-	for (auto it = robj.begin(); it != robj.end(); it++)
+    for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); ++it)
+    {
+        xBuffer sendBuf;
+        redis->structureRedisProtocol(sendBuf, robj);
+        it->second->send(&sendBuf);
+    }
+
+	for (auto it = robj.begin(); it != robj.end(); ++it)
 	{
 		zfree(*it);
 	}

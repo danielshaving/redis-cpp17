@@ -375,7 +375,11 @@ int xRdb::rdbSaveString(xRio *rdb)
 	{
 		auto &map = (*it).setMap;
 		std::mutex & mu = (*it).mtx;
-		std::unique_lock <std::mutex> lck(mu);
+		if(blockEnabled)
+		{
+		    mu.lock();
+		}
+		//std::unique_lock <std::mutex> lck(mu);
 		for (auto iter = map.begin(); iter != map.end(); ++iter)
 		{
 			if (rdbSaveKeyValuePair(rdb, iter->first, iter->second, 0) == -1)
@@ -383,6 +387,7 @@ int xRdb::rdbSaveString(xRio *rdb)
 				return REDIS_ERR;
 			}
 		}
+		mu.unlock();
 	}
 
 	if (rdbSaveType(rdb, REDIS_RDB_STRING) == -1) return REDIS_ERR;
@@ -395,7 +400,11 @@ int xRdb::rdbSaveExpire(xRio * rdb)
 {
 	if (rdbSaveType(rdb, REDIS_EXPIRE_TIME) == -1) return REDIS_ERR;
 	{
-		std::unique_lock <std::mutex> lck(redis->expireMutex);
+        if(blockEnabled)
+        {
+            redis->expireMutex.lock();
+        }
+		//std::unique_lock <std::mutex> lck(redis->expireMutex);
 		for (auto it = redis->expireTimers.begin(); it != redis->expireTimers.end(); ++it)
 		{
 			if (rdbSaveKey(rdb, it->first, 0) == -1)
@@ -407,8 +416,8 @@ int xRdb::rdbSaveExpire(xRio * rdb)
 			{
 				return REDIS_ERR;
 			}
-
 		}
+		redis->expireMutex.unlock();
 	}
 	if (rdbSaveType(rdb,REDIS_EXPIRE_TIME) == -1) return REDIS_ERR;
 
@@ -422,7 +431,12 @@ int xRdb::rdbSaveHset(xRio *rdb)
 	{
 		auto &map = (*it).hsetMap;
 		std::mutex & mu = (*it).mtx;
-		std::unique_lock <std::mutex> lck(mu);
+		if(blockEnabled)
+        {
+            mu.lock();
+        }
+
+		//std::unique_lock <std::mutex> lck(mu);
 		for(auto iter = map.begin(); iter != map.end(); ++iter)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
@@ -442,9 +456,8 @@ int xRdb::rdbSaveHset(xRio *rdb)
 				 	return REDIS_ERR;
 				 }
 			}
-			
-			
 		}
+		mu.unlock();
 	}
 	
 	if (rdbSaveType(rdb,REDIS_RDB_HSET) == -1) return REDIS_ERR;
@@ -462,7 +475,12 @@ int xRdb::rdbSaveList(xRio *rdb)
 	{
 		auto &map = (*it).listMap;
 		std::mutex &mu =  (*it).mtx;
-		std::unique_lock <std::mutex> lck(mu);
+		if(blockEnabled)
+        {
+            mu.lock();
+        }
+
+		//std::unique_lock <std::mutex> lck(mu);
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
@@ -483,6 +501,7 @@ int xRdb::rdbSaveList(xRio *rdb)
 				 }
 			}
 		}
+		mu.unlock();
 	}
 
 	if (rdbSaveType(rdb,REDIS_RDB_LIST) == -1) return REDIS_ERR;
@@ -499,7 +518,12 @@ int xRdb::rdbSaveSet(xRio *rdb)
 	{
 		auto &map = (*it).set;
 		std::mutex &mu =  (*it).mtx;
-		std::unique_lock <std::mutex> lck(mu);
+		if(blockEnabled)
+        {
+            mu.lock();
+        }
+
+		//std::unique_lock <std::mutex> lck(mu);
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
@@ -520,6 +544,7 @@ int xRdb::rdbSaveSet(xRio *rdb)
 				 }
 			}
 		}
+		mu.unlock();
 	}
 
 	if (rdbSaveType(rdb,REDIS_RDB_SET) == -1) return REDIS_ERR;
@@ -1429,7 +1454,7 @@ int xRdb::rdbSaveRio(xRio *rdb,int *error)
 	
 	return REDIS_OK;
 }
-int xRdb::rdbSave(char *filename)
+int xRdb::rdbSave(char *filename,bool enabled)
 {
 	char tmpfile[256];
 	FILE *fp;
@@ -1451,6 +1476,7 @@ int xRdb::rdbSave(char *filename)
 		goto werr;
 	}
 
+    blockEnabled = enabled;
 	if (fflush(fp) == EOF) goto werr;
 	if (fsync(fileno(fp)) == -1) goto werr;
 	if (fclose(fp) == EOF) goto werr;

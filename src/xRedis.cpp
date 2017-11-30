@@ -13,6 +13,7 @@ salveCount(0),
 clusterSlotEnabled(false),
 clusterRepliMigratEnabled(false),
 clusterRepliImportEnabeld(false),
+forkEnabled(false),
 rdbChildPid(-1),
 slavefd(-1),
 count(0),
@@ -1215,9 +1216,31 @@ bool  xRedis::save(xSession * session)
 
 
 
+void xRedis::forkClear()
+{
+     for(auto it = sessions.begin(); it != sessions.end(); ++it)
+     {
+         it->second->conn->forceClose();
+     }
+
+     sessions.clear();
+
+     for (auto it = salvetcpconnMaps.begin(); it != salvetcpconnMaps.end(); ++it)
+     {
+         it->second->forceClose();
+     }
+
+     salvetcpconnMaps.clear();
+
+     for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); ++it)
+     {
+         it->second->forceClose();
+     }
+
+     clustertcpconnMaps.clear();
+}
 int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 {
-	LOG_INFO<<"rdbSaveBackground";
 	if(rdbChildPid != -1)
 	{
 		return REDIS_ERR;
@@ -1228,30 +1251,9 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 	pid_t childpid;
 	if ((childpid = fork()) == 0)
 	{
-		 LOG_INFO<<"child";
+	     forkClear();
 		 int retval;
-		 for(auto it = sessions.begin(); it != sessions.end(); ++it)
-		 {
-			 it->second->conn->forceClose();
-		 }
-
-		 sessions.clear();
-
-		 for (auto it = salvetcpconnMaps.begin(); it != salvetcpconnMaps.end(); ++it)
-		 {
-			 it->second->forceClose();
-		 }
-
-		 salvetcpconnMaps.clear();
-
-		 for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); ++it)
-		 {
-			 it->second->forceClose();
-		 }
-
-		 clustertcpconnMaps.clear();
-
-		 retval = rdb.rdbSave("dump.rdb");
+		 retval = rdb.rdbSave("dump.rdb",!enabled);
 		 if(retval == REDIS_OK)
 		 {
 			 size_t privateDirty = zmalloc_get_private_dirty();
@@ -1269,7 +1271,11 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 	}
 	else
 	{
-		LOG_INFO<<"father";
+	    {
+	        std::unique_lock <std::mutex> lck(forkMutex);
+	        forkEnabled = false;
+            condition.notify_all();
+	    }
 
 		if (childpid == -1)
 		{
@@ -1278,7 +1284,6 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 			{
 				addReply(session->sendBuf, shared.err);
 			}
-			
 			return REDIS_ERR;
 		}
 
@@ -1392,6 +1397,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
+    forkEnabled = true;
 	xTimer * timer = nullptr;
 	{
 		std::unique_lock <std::mutex> lck(slaveMutex);
@@ -1400,6 +1406,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		{
 			LOG_WARN<<"Client repeat send sync ";
 			session->conn->forceClose();
+			forkEnabled = false;
 			return false;
 		}
 		
@@ -1419,6 +1426,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 			session->conn->getLoop()->cancelAfter(timer);
 			salvetcpconnMaps.erase(session->conn->getSockfd());
 		}
+		forkEnabled = false;
 		slavefd = -1;
 		session->conn->forceClose();
 		return false;

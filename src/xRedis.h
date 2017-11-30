@@ -75,6 +75,7 @@ public:
 
 	int rdbSaveBackground(xSession * session, bool enabled);
 	bool clearClusterMigradeCommand(void * data);
+	void forkClear();
 	bool bgsave(xSession * session, bool enabled = false);
 	bool save(xSession * session);
 	int removeCommand(rObj * obj,int &count);
@@ -132,11 +133,12 @@ public:
 
 	xEventLoop loop;
 	xTcpServer server;
-	mutable  std::mutex mtx;
-	mutable  std::mutex slaveMutex;
-	mutable  std::mutex expireMutex;
-	mutable  std::mutex sentinelMutex;
-	mutable  std::mutex clusterMutex;
+    std::mutex mtx;
+    std::mutex slaveMutex;
+    std::mutex expireMutex;
+    std::mutex sentinelMutex;
+    std::mutex clusterMutex;
+    std::mutex forkMutex;
 
 
 	std::atomic<int>   salveCount;
@@ -150,7 +152,9 @@ public:
 	std::atomic<bool>  clusterRepliImportEnabeld;
 	std::atomic<int>   rdbChildPid;
 	std::atomic<int>   slavefd;
+	std::atomic<bool>  forkEnabled;
 
+    std::condition_variable condition;
 	xBuffer	slaveCached;
 	xBuffer	clusterMigratCached;
 	xBuffer	clusterImportCached;
