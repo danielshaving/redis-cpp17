@@ -1155,7 +1155,6 @@ void xRedis::structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs
 
 bool xRedis::bgsave(xSession * session,bool enabled)
 {
-
 	if(rdbChildPid != -1)
 	{
 		if (!enabled)
@@ -1406,7 +1405,11 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		{
 			LOG_WARN<<"Client repeat send sync ";
 			session->conn->forceClose();
-			forkEnabled = false;
+            {
+                std::unique_lock <std::mutex> lck(forkMutex);
+                forkEnabled = false;
+                condition.notify_all();
+            }
 			return false;
 		}
 		
@@ -1426,7 +1429,11 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 			session->conn->getLoop()->cancelAfter(timer);
 			salvetcpconnMaps.erase(session->conn->getSockfd());
 		}
-		forkEnabled = false;
+        {
+            std::unique_lock <std::mutex> lck(forkMutex);
+            forkEnabled = false;
+            condition.notify_all();
+        }
 		slavefd = -1;
 		session->conn->forceClose();
 		return false;
