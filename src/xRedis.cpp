@@ -14,6 +14,7 @@ clusterSlotEnabled(false),
 clusterRepliMigratEnabled(false),
 clusterRepliImportEnabeld(false),
 forkEnabled(false),
+forkCondWaitCount(0),
 rdbChildPid(-1),
 slavefd(-1),
 count(0),
@@ -1270,11 +1271,10 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 	}
 	else
 	{
-	    {
-	        std::unique_lock <std::mutex> lck(forkMutex);
-	        forkEnabled = false;
-            condition.notify_all();
-	    }
+        {
+            std::unique_lock <std::mutex> lck(forkMutex);
+            forkCondition.notify_all();
+        }
 
 		if (childpid == -1)
 		{
@@ -1387,6 +1387,34 @@ bool xRedis::commandCommand(const std::deque <rObj*> & obj,xSession * session)
 	return false;
 }
 
+ void xRedis::handleForkTimeOut(void *data)
+ {
+
+    forkCondWaitCount++;
+    expireCondition.notify_one();
+
+    {
+        std::unique_lock <std::mutex> lck(forkMutex);
+        forkCondition.wait(lck);
+    }
+ }
+/*
+  if(redis->forkEnabled)
+    {
+        std::unique_lock <std::mutex> lck(redis->forkMutex);
+        while(redis->forkEnabled)
+        {
+            redis->condition.wait(lck);
+        }
+    }
+
+    {
+	        std::unique_lock <std::mutex> lck(forkMutex);
+	        forkEnabled = false;
+            condition.notify_all();
+	}
+	*/
+
 
 bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 {
@@ -1396,7 +1424,6 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-    forkEnabled = true;
 	xTimer * timer = nullptr;
 	{
 		std::unique_lock <std::mutex> lck(slaveMutex);
@@ -1405,11 +1432,6 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		{
 			LOG_WARN<<"Client repeat send sync ";
 			session->conn->forceClose();
-            {
-                std::unique_lock <std::mutex> lck(forkMutex);
-                forkEnabled = false;
-                condition.notify_all();
-            }
 			return false;
 		}
 		
@@ -1418,7 +1440,27 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 				false,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
 		salvetcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
+
 	}
+
+	{
+	   std::unique_lock <std::mutex> lck(expireMutex);
+       auto threadPoolVec = server.getThreadPool()->getAllLoops();
+       for(auto it = threadPoolVec.begin(); it != threadPoolVec.end(); ++it)
+       {
+            (*it)->runAfter(0.1,nullptr,false,std::bind(&xRedis::handleForkTimeOut,this,std::placeholders::_1));
+       }
+
+	}
+
+    {
+        std::unique_lock <std::mutex> lck(forkMutex);
+        while(forkCondWaitCount < threadCount - 1)
+        {
+            expireCondition.wait(lck);
+        }
+    }
+
 
 	if(!bgsave(session,true))
 	{
@@ -1429,11 +1471,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 			session->conn->getLoop()->cancelAfter(timer);
 			salvetcpconnMaps.erase(session->conn->getSockfd());
 		}
-        {
-            std::unique_lock <std::mutex> lck(forkMutex);
-            forkEnabled = false;
-            condition.notify_all();
-        }
+
 		slavefd = -1;
 		session->conn->forceClose();
 		return false;

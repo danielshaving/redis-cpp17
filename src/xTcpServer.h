@@ -27,6 +27,7 @@ public:
 	void setThreadNum(int numThreads);
 	void setData(void *data);
 	xEventLoop *getLoop() const { return loop; }
+	std::shared_ptr<xThreadPool> getThreadPool() { return threadPool;}
 
 private:
 	xEventLoop* loop;

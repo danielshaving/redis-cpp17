@@ -26,6 +26,7 @@ public:
 	void serverCron(void * data);
 	void handleSalveRepliTimeOut(void * data);
 	void handleSetExpire(void * data);
+    void handleForkTimeOut(void *data);
 	
 	void run();
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
@@ -153,8 +154,10 @@ public:
 	std::atomic<int>   rdbChildPid;
 	std::atomic<int>   slavefd;
 	std::atomic<bool>  forkEnabled;
+	std::atomic<int>    forkCondWaitCount;
 
-    std::condition_variable condition;
+    std::condition_variable  expireCondition;
+     std::condition_variable forkCondition;
 	xBuffer	slaveCached;
 	xBuffer	clusterMigratCached;
 	xBuffer	clusterImportCached;

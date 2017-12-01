@@ -72,7 +72,7 @@ xEventLoop* xThreadPool::getLoopForHash(size_t hashCode)
 
 std::vector<xEventLoop*> xThreadPool::getAllLoops()
 {
-	baseLoop->assertInLoopThread();
+	//baseLoop->assertInLoopThread();
 	assert(started);
 	if (loops.empty())
 	{

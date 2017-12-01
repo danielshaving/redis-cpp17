@@ -310,16 +310,6 @@ jump:
 		addReplyErrorFormat(sendBuf,"command unknown eror");
 		return REDIS_ERR;
 	}
-	
-
-    if(redis->forkEnabled)
-    {
-        std::unique_lock <std::mutex> lck(redis->forkMutex);
-        while(redis->forkEnabled)
-        {
-            redis->condition.wait(lck);
-        }
-    }
 
 	if(!iter->second(robjs,this))
 	{
