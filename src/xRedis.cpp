@@ -1388,7 +1388,6 @@ bool xRedis::commandCommand(const std::deque <rObj*> & obj,xSession * session)
 
  void xRedis::handleForkTimeOut(void *data)
  {
-    LOG_INFO<<"handleForkTimeOut";
     forkCondWaitCount++;
     expireCondition.notify_one();
 
@@ -1397,23 +1396,6 @@ bool xRedis::commandCommand(const std::deque <rObj*> & obj,xSession * session)
         forkCondition.wait(lck);
     }
  }
-/*
-  if(redis->forkEnabled)
-    {
-        std::unique_lock <std::mutex> lck(redis->forkMutex);
-        while(redis->forkEnabled)
-        {
-            redis->condition.wait(lck);
-        }
-    }
-
-    {
-	        std::unique_lock <std::mutex> lck(forkMutex);
-	        forkEnabled = false;
-            condition.notify_all();
-	}
-	*/
-
 
 bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 {
@@ -1442,10 +1424,8 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 
 	}
 
-    LOG_INFO<<"syncCommand";
 	{
        auto threadPoolVec = server.getThreadPool()->getAllLoops();
-       LOG_INFO<<"size:"<<threadPoolVec.size();
        for(auto it = threadPoolVec.begin(); it != threadPoolVec.end(); ++it)
        {
             if(session->conn->getLoop()->getThreadId() == (*it)->getThreadId())
@@ -1470,7 +1450,6 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
         }
     }
 
-    LOG_INFO<<"start fork...........";
     forkCondWaitCount = 0;
 
 	if(!bgsave(session,true))
@@ -1488,7 +1467,6 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-      LOG_INFO<<"end fork...........";
 
 	return true;
 }
