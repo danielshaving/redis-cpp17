@@ -71,11 +71,9 @@ void xRedis::serverCron(void * data)
 
 				 if (pid == rdbChildPid)
 				 {
-
 						if (!bysignal && exitcode == 0)
 						{
-							LOG_INFO<<"Background saving terminated with success";
-
+							LOG_INFO<<"background saving terminated with success";
 							if(slavefd != -1)
 							{
 								{
@@ -107,11 +105,11 @@ void xRedis::serverCron(void * data)
 						}
 						else if (!bysignal && exitcode != 0)
 						{
-							LOG_INFO<<"Background saving error";
+							LOG_INFO<<"background saving error";
 						}
 						else
 						{
-							LOG_WARN<<"Background saving terminated by signal "<< bysignal;
+							LOG_WARN<<"background saving terminated by signal "<< bysignal;
 
 							char tmpfile[256];
 
@@ -253,11 +251,11 @@ void xRedis::loadDataFromDisk()
 	if(rdb.rdbLoad(rdb_filename) == REDIS_OK)
 	{
 		xTimestamp end(xTimestamp::now());
-		LOG_INFO<<"DB loaded from disk sec: "<<timeDifference(end, start);
+		LOG_INFO<<"db loaded from disk sec: "<<timeDifference(end, start);
 	}
 	else if (errno != ENOENT)
 	{
-        	LOG_WARN<<"Fatal error loading the DB:  Exiting."<<strerror(errno);
+        	LOG_WARN<<"fatal error loading the DB:  Exiting."<<strerror(errno);
  	}
 
 }
@@ -530,7 +528,7 @@ bool xRedis::authCommand(const std::deque <rObj*> & obj, xSession * session)
 
 	if (password.c_str() == nullptr)
 	{
-		addReplyError(session->sendBuf, "Client sent AUTH, but no password is set");
+		addReplyError(session->sendBuf, "client sent auth, but no password is set");
 		return false;
 	}
 
@@ -582,7 +580,7 @@ bool xRedis::configCommand(const std::deque <rObj*> & obj, xSession * session)
 	}
 	else
 	{
-		addReplyError(session->sendBuf, "CONFIG subcommand must be one of GET, SET, RESETSTAT, REWRITE");
+		addReplyError(session->sendBuf, "config subcommand must be one of GET, SET, RESETSTAT, REWRITE");
 	}
 
 	return false;
@@ -1271,6 +1269,7 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 	}
 	else
 	{
+	    if(threadCount  >  0 )
         {
             std::unique_lock <std::mutex> lck(forkMutex);
             forkCondition.notify_all();
@@ -1343,7 +1342,7 @@ bool xRedis::slaveofCommand(const std::deque <rObj*> & obj,xSession * session)
 	{
 		if (masterHost.c_str() && masterPort) 
 		{
-			LOG_WARN<<"MASTER MODE enabled (user request from "<<masterHost.c_str()<<":"<<masterPort;
+			LOG_WARN<<"master mode enabled (user request from "<<masterHost.c_str()<<":"<<masterPort;
 			repli.disconnect();
 		}
 
@@ -1357,20 +1356,20 @@ bool xRedis::slaveofCommand(const std::deque <rObj*> & obj,xSession * session)
 		if (host.c_str() && !memcmp(host.c_str(), obj[0]->ptr,sdslen(obj[0]->ptr))
 		&& this->port == port)
 		{
-			LOG_WARN<<"SLAVE OF connect self error .";
-			addReplySds(session->sendBuf,sdsnew("Don't connect master self \r\n"));
+			LOG_WARN<<"slave of  connect self error .";
+			addReplySds(session->sendBuf,sdsnew("don't connect master self \r\n"));
 			return false;
 		}
 
 		if (masterPort > 0)
 		{
-			LOG_WARN<<"SLAVE OF would result into synchronization with the master we are already connected with. No operation performed.";
-			addReplySds(session->sendBuf,sdsnew("+OK Already connected to specified master\r\n"));
+			LOG_WARN<<"slave of would result into synchronization with the master we are already connected with. no operation performed.";
+			addReplySds(session->sendBuf,sdsnew("+ok already connected to specified master\r\n"));
 			return false;
 		}	
 
 		repli.replicationSetMaster(this,obj[0],port);
-		LOG_INFO<<"SLAVE OF "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
+		LOG_INFO<<"slave of "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
 	}
 	
 
@@ -1389,7 +1388,7 @@ bool xRedis::commandCommand(const std::deque <rObj*> & obj,xSession * session)
 
  void xRedis::handleForkTimeOut(void *data)
  {
-
+    LOG_INFO<<"handleForkTimeOut";
     forkCondWaitCount++;
     expireCondition.notify_one();
 
@@ -1430,7 +1429,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		auto it = repliTimers.find(session->conn->getSockfd());
 		if(it != repliTimers.end())
 		{
-			LOG_WARN<<"Client repeat send sync ";
+			LOG_WARN<<"client repeat send sync ";
 			session->conn->forceClose();
 			return false;
 		}
@@ -1443,24 +1442,36 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 
 	}
 
+    LOG_INFO<<"syncCommand";
 	{
-	   std::unique_lock <std::mutex> lck(expireMutex);
        auto threadPoolVec = server.getThreadPool()->getAllLoops();
+       LOG_INFO<<"size:"<<threadPoolVec.size();
        for(auto it = threadPoolVec.begin(); it != threadPoolVec.end(); ++it)
        {
+            if(session->conn->getLoop()->getThreadId() == (*it)->getThreadId())
+            {
+                continue;
+            }
+
+            std::unique_lock <std::mutex> lck(expireMutex);
             (*it)->runAfter(0.1,nullptr,false,std::bind(&xRedis::handleForkTimeOut,this,std::placeholders::_1));
        }
 
 	}
 
     {
-        std::unique_lock <std::mutex> lck(forkMutex);
-        while(forkCondWaitCount < threadCount - 1)
+        if(threadCount  > 0)
         {
-            expireCondition.wait(lck);
+            std::unique_lock <std::mutex> lck(forkMutex);
+            while(forkCondWaitCount < threadCount - 1)
+            {
+                expireCondition.wait(lck);
+            }
         }
     }
 
+    LOG_INFO<<"start fork...........";
+    forkCondWaitCount = 0;
 
 	if(!bgsave(session,true))
 	{
@@ -1477,7 +1488,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-
+      LOG_INFO<<"end fork...........";
 
 	return true;
 }
