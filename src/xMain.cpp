@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
 	}
 	else if (argc == 1)
 	{
-		 xRedis redis("127.0.0.1", 6379, 0, 0);
+		 xRedis redis("0.0.0.0", 6379, 0, 0);
 		 redis.run();
 	}
 	else

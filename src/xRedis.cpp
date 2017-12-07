@@ -1156,30 +1156,29 @@ bool xRedis::bgsave(xSession * session,bool enabled)
 {
 	if(rdbChildPid != -1)
 	{
-		if (!enabled)
+		if(!enabled)
 		{
 			addReplyError(session->sendBuf, "Background save already in progress");
 			LOG_WARN << "rdbChildPid == -1";
 		}
+
 		return false;
 	}
 
 
 	if(rdbSaveBackground(session, enabled) == REDIS_OK)
 	{
-		if (!enabled)
+		if(!enabled)
 		{
 			addReplyStatus(session->sendBuf, "Background saving started");
 		}
 	}
 	else
 	{
-		if (!enabled)
+		if(!enabled)
 		{
 			addReply(session->sendBuf, shared.err);
 		}
-
-
 		return false;
 	}
 
@@ -1244,8 +1243,6 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 		return REDIS_ERR;
 	}
 
-	repliEnabled = enabled;
-
 	pid_t childpid;
 	if ((childpid = fork()) == 0)
 	{
@@ -1269,12 +1266,6 @@ int xRedis::rdbSaveBackground(xSession * session, bool enabled)
 	}
 	else
 	{
-	    if(threadCount  >  0 )
-        {
-            std::unique_lock <std::mutex> lck(forkMutex);
-            forkCondition.notify_all();
-        }
-
 		if (childpid == -1)
 		{
 			LOG_WARN << "childpid error";
@@ -1450,6 +1441,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
         }
     }
 
+    repliEnabled = true;
     forkCondWaitCount = 0;
 
 	if(!bgsave(session,true))
@@ -1461,12 +1453,15 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 			session->conn->getLoop()->cancelAfter(timer);
 			salvetcpconnMaps.erase(session->conn->getSockfd());
 		}
-
 		slavefd = -1;
 		session->conn->forceClose();
-		return false;
 	}
 
+	if(threadCount  >  0 )
+	{
+		std::unique_lock <std::mutex> lck(forkMutex);
+		forkCondition.notify_all();
+	}
 
 	return true;
 }
