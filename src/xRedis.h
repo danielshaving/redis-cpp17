@@ -22,12 +22,12 @@ public:
 	~xRedis();
 	
 	void initConfig();
-	void handleTimeOut(void * data);
+	void handleTimeOut(void *data);
 	void serverCron(void * data);
 	void handleSalveRepliTimeOut(void * data);
 	void handleSetExpire(void * data);
-    void handleForkTimeOut(void *data);
-	
+    void handleForkTimeOut();
+
 	void run();
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 	bool deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf,void  *data);
@@ -154,10 +154,10 @@ public:
 	std::atomic<int>   rdbChildPid;
 	std::atomic<int>   slavefd;
 	std::atomic<bool>  forkEnabled;
-	std::atomic<int>    forkCondWaitCount;
+	std::atomic<int>   forkCondWaitCount;
 
     std::condition_variable  expireCondition;
-     std::condition_variable forkCondition;
+    std::condition_variable  forkCondition;
 	xBuffer	slaveCached;
 	xBuffer	clusterMigratCached;
 	xBuffer	clusterImportCached;

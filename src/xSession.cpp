@@ -243,11 +243,7 @@ jump:
 					}
 
 					auto iter = redis->repliTimers.find(conn->getSockfd());
-					if(iter == redis->repliTimers.end())
-					{
-						assert(false);
-					}
-
+					assert(iter == redis->repliTimers.end());
 					if(iter->second)
 					{
 						conn->getLoop()->cancelAfter(iter->second);

@@ -580,14 +580,14 @@ bool xRedis::configCommand(const std::deque <rObj*> & obj, xSession * session)
 
 bool xRedis::migrateCommand(const std::deque<rObj*> & obj, xSession * session)
 {
-	if (obj.size() < 2)
+	if (obj.size() < 5)
 	{
 		addReplyErrorFormat(session->sendBuf, "unknown migrate  error");
 	}
 
 	if (!clusterEnabled)
 	{
-		addReplyError(session->sendBuf, "This instance has cluster support disabled");
+		addReplyError(session->sendBuf, "this instance has cluster support disabled");
 		return false;
 	}
 
@@ -608,7 +608,7 @@ bool xRedis::migrateCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	clus.asyncReplicationToNode( ip , port);
+	clus.asyncReplicationToNode(session,ip , port);
 
 	addReply(session->sendBuf, shared.ok);
 	return false;
@@ -618,7 +618,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 {
 	if (!clusterEnabled)
 	{
-		addReplyError(session->sendBuf, "This instance has cluster support disabled");
+		addReplyError(session->sendBuf, "this instance has cluster support disabled");
 		return false;
 	}
 
@@ -1368,7 +1368,9 @@ bool xRedis::commandCommand(const std::deque <rObj*> & obj,xSession * session)
 	return false;
 }
 
- void xRedis::handleForkTimeOut(void *data)
+
+
+ void xRedis::handleForkTimeOut()
  {
     forkCondWaitCount++;
     expireCondition.notify_one();
@@ -1378,6 +1380,8 @@ bool xRedis::commandCommand(const std::deque <rObj*> & obj,xSession * session)
         forkCondition.wait(lck);
     }
  }
+
+
 
 bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 {
@@ -1415,8 +1419,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
                 continue;
             }
 
-            std::unique_lock <std::mutex> lck(expireMutex);
-            (*it)->runAfter(0.1,nullptr,false,std::bind(&xRedis::handleForkTimeOut,this,std::placeholders::_1));
+			(*it)->runInLoop(std::bind(&xRedis::handleForkTimeOut, this));
        }
 
 	}

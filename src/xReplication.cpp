@@ -119,7 +119,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
                     std::unique_lock <std::mutex> lck(redis->mtx);
                     redis->sessions[conn->getSockfd()] = session;
                 }
-		    	conn->send(stringPiepe(shared.ok->ptr, sdslen(shared.ok->ptr)));
+		    	conn->send(shared.ok->ptr, sdslen(shared.ok->ptr));
 		    	LOG_INFO << "replication load rdb success";
 			}
 			else

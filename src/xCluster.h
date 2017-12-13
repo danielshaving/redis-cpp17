@@ -21,7 +21,7 @@ public:
 	xCluster();
 	~xCluster();
 	void init(xRedis * redis);
-	bool connSetCluster(std::string ip, int32_t port);
+	bool connSetCluster(const std::string &ip, int32_t port);
 	void connectCluster();
 	void connErrorCallBack();
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data);
@@ -32,9 +32,9 @@ public:
 	unsigned int keyHashSlot(char *key, int keylen);
 	void syncClusterSlot(std::deque<rObj*> &robj);
 	void clusterRedirectClient(xSession * session, xClusterNode * node,int hashSlot,int errCode);
-	bool asyncReplicationToNode(std::string ip,int32_t port);
+	bool asyncReplicationToNode(xSession * session,const std::string &ip,int32_t port);
 	void delClusterImport(std::deque<rObj*> &robj);
-	void eraseClusterNode(std::string host,int32_t port);
+	void eraseClusterNode(const std::string &ip,int32_t port);
 	void eraseImportSlot(int slot);
 	void getKeyInSlot(int slot,rObj **keys,int count);
 
@@ -50,6 +50,4 @@ public:
 	std::unordered_map<std::string, std::unordered_set<int32_t>> importingSlotsFrom;
 	std::condition_variable condition;
 	std::mutex cmtex;
-	
-
 };
