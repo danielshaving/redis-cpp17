@@ -19,8 +19,7 @@ void xHttpResponse::appendToBuffer(xBuffer* output) const
     output->append("Connection: Keep-Alive\r\n");
   }
 
-  for (std::map<std::string, std::string>::const_iterator it = headers.begin();
-       it != headers.end(); ++it)
+  for (auto it = headers.begin(); it != headers.end(); ++it)
   {
     output->append(it->first);
     output->append(": ");

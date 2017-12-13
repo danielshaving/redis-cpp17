@@ -17,8 +17,7 @@ public:
 
 	}
 
-	bool parseServerRequest(xBuffer *buf);
-	bool parseClientRequest(xBuffer *buf);
+	bool parseRequest(xBuffer *buf);
 
 	bool gotAll() const
 	{;

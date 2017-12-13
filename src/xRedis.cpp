@@ -85,7 +85,6 @@ void xRedis::serverCron(void * data)
 									}
 									else
 									{
-
 										if(!rdb.rdbReplication("dump.rdb",it->second))
 										{
 											it->second->forceClose();
@@ -95,12 +94,9 @@ void xRedis::serverCron(void * data)
 										{
 											LOG_INFO<<"master sync send success ";
 										}
-
 									}
 								}
-
 								slavefd = -1;
-
 							}
 						}
 						else if (!bysignal && exitcode != 0)
@@ -110,12 +106,9 @@ void xRedis::serverCron(void * data)
 						else
 						{
 							LOG_WARN<<"background saving terminated by signal "<< bysignal;
-
 							char tmpfile[256];
-
 							snprintf(tmpfile,256,"temp-%d.rdb", (int) rdbChildPid);
 							unlink(tmpfile);
-
 
 							if (bysignal != SIGUSR1)
 							{
@@ -123,8 +116,6 @@ void xRedis::serverCron(void * data)
 							}
 
 						 }
-
-
 				 }
 				 else
 				 {
@@ -549,7 +540,7 @@ bool xRedis::authCommand(const std::deque <rObj*> & obj, xSession * session)
 bool xRedis::configCommand(const std::deque <rObj*> & obj, xSession * session)
 {
 
-	if (obj.size() > 3)
+	if (obj.size() > 3 ||  obj.size() == 0)
 	{
 		addReplyErrorFormat(session->sendBuf, "unknown config  error");
 		return false;

@@ -11,6 +11,8 @@ public:
 		kUnknown,
 		k2000k = 200,
 		k301MovedPermanently = 301,
+		k400BadRequest = 400,
+		k404NotFound = 404,
 	};
 	explicit xHttpResponse(bool close)
 	:statusCode(kUnknown),
@@ -39,7 +41,7 @@ public:
 		return closeConnection;
 	}
 
-	void setContentTyoe(const std::string & contentType)
+	void setContentType(const std::string & contentType)
 	{
 		addHeader("Content-Type", contentType);
 	}

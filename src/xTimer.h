@@ -20,6 +20,7 @@ public:
 	time_t secondsSinceEpoch() const
 	{ return static_cast<time_t>(microSecondsSinceEpoch / kMicroSecondsPerSecond); }
 
+	std::string toFormattedString(bool showMicroseconds = true) const;
 	static xTimestamp now()
 	{
 		struct timeval tv;

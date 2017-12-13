@@ -46,45 +46,7 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 }
 
 
-bool xHttpContext::parseServerRequest(xBuffer *buf)
-{
-	const char * crlfcrlf = buf->findCRLFCRLF();
-	if(crlfcrlf == nullptr)
-	{
-		return false;
-	}
-
-	const char * content = buf->findCONTENT();
-	if(content != nullptr)
-	{
-		buf->retrieveUntil(content);
-		const char *crlf = buf->findCRLF();
-		if(crlf)
-		{
-			const char * colon = std::find(buf->peek(),crlf,':');
-			if(colon != crlf)
-			{
-				request.setMethod();
-				request.addContent(buf->peek(),colon,crlf);
-				buf->retrieveUntil(crlfcrlf + 4);
-			}
-			else
-			{
-				return false;
-			}
-		}
-		else
-		{
-			return false;
-		}
-
-	}
-
-	return true;
-}
-
-
-bool xHttpContext::parseClientRequest(xBuffer *buf)
+bool xHttpContext::parseRequest(xBuffer *buf)
 {
 	bool ok = true;
 	bool hasMore = true;
