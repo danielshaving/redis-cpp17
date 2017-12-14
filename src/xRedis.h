@@ -158,18 +158,19 @@ public:
 
     std::condition_variable  expireCondition;
     std::condition_variable  forkCondition;
+
 	xBuffer	slaveCached;
 	xBuffer	clusterMigratCached;
 	xBuffer	clusterImportCached;
 	
-	xReplication   repli;
+	xReplication  repli;
 	xSentinel	   senti;
 	xCluster	   clus;
-	xRdb 		   rdb;
+	xRdb		   rdb;
 
-	std::shared_ptr<std::thread > repliThreads;
-	std::shared_ptr<std::thread > sentiThreads;
-	std::shared_ptr<std::thread>  clusterThreads;
+	std::unique_ptr<std::thread > repliThreads;
+	std::unique_ptr<std::thread > sentiThreads;
+	std::unique_ptr<std::thread>  clusterThreads;
 
 	std::unordered_map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
 	std::unordered_map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;
@@ -185,6 +186,7 @@ public:
 	int16_t threadCount;
 	std::string masterHost;
 	std::atomic<int>	masterPort ;
+	std::atomic<int>	masterfd;
 	int curSelect;
 };
 

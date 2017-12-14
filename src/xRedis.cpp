@@ -1350,7 +1350,7 @@ bool xRedis::slaveofCommand(const std::deque <rObj*> & obj,xSession * session)
 			return false;
 		}	
 
-		repli.replicationSetMaster(this,obj[0],port);
+		repli.replicationSetMaster(obj[0],port);
 		LOG_INFO<<"slave of "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
 	}
 	
@@ -1410,33 +1410,33 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 
 	}
 
-	{
-       auto threadPoolVec = server.getThreadPool()->getAllLoops();
-       for(auto it = threadPoolVec.begin(); it != threadPoolVec.end(); ++it)
-       {
-            if(session->conn->getLoop()->getThreadId() == (*it)->getThreadId())
-            {
-                continue;
-            }
-
-			(*it)->runInLoop(std::bind(&xRedis::handleForkTimeOut, this));
-       }
-
-	}
-
+	
+    auto threadPoolVec = server.getThreadPool()->getAllLoops();
+    for(auto it = threadPoolVec.begin(); it != threadPoolVec.end(); ++it)
     {
-        if(threadCount  > 0)
+        if(session->conn->getLoop()->getThreadId() == (*it)->getThreadId())
         {
-            std::unique_lock <std::mutex> lck(forkMutex);
-            while(forkCondWaitCount < threadCount - 1)
-            {
-                expireCondition.wait(lck);
-            }
+            continue;
+        }
+
+		(*it)->runInLoop(std::bind(&xRedis::handleForkTimeOut, this));
+    }
+    
+    if(threadCount  > 0)
+    {
+        std::unique_lock <std::mutex> lck(forkMutex);
+        while(forkCondWaitCount < threadCount - 1)
+        {
+            expireCondition.wait(lck);
         }
     }
+    
 
     repliEnabled = true;
     forkCondWaitCount = 0;
+	session->conn->setMessageCallback(
+		std::bind(&xReplication::slaveCallBack, &repli, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
 
 	if(!bgsave(session,true))
 	{
@@ -2630,13 +2630,14 @@ void xRedis::initConfig()
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("migrate",7));
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("command",7));
 	
-	sentiThreads =  std::shared_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
+	sentiThreads =  std::unique_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
 	sentiThreads->detach();
-	repliThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
+	repliThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
 	repliThreads->detach();
-	clusterThreads = std::shared_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
+	clusterThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
 	clusterThreads->detach();
 	
+	repli.init(this);
 	clus.init(this);
 	rdb.init(this);
 

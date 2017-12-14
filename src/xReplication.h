@@ -12,10 +12,12 @@ public:
 	xReplication();
 	~xReplication();
 
+	void init(xRedis *redis);
 	void connectMaster();
-	void replicationSetMaster(xRedis * redis,rObj * obj,int32_t port);
+	void replicationSetMaster(rObj * obj,int32_t port);
 
 	void connErrorCallBack();
+	void slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data);
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 

@@ -71,7 +71,7 @@ void onMessage(const xTcpconnectionPtr& conn, xBuffer* buf, void * data)
 			resp.setStatusCode(xHttpResponse::k2000k);
 			resp.setStatusMessage("OK");
 			resp.setContentType("image/png");
-			resp.setBody(string(favicon, sizeof favicon));
+			resp.setBody(std::string(favicon, sizeof favicon));
 		}
 		else if (req.getPath() == "/hello")
 		{

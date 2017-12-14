@@ -19,6 +19,11 @@ xReplication::~xReplication()
 
 }
 
+void xReplication::init(xRedis *redis)
+{
+	this->redis = redis;
+}
+
 void xReplication::connectMaster()
 {
 	start = true;
@@ -135,6 +140,52 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 }
 
 
+void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data)
+{
+	while(recvBuf->readableBytes() >= sdslen(shared.ok->ptr))
+	{
+		std::unique_lock <std::mutex> lck(redis->slaveMutex);
+		auto it = redis->salvetcpconnMaps.find(conn->getSockfd());
+		if (it != redis->salvetcpconnMaps.end())
+		{
+			if (memcmp(recvBuf->peek(), shared.ok->ptr, sdslen(shared.ok->ptr)) == 0)
+			{
+				recvBuf->retrieve(sdslen(shared.ok->ptr));
+				if (++redis->salveCount >= redis->salvetcpconnMaps.size())
+				{
+					if (redis->slaveCached.readableBytes() > 0)
+					{
+						conn->send(&redis->slaveCached);
+						xBuffer buffer;
+						redis->slaveCached.swap(buffer);
+					}
+
+					auto iter = redis->repliTimers.find(conn->getSockfd());
+					assert(iter != redis->repliTimers.end());
+					assert(iter->second != nullptr);
+					conn->getLoop()->cancelAfter(iter->second);
+
+					redis->repliTimers.erase(conn->getSockfd());
+
+					{
+						std::shared_ptr<xSession> session(new xSession(redis, conn));
+						std::unique_lock <std::mutex> lck(redis->mtx);;
+						redis->sessions[conn->getSockfd()] = session;
+					}
+
+					LOG_INFO << "slaveof sync success";
+				}
+
+
+			}
+		}
+
+	}
+	
+
+}
+
+
 void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 {
 	if(conn->connected())
@@ -143,6 +194,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		socket.getpeerName(conn->getSockfd(),&(conn->host),conn->port);
 		redis->masterHost = conn->host.c_str();
 		redis->masterPort = conn->port ;
+		redis->masterfd = conn->getSockfd();
 		redis->slaveEnabled =  true;
 		redis->repliEnabled = true;
 		isreconnect = true;
@@ -156,6 +208,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		salveLen = 0;
 		redis->masterHost.clear();
 		redis->masterPort = 0;
+		redis->masterfd = 0;
 		redis->slaveEnabled =  false;
 		redis->repliEnabled = false;
 		std::unique_lock <std::mutex> lck(redis->mtx);
@@ -176,11 +229,10 @@ void xReplication::connErrorCallBack()
 
 }
 
-void xReplication::replicationSetMaster(xRedis * redis,rObj * obj,int32_t port)
+void xReplication::replicationSetMaster(rObj * obj,int32_t port)
 {
 	this->ip = obj->ptr;
 	this->port = port;
-	this->redis = redis;
 
 	if(redis->repliEnabled)
 	{

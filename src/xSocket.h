@@ -14,7 +14,6 @@ public:
 	int  createSocket();
 	int  connect(int sockfd,std::string ip, int16_t port);
 
-	bool  initialize();
 	int   getListenFd();
 	void  setkeepAlive(int fd,int idle);
 	bool  createTcpListenSocket();

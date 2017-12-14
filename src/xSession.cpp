@@ -87,7 +87,7 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 		
 		if(sendPubSub.readableBytes() > 0 )
 		{
-			for(auto iter = pubSubTcpconn.begin(); iter != pubSubTcpconn.end(); iter ++)
+			for(auto iter = pubSubTcpconn.begin(); iter != pubSubTcpconn.end(); ++iter)
 			{
 				(*iter)->send(&sendPubSub);
 			}
@@ -100,14 +100,16 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 		if(redis->repliEnabled)
 		{
+			
 			std::unique_lock <std::mutex> lck(redis->slaveMutex);
-			for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); ++it)
+			for (auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); ++it)
 			{
-				if(sendSlaveBuf.readableBytes() > 0 )
+				if (sendSlaveBuf.readableBytes() > 0)
 				{
 					it->second->send(&sendSlaveBuf);
 				}
 			}
+
 			sendSlaveBuf.retrieveAll();
 		}
 		
@@ -224,39 +226,7 @@ jump:
 
 	if(redis->repliEnabled)
 	{
-		{
-			std::unique_lock <std::mutex> lck(redis->slaveMutex);
-			auto it = redis->salvetcpconnMaps.find(conn->getSockfd());
-			if(it !=  redis->salvetcpconnMaps.end())
-			{
-				if(memcmp(command->ptr,shared.ok->ptr,sdslen(command->ptr)) == 0)
-				{
-					if(++redis->salveCount >= redis->salvetcpconnMaps.size())
-					{
-						LOG_INFO<<"slaveof sync success";
-						if(redis->slaveCached.readableBytes() > 0)
-						{
-							conn->send(&redis->slaveCached);
-							xBuffer buffer;
-							redis->slaveCached.swap(buffer);
-						}
-					}
-
-					auto iter = redis->repliTimers.find(conn->getSockfd());
-					assert(iter == redis->repliTimers.end());
-					if(iter->second)
-					{
-						conn->getLoop()->cancelAfter(iter->second);
-					}
-
-					redis->repliTimers.erase(conn->getSockfd());
-					return REDIS_OK;
-				}
-			}
-			
-		}
-
-		if( (conn->host == redis->masterHost) && (conn->port == redis->masterPort) )
+		if (conn->getSockfd() == redis->masterfd)
 		{
 			fromMaster = true;
 			if(!checkCommand(command))
@@ -266,7 +236,7 @@ jump:
 				return REDIS_ERR;
 			}
 		}
-		else if( redis->masterHost.length() > 0 && redis->masterPort > 0 )
+		else if(redis->masterfd > 0)
 		{
 			if(checkCommand(command))
 			{
