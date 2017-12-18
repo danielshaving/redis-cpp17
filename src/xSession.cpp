@@ -277,6 +277,7 @@ jump:
 		return REDIS_ERR;
 	}
 
+
 	if(!iter->second(robjs,this))
 	{
 		clearObj();
@@ -475,10 +476,12 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			if(++argc == 1)
 			{
 				sdscpylen(command->ptr,queryBuf + pos,bulklen);
+				command->calHash();
 			}
 			else
 			{
 				rObj * obj = (rObj*)createStringObject((char*)(queryBuf + pos),bulklen);
+				obj->calHash();
 				robjs.push_back(obj);
 			}
 

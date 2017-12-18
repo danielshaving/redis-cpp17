@@ -32,11 +32,11 @@ public:
 	unsigned int keyHashSlot(char *key, int keylen);
 	void syncClusterSlot(std::deque<rObj*> &robj);
 	void clusterRedirectClient(xSession * session, xClusterNode * node,int hashSlot,int errCode);
-	bool asyncReplicationToNode(xSession * session,const std::string &ip,int32_t port);
+	bool replicationToNode(xSession * session,const std::string &ip,int32_t port);
 	void delClusterImport(std::deque<rObj*> &robj);
 	void eraseClusterNode(const std::string &ip,int32_t port);
 	void eraseImportSlot(int slot);
-	void getKeyInSlot(int slot,rObj **keys,int count);
+	void getKeyInSlot(int slot, rObj **keys, int count);
 
 public:
 	xEventLoop *loop;
@@ -50,4 +50,5 @@ public:
 	std::unordered_map<std::string, std::unordered_set<int32_t>> importingSlotsFrom;
 	std::condition_variable condition;
 	std::mutex cmtex;
+	std::atomic<int> replyCount;
 };

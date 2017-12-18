@@ -20,8 +20,8 @@ slavefd(-1),
 count(0),
 pingPong(false)
 {
-	initConfig();
 	createSharedObjects();
+	initConfig();
 	loadDataFromDisk();
 	server.init(&loop, host, port,this);
 	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
@@ -157,6 +157,24 @@ void xRedis::handleSalveRepliTimeOut(void * data)
 
 
 
+
+void xRedis::clearDeques(std::deque<rObj*> & robj)
+{
+	for (auto it = robj.begin(); it != robj.end(); ++it)
+	{
+		(*it)->calHash();
+		auto iter = replyCommandMap.find(*it);
+		if (iter == replyCommandMap.end())
+		{
+			zfree(*it);
+		}
+
+	}
+
+}
+
+
+
 void xRedis::clearClusterState(int32_t sockfd)
 {
 	
@@ -260,7 +278,6 @@ bool xRedis::scardCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
 	size_t hash= obj[0]->hash;
 	int count = 0;
 	std::mutex &mu = setShards[hash% kShards].mtx;
@@ -292,7 +309,7 @@ bool xRedis::saddCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
+
 	size_t hash= obj[0]->hash;
 
 	int count = 0;
@@ -306,7 +323,7 @@ bool xRedis::saddCommand(const std::deque <rObj*> & obj,xSession * session)
 			std::unordered_set<rObj*,Hash,Equal> uset;
 			for(int i = 1; i < obj.size(); i ++)
 			{
-				obj[i]->calHash();
+			
 				auto iter = uset.find(obj[i]);
 				if(iter == uset.end())
 				{
@@ -325,7 +342,7 @@ bool xRedis::saddCommand(const std::deque <rObj*> & obj,xSession * session)
 			zfree(obj[0]);
 			for(int i = 1; i < obj.size(); i ++)
 			{
-				obj[i]->calHash();
+			
 				auto iter = it->second.find(obj[i]);
 				if(iter == it->second.end())
 				{
@@ -608,7 +625,7 @@ bool xRedis::migrateCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	clus.asyncReplicationToNode(session,ip , port);
+	clus.replicationToNode(session,ip , port);
 
 	addReply(session->sendBuf, shared.ok);
 	return false;
@@ -1032,13 +1049,12 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			if (it != clus.clusterSlotNodes.end())
 			{
 				std::deque<rObj*> robj;
-				rObj * c = createStringObject("cluster", 7);
-				rObj * d = createStringObject("delsync", 7);
-				robj.push_back(c);
-				robj.push_back(d);
+				robj.push_back(shared.cluster);
+				robj.push_back(shared.delsync);
 				rObj * o = createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr));
 				robj.push_back(o);
 				clus.syncClusterSlot(robj);
+				clearDeques(robj);
 				clus.clusterSlotNodes.erase(slot);
 				LOG_INFO << "deslots success " << slot;
 			}
@@ -1085,17 +1101,15 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 				rObj * p = createStringObject(buf, len);
 
 				std::deque<rObj*> robj;
-				rObj * c = createStringObject("cluster", 7);
-				rObj * a = createStringObject("addsync", 7);
-			
-				robj.push_back(c);
-				robj.push_back(a);
+				robj.push_back(shared.cluster);
+				robj.push_back(shared.addsync);
 				rObj * o = createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr));
 				robj.push_back(o);
 				robj.push_back(i);
 				robj.push_back(p);
 
 				clus.syncClusterSlot(robj);
+				clearDeques(robj);
 				clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
 				LOG_INFO << "addslots success " << slot;
 			}
@@ -1643,8 +1657,7 @@ bool xRedis::delCommand(const std::deque <rObj*> & obj,xSession * session)
 
 	int count = 0;
 	for(int i = 0 ; i < obj.size(); i ++)
-	{
-		obj[i]->calHash();		
+	{	
 		removeCommand(obj[i],count);
 		zfree(obj[i]);
 	}
@@ -1664,7 +1677,7 @@ bool xRedis::hkeysCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
+
 	size_t hash= obj[0]->hash;
 
 
@@ -1713,7 +1726,7 @@ bool xRedis::hgetallCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
+
 	size_t hash= obj[0]->hash;
 	
 	std::mutex &mu = hsetMapShards[hash% kShards].mtx;
@@ -1750,7 +1763,7 @@ bool xRedis::hlenCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
+
 	size_t hash= obj[0]->hash;
 	bool update = false;
 
@@ -1780,8 +1793,6 @@ bool xRedis::hsetCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
-	obj[1]->calHash();
 	size_t hash= obj[0]->hash;
 	bool update = false;
 	
@@ -1853,8 +1864,7 @@ bool xRedis::hgetCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 	
-	obj[0]->calHash();
-	obj[1]->calHash();
+
 	size_t hash= obj[0]->hash;
 	std::mutex &mu = hsetMapShards[hash% kShards].mtx;
 	auto &hsetMap = hsetMapShards[hash% kShards].hsetMap;
@@ -2168,8 +2178,7 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 		}
 		if (unit == UNIT_SECONDS) milliseconds *= 1000;
 	}
-    
-	obj[0]->calHash();
+
 	size_t hash= obj[0]->hash;
 	int index = hash  % kShards;
 	std::mutex &mu = setMapShards[index].mtx;
@@ -2249,8 +2258,7 @@ bool xRedis::getCommand(const std::deque <rObj*> & obj,xSession * session)
 		addReplyErrorFormat(session->sendBuf,"unknown  get param error");
 		return false;
 	}
-	
-	obj[0]->calHash();
+
 	size_t hash = obj[0]->hash;
 	int index = hash  % kShards;
 	std::mutex &mu = setMapShards[index].mtx;
@@ -2282,7 +2290,6 @@ bool xRedis::ttlCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
 	std::unique_lock <std::mutex> lck(expireMutex);
 	auto it = expireTimers.find(obj[0]);
 	if (it == expireTimers.end())
@@ -2306,7 +2313,6 @@ bool xRedis::lpushCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
 	size_t hash = obj[0]->hash;
 	int index = hash  % kShards;
 	std::mutex &mu = listMapShards[index].mtx;
@@ -2349,7 +2355,7 @@ bool xRedis::lpopCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
+
 	size_t hash = obj[0]->hash;
 	int index = hash % kShards;
 	std::mutex &mu = listMapShards[index].mtx;
@@ -2394,7 +2400,6 @@ bool xRedis::lrangeCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
 	size_t hash = obj[0]->hash;
 	int index = hash % kShards;
 	std::mutex &mu = listMapShards[index].mtx;
@@ -2461,7 +2466,6 @@ bool xRedis::rpushCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
 	size_t hash = obj[0]->hash;
 	int index = hash % kShards;
 	std::mutex &mu = listMapShards[index].mtx;
@@ -2506,7 +2510,6 @@ bool xRedis::llenCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
 	size_t hash = obj[0]->hash;
 	int index = hash % kShards;
 	std::mutex &mu = listMapShards[index].mtx;
@@ -2534,7 +2537,6 @@ bool xRedis::rpopCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	obj[0]->calHash();
 	size_t hash = obj[0]->hash;
 	int index = hash % kShards;
 	std::mutex &mu = listMapShards[index].mtx;
@@ -2575,60 +2577,65 @@ void xRedis::initConfig()
 {
 #define REGISTER_REDIS_COMMAND(msgId, func) \
 	handlerCommandMap[msgId] = std::bind(&xRedis::func, this, std::placeholders::_1, std::placeholders::_2);
-	REGISTER_REDIS_COMMAND(createStringObject("set",3),setCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("get",3),getCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("flushdb",7),flushdbCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("dbsize",6),dbsizeCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("hset",4),hsetCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("hget",4),hgetCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("hgetall",7),hgetallCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("ping",4),pingCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("save",4),saveCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("slaveof",7),slaveofCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("sync",4),syncCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("command",7),commandCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("config",6),configCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("auth",4),authCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("info",4),infoCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("echo",4),echoCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("client",5),clientCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("hkeys",5),hkeysCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("del",3),delCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("hlen",4),hlenCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("keys",4),keysCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("bgsave",6),bgsaveCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("memory",6),memoryCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("cluster",7),clusterCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("migrate",7),migrateCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("debug",5),debugCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("ttl", 3), ttlCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("lpush", 5), lpushCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("lpop", 4), lpopCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("rpush",5 ), rpushCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("lrange", 6), lrangeCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("rpush", 5), rpushCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("rpop", 4), rpopCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("llen", 4), llenCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("sadd", 4), saddCommand);
-	REGISTER_REDIS_COMMAND(createStringObject("scard", 5), scardCommand);
+	REGISTER_REDIS_COMMAND(shared.set,setCommand);
+	REGISTER_REDIS_COMMAND(shared.get,getCommand);
+	REGISTER_REDIS_COMMAND(shared.flushdb,flushdbCommand);
+	REGISTER_REDIS_COMMAND(shared.dbsize,dbsizeCommand);
+	REGISTER_REDIS_COMMAND(shared.hset,hsetCommand);
+	REGISTER_REDIS_COMMAND(shared.hget,hgetCommand);
+	REGISTER_REDIS_COMMAND(shared.hgetall,hgetallCommand);
+	REGISTER_REDIS_COMMAND(shared.ping,pingCommand);
+	REGISTER_REDIS_COMMAND(shared.save,saveCommand);
+	REGISTER_REDIS_COMMAND(shared.slaveof,slaveofCommand);
+	REGISTER_REDIS_COMMAND(shared.sync,syncCommand);
+	REGISTER_REDIS_COMMAND(shared.command,commandCommand);
+	REGISTER_REDIS_COMMAND(shared.config,configCommand);
+	REGISTER_REDIS_COMMAND(shared.auth,authCommand);
+	REGISTER_REDIS_COMMAND(shared.info,infoCommand);
+	REGISTER_REDIS_COMMAND(shared.echo,echoCommand);
+	REGISTER_REDIS_COMMAND(shared.client,clientCommand);
+	REGISTER_REDIS_COMMAND(shared.hkeys,hkeysCommand);
+	REGISTER_REDIS_COMMAND(shared.del,delCommand);
+	REGISTER_REDIS_COMMAND(shared.hlen,hlenCommand);
+	REGISTER_REDIS_COMMAND(shared.keys,keysCommand);
+	REGISTER_REDIS_COMMAND(shared.bgsave,bgsaveCommand);
+	REGISTER_REDIS_COMMAND(shared.memory,memoryCommand);
+	REGISTER_REDIS_COMMAND(shared.cluster,clusterCommand);
+	REGISTER_REDIS_COMMAND(shared.migrate,migrateCommand);
+	REGISTER_REDIS_COMMAND(shared.debug,debugCommand);
+	REGISTER_REDIS_COMMAND(shared.ttl,ttlCommand);
+	REGISTER_REDIS_COMMAND(shared.lpush,lpushCommand);
+	REGISTER_REDIS_COMMAND(shared.lpop,lpopCommand);
+	REGISTER_REDIS_COMMAND(shared.lrange,lrangeCommand);
+	REGISTER_REDIS_COMMAND(shared.rpush,rpushCommand);
+	REGISTER_REDIS_COMMAND(shared.rpop,rpopCommand);
+	REGISTER_REDIS_COMMAND(shared.llen,llenCommand);
+	REGISTER_REDIS_COMMAND(shared.sadd,saddCommand);
+
+#define REGISTER_REDIS_REPLY_COMMAND(msgId) \
+	replyCommandMap.insert(msgId);
+	REGISTER_REDIS_REPLY_COMMAND(shared.addsync);
+	REGISTER_REDIS_REPLY_COMMAND(shared.setslot);
+	REGISTER_REDIS_REPLY_COMMAND(shared.node);
+	REGISTER_REDIS_REPLY_COMMAND(shared.connect);
 
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
 	unorderedmapCommands.insert(msgId);
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("set",3));
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("hset",4));
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("lpush",5));
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("rpush",5));
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("sadd",4));
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("lpop",4));
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("rpop",4));
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("del",3));
-	REGISTER_REDIS_CHECK_COMMAND(createStringObject("flushdb",7));
+	REGISTER_REDIS_CHECK_COMMAND(shared.set);
+	REGISTER_REDIS_CHECK_COMMAND(shared.hset);
+	REGISTER_REDIS_CHECK_COMMAND(shared.lpush);
+	REGISTER_REDIS_CHECK_COMMAND(shared.rpush);
+	REGISTER_REDIS_CHECK_COMMAND(shared.sadd);
+	REGISTER_REDIS_CHECK_COMMAND(shared.lpop);
+	REGISTER_REDIS_CHECK_COMMAND(shared.rpop);
+	REGISTER_REDIS_CHECK_COMMAND(shared.del);
+	REGISTER_REDIS_CHECK_COMMAND(shared.flushdb);
 
 #define REGISTER_REDIS_CLUSTER_CHECK_COMMAND(msgId) \
 	cluterMaps.insert(msgId);
-	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("cluster",7));
-	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("migrate",7));
-	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(createStringObject("command",7));
+	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(shared.cluster);
+	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(shared.migrate);
+	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(shared.command);
 	
 	sentiThreads =  std::unique_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
 	sentiThreads->detach();

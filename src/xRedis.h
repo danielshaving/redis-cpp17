@@ -26,7 +26,7 @@ public:
 	void serverCron(void * data);
 	void handleSalveRepliTimeOut(void * data);
 	void handleSetExpire(void * data);
-    void handleForkTimeOut();
+   	void handleForkTimeOut();
 
 	void run();
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
@@ -84,6 +84,7 @@ public:
 	void clear();
 	void clearRepliState(int32_t sockfd);
 	void clearClusterState(int32_t sockfd);
+	void clearDeques(std::deque<rObj*> & robj);
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 
@@ -91,9 +92,10 @@ public:
 public:
 	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommands;
 	std::unordered_set<rObj*,Hash,EEqual>  stopRepliCached;
-	typedef std::function<bool (const std::deque<rObj*> &,xSession *)> commandFunction;
+	typedef std::function<bool(const std::deque<rObj*> &,xSession *)> commandFunction;
 	std::unordered_map<rObj*,commandFunction,Hash,EEqual> handlerCommandMap;
-	std::unordered_map<int32_t , std::shared_ptr<xSession>> sessions;
+	std::unordered_set<rObj*,Hash, EEqual> replyCommandMap;
+	std::unordered_map<int32_t,std::shared_ptr<xSession>> sessions;
 	std::unordered_set<rObj*,Hash,EEqual> cluterMaps;
 	
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;

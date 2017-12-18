@@ -32,8 +32,46 @@ char *ascii_logo =
 
 
 
+
+//void onConnection(const xTcpconnectionPtr& conn, void * data)
+//{
+//	if (conn->connected())
+//	{
+//		std::cout << "connect" << std::endl;
+//		std::string test = "GET / HTTP/1.1\r\ncache-control: no-cache\r\nPostman-Token: \
+//		c177456b-1017-4e03-a69a-c36523d69809\r\nUser-Agent: PostmanRuntime/6.3.2\r\nAccept:\
+//		 */*\r\nHost: 192.168.0.105:8888\r\naccept-encoding: gzip, deflate\r\nConnection: keep-alive\r\n";
+//		conn->send(test.c_str(),test.length());
+//	}
+//	else
+//	{
+//		std::cout << "disconnect" << std::endl;
+//	}
+//}
+//
+//void onMessage(const xTcpconnectionPtr& conn, xBuffer* buf, void * data)
+//{
+//
+//}
+
 int main(int argc, char* argv[])
 {
+	/*if (argc != 3)
+	{
+		fprintf(stderr, "Usage: client <host_ip> <port> \n");
+		exit(1);
+	}
+	const char* ip;
+	uint16_t port;
+	ip = argv[1];
+	port = static_cast<uint16_t>(atoi(argv[2]));
+	xEventLoop loop;
+	xTcpClient client(&loop, nullptr);
+	client.setConnectionCallback(std::bind(onConnection, std::placeholders::_1, std::placeholders::_2));
+	client.setMessageCallback(std::bind(onMessage, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	client.connect(ip, port);
+	loop.run();*/
+
 	xLogger::setOutput(asyncOutput);
 	xAsyncLogging log("xredis", 4096);
 	log.start();
@@ -62,7 +100,7 @@ int main(int argc, char* argv[])
 	{
 		fprintf(stderr, "Usage: client <host_ip> <port> <threads> <cluster>\n");
 	}
-
+	
 
 	return 0;
 }

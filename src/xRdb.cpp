@@ -379,7 +379,7 @@ int xRdb::rdbSaveString(xRio *rdb)
 		{
 		    mu.lock();
 		}
-		//std::unique_lock <std::mutex> lck(mu);
+	
 		for (auto iter = map.begin(); iter != map.end(); ++iter)
 		{
 			if (rdbSaveKeyValuePair(rdb, iter->first, iter->second, 0) == -1)
@@ -404,7 +404,7 @@ int xRdb::rdbSaveExpire(xRio * rdb)
         {
             redis->expireMutex.lock();
         }
-		//std::unique_lock <std::mutex> lck(redis->expireMutex);
+	
 		for (auto it = redis->expireTimers.begin(); it != redis->expireTimers.end(); ++it)
 		{
 			if (rdbSaveKey(rdb, it->first, 0) == -1)
@@ -436,7 +436,7 @@ int xRdb::rdbSaveHset(xRio *rdb)
             mu.lock();
         }
 
-		//std::unique_lock <std::mutex> lck(mu);
+	
 		for(auto iter = map.begin(); iter != map.end(); ++iter)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
@@ -480,7 +480,6 @@ int xRdb::rdbSaveList(xRio *rdb)
             mu.lock();
         }
 
-		//std::unique_lock <std::mutex> lck(mu);
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
@@ -523,7 +522,7 @@ int xRdb::rdbSaveSet(xRio *rdb)
             mu.lock();
         }
 
-		//std::unique_lock <std::mutex> lck(mu);
+
 		for(auto iter = map.begin(); iter != map.end(); iter++)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)

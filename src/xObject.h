@@ -84,7 +84,10 @@ struct sharedObjectsStruct
     *masterdownerr, *roslaveerr, *execaborterr, *noautherr, *noreplicaserr,
     *busykeyerr, *oomerr, *plus, *messagebulk, *pmessagebulk, *subscribebulk,
     *unsubscribebulk, *psubscribebulk, *punsubscribebulk, *del, *rpop, *lpop,
-    *lpush, *emptyscan, *minstring, *maxstring,*sync,
+    *lpush, *rpush,*emptyscan, *minstring, *maxstring,*sync,*set,*get,*flushdb,*dbsize,
+	*hset,*hget,*hgetall,*save,*slaveof,*command,*config,*auth,
+	*info,*echo,*client,*hkeys,*hlen,*keys,*bgsave,*memory,*cluster,*migrate,*debug,
+	*ttl,*lrange,*llen,*sadd,*scard,*addsync,*setslot,*node,*connect,*delsync,
     *integers[REDIS_SHARED_INTEGERS],
     *mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
     *bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
