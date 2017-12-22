@@ -195,7 +195,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		redis->masterHost = conn->host.c_str();
 		redis->masterPort = conn->port ;
 		redis->masterfd = conn->getSockfd();
-		redis->slaveEnabled =  true;
+		redis->slaveEnabled = true;
 		redis->repliEnabled = true;
 		isreconnect = true;
 		syncWithMaster(conn);
@@ -209,7 +209,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 		redis->masterHost.clear();
 		redis->masterPort = 0;
 		redis->masterfd = 0;
-		redis->slaveEnabled =  false;
+		redis->slaveEnabled = false;
 		redis->repliEnabled = false;
 		std::unique_lock <std::mutex> lck(redis->mtx);
 		redis->sessions.erase(conn->getSockfd());
@@ -237,7 +237,7 @@ void xReplication::replicationSetMaster(rObj * obj,int32_t port)
 	if(redis->repliEnabled)
 	{
 		std::unique_lock <std::mutex> lck(redis->slaveMutex);
-		for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); it ++)
+		for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); ++it)
 		{
 			it->second->forceClose();
 		}

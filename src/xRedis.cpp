@@ -20,6 +20,7 @@ slavefd(-1),
 count(0),
 pingPong(false)
 {
+    ipPort = host +"::" +  std::to_string(port);
 	createSharedObjects();
 	initConfig();
 	loadDataFromDisk();
@@ -264,7 +265,7 @@ void xRedis::loadDataFromDisk()
 	}
 	else if (errno != ENOENT)
 	{
-        	LOG_WARN<<"fatal error loading the DB:  Exiting."<<strerror(errno);
+        LOG_WARN<<"fatal error loading the DB:  Exiting."<<strerror(errno);
  	}
 
 }
@@ -1630,7 +1631,7 @@ int  xRedis::removeCommand(rObj * obj,int &count)
 				if(it != set.end())
 				{
 					count ++;
-					for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+					for(auto iter = it->second.begin(); iter != it->second.end(); ++iter)
 					{
 						zfree(*iter);
 					}

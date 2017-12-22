@@ -9,7 +9,7 @@ class xRedisContext;
 class xRedisReader;
 class xHiredisAsync;
 
-typedef std::shared_ptr<xRedisReader> xRedisReaderPtr;
+typedef std::shared_ptr<xRedisReader>  xRedisReaderPtr;
 typedef std::shared_ptr<xRedisContext> xRedisContextPtr;
 typedef std::shared_ptr<xHiredisAsync> xHiredisAsyncPtr;
 typedef std::shared_ptr<xRedisAsyncContext> xRedisAsyncContextPtr;

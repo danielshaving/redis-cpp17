@@ -480,7 +480,7 @@ int xRdb::rdbSaveList(xRio *rdb)
             mu.lock();
         }
 
-		for(auto iter = map.begin(); iter != map.end(); iter++)
+		for(auto iter = map.begin(); iter != map.end(); ++iter)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
 			{
@@ -719,7 +719,7 @@ int xRdb::rdbLoadSet(xRio *rdb)
 		else
 		{
 
-			for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+			for(auto iter = it->second.begin(); iter != it->second.end(); ++iter)
 			{
 				zfree(*iter);
 			}
@@ -787,7 +787,7 @@ int xRdb::rdbLoadList(xRio *rdb)
 		else
 		{
 
-			for(auto iter = it->second.begin(); iter != it->second.end(); iter++)
+			for(auto iter = it->second.begin(); iter != it->second.end(); ++iter)
 			{
 				zfree(*iter);
 			}

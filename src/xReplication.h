@@ -12,6 +12,8 @@ public:
 	xReplication();
 	~xReplication();
 
+
+
 	void init(xRedis *redis);
 	void connectMaster();
 	void replicationSetMaster(rObj * obj,int32_t port);

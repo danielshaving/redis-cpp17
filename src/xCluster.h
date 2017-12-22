@@ -20,6 +20,8 @@ class xCluster : noncopyable
 public:
 	xCluster();
 	~xCluster();
+
+    void clear();
 	void init(xRedis * redis);
 	bool connSetCluster(const std::string &ip, int32_t port);
 	void connectCluster();
@@ -27,6 +29,8 @@ public:
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data);
 	void connCallBack(const xTcpconnectionPtr& conn, void *data);
 	void reconnectTimer(void * data);
+    bool getSlotSet(const std::string &ipPort);
+
 	void structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, std::deque<rObj*> &robjs, const xTcpconnectionPtr & conn);
 	int getSlotOrReply(xSession  * session,rObj * o );
 	unsigned int keyHashSlot(char *key, int keylen);
@@ -51,4 +55,7 @@ public:
 	std::condition_variable condition;
 	std::mutex cmtex;
 	std::atomic<int> replyCount;
+	std::deque<rObj*> deques;
+	xBuffer sendBuf;
+	std::unordered_set<int32_t>  uset;
 };

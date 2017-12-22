@@ -59,16 +59,11 @@ public:
 	size_t rioRead(xRio *r,void *buf,size_t len);
 	size_t rioRepliRead(xRio * r,void *buf,size_t len);
 	off_t  rioFlush(xRio *r);
-
-
 	size_t rioFileRead(xRio*r, void *buf, size_t len);
 	size_t rioFileWrite(xRio *r, const void *buf, size_t len);
-
 	inline off_t rioFileTell(xRio *r);
 	int rioFileFlush(xRio *r);
-
 	void rioInitWithFile(xRio *r, FILE *fp);
-
 	FILE * createFile();
 	int  closeFile(FILE * fp);
 

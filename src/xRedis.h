@@ -165,7 +165,7 @@ public:
 	xBuffer	clusterMigratCached;
 	xBuffer	clusterImportCached;
 	
-	xReplication  repli;
+	xReplication   repli;
 	xSentinel	   senti;
 	xCluster	   clus;
 	xRdb		   rdb;
@@ -174,7 +174,7 @@ public:
 	std::unique_ptr<std::thread > sentiThreads;
 	std::unique_ptr<std::thread>  clusterThreads;
 
-	std::unordered_map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
+	std::unordered_map<int32_t,xTcpconnectionPtr>  salvetcpconnMaps;
 	std::unordered_map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;
 	std::unordered_map<int32_t,xTimer*> repliTimers;
 	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
@@ -187,8 +187,9 @@ public:
 	int16_t port;
 	int16_t threadCount;
 	std::string masterHost;
-	std::atomic<int>	masterPort ;
+	std::atomic<int>	masterPort;
 	std::atomic<int>	masterfd;
+	std::string ipPort;
 	int curSelect;
 };
 

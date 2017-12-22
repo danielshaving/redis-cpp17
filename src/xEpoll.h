@@ -23,6 +23,7 @@ public:
 	void	removeChannel(xChannel* channel);
 	void	update(int operation, xChannel* channel);
 	void 	fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
+
  private:
 	ChannelMap channels;
 	EventList 	events;
