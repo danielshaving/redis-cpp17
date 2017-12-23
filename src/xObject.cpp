@@ -282,6 +282,7 @@ void destorySharedObjects()
 	freeStringObject(shared.node);
 	freeStringObject(shared.connect);
 	freeStringObject(shared.delsync);
+	freeStringObject(shared.psync);
 
 
 
@@ -367,46 +368,48 @@ void createSharedObjects()
     shared.punsubscribebulk = createStringObject("$12\r\npunsubscribe\r\n",19);
 
 
-	(shared.del = createStringObject("del", 3))->calHash();
-	(shared.rpop = createStringObject("rpop", 4))->calHash();
-	(shared.lpop = createStringObject("lpop", 4))->calHash();
-	(shared.lpush = createStringObject("lpush", 5))->calHash();
-	(shared.rpush = createStringObject("rpush", 5))->calHash();
-	(shared.set = createStringObject("set", 3))->calHash();
-	(shared.get = createStringObject("get", 3))->calHash();
-	(shared.flushdb = createStringObject("flushdb", 7))->calHash();
-	(shared.dbsize = createStringObject("dbsize", 6))->calHash();
-	(shared.hset = createStringObject("hset", 4))->calHash();
-	(shared.hget = createStringObject("hget", 4))->calHash();
-	(shared.hgetall = createStringObject("hgetall", 7))->calHash();
-	(shared.save = createStringObject("save", 4))->calHash();
-	(shared.slaveof = createStringObject("slaveof", 7))->calHash();
-	(shared.command = createStringObject("command", 7))->calHash();
-	(shared.config = createStringObject("config", 6))->calHash();
-	(shared.auth = createStringObject("rpush", 5))->calHash();
-	(shared.info = createStringObject("info", 4))->calHash();
-	(shared.echo = createStringObject("echo", 4))->calHash();
-	(shared.client = createStringObject("client", 6))->calHash();
-	(shared.hkeys = createStringObject("hkeys", 5))->calHash();
-	(shared.hlen = createStringObject("hlen", 4))->calHash();
-	(shared.keys = createStringObject("keys", 4))->calHash();
-	(shared.bgsave = createStringObject("bgsave", 6))->calHash();
-	(shared.memory = createStringObject("memory", 6))->calHash();
-	(shared.cluster = createStringObject("cluster", 7))->calHash();
-	(shared.migrate = createStringObject("migrate", 7))->calHash();
-	(shared.debug = createStringObject("debug", 5))->calHash();
-	(shared.ttl = createStringObject("ttl", 3))->calHash();
-	(shared.lrange = createStringObject("lrange", 6))->calHash();
-	(shared.llen = createStringObject("llen", 4))->calHash();
-	(shared.sadd = createStringObject("sadd", 4))->calHash();
-	(shared.scard = createStringObject("scard", 5))->calHash();
-	(shared.addsync = createStringObject("addsync", 7))->calHash();
-	(shared.setslot = createStringObject("setslot", 7))->calHash();
-	(shared.node = createStringObject("node", 4))->calHash();
-	(shared.connect = createStringObject("connect", 7))->calHash();
-	(shared.connect = createStringObject("psync", 7))->calHash();
-	(shared.sync = createStringObject("sync", 4))->calHash();
-	(shared.delsync = createStringObject("delsync", 4))->calHash();
+	shared.del = createStringObject("del", 3);
+	shared.rpop = createStringObject("rpop", 4);
+	shared.lpop = createStringObject("lpop", 4);
+	shared.lpush = createStringObject("lpush", 5);
+	shared.rpush = createStringObject("rpush", 5);
+	shared.set = createStringObject("set", 3);
+	shared.get = createStringObject("get", 3);
+	shared.flushdb = createStringObject("flushdb", 7);
+	shared.dbsize = createStringObject("dbsize", 6);
+	shared.hset = createStringObject("hset", 4);
+	shared.hget = createStringObject("hget", 4);
+	shared.hgetall = createStringObject("hgetall", 7);
+	shared.save = createStringObject("save", 4);
+	shared.slaveof = createStringObject("slaveof", 7);
+	shared.command = createStringObject("command", 7);
+	shared.config = createStringObject("config", 6);
+	shared.auth = createStringObject("rpush", 5);
+	shared.info = createStringObject("info", 4);
+	shared.echo = createStringObject("echo", 4);
+	shared.client = createStringObject("client", 6);
+	shared.hkeys = createStringObject("hkeys", 5);
+	shared.hlen = createStringObject("hlen", 4);
+	shared.keys = createStringObject("keys", 4);
+	shared.bgsave = createStringObject("bgsave", 6);
+	shared.memory = createStringObject("memory", 6);
+	shared.cluster = createStringObject("cluster", 7);
+	shared.migrate = createStringObject("migrate", 7);
+	shared.debug = createStringObject("debug", 5);
+	shared.ttl = createStringObject("ttl", 3);
+	shared.lrange = createStringObject("lrange", 6);
+	shared.llen = createStringObject("llen", 4);
+	shared.sadd = createStringObject("sadd", 4);
+	shared.scard = createStringObject("scard", 5);
+	shared.addsync = createStringObject("addsync", 7);
+	shared.setslot = createStringObject("setslot", 7);
+	shared.node = createStringObject("node", 4);
+	shared.connect = createStringObject("connect", 7);
+	shared.psync = createStringObject("psync", 5);
+	shared.sync = createStringObject("sync", 4);
+	shared.delsync = createStringObject("delsync", 7);
+
+
     for (j = 0; j < REDIS_SHARED_INTEGERS; j++) {
         shared.integers[j] = createObject(REDIS_STRING,(void*)(long)j);
         shared.integers[j]->encoding = REDIS_ENCODING_INT;

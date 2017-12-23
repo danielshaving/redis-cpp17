@@ -72,11 +72,7 @@ void connErrorCallBack(void * data)
 		for(auto it = redisAsync.redisMaps.begin(); it != redisAsync.redisMaps.end(); it ++)
 		{
 			count ++;
-			//std::string key = "key";
-			//std::string str = "set " + key + std::to_string(count) +  " " + std::to_string(it->second->conn->getLoop()->getThreadId());
 			redisAsyncCommand(it->second,nullptr,nullptr,"set key%d %d",count,it->second->conn->getLoop()->getThreadId());
-			//str.clear();
-			//str = "get " + key + std::to_string(count);
 			redisAsyncCommand(it->second,getCallback,nullptr,"get key%d",count);
 		}
 

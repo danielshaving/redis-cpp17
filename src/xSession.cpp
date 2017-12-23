@@ -9,7 +9,7 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
  conn(conn),
  redis(redis),
  authEnabled(false),
- retrieveBuffer(false),
+ replyBuffer(false),
  fromMaster(false),
  fromSlave(false)
 {
@@ -79,17 +79,17 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 			sendBuf.retrieveAll();
 		}
 
-		if(retrieveBuffer)
+		if(replyBuffer)
 		{
 			sendBuf.retrieveAll();
-			retrieveBuffer = false;
+			replyBuffer = false;
 		}
 		
 		if(sendPubSub.readableBytes() > 0 )
 		{
-			for(auto iter = pubSubTcpconn.begin(); iter != pubSubTcpconn.end(); ++iter)
+			for(auto it = pubSubTcpconn.begin(); it != pubSubTcpconn.end(); ++it)
 			{
-				(*iter)->send(&sendPubSub);
+				(*it)->send(&sendPubSub);
 			}
 
 			pubSubTcpconn.clear();
@@ -172,8 +172,6 @@ int xSession::processCommand()
 			}
 		}
 
-		
-
 		if(redis->clusterRepliImportEnabeld)
 		{
 			for(auto it = redis->clus.importingSlotsFrom.begin(); it != redis->clus.importingSlotsFrom.end(); ++it)
@@ -181,13 +179,12 @@ int xSession::processCommand()
 				auto iter = it->second.find(hashslot);
 				if(iter !=  it->second.end())
 				{
-					retrieveBuffer = true;
+					replyBuffer = true;
 					goto jump;
 				}
-			}	
+			}
 		}
-		
-		
+
 		if (redis->clus.clusterSlotNodes.size() == 0)
 		{
 			redis->clus.clusterRedirectClient(this, nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
@@ -216,13 +213,9 @@ int xSession::processCommand()
 			}
 	
 		}
-
-		
 	}
-	
 
 jump:
-		
 
 	if(redis->repliEnabled)
 	{
@@ -267,16 +260,13 @@ jump:
 
 	}
 
-
-
 	auto iter = redis->handlerCommandMap.find(command);
 	if(iter == redis->handlerCommandMap.end() )
 	{
 		clearObj();
-		addReplyErrorFormat(sendBuf,"command unknown eror");
+		addReplyErrorFormat(sendBuf,"command unknown");
 		return REDIS_ERR;
 	}
-
 
 	if(!iter->second(robjs,this))
 	{

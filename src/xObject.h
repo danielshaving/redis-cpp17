@@ -87,7 +87,7 @@ struct sharedObjectsStruct
     *lpush, *rpush,*emptyscan, *minstring, *maxstring,*sync,*set,*get,*flushdb,*dbsize,
 	*hset,*hget,*hgetall,*save,*slaveof,*command,*config,*auth,
 	*info,*echo,*client,*hkeys,*hlen,*keys,*bgsave,*memory,*cluster,*migrate,*debug,
-	*ttl,*lrange,*llen,*sadd,*scard,*addsync,*setslot,*node,*connect,*delsync,
+	*ttl,*lrange,*llen,*sadd,*scard,*psync,*addsync,*setslot,*node,*connect,*delsync,
     *integers[REDIS_SHARED_INTEGERS],
     *mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
     *bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
@@ -108,7 +108,7 @@ void decrRefCount(rObj *o) ;
 rObj *createStringObjectFromLongLong(long long value);
 int getLongLongFromObject(rObj *o, long long   *target);
 int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg);
-int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg) ;
+int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg);
 
 
 void addReplyBulkSds(xBuffer &sendBuf, sds s);

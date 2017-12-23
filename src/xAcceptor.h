@@ -17,8 +17,6 @@ public:
 	void setNewConnectionCallback(const NewConnectionCallback& cb){ newConnectionCallback = cb; }
 	bool getlistenning() const { return listenning; }
 	void listen();
-
-private:
 	void handleRead();
 
 private:

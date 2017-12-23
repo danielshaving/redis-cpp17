@@ -266,7 +266,7 @@ void  xRedLock::syncAddServerUrl(const char *ip,const int port)
 	}
 
 	syncServerMaps.insert(std::make_pair(c->fd,c));
-	quoRum = syncServerMaps.size()	 / 2 + 1;
+	quoRum = syncServerMaps.size()/ 2 + 1;
 }
 
 

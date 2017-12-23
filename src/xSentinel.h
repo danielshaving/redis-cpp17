@@ -10,15 +10,19 @@ class xSentinel: noncopyable
 public:
 	xSentinel();
 	~xSentinel();
+
 	void init();
 	void connectSentinel();
 	void connErrorCallBack();
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	void connCallBack(const xTcpconnectionPtr& conn,void *data);
 	void reconnectTimer(void * data);
+
 private:
+
 	bool start;
 	bool isreconnect;
+
 	xEventLoop *loop;
 	xTcpClient *client;
 	xRedis *redis;

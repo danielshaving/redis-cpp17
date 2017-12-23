@@ -36,7 +36,7 @@ public:
 	xRedis *redis;
 	rObj * command;
 	bool authEnabled;
-	bool retrieveBuffer;
+	bool replyBuffer;
 	bool fromMaster;
 	bool fromSlave;
 };

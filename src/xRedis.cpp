@@ -58,72 +58,72 @@ void xRedis::replyCheck()
 
 void xRedis::serverCron(void * data)
 {
-	if(rdbChildPid != -1)
-	{
-		 pid_t pid;
-		int statloc;
+    if(rdbChildPid != -1)
+    {
+        pid_t pid;
+        int statloc;
 
 		if ((pid = wait3(&statloc,WNOHANG,nullptr)) != 0)
-		{
-				 int exitcode = WEXITSTATUS(statloc);
-				 int bysignal = 0;
+        {
+             int exitcode = WEXITSTATUS(statloc);
+             int bysignal = 0;
 
-				 if (WIFSIGNALED(statloc)) bysignal = WTERMSIG(statloc);
+             if (WIFSIGNALED(statloc)) bysignal = WTERMSIG(statloc);
 
-				 if (pid == rdbChildPid)
-				 {
-						if (!bysignal && exitcode == 0)
-						{
-							LOG_INFO<<"background saving terminated with success";
-							if(slavefd != -1)
-							{
-								{
-									std::unique_lock <std::mutex> lck(slaveMutex);
-									auto it = salvetcpconnMaps.find(slavefd);
-									if(it == salvetcpconnMaps.end())
-									{
-										LOG_WARN<<"master sync send failure";
-									}
-									else
-									{
-										if(!rdb.rdbReplication("dump.rdb",it->second))
-										{
-											it->second->forceClose();
-											LOG_WARN<<"master sync send failure";
-										}
-										else
-										{
-											LOG_INFO<<"master sync send success ";
-										}
-									}
-								}
-								slavefd = -1;
-							}
-						}
-						else if (!bysignal && exitcode != 0)
-						{
-							LOG_INFO<<"background saving error";
-						}
-						else
-						{
-							LOG_WARN<<"background saving terminated by signal "<< bysignal;
-							char tmpfile[256];
-							snprintf(tmpfile,256,"temp-%d.rdb", (int) rdbChildPid);
-							unlink(tmpfile);
+             if (pid == rdbChildPid)
+             {
+                if (!bysignal && exitcode == 0)
+                {
+                    LOG_INFO<<"background saving terminated with success";
+                    if(slavefd != -1)
+                    {
 
-							if (bysignal != SIGUSR1)
-							{
+                        std::unique_lock <std::mutex> lck(slaveMutex);
+                        auto it = salvetcpconnMaps.find(slavefd);
+                        if(it == salvetcpconnMaps.end())
+                        {
+                            LOG_WARN<<"master sync send failure";
+                        }
+                        else
+                        {
+                            if(!rdb.rdbReplication("dump.rdb",it->second))
+                            {
+                                it->second->forceClose();
+                                LOG_WARN<<"master sync send failure";
+                            }
+                            else
+                            {
+                                LOG_INFO<<"master sync send success ";
+                            }
+                        }
 
-							}
+                        slavefd = -1;
+                    }
+                }
+                else if (!bysignal && exitcode != 0)
+                {
+                    LOG_INFO<<"background saving error";
+                }
+                else
+                {
+                    LOG_WARN<<"background saving terminated by signal "<< bysignal;
+                    char tmpfile[256];
+                    snprintf(tmpfile,256,"temp-%d.rdb", (int) rdbChildPid);
+                    unlink(tmpfile);
 
-						 }
-				 }
-				 else
-				 {
-					 LOG_WARN<<"Warning, detected child with unmatched pid: "<<pid;
-				 }
+                    if (bysignal != SIGUSR1)
+                    {
 
-				 rdbChildPid = -1;
+                    }
+
+                 }
+             }
+             else
+             {
+                 LOG_WARN<<"Warning, detected child with unmatched pid: "<<pid;
+             }
+
+		     rdbChildPid = -1;
 
 		}
 
@@ -618,7 +618,6 @@ bool xRedis::migrateCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-
 	std::string ip = obj[0]->ptr;
 	if (ip == host  &&  this->port == port)
 	{
@@ -626,9 +625,10 @@ bool xRedis::migrateCommand(const std::deque<rObj*> & obj, xSession * session)
 		return false;
 	}
 
-	clus.replicationToNode(session,ip , port);
+	clus.replicationToNode(session,ip,port);
 
 	addReply(session->sendBuf, shared.ok);
+
 	return false;
 }
 
@@ -806,7 +806,6 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 		if( !strcasecmp(obj[1]->ptr, "node") )
 		{
 			std::string imipPort = obj[2]->ptr;
-
 			{
 				std::unique_lock <std::mutex> lck(clusterMutex);
 				clus.importingSlotsFrom.erase(imipPort);
@@ -855,8 +854,6 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 					it->second.ip = fromIp;
 					it->second.port = fromPort;
 				}
-				
-				
 			}
 		
 			LOG_INFO<<"cluster async replication success "<<imipPort;
@@ -2052,7 +2049,6 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,xSession * session)
 
 	}
 
-
 	{
 		for(auto it = listMapShards.begin(); it != listMapShards.end(); ++it)
 		{
@@ -2577,7 +2573,9 @@ void xRedis::flush()
 void xRedis::initConfig()
 {
 #define REGISTER_REDIS_COMMAND(msgId, func) \
+    msgId->calHash(); \
 	handlerCommandMap[msgId] = std::bind(&xRedis::func, this, std::placeholders::_1, std::placeholders::_2);
+
 	REGISTER_REDIS_COMMAND(shared.set,setCommand);
 	REGISTER_REDIS_COMMAND(shared.get,getCommand);
 	REGISTER_REDIS_COMMAND(shared.flushdb,flushdbCommand);
@@ -2613,14 +2611,18 @@ void xRedis::initConfig()
 	REGISTER_REDIS_COMMAND(shared.llen,llenCommand);
 	REGISTER_REDIS_COMMAND(shared.sadd,saddCommand);
 
+
 #define REGISTER_REDIS_REPLY_COMMAND(msgId) \
+    msgId->calHash(); \
 	replyCommandMap.insert(msgId);
 	REGISTER_REDIS_REPLY_COMMAND(shared.addsync);
 	REGISTER_REDIS_REPLY_COMMAND(shared.setslot);
 	REGISTER_REDIS_REPLY_COMMAND(shared.node);
 	REGISTER_REDIS_REPLY_COMMAND(shared.connect);
 
+
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
+    msgId->calHash(); \
 	unorderedmapCommands.insert(msgId);
 	REGISTER_REDIS_CHECK_COMMAND(shared.set);
 	REGISTER_REDIS_CHECK_COMMAND(shared.hset);
@@ -2633,6 +2635,7 @@ void xRedis::initConfig()
 	REGISTER_REDIS_CHECK_COMMAND(shared.flushdb);
 
 #define REGISTER_REDIS_CLUSTER_CHECK_COMMAND(msgId) \
+    msgId->calHash(); \
 	cluterMaps.insert(msgId);
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(shared.cluster);
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(shared.migrate);
