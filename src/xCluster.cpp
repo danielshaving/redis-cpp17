@@ -252,15 +252,15 @@ bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32
 		(*it)->runInLoop(std::bind(&xRedis::handleForkTimeOut, redis));
 	}
 
+    if(redis->threadCount > 1)
+    {
+        std::unique_lock <std::mutex> lck(redis->forkMutex);
+        while (redis->forkCondWaitCount < redis->threadCount)
+        {
+            redis->expireCondition.wait(lck);
+        }
+    }
 
-	if (redis->threadCount > 0)
-	{
-		std::unique_lock <std::mutex> lck(redis->forkMutex);
-		while (redis->forkCondWaitCount < redis->threadCount - 1)
-		{
-			redis->expireCondition.wait(lck);
-		}
-	}
 
 
 	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); ++it)
@@ -295,12 +295,12 @@ bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32
 	redis->forkCondWaitCount = 0;
 	redis->clusterRepliMigratEnabled = true;
 
+	if(redis->threadCount > 1)
+    {
+        redis->forkCondition.notify_all();
+    }
 
-	if (redis->threadCount  >  0)
-	{
-		std::unique_lock <std::mutex> lck(redis->forkMutex);
-		redis->forkCondition.notify_all();
-	}
+
 
     {
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);

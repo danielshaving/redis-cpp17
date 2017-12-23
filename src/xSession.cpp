@@ -335,18 +335,20 @@ int xSession::processInlineBuffer(xBuffer *recvBuf)
 		LOG_WARN << "Protocol error";
 		addReplyError(sendBuf,"Protocol error: unbalanced quotes in request");
 		return REDIS_ERR;
-       }
+    }
 
 	for (j = 0; j  < argc; j++)
 	{
 		if(j == 0)
 		{
 			sdscpylen((sds)(command->ptr),argv[j],sdslen(argv[j]));
+			command->calHash();
 		}
 		else
 		{
 			rObj * obj = (rObj*)createStringObject(argv[j],sdslen(argv[j]));
-					robjs.push_back(obj);
+			obj->calHash();
+			robjs.push_back(obj);
 		}
 		sdsfree(argv[j]);
 	}

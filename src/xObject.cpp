@@ -283,7 +283,7 @@ void destorySharedObjects()
 	freeStringObject(shared.connect);
 	freeStringObject(shared.delsync);
 	freeStringObject(shared.psync);
-
+    freeStringObject(shared.sync);
 
 
 	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
@@ -296,7 +296,7 @@ void destorySharedObjects()
     	freeStringObject(shared.mbulkhdr[j]);
     }
 
-	freeStringObject(shared.sync);
+
 
 }
 

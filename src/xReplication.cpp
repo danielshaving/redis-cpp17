@@ -53,7 +53,7 @@ void xReplication::disconnect()
 
 void xReplication::syncWrite(const xTcpconnectionPtr& conn)
 {
-	conn->send(shared.sync->ptr,sdslen(shared.sync->ptr));
+	conn->send("sync\r\n",6);
 	fp = redis->rdb.createFile();
 	if(fp == nullptr)
 	{

@@ -3,7 +3,7 @@
 xRedis::xRedis(const char * ip, int16_t port, int16_t threadCount,bool enbaledCluster)
 :host(ip),
 port(port),
-threadCount(threadCount),
+threadCount(1),
 masterPort(0),
 clusterEnabled(enbaledCluster),
 slaveEnabled(false),
@@ -26,7 +26,12 @@ pingPong(false)
 	loadDataFromDisk();
 	server.init(&loop, host, port,this);
 	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	server.setThreadNum(threadCount);
+    server.setThreadNum(threadCount);
+    if(threadCount > 1)
+    {
+        this->threadCount = threadCount;
+    }
+
 	server.start();
 	zmalloc_enable_thread_safeness();
 	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
@@ -1434,10 +1439,10 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		(*it)->runInLoop(std::bind(&xRedis::handleForkTimeOut, this));
     }
     
-    if(threadCount  > 0)
+    if(threadCount > 1)
     {
         std::unique_lock <std::mutex> lck(forkMutex);
-        while(forkCondWaitCount < threadCount - 1)
+        while(forkCondWaitCount < threadCount)
         {
             expireCondition.wait(lck);
         }
@@ -1463,11 +1468,11 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,xSession * session)
 		session->conn->forceClose();
 	}
 
-	if(threadCount  >  0 )
-	{
-		std::unique_lock <std::mutex> lck(forkMutex);
-		forkCondition.notify_all();
-	}
+    if(threadCount > 1)
+    {
+        forkCondition.notify_all();
+    }
+
 
 	return true;
 }
