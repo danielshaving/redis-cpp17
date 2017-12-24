@@ -117,17 +117,13 @@ void xCluster::clusterRedirectClient(xSession * session, xClusterNode * n, int h
 
 void xCluster::syncClusterSlot(std::deque<rObj*> &robj)
 {
+    std::unique_lock <std::mutex> lck(redis->clusterMutex);
     for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); ++it)
     {
-        xBuffer sendBuf;
         redis->structureRedisProtocol(sendBuf, robj);
         it->second->send(&sendBuf);
+        clear();
     }
-
-	/*for (auto it = robj.begin(); it != robj.end(); ++it)
-	{
-		zfree(*it);
-	}*/
 
 }
 
@@ -166,21 +162,19 @@ int xCluster::getSlotOrReply(xSession  * session,rObj * o)
 	return (int)slot;
 }
 
-void xCluster::structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, std::deque<rObj*> &robj,const xTcpconnectionPtr & conn)
+void xCluster::structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf,const xTcpconnectionPtr & conn)
 {
-	rObj * ip = createStringObject((char*)(host.c_str()), host.length());
-	char buf[32];
+    deques.push_back(shared.cluster);
+	deques.push_back(shared.connect);
+
+	char buf[8];
 	int32_t len = ll2string(buf, sizeof(buf), port);
-	rObj * p = createStringObject(buf, len);
-	robj.push_back(ip);
-	robj.push_back(p);
-	redis->structureRedisProtocol(sendBuf, robj);
-	robj.pop_back();
-	robj.pop_back();
-	zfree(ip);
-	zfree(p);
+	deques.push_back(createStringObject((char*)(host.c_str()), host.length()));
+	deques.push_back(createStringObject(buf, len));
+	redis->structureRedisProtocol(sendBuf, deques);
 	conn->send(&sendBuf);
-	sendBuf.retrieveAll();
+	redis->clearDeques(deques);
+	clear();
 }
 
 
@@ -372,19 +366,15 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 
 		socket.getpeerName(conn->getSockfd(), &(conn->host), conn->port);
 
-		deques.push_back(shared.cluster);
-		deques.push_back(shared.connect);
 		
 		{
 			std::unique_lock <std::mutex> lck(redis->clusterMutex);
 			for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); ++it)
 			{
-				structureProtocolSetCluster(it->second->host, it->second->port, sendBuf, deques,conn);
+				structureProtocolSetCluster(it->second->host, it->second->port, sendBuf,conn);
 			}
 
-			structureProtocolSetCluster(redis->host, redis->port, sendBuf, deques,conn);
-			redis->clearDeques(deques);
-			clear();
+			structureProtocolSetCluster(redis->host, redis->port, sendBuf,conn);
 			redis->clustertcpconnMaps.insert(std::make_pair(conn->getSockfd(), conn));
 		}
 

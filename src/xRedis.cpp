@@ -168,7 +168,7 @@ void xRedis::clearDeques(std::deque<rObj*> & robj)
 {
 	for (auto it = robj.begin(); it != robj.end(); ++it)
 	{
-		(*it)->calHash();
+	    (*it)->calHash();
 		auto iter = replyCommandMap.find(*it);
 		if (iter == replyCommandMap.end())
 		{
@@ -2624,7 +2624,8 @@ void xRedis::initConfig()
 	REGISTER_REDIS_REPLY_COMMAND(shared.setslot);
 	REGISTER_REDIS_REPLY_COMMAND(shared.node);
 	REGISTER_REDIS_REPLY_COMMAND(shared.connect);
-
+    REGISTER_REDIS_REPLY_COMMAND(shared.delsync);
+    REGISTER_REDIS_REPLY_COMMAND(shared.cluster);
 
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
     msgId->calHash(); \

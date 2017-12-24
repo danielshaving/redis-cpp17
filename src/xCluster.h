@@ -31,7 +31,7 @@ public:
 	void reconnectTimer(void * data);
     bool getSlotSet(const std::string &ipPort);
 
-	void structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, std::deque<rObj*> &robjs, const xTcpconnectionPtr & conn);
+	void structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, const xTcpconnectionPtr & conn);
 	int getSlotOrReply(xSession  * session,rObj * o );
 	unsigned int keyHashSlot(char *key, int keylen);
 	void syncClusterSlot(std::deque<rObj*> &robj);
