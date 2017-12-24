@@ -115,15 +115,16 @@ void xCluster::clusterRedirectClient(xSession * session, xClusterNode * n, int h
 } 
 
 
-void xCluster::syncClusterSlot(std::deque<rObj*> &robj)
+void xCluster::syncClusterSlot()
 {
-    std::unique_lock <std::mutex> lck(redis->clusterMutex);
     for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); ++it)
     {
-        redis->structureRedisProtocol(sendBuf, robj);
+        redis->structureRedisProtocol(sendBuf, deques);
         it->second->send(&sendBuf);
-        clear();
     }
+
+    redis->clearDeques(deques);
+    clear();
 
 }
 
@@ -273,19 +274,17 @@ bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32
 				if(conn->connected())
 				{
 					conn->sendPipe(&sendBuf);
+					LOG_INFO<<"sendPipe cluster sync .........";
+					clear();
 				}
-				else
-				{
-					LOG_INFO<<"cluster disconnect "<<conn->host<<" "<<conn->port;
-					return false;
-				}
-				
+
 			}
 		
 		}
 	}
 
-    clear();
+
+
 	redis->forkCondWaitCount = 0;
 	redis->clusterRepliMigratEnabled = true;
 
@@ -326,9 +325,10 @@ bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32
     }
 
 
-    syncClusterSlot(deques);
-    redis->clearDeques(deques);
-
+    {
+        std::unique_lock <std::mutex> lck(redis->clusterMutex);
+        syncClusterSlot();
+    }
 
 
 	LOG_INFO<<"cluster send  success";
@@ -350,6 +350,7 @@ bool xCluster::getSlotSet(const std::string &ipPort)
     }
 
     uset = it->second;
+    return true;
 }
 
 

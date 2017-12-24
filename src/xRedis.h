@@ -191,6 +191,9 @@ public:
 	std::atomic<int>	masterfd;
 	std::string ipPort;
 	int curSelect;
+
+	rObj * rIp;
+	rObj * rPort;
 };
 
 

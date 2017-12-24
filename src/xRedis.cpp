@@ -20,7 +20,6 @@ slavefd(-1),
 count(0),
 pingPong(false)
 {
-    ipPort = host +"::" +  std::to_string(port);
 	createSharedObjects();
 	initConfig();
 	loadDataFromDisk();
@@ -40,6 +39,8 @@ pingPong(false)
 
 xRedis::~xRedis()
 {
+    zfree(rIp);
+    zfree(rPort);
 	clear();
 	destorySharedObjects();
 	clearCommand();
@@ -606,6 +607,7 @@ bool xRedis::migrateCommand(const std::deque<rObj*> & obj, xSession * session)
 	if (obj.size() < 5)
 	{
 		addReplyErrorFormat(session->sendBuf, "unknown migrate  error");
+		return false;
 	}
 
 	if (!clusterEnabled)
@@ -982,8 +984,16 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			return false;
 		}
 
-		std::unique_lock <std::mutex> lck(clusterMutex);
-		clus.clusterSlotNodes.erase(slot);
+        {
+            std::unique_lock <std::mutex> lck(clusterMutex);
+            clus.clusterSlotNodes.erase(slot);
+
+            if (clus.clusterSlotNodes.size() == 0)
+            {
+                clusterSlotEnabled = false;
+            }
+		}
+
 		LOG_INFO << "delsync success:" << slot;
 		return false;
 
@@ -1051,13 +1061,10 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			auto it = clus.clusterSlotNodes.find(slot);
 			if (it != clus.clusterSlotNodes.end())
 			{
-				std::deque<rObj*> robj;
-				robj.push_back(shared.cluster);
-				robj.push_back(shared.delsync);
-				rObj * o = createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr));
-				robj.push_back(o);
-				clus.syncClusterSlot(robj);
-				clearDeques(robj);
+				clus.deques.push_back(shared.cluster);
+				clus.deques.push_back(shared.delsync);
+				clus.deques.push_back(createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr)));
+				clus.syncClusterSlot();
 				clus.clusterSlotNodes.erase(slot);
 				LOG_INFO << "deslots success " << slot;
 			}
@@ -1098,21 +1105,13 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 				xClusterNode  node;
 				node.ip = host;
 				node.port = this->port;
-				rObj * i = createStringObject((char*)(host.c_str()), host.length());
-				char buf[32];
-				int32_t len = ll2string(buf, sizeof(buf), this->port);
-				rObj * p = createStringObject(buf, len);
+				clus.deques.push_back(shared.cluster);
+				clus.deques.push_back(shared.addsync);
+				clus.deques.push_back(createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr)));
+				clus.deques.push_back(rIp);
+				clus.deques.push_back(rPort);
 
-				std::deque<rObj*> robj;
-				robj.push_back(shared.cluster);
-				robj.push_back(shared.addsync);
-				rObj * o = createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr));
-				robj.push_back(o);
-				robj.push_back(i);
-				robj.push_back(p);
-
-				clus.syncClusterSlot(robj);
-				clearDeques(robj);
+				clus.syncClusterSlot();
 				clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
 				LOG_INFO << "addslots success " << slot;
 			}
@@ -1139,7 +1138,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 void xRedis::structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs)
 {
 	int len, j;
-	char buf[32];
+	char buf[8];
 	buf[0] = '*';
 	len = 1 + ll2string(buf + 1, sizeof(buf) - 1, robjs.size());
 	buf[len++] = '\r';
@@ -2577,6 +2576,13 @@ void xRedis::flush()
 
 void xRedis::initConfig()
 {
+
+    char buf[8];
+    int len = ll2string(buf,sizeof(buf),port);
+    rPort = createStringObject(buf,len);
+	rIp = createStringObject((char*)(host.c_str()),host.length());
+    ipPort = host +"::" +  std::to_string(port);
+
 #define REGISTER_REDIS_COMMAND(msgId, func) \
     msgId->calHash(); \
 	handlerCommandMap[msgId] = std::bind(&xRedis::func, this, std::placeholders::_1, std::placeholders::_2);
@@ -2626,6 +2632,9 @@ void xRedis::initConfig()
 	REGISTER_REDIS_REPLY_COMMAND(shared.connect);
     REGISTER_REDIS_REPLY_COMMAND(shared.delsync);
     REGISTER_REDIS_REPLY_COMMAND(shared.cluster);
+    REGISTER_REDIS_REPLY_COMMAND(rIp);
+    REGISTER_REDIS_REPLY_COMMAND(rPort);
+
 
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
     msgId->calHash(); \
@@ -2653,7 +2662,7 @@ void xRedis::initConfig()
 	repliThreads->detach();
 	clusterThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
 	clusterThreads->detach();
-	
+
 	repli.init(this);
 	clus.init(this);
 	rdb.init(this);
