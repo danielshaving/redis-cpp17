@@ -58,7 +58,7 @@ typedef struct redisReplyObjectFunctions
 
 
 
-class xRedisReader
+class xRedisReader:noncopyable
 {
 public:
 	xRedisReader()

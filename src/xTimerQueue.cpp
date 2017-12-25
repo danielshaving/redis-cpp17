@@ -270,11 +270,7 @@ void  xTimerQueue::handleRead()
 		if(now.getMicroSecondsSinceEpoch() >= pqueue.head()->getWhen())
 		{
 			xTimer *timer = pqueue.pop();
-			if(timer == nullptr)
-			{
-				assert(false);
-			}
-
+			assert(timer);
 			timer->run();
 			vectors.push_back(timer);
 		}

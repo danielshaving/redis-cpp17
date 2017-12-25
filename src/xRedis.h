@@ -21,6 +21,7 @@ public:
 	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false);
 	~xRedis();
 	
+	void test();
 	void initConfig();
 	void handleTimeOut(void *data);
 	void serverCron(void * data);

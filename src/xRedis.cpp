@@ -30,12 +30,12 @@ pingPong(false)
     {
         this->threadCount = threadCount;
     }
-
 	server.start();
 	zmalloc_enable_thread_safeness();
 	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
 	
 }
+
 
 xRedis::~xRedis()
 {

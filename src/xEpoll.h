@@ -6,7 +6,7 @@
 class xChannel;
 class xEventLoop;
 
-class xEpoll
+class xEpoll:noncopyable
 {
 public:
 	typedef std::vector<struct epoll_event> EventList;

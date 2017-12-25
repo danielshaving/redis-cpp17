@@ -7,7 +7,7 @@
 #include "xTimerQueue.h"
 #include "xCallback.h"
 
-class xEventLoop
+class xEventLoop :noncopyable
 {
 public:
     typedef std::function<void()> Functor;

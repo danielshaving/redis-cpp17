@@ -4,7 +4,7 @@
 #include "all.h"
 using namespace std;
 
-class xBuffer
+class xBuffer:noncopyable
 {
  public:
   static const size_t kCheapPrepend = 0;

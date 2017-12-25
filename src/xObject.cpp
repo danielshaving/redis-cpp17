@@ -437,8 +437,6 @@ rObj * createStringObject(char *ptr, size_t len)
    	return createEmbeddedStringObject(ptr,len);
 }
 
-
-
 rObj *createRawStringObject(char *ptr, size_t len)
 {
     return createObject(REDIS_STRING,sdsnewlen(ptr,len));

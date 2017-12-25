@@ -2,6 +2,7 @@
 #include "xRedis.h"
 #include "xCurrentThread.h"
 #include "xLog.h"
+#include "xSortSet.h"
 
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char* msg, int len)
@@ -9,6 +10,8 @@ void asyncOutput(const char* msg, int len)
 	printf("%s\n",msg);
 	g_asyncLog->append(msg, len);
 }
+
+
 
 
 char *ascii_logo =
@@ -31,10 +34,8 @@ char *ascii_logo =
 "              `-.__.-'                                               \n";
 
 
-
 int main(int argc, char* argv[])
 {
-
 	xLogger::setOutput(asyncOutput);
 	xAsyncLogging log("xredis", 4096);
 	log.start();
@@ -63,7 +64,7 @@ int main(int argc, char* argv[])
 	{
 		fprintf(stderr, "Usage: client <host_ip> <port> <threads> <cluster>\n");
 	}
-	
+
 
 	return 0;
 }
