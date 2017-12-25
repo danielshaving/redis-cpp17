@@ -1,12 +1,7 @@
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <assert.h>
 #include "xSds.h"
 
-sds sdsnewlen(const void *init, size_t initlen) {
+sds sdsnewlen(const void *init, size_t initlen)
+{
     struct sdshdr *sh;
     // T = O(N)
     if (init)
@@ -31,41 +26,48 @@ sds sdsnewlen(const void *init, size_t initlen) {
 
 /* Create an empty (zero length) sds string. Even in this case the string
  * always has an implicit null term. */
-sds sdsempty(void) {
+sds sdsempty(void)
+{
     return sdsnewlen("",0);
 }
 
 /* Create a new sds string starting from a null termined C string. */
-sds sdsnew(const char *init) {
+sds sdsnew(const char *init)
+{
     size_t initlen = (init == nullptr) ? 0 : strlen(init);
     return sdsnewlen(init, initlen);
 }
 
-sds sdsdup(const sds s) {
+sds sdsdup(const sds s)
+{
     return sdsnewlen(s, sdslen(s));
 }
 
-void sdsfree(sds s) {
+void sdsfree(sds s)
+{
     if (s == nullptr) return;
     zfree(s-sizeof(struct sdshdr));
 }
 
 
-void sdsupdatelen(sds s) {
+void sdsupdatelen(sds s)
+{
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
     int reallen = strlen(s);
     sh->free += (sh->len-reallen);
     sh->len = reallen;
 }
 
-void sdsclear(sds s) {
+void sdsclear(sds s)
+{
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
     sh->free += sh->len;
     sh->len = 0;
     sh->buf[0] = '\0';
 }
 
-sds sdsMakeRoomFor(sds s, size_t addlen) {
+sds sdsMakeRoomFor(sds s, size_t addlen)
+{
     struct sdshdr *sh, *newsh;
     size_t free = sdsavail(s);
     size_t len, newlen;
@@ -90,7 +92,8 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
  *
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
-sds sdsRemoveFreeSpace(sds s) {
+sds sdsRemoveFreeSpace(sds s)
+{
     struct sdshdr *sh;
 
     sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
@@ -109,13 +112,15 @@ sds sdsRemoveFreeSpace(sds s) {
  * 3) The free buffer at the end if any.
  * 4) The implicit null term.
  */
-size_t sdsAllocSize(sds s) {
+size_t sdsAllocSize(sds s)
+{
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
 
     return sizeof(*sh)+sh->len+sh->free+1;
 }
 
-void sdsIncrLen(sds s, int incr) {
+void sdsIncrLen(sds s, int incr)
+{
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
     assert(sh->free >= incr);
     sh->len += incr;
@@ -129,7 +134,8 @@ void sdsIncrLen(sds s, int incr) {
  *
  * if the specified length is smaller than the current length, no operation
 */
-sds sdsgrowzero(sds s, size_t len) {
+sds sdsgrowzero(sds s, size_t len)
+{
     struct sdshdr *sh = (sdshdr*)(s-(sizeof(struct sdshdr)));
     size_t totlen, curlen = sh->len;
 
@@ -155,7 +161,8 @@ sds sdsgrowzero(sds s, size_t len) {
  *
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
-sds sdscatlen(sds s, const void *t, size_t len) {
+sds sdscatlen(sds s, const void *t, size_t len)
+{
     
     struct sdshdr *sh;
     size_t curlen = sdslen(s);
@@ -180,7 +187,8 @@ sds sdscatlen(sds s, const void *t, size_t len) {
  *
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
-sds sdscat(sds s, const char *t) {
+sds sdscat(sds s, const char *t)
+{
     return sdscatlen(s, t, strlen(t));
 }
 
@@ -188,19 +196,22 @@ sds sdscat(sds s, const char *t) {
  *
  * After the call, the modified sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
-sds sdscatsds(sds s, const sds t) {
+sds sdscatsds(sds s, const sds t)
+{
     return sdscatlen(s, t, sdslen(t));
 }
 
 /* Destructively modify the sds string 's' to hold the specified binary
  * safe string pointed by 't' of length 'len' bytes. */
-sds sdscpylen(sds s, const char *t, size_t len) {
+sds sdscpylen(sds s, const char *t, size_t len)
+{
 
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
 
     size_t totlen = sh->free+sh->len;
    
-    if (totlen < len) {
+    if (totlen < len)
+    {
         // T = O(N)
         s = sdsMakeRoomFor(s,len-sh->len);
         if (s == nullptr) return nullptr;
@@ -219,7 +230,8 @@ sds sdscpylen(sds s, const char *t, size_t len) {
 
 /* Like sdscpylen() but 't' must be a null-termined string so that the length
  * of the string is obtained with strlen(). */
-sds sdscpy(sds s, const char *t) {
+sds sdscpy(sds s, const char *t)
+{
     return sdscpylen(s, t, strlen(t));
 }
 
@@ -230,7 +242,8 @@ sds sdscpy(sds s, const char *t) {
  * The function returns the lenght of the null-terminated string
  * representation stored at 's'. */
 #define SDS_LLSTR_SIZE 21
-int sdsll2str(char *s, long long value) {
+int sdsll2str(char *s, long long value)
+{
     char *p, aux;
     unsigned long long v;
     size_t l;
@@ -262,7 +275,8 @@ int sdsll2str(char *s, long long value) {
 }
 
 /* Identical sdsll2str(), but for unsigned long long type. */
-int sdsull2str(char *s, unsigned long long v) {
+int sdsull2str(char *s, unsigned long long v)
+{
     char *p, aux;
     size_t l;
 
@@ -294,7 +308,8 @@ int sdsull2str(char *s, unsigned long long v) {
  *
  * sdscatprintf(sdsempty(),"%lld\n", value);
  */
-sds sdsfromlonglong(long long value) {
+sds sdsfromlonglong(long long value)
+{
     char buf[SDS_LLSTR_SIZE];
     int len = sdsll2str(buf,value);
 
@@ -303,7 +318,8 @@ sds sdsfromlonglong(long long value) {
 
 
 /* Like sdscatpritf() but gets va_list instead of being variadic. */
-sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
+sds sdscatvprintf(sds s, const char *fmt, va_list ap)
+{
     va_list cpy;
     char staticbuf[1024], *buf = staticbuf, *t;
     size_t buflen = strlen(fmt)*2;
@@ -356,7 +372,8 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
  *
  * s = sdscatprintf(sdsempty(), "... your format ...", args);
  */
-sds sdscatprintf(sds s, const char *fmt, ...) {
+sds sdscatprintf(sds s, const char *fmt, ...)
+{
     va_list ap;
     char *t;
     va_start(ap, fmt);
@@ -382,7 +399,8 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
  * %U - 64 bit unsigned integer (unsigned long long, uint64_t)
  * %% - Verbatim "%" character.
  */
-sds sdscatfmt(sds s, char const *fmt, ...) {
+sds sdscatfmt(sds s, char const *fmt, ...)
+{
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
     size_t initlen = sdslen(s);
     const char *f = fmt;
@@ -496,7 +514,8 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
  *
  * Output will be just "Hello World".
  */
-sds sdstrim(sds s, const char *cset) {
+sds sdstrim(sds s, const char *cset)
+{
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
     char *start, *end, *sp, *ep;
     size_t len;
@@ -540,7 +559,8 @@ sds sdstrim(sds s, const char *cset) {
  * s = sdsnew("Hello World");
  * sdsrange(s,1,-1); => "ello World"
  */
-void sdsrange(sds s, int start, int end) {
+void sdsrange(sds s, int start, int end)
+{
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
     size_t newlen, len = sdslen(s);
 
@@ -576,7 +596,8 @@ void sdsrange(sds s, int start, int end) {
 }
 
 /* Apply tolower() to every character of the sds string 's'. */
-void sdstolower(sds s) {
+void sdstolower(sds s)
+{
     int len = sdslen(s), j;
 
     for (j = 0; j < len; j++) s[j] = tolower(s[j]);
@@ -584,7 +605,8 @@ void sdstolower(sds s) {
 
 
 /* Apply toupper() to every character of the sds string 's'. */
-void sdstoupper(sds s) {
+void sdstoupper(sds s)
+{
     int len = sdslen(s), j;
 
     for (j = 0; j < len; j++) s[j] = toupper(s[j]);
@@ -601,7 +623,8 @@ void sdstoupper(sds s) {
  * If two strings share exactly the same prefix, but one of the two has
  * additional characters, the longer string is considered to be greater than
  * the smaller one. */
-int sdscmp(const sds s1, const sds s2) {
+int sdscmp(const sds s1, const sds s2)
+{
     size_t l1, l2, minlen;
     int cmp;
 
@@ -615,7 +638,8 @@ int sdscmp(const sds s1, const sds s2) {
     return cmp;
 }
 
-sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count) {
+sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count)
+{
     int elements = 0, slots = 5, start = 0, j;
     sds *tokens;
 
@@ -630,9 +654,11 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
     }
     
     // T = O(N^2)
-    for (j = 0; j < (len-(seplen-1)); j++) {
+    for (j = 0; j < (len-(seplen-1)); j++)
+    {
         /* make sure there is room for the next element and the final one */
-        if (slots < elements+2) {
+        if (slots < elements+2)
+        {
             sds *newtokens;
 
             slots *= 2;
@@ -642,7 +668,8 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
         }
         /* search the separator */
         // T = O(N)
-        if ((seplen == 1 && *(s+j) == sep[0]) || (memcmp(s+j,sep,seplen) == 0)) {
+        if ((seplen == 1 && *(s+j) == sep[0]) || (memcmp(s+j,sep,seplen) == 0))
+        {
             tokens[elements] = sdsnewlen(s+start,j-start);
             if (tokens[elements] == nullptr) goto cleanup;
             elements++;
@@ -669,7 +696,8 @@ cleanup:
 
 
 /* Free the result returned by sdssplitlen(), or do nothing if 'tokens' is nullptr. */
-void sdsfreesplitres(sds *tokens, int count) {
+void sdsfreesplitres(sds *tokens, int count)
+{
     if (!tokens) return;
     while(count--)
         sdsfree(tokens[count]);
@@ -683,12 +711,15 @@ void sdsfreesplitres(sds *tokens, int count) {
  *
  * After the call, the modified sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
-sds sdscatrepr(sds s, const char *p, size_t len) {
+sds sdscatrepr(sds s, const char *p, size_t len)
+{
 
     s = sdscatlen(s,"\"",1);
 
-    while(len--) {
-        switch(*p) {
+    while(len--)
+    {
+        switch(*p)
+        {
         case '\\':
         case '"':
             s = sdscatprintf(s,"\\%c",*p);
@@ -714,7 +745,8 @@ sds sdscatrepr(sds s, const char *p, size_t len) {
 /* Helper function for sdssplitargs() that returns non zero if 'c'
  * is a valid hex digit. */
 
-int is_hex_digit(char c) {
+int is_hex_digit(char c)
+{
     return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
            (c >= 'A' && c <= 'F');
 }
@@ -722,7 +754,8 @@ int is_hex_digit(char c) {
 /* Helper function for sdssplitargs() that converts a hex digit into an
  * integer from 0 to 15 */
 
-int hex_digit_to_int(char c) {
+int hex_digit_to_int(char c)
+{
     switch(c) {
     case '0': return 0;
     case '1': return 1;
@@ -745,7 +778,8 @@ int hex_digit_to_int(char c) {
 }
 
 
-sds *sdssplitargs(const char *line, int *argc) {
+sds *sdssplitargs(const char *line, int *argc)
+{
     const char *p = line;
     char *current = nullptr;
     char **vector = nullptr;
@@ -845,7 +879,9 @@ sds *sdssplitargs(const char *line, int *argc) {
             vector[*argc] = current;
             (*argc)++;
             current = nullptr;
-        } else {
+        }
+        else
+        {
             /* Even on empty input string return something not nullptr. */
             if (vector == nullptr) vector = (char **)zmalloc(sizeof(void*));
             return vector;
@@ -861,15 +897,19 @@ err:
     return nullptr;
 }
 
-sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen) {
+sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen)
+{
     size_t j, i, l = sdslen(s);
 
     // ���������ַ���
-    for (j = 0; j < l; j++) {
+    for (j = 0; j < l; j++)
+    {
         // ����ӳ��
-        for (i = 0; i < setlen; i++) {
+        for (i = 0; i < setlen; i++)
+        {
             // �滻�ַ���
-            if (s[j] == from[i]) {
+            if (s[j] == from[i])
+            {
                 s[j] = to[i];
                 break;
             }
@@ -880,7 +920,8 @@ sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen) {
 
 /* Join an array of C strings using the specified separator (also a C string).
  * Returns the result as an sds string. */
-sds sdsjoin(char **argv, int argc, char *sep) {
+sds sdsjoin(char **argv, int argc, char *sep)
+{
     sds join = sdsempty();
     int j;
 
@@ -891,142 +932,4 @@ sds sdsjoin(char **argv, int argc, char *sep) {
     return join;
 }
 
-#ifdef SDS_TEST_MAIN
-#include <stdio.h>
-#include "testhelp.h"
-#include "limits.h"
 
-int main(void) {
-    {
-        struct sdshdr *sh;
-        sds x = sdsnew("foo"), y;
-
-        test_cond("Create a string and obtain the length",
-            sdslen(x) == 3 && memcmp(x,"foo\0",4) == 0)
-
-        sdsfree(x);
-        x = sdsnewlen("foo",2);
-        test_cond("Create a string with specified length",
-            sdslen(x) == 2 && memcmp(x,"fo\0",3) == 0)
-
-        x = sdscat(x,"bar");
-        test_cond("Strings concatenation",
-            sdslen(x) == 5 && memcmp(x,"fobar\0",6) == 0);
-
-        x = sdscpy(x,"a");
-        test_cond("sdscpy() against an originally longer string",
-            sdslen(x) == 1 && memcmp(x,"a\0",2) == 0)
-
-        x = sdscpy(x,"xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk");
-        test_cond("sdscpy() against an originally shorter string",
-            sdslen(x) == 33 &&
-            memcmp(x,"xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk\0",33) == 0)
-
-        sdsfree(x);
-        x = sdscatprintf(sdsempty(),"%d",123);
-        test_cond("sdscatprintf() seems working in the base case",
-            sdslen(x) == 3 && memcmp(x,"123\0",4) == 0)
-
-        sdsfree(x);
-        x = sdsnew("--");
-        x = sdscatfmt(x, "Hello %s World %I,%I--", "Hi!", LLONG_MIN,LLONG_MAX);
-        test_cond("sdscatfmt() seems working in the base case",
-            sdslen(x) == 60 &&
-            memcmp(x,"--Hello Hi! World -9223372036854775808,"
-                     "9223372036854775807--",60) == 0)
-
-        sdsfree(x);
-        x = sdsnew("--");
-        x = sdscatfmt(x, "%u,%U--", UINT_MAX, ULLONG_MAX);
-        test_cond("sdscatfmt() seems working with unsigned numbers",
-            sdslen(x) == 35 &&
-            memcmp(x,"--4294967295,18446744073709551615--",35) == 0)
-
-        sdsfree(x);
-        x = sdsnew("xxciaoyyy");
-        sdstrim(x,"xy");
-        test_cond("sdstrim() correctly trims characters",
-            sdslen(x) == 4 && memcmp(x,"ciao\0",5) == 0)
-
-        y = sdsdup(x);
-        sdsrange(y,1,1);
-        test_cond("sdsrange(...,1,1)",
-            sdslen(y) == 1 && memcmp(y,"i\0",2) == 0)
-
-        sdsfree(y);
-        y = sdsdup(x);
-        sdsrange(y,1,-1);
-        test_cond("sdsrange(...,1,-1)",
-            sdslen(y) == 3 && memcmp(y,"iao\0",4) == 0)
-
-        sdsfree(y);
-        y = sdsdup(x);
-        sdsrange(y,-2,-1);
-        test_cond("sdsrange(...,-2,-1)",
-            sdslen(y) == 2 && memcmp(y,"ao\0",3) == 0)
-
-        sdsfree(y);
-        y = sdsdup(x);
-        sdsrange(y,2,1);
-        test_cond("sdsrange(...,2,1)",
-            sdslen(y) == 0 && memcmp(y,"\0",1) == 0)
-
-        sdsfree(y);
-        y = sdsdup(x);
-        sdsrange(y,1,100);
-        test_cond("sdsrange(...,1,100)",
-            sdslen(y) == 3 && memcmp(y,"iao\0",4) == 0)
-
-        sdsfree(y);
-        y = sdsdup(x);
-        sdsrange(y,100,100);
-        test_cond("sdsrange(...,100,100)",
-            sdslen(y) == 0 && memcmp(y,"\0",1) == 0)
-
-        sdsfree(y);
-        sdsfree(x);
-        x = sdsnew("foo");
-        y = sdsnew("foa");
-        test_cond("sdscmp(foo,foa)", sdscmp(x,y) > 0)
-
-        sdsfree(y);
-        sdsfree(x);
-        x = sdsnew("bar");
-        y = sdsnew("bar");
-        test_cond("sdscmp(bar,bar)", sdscmp(x,y) == 0)
-
-        sdsfree(y);
-        sdsfree(x);
-        x = sdsnew("aar");
-        y = sdsnew("bar");
-        test_cond("sdscmp(bar,bar)", sdscmp(x,y) < 0)
-
-        sdsfree(y);
-        sdsfree(x);
-        x = sdsnewlen("\a\n\0foo\r",7);
-        y = sdscatrepr(sdsempty(),x,sdslen(x));
-        test_cond("sdscatrepr(...data...)",
-            memcmp(y,"\"\\a\\n\\x00foo\\r\"",15) == 0)
-
-        {
-            int oldfree;
-
-            sdsfree(x);
-            x = sdsnew("0");
-            sh = (void*) (x-(sizeof(struct sdshdr)));
-            test_cond("sdsnew() free/len buffers", sh->len == 1 && sh->free == 0);
-            x = sdsMakeRoomFor(x,1);
-            sh = (void*) (x-(sizeof(struct sdshdr)));
-            test_cond("sdsMakeRoomFor()", sh->len == 1 && sh->free > 0);
-            oldfree = sh->free;
-            x[1] = '1';
-            sdsIncrLen(x,1);
-            test_cond("sdsIncrLen() -- content", x[0] == '0' && x[1] == '1');
-            test_cond("sdsIncrLen() -- len", sh->len == 2);
-            test_cond("sdsIncrLen() -- free", sh->free == oldfree-1);
-        }
-    }
-    test_report()
-    return 0;
-}
-#endif

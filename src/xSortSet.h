@@ -6,19 +6,17 @@
 
 template< typename KeyType,
           typename HashFn = std::hash<KeyType>,
-          typename EqualKey = std::equal_to<KeyType> >
-class xSortedSet {
+          typename EqualKey = std::equal_to<KeyType>>
+class xSortedSet
+{
 private:
     typedef typename std::unordered_map<KeyType, double, HashFn, EqualKey> DictType;
     typedef typename DictType::iterator DictTypeIterator;
     typedef typename DictType::const_iterator DictTypeConstIterator;
     typedef typename std::vector<KeyType> KeyVecType;
-    typedef typename KeyVecType::iterator KeyVecTypeIterator;
-    typedef typename KeyVecType::const_iterator KeyVecTypeConstIterator;
     typedef typename std::pair<KeyType, double> KeyScorePairType;
     typedef typename std::vector<KeyScorePairType> KeyScoreVecType;
-    typedef typename KeyScoreVecType::iterator KeyScoreVecTypeIterator;
-    typedef typename KeyScoreVecType::const_iterator KeyScoreVecTypeConstIterator;
+
 private:
     static const int SKIPLIST_MAXLEVEL = 32;
     class xSkipListNode;
