@@ -76,16 +76,18 @@ public:
 	bool saddCommand(const std::deque <rObj*> & obj,xSession * session);
 
 	int rdbSaveBackground(xSession * session, bool enabled);
-	bool clearClusterMigradeCommand(void * data);
-	void forkClear();
 	bool bgsave(xSession * session, bool enabled = false);
 	bool save(xSession * session);
 	int removeCommand(rObj * obj,int &count);
+
+	bool clearClusterMigradeCommand(void * data);
+	void forkClear();
 	void clearCommand();
 	void clear();
 	void clearRepliState(int32_t sockfd);
 	void clearClusterState(int32_t sockfd);
 	void clearDeques(std::deque<rObj*> & robj);
+
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 

@@ -23,13 +23,13 @@ public:
 	 bool checkCommand(rObj*  robjs);
 
 public:
-	int32_t 			reqtype;
-	int32_t 			multibulklen;
-	int64_t 			bulklen;
-	int32_t 		        argc;
-	xBuffer 			sendBuf;
-	xBuffer 			sendSlaveBuf;
-	xBuffer 			sendPubSub;
+	int32_t reqtype;
+	int32_t multibulklen;
+	int64_t bulklen;
+	int32_t argc;
+	xBuffer sendBuf;
+	xBuffer sendSlaveBuf;
+	xBuffer sendPubSub;
 	xTcpconnectionPtr 	conn;
 	std::vector<xTcpconnectionPtr> pubSubTcpconn;
 	std::deque<rObj*>  robjs;

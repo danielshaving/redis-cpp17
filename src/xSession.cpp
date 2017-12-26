@@ -60,59 +60,44 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 		processCommand();
 		reset();
+
 	}
 
 
-	if(fromMaster)
-	{
-		sendBuf.retrieveAll();
-		sendSlaveBuf.retrieveAll();
-		sendPubSub.retrieveAll();
-		fromMaster = false;
-	}
-	else
-	{
-	
-		if(sendBuf.readableBytes() > 0 )
-		{
-			conn->send(&sendBuf);
-			sendBuf.retrieveAll();
-		}
 
-		if(replyBuffer)
-		{
-			sendBuf.retrieveAll();
-			replyBuffer = false;
-		}
-		
-		if(sendPubSub.readableBytes() > 0 )
-		{
-			for(auto it = pubSubTcpconn.begin(); it != pubSubTcpconn.end(); ++it)
-			{
-				(*it)->send(&sendPubSub);
-			}
+    if(sendBuf.readableBytes() > 0 )
+    {
+        conn->send(&sendBuf);
+        sendBuf.retrieveAll();
+    }
 
-			pubSubTcpconn.clear();
-			sendPubSub.retrieveAll();
-		}
 
-		
+    if(sendPubSub.readableBytes() > 0 )
+    {
+        for(auto it = pubSubTcpconn.begin(); it != pubSubTcpconn.end(); ++it)
+        {
+            (*it)->send(&sendPubSub);
+        }
 
-		if(redis->repliEnabled)
-		{
-			std::unique_lock <std::mutex> lck(redis->slaveMutex);
-			for (auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); ++it)
-			{
-				if (sendSlaveBuf.readableBytes() > 0)
-				{
-					it->second->send(&sendSlaveBuf);
-				}
-			}
+        pubSubTcpconn.clear();
+        sendPubSub.retrieveAll();
+    }
 
-			sendSlaveBuf.retrieveAll();
-		}
-		
-	}
+
+
+    if(redis->repliEnabled)
+    {
+        std::unique_lock <std::mutex> lck(redis->slaveMutex);
+        for (auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); ++it)
+        {
+            if (sendSlaveBuf.readableBytes() > 0)
+            {
+                it->second->send(&sendSlaveBuf);
+            }
+        }
+
+        sendSlaveBuf.retrieveAll();
+    }
 }
 
 
@@ -298,10 +283,26 @@ void xSession::clearObj()
 
 void xSession::reset()
 {
-	 argc = 0;
-	 multibulklen = 0;
-	 bulklen = -1;
-	 robjs.clear();
+    argc = 0;
+    multibulklen = 0;
+    bulklen = -1;
+    robjs.clear();
+
+    if(replyBuffer)
+    {
+        sendBuf.retrieveAll();
+        replyBuffer = false;
+    }
+
+    if(fromMaster)
+	{
+		sendBuf.retrieveAll();
+		sendSlaveBuf.retrieveAll();
+		sendPubSub.retrieveAll();
+		fromMaster = false;
+	}
+
+
 }
 
 int xSession::processInlineBuffer(xBuffer *recvBuf)

@@ -304,7 +304,7 @@ class xBuffer:noncopyable
   }
 
 
-   stringPiepe toStringPiece() const
+  stringPiepe toStringPiece() const
   {
     return stringPiepe(peek(), static_cast<int>(readableBytes()));
   }

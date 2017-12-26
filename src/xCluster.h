@@ -42,6 +42,7 @@ public:
 	void eraseImportSlot(int slot);
 	void getKeyInSlot(int slot, rObj **keys, int count);
 
+
 public:
 	xEventLoop *loop;
 	xRedis *redis;

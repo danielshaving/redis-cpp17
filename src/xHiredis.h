@@ -20,7 +20,8 @@ typedef struct redisReply
 } redisReply;
 
 
-typedef struct redisReadTask {
+typedef struct redisReadTask
+{
     int type;
     int elements;
     int idx;

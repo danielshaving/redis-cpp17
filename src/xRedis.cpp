@@ -808,7 +808,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 		addReplyLongLong(session->sendBuf, clus.keyHashSlot((char*)key, sdslen(key)));
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr, "setslot") && obj.size() >= 4)
+	else if (!strcasecmp(obj[0]->ptr, "setslot") && obj.size() >= 3)
 	{		
 		if( !strcasecmp(obj[1]->ptr, "node") )
 		{
@@ -825,7 +825,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 			std::string fromIp;
 			int  fromPort;
 			const char *start = obj[3]->ptr;
-			const char *end = obj[3]->ptr + sdslen(obj[3]->ptr );
+			const char *end = obj[3]->ptr + sdslen(obj[3]->ptr);
 			const  char *space = std::find(start,end,':');
 			if(space != end)
 			{
@@ -861,10 +861,15 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, xSession * session)
 					it->second.ip = fromIp;
 					it->second.port = fromPort;
 				}
+				else
+				{
+				    LOG_WARN<<"slot not found error";
+				}
 			}
 		
-			LOG_INFO<<"cluster async replication success "<<imipPort;
+
 			addReply(session->sendBuf, shared.ok);
+			LOG_INFO<<"cluster async replication success "<<imipPort;
 			return false;
 
 		}
@@ -2586,7 +2591,6 @@ void xRedis::initConfig()
 #define REGISTER_REDIS_COMMAND(msgId, func) \
     msgId->calHash(); \
 	handlerCommandMap[msgId] = std::bind(&xRedis::func, this, std::placeholders::_1, std::placeholders::_2);
-
 	REGISTER_REDIS_COMMAND(shared.set,setCommand);
 	REGISTER_REDIS_COMMAND(shared.get,getCommand);
 	REGISTER_REDIS_COMMAND(shared.flushdb,flushdbCommand);

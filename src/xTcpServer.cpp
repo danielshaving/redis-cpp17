@@ -37,7 +37,6 @@ void xTcpServer::newConnection(int sockfd)
 {
 	loop->assertInLoopThread();
 	xEventLoop* loop = threadPool->getNextLoop();
-	//TRACE("newConnection is thread: %d",loop->getThreadId());
 	xTcpconnectionPtr conn(new xTcpconnection(loop,sockfd,data));
 	connections[sockfd] = conn;
 	conn->setConnectionCallback(connectionCallback);

@@ -21,7 +21,9 @@ void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, voi
 	while (recvBuf->readableBytes() > 0)
 	{
 		if (!memcmp(recvBuf->peek(), shared.ok->ptr, sdslen(shared.ok->ptr)))
-		{	
+		{
+		    LOG_INFO<<"reply to cluster ok";
+
 			std::unique_lock <std::mutex> lck(redis->clusterMutex);
 			if (++replyCount == redis->clustertcpconnMaps.size())
 			{
@@ -37,9 +39,8 @@ void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, voi
 					buffer.swap(redis->clusterMigratCached);
 				}
 
-				migratingSlosTos.clear();
+
 				replyCount = 0;
-				assert(recvBuf->readableBytes() == 0);
 
 				for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); ++it)
 				{
@@ -52,18 +53,52 @@ void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, voi
                 std::string ipPort = conn->host + "::" + std::to_string(conn->port);
 				if(!getSlotSet(ipPort))
                 {
-
+                    LOG_WARN<<"getSlot error";
                     break;
                 }
 
+
                 for(auto it = uset.begin(); it != uset.end(); ++it)
                 {
-                    clusterSlotNodes.erase(*it);
+                    auto iter = clusterSlotNodes.find(*it);
+                    if(iter != clusterSlotNodes.end())
+                    {
+                        iter->second.ip = conn->host;
+                        iter->second.port = conn->port;
+                    }
+                    else
+                    {
+                        LOG_WARN<<"slot not found error";
+                    }
+
                 }
 
 
+
+
+                for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end(); ++it)
+                {
+                    std::unique_lock <std::mutex> lck((*it).mtx);
+                    for(auto iter = (*it).setMap.begin(); iter !=  (*it).setMap.end();)
+                    {
+                        unsigned int slot = keyHashSlot((char*)iter->first->ptr,sdslen(iter->first->ptr));
+                        auto iterr = uset.find(slot);
+                        if(iterr != uset.end())
+                        {
+                            zfree(iter->first);
+                            zfree(iter->second);
+                            iter = (*it).setMap.erase(iter);
+                        }
+                        else
+                        {
+                            ++iter;
+                        }
+
+                    }
+                }
+
                 migratingSlosTos.erase(ipPort);
-                importingSlotsFrom.erase(ipPort);
+                //importingSlotsFrom.erase(ipPort);
 
                 clear();
 
@@ -211,6 +246,7 @@ bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32
 	bool mark = false;
 	std::string ipPort = ip + "::" + std::to_string(port);
 	{
+	    std::unique_lock <std::mutex> lck(redis->clusterMutex);
         if(!getSlotSet(ipPort))
         {
             return false;
@@ -274,7 +310,6 @@ bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32
 				if(conn->connected())
 				{
 					conn->sendPipe(&sendBuf);
-					LOG_INFO<<"sendPipe cluster sync .........";
 					clear();
 				}
 
@@ -283,6 +318,7 @@ bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32
 		}
 	}
 
+    LOG_INFO<<"sendPipe cluster sync success .........";
 
 
 	redis->forkCondWaitCount = 0;
@@ -294,39 +330,33 @@ bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32
     }
 
 
-
-    {
-		std::unique_lock <std::mutex> lck(redis->clusterMutex);
-		for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); ++it)
-		{
-			it->second->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-		}
-
-	}
-
-
-    deques.push_back(shared.cluster);
-    deques.push_back(shared.setslot);
-    deques.push_back(shared.node);
-    deques.push_back(createStringObject((char*)redis->ipPort.c_str(),redis->ipPort.length()));
-    deques.push_back(createStringObject((char*)ipPort.c_str(),ipPort.length()));
-
-
-    if(!getSlotSet(ipPort))
-    {
-        return false;
-    }
-
-    for(auto it = uset.begin(); it != uset.end(); ++it)
-    {
-        char buf[4];
-        int len = ll2string(buf, sizeof(buf), *it);
-        deques.push_back(createStringObject(buf, len));
-    }
-
-
     {
         std::unique_lock <std::mutex> lck(redis->clusterMutex);
+        for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); ++it)
+        {
+            it->second->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        }
+
+        deques.push_back(shared.cluster);
+        deques.push_back(shared.setslot);
+        deques.push_back(shared.node);
+        deques.push_back(createStringObject((char*)redis->ipPort.c_str(),redis->ipPort.length()));
+        deques.push_back(createStringObject((char*)ipPort.c_str(),ipPort.length()));
+
+
+        if(!getSlotSet(ipPort))
+        {
+            return false;
+        }
+
+        for(auto it = uset.begin(); it != uset.end(); ++it)
+        {
+            char buf[8];
+            long long  len = ll2string(buf, sizeof(buf), *it);
+            deques.push_back(createStringObject(buf, len));
+        }
+
+
         syncClusterSlot();
     }
 
@@ -340,7 +370,6 @@ bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32
 bool xCluster::getSlotSet(const std::string &ipPort)
 {
 
-    std::unique_lock <std::mutex> lck(redis->clusterMutex);
     auto it = migratingSlosTos.find(ipPort);
     assert(it->second.size());
     if(it == migratingSlosTos.end())
