@@ -152,7 +152,7 @@ class xBuffer:noncopyable
     hasWritten(len);
   }
 
-  void append(const stringPiepe & str)
+  void append(const stringPiece & str)
   {
 	 append(str.data(), str.size());
   }
@@ -304,9 +304,9 @@ class xBuffer:noncopyable
   }
 
 
-  stringPiepe toStringPiece() const
+  stringPiece toStringPiece() const
   {
-    return stringPiepe(peek(), static_cast<int>(readableBytes()));
+    return stringPiece(peek(), static_cast<int>(readableBytes()));
   }
    
   void shrink(size_t reserve)

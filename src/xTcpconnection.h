@@ -40,19 +40,21 @@ public:
 	void handleError();
 
 	void sendInLoop(const void* message, size_t len);
-	void sendInLoop(const stringPiepe & message);
+	void sendInLoop(const stringPiece & message);
 	void sendPipeInLoop(const void* message, size_t len);
-	void sendPipeInLoop(const stringPiepe & message);
+	void sendPipeInLoop(const stringPiece & message);
 	
 
-	static void bindSendInLoop(xTcpconnection* conn, const stringPiepe& message);
-	static void bindSendPipeInLoop(xTcpconnection* conn, const stringPiepe& message);
+	static void bindSendInLoop(xTcpconnection* conn, const stringPiece& message);
+	static void bindSendPipeInLoop(xTcpconnection* conn, const stringPiece& message);
 	
-	void sendPipe(const stringPiepe & message);
+	void sendPipe(const stringPiece & message);
 	void sendPipe(xBuffer* message);
+	void sendPipe(const void* message, int len);
+
     void send(const void* message, int len);
 	void send(xBuffer* message);
-	void send(const stringPiepe  &message);
+	void send(const stringPiece  &message);
 
 
 	bool disconnected() const { return state == kDisconnected; }
@@ -67,17 +69,13 @@ public:
 	void shutdown();
 	void shutdownInLoop();
 	void forceClose();
-	xBuffer * getSendBuff(){ return &sendBuff; }
-	xBuffer* inputBuffer(){ return &recvBuff; }
-	xBuffer* outputBuffer(){ return &sendBuff; }
-
 	
 public:
 	xEventLoop  *loop;
 	int sockfd;
 	xBuffer recvBuff;
 	xBuffer sendBuff;
-	ConnectionCallback   connectionCallback;
+	ConnectionCallback    connectionCallback;
 	MessageCallback 	  messageCallback;
 	WriteCompleteCallback writeCompleteCallback;
 	HighWaterMarkCallback highWaterMarkCallback;

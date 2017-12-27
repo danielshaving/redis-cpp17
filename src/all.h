@@ -383,19 +383,19 @@ private:
 };
 
 
-class stringPiepe
+class stringPiece
 {
  public:
-	stringPiepe()
+	stringPiece()
 	: ptr(NULL), length(0) { }
-	stringPiepe(const char* str)
+	stringPiece(const char* str)
 	: ptr(str), length(static_cast<int>(strlen(ptr))) { }
-	stringPiepe(const unsigned char* str)
+	stringPiece(const unsigned char* str)
 	: ptr(reinterpret_cast<const char*>(str)),
 	length(static_cast<int>(strlen(ptr))) { }
-	stringPiepe(const std::string& str)
+	stringPiece(const std::string& str)
 	: ptr(str.data()), length(static_cast<int>(str.size())) { }
-	stringPiepe(const char* offset, int length)
+	stringPiece(const char* offset, int length)
 	: ptr(offset), length(length) { }
 	
 	std::string as_string() const { return std::string(data(),size());}
@@ -436,17 +436,17 @@ class stringPiepe
   	char operator[](int i) const { return ptr[i]; }
   
 	
-	bool operator==(const stringPiepe& x) const 
+	bool operator==(const stringPiece& x) const
 	{
 	  	 return ((length == x.length) &&
 			   (memcmp(ptr, x.ptr, length) == 0));
 	 }
-	 bool operator!=(const stringPiepe& x) const 
+	 bool operator!=(const stringPiece& x) const
 	 {
 	  	 return !(*this == x);
 	 }
 
-	int compare(const stringPiepe& x) const 
+	int compare(const stringPiece& x) const
 	{
 		int r = memcmp(ptr, x.ptr, length < x.length ? length : x.length);
 		if (r == 0)
@@ -464,7 +464,7 @@ class stringPiepe
 		target->assign(ptr, length);
 	}
 
-	bool startsWith(const stringPiepe& x) const 
+	bool startsWith(const stringPiece& x) const
 	{
 		return ((length >= x.length) && (memcmp(ptr, x.ptr, x.length) == 0));
 	}

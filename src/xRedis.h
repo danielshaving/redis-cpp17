@@ -46,12 +46,14 @@ public:
 	bool setCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool getCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool hsetCommand(const std::deque <rObj*> & obj,xSession * session);
+
 	bool hgetCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool hgetallCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool hlenCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool slaveofCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool syncCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool psyncCommand(const std::deque <rObj*> & obj,xSession * session);
+
 	bool commandCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool clusterCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool authCommand(const std::deque <rObj*> & obj,xSession * session);
@@ -61,6 +63,7 @@ public:
 	bool echoCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool hkeysCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool keysCommand(const std::deque <rObj*> & obj,xSession * session);
+
 	bool bgsaveCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool memoryCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool sentinelCommand(const std::deque<rObj*> & obj, xSession * session);
@@ -178,14 +181,14 @@ public:
 	std::unique_ptr<std::thread>  clusterThreads;
 
 	std::unordered_map<int32_t,xTcpconnectionPtr>  salvetcpconnMaps;
-	std::unordered_map<int32_t, xTcpconnectionPtr> clustertcpconnMaps;
+	std::unordered_map<int32_t,xTcpconnectionPtr> clustertcpconnMaps;
 	std::unordered_map<int32_t,xTimer*> repliTimers;
 	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
 	
 	xSocket socket;
 	std::string  host;
 	std::string password;
-	std::atomic<int64_t >  count;
+	std::atomic<int64_t>  count;
 	std::atomic<bool>	pingPong;
 	int16_t port;
 	int16_t threadCount;

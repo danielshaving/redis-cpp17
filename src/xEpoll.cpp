@@ -1,6 +1,5 @@
 #include "xEpoll.h"
 #include "xChannel.h"
-
 #include "xEventLoop.h"
 
 const int kNew = -1;

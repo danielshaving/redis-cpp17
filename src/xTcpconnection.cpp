@@ -179,7 +179,15 @@ void xTcpconnection::sendPipe(xBuffer* buf)
 	}
 }
 
-void xTcpconnection::sendPipe(const stringPiepe & message)
+
+void xTcpconnection::sendPipe(const void* message, int len)
+{
+
+    send(stringPiece(static_cast<const char*>(message), len));
+
+}
+
+void xTcpconnection::sendPipe(const stringPiece & message)
 {
 	if (state == kConnected)
 	{
@@ -198,11 +206,11 @@ void xTcpconnection::sendPipe(const stringPiepe & message)
 
 void xTcpconnection::send(const void* message, int len)
 {
-	send(stringPiepe(static_cast<const char*>(message), len));
+	send(stringPiece(static_cast<const char*>(message), len));
 }
 
 
-void xTcpconnection::send(const stringPiepe & message)
+void xTcpconnection::send(const stringPiece & message)
 {
 	if (state == kConnected)
 	{
@@ -219,7 +227,7 @@ void xTcpconnection::send(const stringPiepe & message)
 	}
 }
 
-void xTcpconnection::sendPipeInLoop(const stringPiepe & message)
+void xTcpconnection::sendPipeInLoop(const stringPiece & message)
 {
 	sendPipeInLoop(message.data(),message.size());
 }
@@ -235,13 +243,13 @@ void xTcpconnection::sendPipeInLoop(const void* message, size_t len)
 	}
 }
 
-void xTcpconnection::bindSendPipeInLoop(xTcpconnection* conn, const stringPiepe& message)
+void xTcpconnection::bindSendPipeInLoop(xTcpconnection* conn, const stringPiece& message)
 {
 	conn->sendPipeInLoop(message.data(),message.size());
 }
 
 
-void xTcpconnection::bindSendInLoop(xTcpconnection* conn, const stringPiepe& message)
+void xTcpconnection::bindSendInLoop(xTcpconnection* conn, const stringPiece& message)
 {
 	 conn->sendInLoop(message.data(),message.size());
 }
@@ -263,7 +271,7 @@ void xTcpconnection::send(xBuffer* buf)
 	}
 }
 
-void xTcpconnection::sendInLoop(const stringPiepe & message)
+void xTcpconnection::sendInLoop(const stringPiece & message)
 {
 	sendInLoop(message.data(),message.size());
 }

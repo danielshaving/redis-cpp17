@@ -301,8 +301,6 @@ void xSession::reset()
 		sendPubSub.retrieveAll();
 		fromMaster = false;
 	}
-
-
 }
 
 int xSession::processInlineBuffer(xBuffer *recvBuf)

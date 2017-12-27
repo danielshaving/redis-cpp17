@@ -101,16 +101,16 @@ void xTcpClient::errorConnection()
 
 void xTcpClient::newConnection(int sockfd)
 {
-	  xTcpconnectionPtr conn(new xTcpconnection(loop,sockfd,data));
-	  conn->setConnectionCallback(connectionCallback);
-	  conn->setMessageCallback(messageCallback);
-	  conn->setWriteCompleteCallback(writeCompleteCallback);
-	  conn->setCloseCallback(std::bind(&xTcpClient::removeConnection, this,std::placeholders::_1));
-	  {
+	xTcpconnectionPtr conn(new xTcpconnection(loop,sockfd,data));
+	conn->setConnectionCallback(connectionCallback);
+	conn->setMessageCallback(messageCallback);
+	conn->setWriteCompleteCallback(writeCompleteCallback);
+	conn->setCloseCallback(std::bind(&xTcpClient::removeConnection, this,std::placeholders::_1));
+	{
 		std::unique_lock<std::mutex> lk(mutex);
-	        connection = conn;
-	  }
-	  conn->connectEstablished();
+		connection = conn;
+	}
+	conn->connectEstablished();
 }
 
 

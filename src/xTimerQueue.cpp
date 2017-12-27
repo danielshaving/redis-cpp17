@@ -17,6 +17,7 @@ void xPriorityQueue::dtor()
 		zfree(p);
 	}
 }
+
 xPriorityQueue::~xPriorityQueue()
 {
 	dtor();
@@ -66,6 +67,7 @@ bool   xPriorityQueue::erase(xTimer *e)
 	}
 	return -1;
 }
+
 xTimer *xPriorityQueue::head()
 {
 	return p[0];
@@ -123,7 +125,6 @@ void xPriorityQueue::shiftDown(int hole_index, xTimer *e)
 }
 
 
-
 int createTimerfd()
 {
   int timerfd = ::timerfd_create(CLOCK_MONOTONIC,
@@ -151,8 +152,6 @@ struct timespec howMuchTimeFromNow(xTimestamp when)
 	  (microseconds % xTimestamp::kMicroSecondsPerSecond) * 1000);
 	return ts;
 }
-
-
 
 
 

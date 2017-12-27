@@ -1,6 +1,5 @@
 #include "xHiredis.h"
 
-
 static void __redisReaderSetError(const xRedisReaderPtr  &r, int type, const char *str)
 {
 	size_t len;
@@ -149,7 +148,7 @@ static const char * seekNewline(const char * s, size_t len)
 	/* Position should be < len-1 because the character at "pos" should be
 	 * followed by a \n. Note that strchr cannot be used because it doesn't
 	 * allow to search a limited length and the buffer that is being searched
-	 * might not have a trailing NULL character. */
+	 * might not have a trailing nullptr character. */
 	while (pos < _len)
 	{
 		while (pos < _len && s[pos] != '\r')
@@ -382,7 +381,7 @@ static char *nextArgument(char *start, char **str, size_t *len) {
         if (p == nullptr) return nullptr;
     }
 
-    *len = (int)strtol(p+1,NULL,10);
+    *len = (int)strtol(p+1,nullptr,10);
     p = strchr(p,'\r');
     assert(p);
     *str = p+2;
@@ -699,7 +698,7 @@ static int processItem(const xRedisReaderPtr & r)
 
 int redisReaderGetReply(const xRedisReaderPtr &r,void * *reply)
 {
-	/* Default target pointer to NULL. */
+	/* Default target pointer to nullptr. */
 	if (reply != nullptr)
 		*reply = nullptr;
 
@@ -899,11 +898,10 @@ int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, voi
 	redisCallback cb;
 	cb.fn = fn;
 	cb.privdata = privdata;
-
 	{
 		std::unique_lock<std::mutex> lk(ac->hiMutex);
 		ac->replies.push_back(std::move(cb));
-		ac->conn->sendPipe(stringPiepe(cmd,len));
+		ac->conn->sendPipe(cmd,len);
 	}
 	
    	return REDIS_OK;
@@ -1048,8 +1046,8 @@ int redisvFormatCommand(char * *target, const char * format, va_list ap)
 					/* Size: short */
 					if (_p[0] == 'h')
 					{
-						_p					+= 1;
-						if (*_p != '\0' && strchr(intfmts, *_p) != NULL)
+						_p	+= 1;
+						if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
 						{
 							va_arg(ap, int);	/* short gets promoted to int */
 							goto fmt_valid;
@@ -1059,9 +1057,9 @@ int redisvFormatCommand(char * *target, const char * format, va_list ap)
 					/* Size: long long */
 					if (_p[0] == 'l' && _p[1] == 'l')
 					{
-						_p					+= 2;
+						_p	+= 2;
 
-						if (*_p != '\0' && strchr(intfmts, *_p) != NULL)
+						if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
 						{
 							va_arg(ap, long long);
 							goto fmt_valid;
@@ -1073,7 +1071,7 @@ int redisvFormatCommand(char * *target, const char * format, va_list ap)
 					if (_p[0] == 'l')
 					{
 						_p					+= 1;
-						if (*_p != '\0' && strchr(intfmts, *_p) != NULL)
+						if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
 						{
 							va_arg(ap, long);
 							goto fmt_valid;
@@ -1114,7 +1112,7 @@ int redisvFormatCommand(char * *target, const char * format, va_list ap)
 	{
 		newargv = (char **)zrealloc(curargv, sizeof(char *) * (argc + 1));
 
-		if (newargv == NULL)
+		if (newargv == nullptr)
 			goto err;
 
 		curargv = newargv;
@@ -1154,13 +1152,11 @@ err:
 	zfree(curargv);
 	if (curarg != nullptr)
 		sdsfree(curarg);
-
 	if (cmd != nullptr)
 		zfree(cmd);
 	return - 1;
 
 }
-
 
 int redisAppendFormattedCommand(xRedisContextPtr c, const char *cmd, size_t len)
 {
@@ -1168,10 +1164,8 @@ int redisAppendFormattedCommand(xRedisContextPtr c, const char *cmd, size_t len)
 	{
 		return REDIS_ERR;
 	}
-
 	return REDIS_OK;
 }
-
 
 int redisFormatCommand(char **target, const char *format, ...)
 {
@@ -1180,12 +1174,10 @@ int redisFormatCommand(char **target, const char *format, ...)
     va_start(ap,format);
     len = redisvFormatCommand(target,format,ap);
     va_end(ap);
-
     /* The API says "-1" means bad result, but we now also return "-2" in some
      * cases.  Force the return value to always be -1. */
     if (len < 0)
         len = -1;
-
     return len;
 }
 
@@ -1196,7 +1188,12 @@ int redisvAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void
 	int status;
 	len = redisvFormatCommand(&cmd,format,ap);
 	status = __redisAsyncCommand(ac,fn,privdata,cmd,len);
-	zfree(cmd);
+
+	redisClusterCallback call;
+	call.data = cmd;
+	ac->clus.push_back(std::move(call));
+
+	//zfree(cmd);
 	return status;
 }
 
@@ -1210,22 +1207,17 @@ int redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void 
 	return status;
 }
 
-
 static void * __redisBlockForReply(const xRedisContextPtr & c)
 {
 	void * reply;
-
 	if (c->flags & REDIS_BLOCK)
 	{
 		if (redisGetReply(c, &reply) != REDIS_OK)
 			return nullptr;
-
 		return reply;
 	}
-
 	return nullptr;
 }
-
 
 int __redisAppendCommand(const xRedisContextPtr & c, const char * cmd, size_t len)
 {
@@ -1239,7 +1231,6 @@ int redisvAppendCommand(const xRedisContextPtr  & c, const char * format, va_lis
 	int len;
 
 	len = redisvFormatCommand(&cmd, format, ap);
-
 	if (len == -1)
 	{
 		 __redisSetError(c,REDIS_ERR_OOM,"Out of memory");
@@ -1281,15 +1272,12 @@ void * redisvCommand(const xRedisContextPtr & c, const char * format, va_list ap
 	  return __redisBlockForReply(c);
 }
 
-
-
 int redisFormatCommandArgv(char * *target, int argc, const char * *argv, const size_t * argvlen)
 {
 	char * cmd = nullptr; 					/* final command */
 	int pos;							/* position in final command */
 	size_t	len;
 	int totlen, j;
-
 	/* Calculate number of bytes needed for the command */
 	totlen = 1 + intlen(argc) + 2;
 
@@ -1298,13 +1286,10 @@ int redisFormatCommandArgv(char * *target, int argc, const char * *argv, const s
 		len = argvlen ? argvlen[j]: strlen(argv[j]);
 		totlen += bulklen(len);
 	}
-
 	/* Build the command at protocol level */
 	cmd = (char*)zmalloc(totlen + 1);
-
-	if (cmd == NULL)
+	if (cmd == nullptr)
 		return - 1;
-
 	pos = sprintf(cmd, "*%d\r\n", argc);
 
 	for (j = 0; j < argc; j++)
@@ -1319,16 +1304,17 @@ int redisFormatCommandArgv(char * *target, int argc, const char * *argv, const s
 
 	assert(pos == totlen);
 	cmd[pos] = '\0';
-
 	*target = cmd;
 	return totlen;
 }
 
 
 
-static uint32_t countDigits(uint64_t v) {
+static uint32_t countDigits(uint64_t v)
+{
   uint32_t result = 1;
-  for (;;) {
+  for (;;)
+  {
     if (v < 10) return result;
     if (v < 100) return result + 1;
     if (v < 1000) return result + 2;
@@ -1347,7 +1333,7 @@ int redisFormatSdsCommandArgv(sds *target, int argc, const char **argv,
     int j;
     size_t len;
 
-    /* Abort on a NULL target */
+    /* Abort on a nullptr target */
     if (target == nullptr)
         return -1;
 
@@ -1365,7 +1351,7 @@ int redisFormatSdsCommandArgv(sds *target, int argc, const char **argv,
 
     /* We already know how much storage we need */
     cmd = sdsMakeRoomFor(cmd, totlen);
-    if (cmd == NULL)
+    if (cmd == nullptr)
         return -1;
 
     /* Construct command */
@@ -1389,7 +1375,6 @@ int redisAppendCommandArgv(const xRedisContextPtr  & c, int argc, const char * *
 {
 	char * cmd;
 	int len;
-
 	len = redisFormatCommandArgv(&cmd, argc, argv, argvlen);
 
 	if (len == -1)
@@ -1481,7 +1466,7 @@ static int redisContextTimeoutMsec(const struct timeval *timeout, long *result)
 {
 	long msec = -1;
 
-	/* Only use timeout when not NULL. */
+	/* Only use timeout when not nullptr. */
 	if (timeout != nullptr) 
 	{
 		if (timeout->tv_usec > 1000000 || timeout->tv_sec > __MAX_MSEC) 
@@ -1580,30 +1565,23 @@ int redisContextConnectTcp(const xRedisContextPtr &c, const char *addr, int port
 	c->addr = addr;
 	c->port= port;
 	return REDIS_OK;
-	
-	
 }
-
 
 xRedisContextPtr redisConnect(const char *ip, int port)
 {
 	xRedisContextPtr c (new xRedisContext);
 	c->flags |= REDIS_BLOCK;
 	redisContextConnectTcp(c,ip,port,nullptr);
-
 	return c;
 }
 
 xRedisContextPtr  redisConnectWithTimeout(const char *ip, int port, const struct timeval tv)
 {
 	xRedisContextPtr c (new xRedisContext);
-	
 	c->flags |= REDIS_BLOCK;
 	redisContextConnectTcp(c,ip,port,&tv);
 	return c;	
 }
-
-
 
 xHiredisAsync::xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port)
 :connectCount(0),
@@ -1611,36 +1589,61 @@ loop(loop),
 pool(loop),
 clusterMode(false)
 {
-	if(threadCount > 1)
-	{
-		pool.setThreadNum(threadCount);
-	}
-
+	pool.setThreadNum(threadCount);
 	pool.start();
-
 	for(int i = 0; i < sessionCount; i++)
 	{
-		std::shared_ptr<xTcpClient> client(new xTcpClient(pool.getNextLoop(),nullptr));
+		xTcpClientPtr client(new xTcpClient(pool.getNextLoop(),(void*)(++count)));
+		tcpClients.push_back(client);
+		client->setConnectionErrorCallBack(std::bind(&xHiredisAsync::redisErrorConnCallBack,this,std::placeholders::_1));
 		client->setConnectionCallback(std::bind(&xHiredisAsync::redisConnCallBack,this,std::placeholders::_1,std::placeholders::_2));
 		client->setMessageCallback(std::bind(&xHiredisAsync::redisReadCallBack,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
 		client->connect(ip,port);
-		vectors.push_back(client);
 	}
 
 	{
 		std::unique_lock <std::mutex> lck(rtx);
-		while(connectCount  < sessionCount)
+		while(connectCount < sessionCount)
 		{
 			condition.wait(lck);
 		}
 	}
+
+	connectCount = 0;
 }
+
+
+
+void xHiredisAsync::clusterReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
+{
+
+}
+
+void xHiredisAsync::clusterConnCallBack(const xTcpconnectionPtr& conn,void *data)
+{
+
+}
+
+void xHiredisAsync::redisErrorConnCallBack(void *data)
+{
+    std::unique_lock <std::mutex> lck(rtx);
+    tcpClients.clear();
+}
+
+
+
+void xHiredisAsync::clusterErrorConnCallBack(void *data)
+{
+    std::unique_lock <std::mutex> lck(rtx);
+    tcpClients.clear();
+}
+
 
 void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
 {
 	xRedisAsyncContextPtr redis;
 	{
-		std::unique_lock <std::mutex> lck(rmutex);
+		std::unique_lock <std::mutex> lck(rtx);
 		auto it = redisMaps.find(conn->getSockfd());
 		assert(it != redisMaps.end());
 		redis = it->second;
@@ -1656,13 +1659,8 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 			 break;
 		 }
 
-		 {
-			 std::unique_lock<std::mutex> lk(redis->hiMutex);
-			 cb = std::move(redis->replies.front());
-			 redis->replies.pop_front();
-		 }
 
-		 if(clusterMode && reply->type == REDIS_REPLY_ERROR && (!strncmp(reply->str,"MOVED",5) || !strcmp(reply->str,"ASK") ))
+		 if(clusterMode && reply->type == REDIS_REPLY_ERROR && (!strncmp(reply->str,"MOVED",5)))
 		 {	
 			char *p = reply->str, *s;
 			int slot;
@@ -1677,8 +1675,17 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 			int port = atoi(s+1);			
 			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<*ip<<" "<<port;
 			sdsfree(ip);
+			continue;
 		 }
-		
+
+		 {
+			 std::unique_lock<std::mutex> lk(redis->hiMutex);
+			 cb = std::move(redis->replies.front());
+			 redis->replies.pop_front();
+             zfree(redis->clus.front().data);
+             redis->clus.pop_front();
+		 }
+
 
 		 if(cb.fn)
 		 {
@@ -1687,38 +1694,47 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 
 		 redis->c->reader->fn->freeObjectFuc(reply);
 
+
 	 }
 
 }
 
 void xHiredisAsync::redisConnCallBack(const xTcpconnectionPtr& conn,void *data)
 {
+
 	if(conn->connected())
 	{
 		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
 		ac->c->reader->buf = &(conn->recvBuff);
 		ac->conn = conn;
 		ac->c->fd = conn->getSockfd();
-
 		{
-			std::unique_lock<std::mutex> lk(rmutex);
+			std::unique_lock<std::mutex> lk(rtx);
 			redisMaps.insert(std::make_pair(conn->getSockfd(),ac));
-		}
-
-		{
-			std::unique_lock <std::mutex> lck(rtx);
 			connectCount++;
-			condition.notify_one();
-		}
+	        condition.notify_one();
+	   	}
 
 	}
 	else
 	{
-		{
-			std::unique_lock<std::mutex> lk(rmutex);
-			redisMaps.erase(conn->getSockfd());
-		}
+	    int c = *(int*)data;
+		std::unique_lock<std::mutex> lk(rtx);
+		redisMaps.erase(conn->getSockfd());
+
+		for(auto it = tcpClients.begin(); it != tcpClients.end(); ++it)
+        {
+            if( *(int*)(*it)->data == c)
+            {
+                tcpClients.erase(it);
+                break;
+            }
+
+        }
+
+        tcpMaps.erase(conn->getSockfd());
 	}
+
 
 }
 

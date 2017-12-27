@@ -9,7 +9,7 @@
 
 class xRedisAsyncContext;
 typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, void*, void*);
-typedef struct redisReply 
+typedef struct redisReply :noncopyable
 {
     int type;
     long long integer;
@@ -20,7 +20,7 @@ typedef struct redisReply
 } redisReply;
 
 
-typedef struct redisReadTask
+typedef struct redisReadTask:noncopyable
 {
     int type;
     int elements;
@@ -39,7 +39,7 @@ void * createNil(const redisReadTask * task);
 void freeReply(void *reply);
 
 
-typedef struct redisReplyObjectFunctions
+typedef struct redisReplyObjectFunctions:noncopyable
 {
 	redisReplyObjectFunctions()
 	{
@@ -91,7 +91,13 @@ typedef struct redisCallback
     void *privdata;
 } redisCallback;
 
+typedef struct redisClusterCallback
+{
+	char * data;
+};
+
 typedef std::list<redisCallback> RedisCallbackList;
+typedef std::list<redisClusterCallback> RedisClusterCallbackList;
 
 class xRedisContext: noncopyable
 {
@@ -102,6 +108,7 @@ public:
 		sender =  std::shared_ptr<xBuffer>(new xBuffer());
 		reader = std::shared_ptr<xRedisReader>(new xRedisReader());
 	}
+
 	~xRedisContext()
 	{
 		if(fd > 0)
@@ -139,46 +146,62 @@ public:
 		data = nullptr;
 		c->flags &= ~REDIS_CONNECTED;
 	}
+
 	~xRedisAsyncContext()
 	{
 		if(conn != nullptr)
 		{
 			conn->forceClose();
 		}
+
+		for(auto it = clus.begin(); it != clus.end(); ++it)
+		{
+			zfree((*it).data);
+		}
 	}
+
 	int err;
 	char *errstr;
 	void *data;
 	xRedisContextPtr c;
 	xTcpconnectionPtr conn;
 	RedisCallbackList replies;
+	RedisClusterCallbackList clus;
 	std::mutex hiMutex;
+
 	struct
 	{
 		RedisCallbackList invalid;
-		std::map<rObj *,redisCallback> channels;
-		std::map<rObj *,redisCallback> patterns;
+		std::unordered_map<rObj *,redisCallback> channels;
+		std::unordered_map<rObj *,redisCallback> patterns;
 	}sub;
 };
 
-
-
-class  xHiredisAsync
+class  xHiredisAsync:noncopyable
 {
 public:
 	xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port);
 	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	void redisConnCallBack(const xTcpconnectionPtr& conn,void *data);
+    void redisErrorConnCallBack(void *data);
+
+	void clusterReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
+	void clusterConnCallBack(const xTcpconnectionPtr& conn,void *data);
+	void clusterErrorConnCallBack(void *data);
+
+
 public:
+
 	int connectCount;
 	xEventLoop *loop;
 	xThreadPool pool;
-	std::vector<std::shared_ptr<xTcpClient>> vectors;
-	std::map<int32_t,xRedisAsyncContextPtr> redisMaps;
-	std::mutex rmutex;
+    std::deque<xTcpClientPtr> tcpClients;
+	std::unordered_map<int32_t,xRedisAsyncContextPtr> redisMaps;
+	std::unordered_map<int32_t,xTcpClientPtr> tcpMaps;
 	std::mutex rtx;
 	std::condition_variable condition;
 	bool clusterMode;
+	std::atomic<int> count;
 };
 
 

@@ -9,7 +9,7 @@
 
 unsigned int dictGenHashFunction(const void *key, int len) ;
 unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len);
-typedef struct redisObject 
+typedef struct redisObject:noncopyable
 {		
 	void calHash()
 	{
@@ -22,7 +22,7 @@ typedef struct redisObject
 	char *ptr;
 } rObj;
 
-typedef struct redisSortObject
+typedef struct redisSortObject:noncopyable
 {
 	bool operator <(const redisSortObject & r) const
 	{	
