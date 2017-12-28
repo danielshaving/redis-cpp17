@@ -640,12 +640,12 @@ public:
         zaddGeneric(start, end, true, result);
     }
 
-    void zrange_withscores(long start, long end, KeyScoreVecType &result)
+    void zrangeWithscores(long start, long end, KeyScoreVecType &result)
     {
         zrangeWithscoresGeneric(start, end, false, result);
     }
 
-    void zrevrange_withscores(long start, long end, KeyScoreVecType &result)
+    void zrevrangeWithscores(long start, long end, KeyScoreVecType &result)
     {
         zrangeWithscoresGeneric(start, end, true, result);
     }
@@ -660,14 +660,14 @@ public:
         zrangebyscoreGeneric(min, max, true, result, minex, maxex);
     }
 
-    void zrangebyscore_withscores(double min, double max, KeyScoreVecType &result, bool minex = false, bool maxex = false)
+    void zrangebyscoreWithscores(double min, double max, KeyScoreVecType &result, bool minex = false, bool maxex = false)
     {
-        zrangebyscoreWithscoresGeneric(min, max, false, result, minex, maxex);
+    	zrangebyscoreWithscoresGeneric(min, max, false, result, minex, maxex);
     }
 
-    void zrevrangebyscore_withscores(double min, double max, KeyScoreVecType &result, bool minex = false, bool maxex = false)
+    void zrevrangebyscoreWithscores(double min, double max, KeyScoreVecType &result, bool minex = false, bool maxex = false)
     {
-        zrangebyscoreWithscoresGeneric(min, max, true, result, minex, maxex);
+    	zrangebyscoreWithscoresGeneric(min, max, true, result, minex, maxex);
     }
 
     unsigned long zcount(double min, double max, bool minex = false, bool maxex = false)

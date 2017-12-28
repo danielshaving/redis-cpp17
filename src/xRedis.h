@@ -14,6 +14,7 @@
 #include "xSentinel.h"
 #include "xCluster.h"
 #include "xRdb.h"
+#include "xSortSet.h"
 
 class xRedis : noncopyable
 {
@@ -107,6 +108,7 @@ public:
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
 	typedef std::unordered_map<rObj*, std::deque<rObj*>, Hash, Equal> ListMap;
+	typedef std::unordered_map<rObj*,xSortedSet<rObj*,Hash,Equal>> SortedSet;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
 
 	struct SetMapLock
@@ -133,12 +135,18 @@ public:
 		mutable std::mutex mtx;
 	};
 
+	struct SortSet
+	{
+		SortedSet set;
+		mutable std::mutex mtx;
+	};
 
 	const static int kShards = 4096;
 	std::array<SetMapLock, kShards> setMapShards;
 	std::array<HsetMapLock, kShards> hsetMapShards;
 	std::array<ListMapLock, kShards> listMapShards;
 	std::array<SetLock, kShards> setShards;
+	std::array<SortSet,kShards> sortShards;
 
 	xEventLoop loop;
 	xTcpServer server;

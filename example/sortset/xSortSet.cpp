@@ -16,17 +16,17 @@ int main()
 
     std::vector< std::pair<int, double> > result;
 
-    sortedSet.zrange_withscores(0, -1, result);
+    sortedSet.zrangeWithscores(0, -1, result);
     std::for_each(result.begin(), result.end(), echo_ranking);
     std::cout << std::endl;
 
     sortedSet.zadd(300004, 40);
-    sortedSet.zrange_withscores(0, -1, result);
+    sortedSet.zrangeWithscores(0, -1, result);
     std::for_each(result.begin(), result.end(), echo_ranking);
     std::cout << std::endl;
 
     sortedSet.zadd(300005, 40);
-    sortedSet.zrange_withscores(0, -1, result);
+    sortedSet.zrangeWithscores(0, -1, result);
     std::for_each(result.begin(), result.end(), echo_ranking);
     std::cout << std::endl;
 
@@ -34,12 +34,12 @@ int main()
     std::cout << std::endl;
 
     sortedSet.zrem(300005);
-    sortedSet.zrange_withscores(0, -1, result);
+    sortedSet.zrangeWithscores(0, -1, result);
     std::for_each(result.begin(), result.end(), echo_ranking);
     std::cout << std::endl;
 
     sortedSet.zincrby(300004, 500);
-    sortedSet.zrange_withscores(0, -1, result);
+    sortedSet.zrangeWithscores(0, -1, result);
     std::for_each(result.begin(), result.end(), echo_ranking);
     std::cout << std::endl;
 
@@ -59,16 +59,16 @@ int main()
         std::cout << "nil" << std::endl;
     std::cout << std::endl;
 
-    sortedSet.zrevrange_withscores(0, 1, result);
+    sortedSet.zrevrangeWithscores(0, 1, result);
     std::for_each(result.begin(), result.end(), echo_ranking);
     std::cout << std::endl;
 
-    sortedSet.zrangebyscore_withscores(300, 1000, result);
+    sortedSet.zrangebyscoreWithscores(300, 1000, result);
     std::for_each(result.begin(), result.end(), echo_ranking);
     std::cout << std::endl;
 
     sortedSet.zremrangebyrank(1, 2);
-    sortedSet.zrange_withscores(0, -1, result);
+    sortedSet.zrangeWithscores(0, -1, result);
     std::for_each(result.begin(), result.end(), echo_ranking);
     std::cout << std::endl;
 	return 0;

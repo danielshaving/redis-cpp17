@@ -1871,7 +1871,6 @@ bool xRedis::hgetCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 	
-
 	size_t hash= obj[0]->hash;
 	std::mutex &mu = hsetMapShards[hash% kShards].mtx;
 	auto &hsetMap = hsetMapShards[hash% kShards].hsetMap;
@@ -1898,26 +1897,10 @@ bool xRedis::hgetCommand(const std::deque <rObj*> & obj,xSession * session)
 	return true;
 }
 
-
-
-
 void xRedis::clear()
 {
-	for(auto it = handlerCommandMap.begin(); it != handlerCommandMap.end(); ++it)
-	{
-		zfree(it->first);
-	}
-
 	handlerCommandMap.clear();
-
-
-	for(auto it = unorderedmapCommands.begin(); it != unorderedmapCommands.end(); ++it)
-	{
-		zfree(*it);
-	}
-
 	unorderedmapCommands.clear();
-
 }
 
 void xRedis::clearCommand()
