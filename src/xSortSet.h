@@ -265,7 +265,7 @@ private:
         {
             xSkipListNode *next = x->slevel[0].forward;
             deleteNode(x, update);
-            mDict.erase(x->mKey);
+            dict.erase(x->mKey);
             zfree(x);
             //delete x;
             removed++;
@@ -299,7 +299,7 @@ private:
         {
             xSkipListNode *next = x->slevel[0].forward;
             deleteNode(x, update);
-            mDict.erase(x->mKey);
+            dict.erase(x->mKey);
             zfree(x);
             removed++;
             traversed++;
@@ -360,8 +360,8 @@ private:
 
     void zaddGeneric(KeyType key, double score, bool incr)
     {
-        DictTypeIterator it = mDict.find(key);
-        if (it != mDict.end())
+        DictTypeIterator it = dict.find(key);
+        if (it != dict.end())
         {
             double curscore = it->second;
             if (incr)
@@ -372,13 +372,13 @@ private:
             {
                 erase(curscore, key);
                 insert(score, key);
-                mDict[key] = score;
+                dict[key] = score;
             }
         }
         else
         {
             insert(score, key);
-            mDict[key] = score;
+            dict[key] = score;
         }
     }
 
@@ -564,8 +564,8 @@ private:
     bool zrankGeneric(KeyType key, bool reverse, unsigned long &rank)
     {
         unsigned long llen = length();
-        DictTypeIterator it = mDict.find(key);
-        if (it != mDict.end())
+        DictTypeIterator it = dict.find(key);
+        if (it != dict.end())
         {
             double score = it->second;
             rank = getRank(score, key);
@@ -598,12 +598,12 @@ public:
 
     void zrem(KeyType key)
     {
-        DictTypeIterator it = mDict.find(key);
-        if (it != mDict.end())
+        DictTypeIterator it = dict.find(key);
+        if (it != dict.end())
         {
             double score = it->second;
             erase(score, key);
-            mDict.erase(it);
+            dict.erase(it);
         }
     }
 
@@ -706,8 +706,8 @@ public:
 
     bool zscore(KeyType key, double &score)
     {
-        DictTypeConstIterator it = mDict.find(key);
-        if (it != mDict.end())
+        DictTypeConstIterator it = dict.find(key);
+        if (it != dict.end())
         {
             score = it->second;
             return true;
@@ -729,7 +729,7 @@ public:
     }
 
 public:
-    xSortedSet():tail(nullptr), slength(0), slevel(1), mDict()
+    xSortedSet():tail(nullptr), slength(0), slevel(1), dict()
     {
 
         header = (xSkipListNode*)zmalloc(sizeof(xSkipListNode));
@@ -814,6 +814,6 @@ private:
     unsigned long slength;
     int slevel;
     /* Data structure for the Dict */
-    DictType mDict;
+    DictType dict;
 };
 

@@ -93,6 +93,10 @@ typedef struct redisCallback
 
 typedef struct redisClusterCallback
 {
+	redisClusterCallback()
+	{
+		data = nullptr;
+	}
 	char * data;
 };
 
@@ -156,7 +160,11 @@ public:
 
 		for(auto it = clus.begin(); it != clus.end(); ++it)
 		{
-			zfree((*it).data);
+			if((*it).data)
+			{
+				zfree((*it).data);
+			}
+
 		}
 	}
 
@@ -177,6 +185,7 @@ public:
 	}sub;
 };
 
+
 class  xHiredisAsync:noncopyable
 {
 public:
@@ -186,22 +195,21 @@ public:
     void redisErrorConnCallBack(void *data);
 
 	void clusterReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
-	void clusterConnCallBack(const xTcpconnectionPtr& conn,void *data);
+	void clusterAskConnCallBack(const xTcpconnectionPtr& conn,void *data);
+	void clusterMoveConnCallBack(const xTcpconnectionPtr& conn,void *data);
 	void clusterErrorConnCallBack(void *data);
 
-
 public:
-
-	int connectCount;
+	std::atomic<int> connectCount;
 	xEventLoop *loop;
 	xThreadPool pool;
-    std::deque<xTcpClientPtr> tcpClients;
+    std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;
 	std::unordered_map<int32_t,xRedisAsyncContextPtr> redisMaps;
-	std::unordered_map<int32_t,xTcpClientPtr> tcpMaps;
+	std::unordered_map<int32_t,redisClusterCallback> clusterMaps;
 	std::mutex rtx;
 	std::condition_variable condition;
 	bool clusterMode;
-	std::atomic<int> count;
+	int count;
 };
 
 

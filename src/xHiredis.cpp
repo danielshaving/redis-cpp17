@@ -1191,6 +1191,8 @@ int redisvAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void
 
 	redisClusterCallback call;
 	call.data = cmd;
+
+	std::unique_lock<std::mutex> lk(ac->hiMutex);
 	ac->clus.push_back(std::move(call));
 
 	//zfree(cmd);
@@ -1587,14 +1589,15 @@ xHiredisAsync::xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,
 :connectCount(0),
 loop(loop),
 pool(loop),
-clusterMode(false)
+clusterMode(false),
+count(0)
 {
 	pool.setThreadNum(threadCount);
 	pool.start();
 	for(int i = 0; i < sessionCount; i++)
 	{
 		xTcpClientPtr client(new xTcpClient(pool.getNextLoop(),(void*)(++count)));
-		tcpClients.push_back(client);
+		tcpClientMaps.insert(std::make_pair(count,client));
 		client->setConnectionErrorCallBack(std::bind(&xHiredisAsync::redisErrorConnCallBack,this,std::placeholders::_1));
 		client->setConnectionCallback(std::bind(&xHiredisAsync::redisConnCallBack,this,std::placeholders::_1,std::placeholders::_2));
 		client->setMessageCallback(std::bind(&xHiredisAsync::redisReadCallBack,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
@@ -1619,23 +1622,77 @@ void xHiredisAsync::clusterReadCallBack(const xTcpconnectionPtr& conn, xBuffer* 
 
 }
 
-void xHiredisAsync::clusterConnCallBack(const xTcpconnectionPtr& conn,void *data)
+
+void xHiredisAsync::clusterMoveConnCallBack(const xTcpconnectionPtr& conn,void *data)
+{
+	if(conn->connected())
+	{
+		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
+		ac->c->reader->buf = &(conn->recvBuff);
+		ac->conn = conn;
+		ac->c->fd = conn->getSockfd();
+		{
+			std::unique_lock<std::mutex> lk(rtx);
+			redisMaps.insert(std::make_pair(conn->getSockfd(),ac));
+		}
+	}
+	else
+	{
+		std::unique_lock<std::mutex> lk(rtx);
+		redisMaps.erase(conn->getSockfd());
+		tcpClientMaps.erase(*(int*)data);
+	}
+}
+
+
+static void getAskCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 {
 
+}
+
+
+void xHiredisAsync::clusterAskConnCallBack(const xTcpconnectionPtr& conn,void *data)
+{
+	if(conn->connected())
+	{
+		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
+		ac->c->reader->buf = &(conn->recvBuff);
+		ac->conn = conn;
+		ac->c->fd = conn->getSockfd();
+		{
+			std::unique_lock<std::mutex> lk(rtx);
+			redisMaps.insert(std::make_pair(conn->getSockfd(),ac));
+		}
+
+		redisAsyncCommand(ac,getAskCallback,nullptr,"ASKING");
+	}
+	else
+	{
+		std::unique_lock<std::mutex> lk(rtx);
+		redisMaps.erase(conn->getSockfd());
+		tcpClientMaps.erase(*(int*)data);
+	}
 }
 
 void xHiredisAsync::redisErrorConnCallBack(void *data)
 {
-    std::unique_lock <std::mutex> lck(rtx);
-    tcpClients.clear();
+	LOG_WARN<<"connect failure";
+	std::unique_lock<std::mutex> lk(rtx);
+	tcpClientMaps.erase( *(int*)data);
 }
-
-
 
 void xHiredisAsync::clusterErrorConnCallBack(void *data)
 {
-    std::unique_lock <std::mutex> lck(rtx);
-    tcpClients.clear();
+	LOG_WARN<<"connect failure";
+	std::unique_lock<std::mutex> lk(rtx);
+	tcpClientMaps.erase(*(int*)data);
+	auto it = clusterMaps.find(*(int*)data);
+	if(it != clusterMaps.end())
+	{
+		zfree(it->second.data);
+		clusterMaps.erase(it);
+	}
+
 }
 
 
@@ -1659,8 +1716,7 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 			 break;
 		 }
 
-
-		 if(clusterMode && reply->type == REDIS_REPLY_ERROR && (!strncmp(reply->str,"MOVED",5)))
+		 if(clusterMode && reply->type == REDIS_REPLY_ERROR && (!strncmp(reply->str,"MOVED",5) || (!strncmp(reply->str,"ASK",3))))
 		 {	
 			char *p = reply->str, *s;
 			int slot;
@@ -1674,18 +1730,46 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 			char *ip = sdsnew(p+1);
 			int port = atoi(s+1);			
 			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<*ip<<" "<<port;
+			redisClusterCallback call;
+			{
+				std::unique_lock<std::mutex> lk(redis->hiMutex);
+				assert(!redis->clus.empty());
+				call.data = redis->clus.front().data;
+				redis->clus.pop_front();
+			}
+
+			std::unique_lock<std::mutex> lk(rtx);
+			++count;
+			xTcpClientPtr client(new xTcpClient(pool.getNextLoop(),(void*)count));
+			tcpClientMaps.insert(std::make_pair(count,client));
+			clusterMaps.insert(std::make_pair(count,std::move(call)));
+			lk.unlock();
+
+			client->setConnectionErrorCallBack(std::bind(&xHiredisAsync::clusterErrorConnCallBack,this,std::placeholders::_1));
+			client->setMessageCallback(std::bind(&xHiredisAsync::redisReadCallBack,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+			if(!strncmp(reply->str,"MOVED",5))
+			{
+				client->setConnectionCallback(std::bind(&xHiredisAsync::clusterMoveConnCallBack,this,std::placeholders::_1,std::placeholders::_2));
+			}
+			else if(!strncmp(reply->str,"ASK",3))
+			{
+				client->setConnectionCallback(std::bind(&xHiredisAsync::clusterAskConnCallBack,this,std::placeholders::_1,std::placeholders::_2));
+			}
+
+			client->connect(ip,port);
+
 			sdsfree(ip);
 			continue;
 		 }
 
 		 {
 			 std::unique_lock<std::mutex> lk(redis->hiMutex);
+			 assert(!redis->replies.empty());
 			 cb = std::move(redis->replies.front());
 			 redis->replies.pop_front();
-             zfree(redis->clus.front().data);
+			 zfree(redis->clus.front().data);
              redis->clus.pop_front();
 		 }
-
 
 		 if(cb.fn)
 		 {
@@ -1693,15 +1777,12 @@ void xHiredisAsync::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* re
 		 }
 
 		 redis->c->reader->fn->freeObjectFuc(reply);
-
-
 	 }
 
 }
 
 void xHiredisAsync::redisConnCallBack(const xTcpconnectionPtr& conn,void *data)
 {
-
 	if(conn->connected())
 	{
 		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
@@ -1711,28 +1792,16 @@ void xHiredisAsync::redisConnCallBack(const xTcpconnectionPtr& conn,void *data)
 		{
 			std::unique_lock<std::mutex> lk(rtx);
 			redisMaps.insert(std::make_pair(conn->getSockfd(),ac));
-			connectCount++;
-	        condition.notify_one();
 	   	}
 
+		connectCount++;
+		condition.notify_one();
 	}
 	else
 	{
-	    int c = *(int*)data;
 		std::unique_lock<std::mutex> lk(rtx);
 		redisMaps.erase(conn->getSockfd());
-
-		for(auto it = tcpClients.begin(); it != tcpClients.end(); ++it)
-        {
-            if( *(int*)(*it)->data == c)
-            {
-                tcpClients.erase(it);
-                break;
-            }
-
-        }
-
-        tcpMaps.erase(conn->getSockfd());
+		tcpClientMaps.erase( *(int*)data);
 	}
 
 
