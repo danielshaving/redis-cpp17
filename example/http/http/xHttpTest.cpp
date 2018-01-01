@@ -100,16 +100,9 @@ void onMessage(const xTcpconnectionPtr& conn, xBuffer* buf, void * data)
 		resp.appendToBuffer(&sendBuf);
 		conn->send(&sendBuf);
 	}
-
-
 	conn->shutdown();
 	buf->retrieveAll();
-
 }
-
-
-
-
 
 int main(int argc, char* argv[])
 {
@@ -131,7 +124,6 @@ int main(int argc, char* argv[])
 
 	xEventLoop loop;
 	xTcpServer server;
-	signal(SIGPIPE, SIG_IGN);
 	server.init(&loop,ip,port,nullptr);
 	server.setConnectionCallback(onConnection);
 	server.setMessageCallback(onMessage);

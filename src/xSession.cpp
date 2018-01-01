@@ -71,7 +71,6 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
         sendBuf.retrieveAll();
     }
 
-
     if(sendPubSub.readableBytes() > 0 )
     {
         for(auto it = pubSubTcpconn.begin(); it != pubSubTcpconn.end(); ++it)
@@ -82,8 +81,6 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
         pubSubTcpconn.clear();
         sendPubSub.retrieveAll();
     }
-
-
 
     if(redis->repliEnabled)
     {

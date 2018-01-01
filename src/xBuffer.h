@@ -1,8 +1,6 @@
 #pragma once
 
-
 #include "all.h"
-using namespace std;
 
 class xBuffer:noncopyable
 {
@@ -131,15 +129,15 @@ class xBuffer:noncopyable
 
   }
 
-  string retrieveAllAsString()
+  std::string retrieveAllAsString()
   {
     return retrieveAsString(readableBytes());;
   }
 
-  string retrieveAsString(size_t len)
+  std::string retrieveAsString(size_t len)
   {
     assert(len <= readableBytes());
-    string result(peek(), len);
+    std::string result(peek(), len);
     retrieve(len);
     return result;
   }

@@ -2,7 +2,6 @@
 
 #include "all.h"
 
-
 namespace   xCurrentThread
 {
 	extern __thread int t_cachedTid;

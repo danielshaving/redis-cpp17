@@ -6,8 +6,6 @@
 #include "xCurrentThread.h"
 #include "xLog.h"
 
-
-
 void onConnection(const xTcpconnectionPtr& conn,void * data)
 {
 	if (conn->connected())

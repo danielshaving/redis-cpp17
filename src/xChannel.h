@@ -2,7 +2,6 @@
 
 #include "all.h"
 
-
 class xEventLoop;
 
 class xChannel: noncopyable

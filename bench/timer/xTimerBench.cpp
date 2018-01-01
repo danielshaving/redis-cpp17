@@ -38,7 +38,7 @@ int main(int argc,char* argv[])
 
 	xEventLoop loop;
 	xTcpServer server;
-	server.init(&loop,"127.0.0.1",6378,nullptr);
+	server.init(&loop,"127.0.0.1",6378,nullptr);
 
 	xTimestamp start(xTimestamp::now());
 	for(int i = 0; i < num; i++)

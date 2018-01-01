@@ -3,7 +3,6 @@
 #include "all.h"
 
 class xEventLoop;
-
 class xThread: noncopyable
 {
 public:

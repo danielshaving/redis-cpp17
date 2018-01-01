@@ -1,4 +1,6 @@
 #pragma once
+#include <inttypes.h>
+#include <fstream>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -343,12 +345,9 @@
 #define CLUSTER_REDIR_DOWN_STATE 5    /* -CLUSTERDOWN, global state. */
 #define CLUSTER_REDIR_DOWN_UNBOUND 6  /* -CLUSTERDOWN, unbound slot. */
 
-
 #define CLUSTER_SYNC 0
 #define CLUSTER_SYNCING  1
 #define CLUSTER_SYNCED 2
-
-
 #define sdsEncodedObject(objptr) (objptr->encoding == REDIS_ENCODING_RAW || objptr->encoding == REDIS_ENCODING_EMBSTR)
 
 class noncopyable
@@ -360,23 +359,19 @@ class noncopyable
   noncopyable& operator =(const noncopyable&);
 };
 
-
-
 class stringArg
 {
 public:
 	stringArg(const char * str)
 	:str(str)
 	{
-	
-	}
 
+	}
 	stringArg(const std::string & str)
 	:str(str.c_str())
 	{
-		
-	}
 
+	}
 	const char * c_str() const { return str; }
 private:
 	const char * str;
@@ -387,7 +382,7 @@ class stringPiece
 {
  public:
 	stringPiece()
-	: ptr(NULL), length(0) { }
+	: ptr(nullptr), length(0) { }
 	stringPiece(const char* str)
 	: ptr(str), length(static_cast<int>(strlen(ptr))) { }
 	stringPiece(const unsigned char* str)
@@ -397,13 +392,13 @@ class stringPiece
 	: ptr(str.data()), length(static_cast<int>(str.size())) { }
 	stringPiece(const char* offset, int length)
 	: ptr(offset), length(length) { }
-	
+
 	std::string as_string() const { return std::string(data(),size());}
 	const char* ptr;
 	int length;
 
 	bool empty() const { return length == 0; }
-	
+
 	const char * begin() const  { return ptr; }
 	const char * end() const { return ptr + length; }
 	int size() const { return length; }
@@ -422,20 +417,20 @@ class stringPiece
 
 	void clear() { ptr = nullptr; length = 0; }
 	void set(const char* buffer, int len) { ptr = buffer; length = len; }
-	void set(const char* str) 
+	void set(const char* str)
 	{
 		ptr = str;
 		length = static_cast<int>(strlen(str));
 	}
-	void set(const void* buffer, int len) 
+	void set(const void* buffer, int len)
 	{
 		ptr = reinterpret_cast<const char*>(buffer);
 		length = len;
 	}
 
   	char operator[](int i) const { return ptr[i]; }
-  
-	
+
+
 	bool operator==(const stringPiece& x) const
 	{
 	  	 return ((length == x.length) &&
@@ -454,12 +449,10 @@ class stringPiece
 			if (length < x.length) r = -1;
 			else if (length > x.length) r = +1;
 		}
-		
+
 		return r;
 	}
-	 
-
-	void copyToString(std::string* target) const 
+	void copyToString(std::string* target) const
 	{
 		target->assign(ptr, length);
 	}
@@ -468,8 +461,6 @@ class stringPiece
 	{
 		return ((length >= x.length) && (memcmp(ptr, x.ptr, x.length) == 0));
 	}
-	  
+
 };
-
-
 
