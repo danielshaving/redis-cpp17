@@ -131,7 +131,7 @@ void sortShards(const int buckets)
 class xSource  // copyable
 {
  public:
-  xSource(const std::shared_ptr<std::istream> &in)
+  xSource(std::istream *in)
     : in(in),
       count(0)
   {
@@ -140,7 +140,7 @@ class xSource  // copyable
   bool next()
   {
     std::string line;
-    if (getline(*(in.get()), line))
+    if (getline(*in, line))
     {
       size_t tab = line.find('\t');
       if (tab != std::string::npos)
@@ -167,7 +167,7 @@ class xSource  // copyable
   }
 
  private:
-  std::shared_ptr<std::istream> in;
+  std::istream  *in;
   int64_t count;
   std::string word;
 };
@@ -184,7 +184,7 @@ void merge(const int buckets)
 		snprintf(buf, sizeof buf, "count-%05d-of-%05d", i, buckets);
 		std::shared_ptr<std::ifstream> shif (new std::ifstream(buf));
 		inputs.push_back(shif);
-		xSource rec(inputs.back());
+		xSource rec(inputs.back().get());
 		if (rec.next())
 		{
 			keys.push_back(rec);
@@ -210,7 +210,6 @@ void merge(const int buckets)
 	}
 	std::cout << "merging done\n";
 }
-
 
 int main(int argc, char* argv[])
 {
