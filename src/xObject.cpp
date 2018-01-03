@@ -14,7 +14,7 @@ int string2ll(const char * s,size_t slen, long long * value)
         return 0;
 
     if (slen == 1 && p[0] == '0') {
-        if (value != NULL) *value = 0;
+        if (value != nullptr) *value = 0;
         return 1;
     }
 
@@ -54,11 +54,11 @@ int string2ll(const char * s,size_t slen, long long * value)
     if (negative) {
         if (v > ((unsigned long long)(-(LLONG_MIN+1))+1))
             return 0;
-        if (value != NULL) *value = -v;
+        if (value != nullptr) *value = -v;
     } else {
         if (v > LLONG_MAX) /* Overflow. */
             return 0;
-        if (value != NULL) *value = v;
+        if (value != nullptr) *value = v;
     }
     return 1;
 
@@ -88,8 +88,6 @@ int ll2string(char *s, size_t len, long long value)
 }
 
 
-
-
 rObj * createObject(int type, void *ptr)
 {
 	rObj * o = (rObj*)zmalloc(sizeof(rObj));
@@ -99,7 +97,8 @@ rObj * createObject(int type, void *ptr)
 }
 
 
-int getLongLongFromObject(rObj *o, long long   *target) {
+int getLongLongFromObject(rObj *o, long long   *target)
+{
 	long long   value;
 
 	if (o == nullptr) {
@@ -107,11 +106,13 @@ int getLongLongFromObject(rObj *o, long long   *target) {
 	}
 	else {
 
-		if (sdsEncodedObject(o)) {
+		if (sdsEncodedObject(o))
+		{
 			if (string2ll(o->ptr, sdslen(o->ptr), &value) == 0) return REDIS_ERR;
 		}
-		else {
-			LOG_ERROR << "Unknown string encoding";
+		else
+		{
+			LOG_WARN << "Unknown string encoding";
 		}
 	}
 	if (target) *target = value;
@@ -125,7 +126,7 @@ int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, co
 {
     long long value;
     if (getLongLongFromObject(o, &value) != REDIS_OK) {
-        if (msg != NULL) {
+        if (msg != nullptr) {
             addReplyError(sendBuf,(char*)msg);
         } else {
             addReplyError(sendBuf,"value is not an integer or out of range");
@@ -168,7 +169,7 @@ rObj *createStringObjectFromLongLong(long long value)
 	{
 		if(value >= LONG_MIN && value <= LONG_MAX)
 		{
-			o = createObject(REDIS_STRING, NULL);
+			o = createObject(REDIS_STRING, nullptr);
             o->encoding = REDIS_ENCODING_INT;
             o->ptr = (char*)value;
 		}
@@ -179,6 +180,65 @@ rObj *createStringObjectFromLongLong(long long value)
 	}
 	return o;
 }
+
+
+
+int getDoubleFromObjectOrReply(xBuffer  &sendBuf, rObj *o, double *target, const char *msg)
+{
+    double value;
+    if (getDoubleFromObject(o, &value) != REDIS_OK)
+    {
+        if (msg != nullptr)
+        {
+            addReplyError(sendBuf,(char*)msg);
+        }
+        else
+        {
+            addReplyError(sendBuf,"value is not a valid float");
+        }
+        return REDIS_ERR;
+    }
+    *target = value;
+    return REDIS_OK;
+}
+
+
+int getDoubleFromObject(const rObj *o, double *target)
+{
+    double value;
+    char *eptr;
+
+    if (o == nullptr)
+    {
+        value = 0;
+    }
+    else
+    {
+        if (sdsEncodedObject(o))
+        {
+            errno = 0;
+            value = strtod(o->ptr, &eptr);
+            if (isspace(((const char*)o->ptr)[0]) ||
+                eptr[0] != '\0' ||
+                (errno == ERANGE &&
+                    (value == HUGE_VAL || value == -HUGE_VAL || value == 0)) ||
+                errno == EINVAL ||
+                isnan(value))
+                return REDIS_ERR;
+        }
+        else if (o->encoding == OBJ_ENCODING_INT)
+        {
+            value = (long)o->ptr;
+        }
+        else
+        {
+            LOG_WARN<<"Unknown string encoding";
+        }
+    }
+    *target = value;
+    return REDIS_OK;
+}
+
 
 
 void freeStringObject(rObj *o) 
@@ -284,6 +344,7 @@ void destorySharedObjects()
 	freeStringObject(shared.delsync);
 	freeStringObject(shared.psync);
     freeStringObject(shared.sync);
+    freeStringObject(shared.zadd);
 
 
 	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
@@ -408,6 +469,7 @@ void createSharedObjects()
 	shared.psync = createStringObject("psync", 5);
 	shared.sync = createStringObject("sync", 4);
 	shared.delsync = createStringObject("delsync", 7);
+	shared.zadd = createStringObject("zadd", 4);
 
 
     for (j = 0; j < REDIS_SHARED_INTEGERS; j++) {
@@ -633,7 +695,7 @@ long long ustime(void)
     struct timeval tv;
     long long ust;
 
-    gettimeofday(&tv, NULL);
+    gettimeofday(&tv, nullptr);
     ust = ((long long)tv.tv_sec)*1000000;
     ust += tv.tv_usec;
     return ust;

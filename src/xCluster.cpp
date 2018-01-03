@@ -44,7 +44,7 @@ void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, voi
 
 				for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); ++it)
 				{
-					std::shared_ptr<xSession> session(new xSession(redis, conn));
+					xSeesionPtr session(new xSession(redis, conn));
 					std::unique_lock <std::mutex> lck(redis->mtx);
 					redis->sessions[conn->getSockfd()] = session;
 				}
@@ -408,7 +408,7 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
 			redis->clustertcpconnMaps.insert(std::make_pair(conn->getSockfd(), conn));
 		}
 
-		std::shared_ptr<xSession> session(new xSession(redis, conn));
+		xSeesionPtr  session(new xSession(redis, conn));
 		{
 			std::unique_lock <std::mutex> lck(redis->mtx);
 			redis->sessions[conn->getSockfd()] = session;

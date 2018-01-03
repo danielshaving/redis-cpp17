@@ -61,7 +61,7 @@ void onMessage(const xTcpconnectionPtr& conn, xBuffer* buf, void * data)
 			resp.setStatusMessage("OK");
 			resp.setContentType("text/html");
 			resp.addHeader("Server", "xHttp");
-			string now = xTimestamp::now().toFormattedString();
+			std::string now = xTimestamp::now().toFormattedString();
 			resp.setBody("<html><head><title>This is title</title></head>"
 				"<body><h1>Hello</h1>Now is " + now +
 				"</body></html>");

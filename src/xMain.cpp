@@ -33,7 +33,7 @@ char *ascii_logo =
 "          `-._        _.-'                                           \n"
 "              `-.__.-'                                               \n";
 
-
+/*
 int main(int argc, char* argv[])
 {
 	xLogger::setOutput(asyncOutput);
@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-
+*/
 
 
 

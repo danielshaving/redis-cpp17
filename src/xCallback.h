@@ -1,6 +1,7 @@
 #pragma once
 #include "all.h"
 
+
 class xBuffer;
 class xRedisAsyncContext;
 class xTcpconnection;
@@ -9,6 +10,7 @@ class xRedisContext;
 class xRedisReader;
 class xHiredisAsync;
 class xTcpClient;
+class xSession;
 
 typedef std::shared_ptr<xRedisReader>  xRedisReaderPtr;
 typedef std::shared_ptr<xRedisContext> xRedisContextPtr;
@@ -18,6 +20,7 @@ typedef std::shared_ptr<xBuffer> xBufferPtr;
 typedef std::shared_ptr<xTcpconnection> xTcpconnectionPtr;
 typedef std::shared_ptr<xConnector> xConnectorPtr;
 typedef std::shared_ptr<xTcpClient> xTcpClientPtr;
+typedef std::shared_ptr<xSession>  xSeesionPtr;
 
 typedef std::function<void(void *)> xTimerCallback;
 typedef std::function<int(void *,void *)> xCmpCallback;

@@ -1838,6 +1838,80 @@ bool xRedis::hsetCommand(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
+bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
+{
+	if (obj.size() < 3)
+	{
+		addReplyError(session->sendBuf,"unknown  zadd  param error");
+		return false;
+	}
+
+	size_t  added = 0;
+	size_t hash= obj[0]->hash;
+	std::mutex &mu = sortShards[hash% kShards].mtx;
+	auto &sortSet = sortShards[hash% kShards].set;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = sortSet.find(obj[0]);
+		if(it == sortSet.end())
+		{
+			double *scores;
+			if (getDoubleFromObjectOrReply(session->sendBuf,obj[1],scores,nullptr) != REDIS_OK)
+			{
+				return false;
+			}
+			xSortedSet<rObj*,Hash,Equal> set;
+			set.zadd(obj[2],*scores);
+			added++;
+			zfree(obj[1]);
+			for(int i = 3; i < obj.size(); i += 2)
+			{
+				double *scores;
+				if (getDoubleFromObjectOrReply(session->sendBuf,obj[i],scores,nullptr) != REDIS_OK)
+				{
+					return false;
+				}
+
+				if(!set.zadd(obj[i+1],*scores))
+				{
+					zfree(obj[i]);
+				}
+				else
+				{
+					added++;
+				}
+			}
+			sortSet.insert(std::make_pair(obj[0],std::move(set)));
+			addReplyLongLong(session->sendBuf,added);
+			return true;
+		}
+		else
+		{
+			for(int i = 1; i < obj.size(); i += 2)
+			{
+				double *scores;
+				if (getDoubleFromObjectOrReply(session->sendBuf,obj[i],scores,nullptr) != REDIS_OK)
+				{
+					return false;
+				}
+
+				if(!it->second.zadd(obj[i+1],*scores))
+				{
+					zfree(obj[i]);
+				}
+				else
+				{
+					added++;
+				}
+			}
+			addReplyLongLong(session->sendBuf,added);
+		}
+	}
+	return true;
+}
+
+
+
  bool xRedis::debugCommand(const std::deque <rObj*> & obj, xSession * session)
  {
 	if (obj.size() == 1)
@@ -2608,7 +2682,7 @@ void xRedis::initConfig()
 	REGISTER_REDIS_COMMAND(shared.rpop,rpopCommand);
 	REGISTER_REDIS_COMMAND(shared.llen,llenCommand);
 	REGISTER_REDIS_COMMAND(shared.sadd,saddCommand);
-
+	REGISTER_REDIS_COMMAND(shared.zadd,zaddCommand);
 
 #define REGISTER_REDIS_REPLY_COMMAND(msgId) \
     msgId->calHash(); \

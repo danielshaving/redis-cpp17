@@ -9,7 +9,7 @@
 
 unsigned int dictGenHashFunction(const void *key, int len) ;
 unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len);
-typedef struct redisObject:noncopyable
+typedef struct redisObject
 {		
 	void calHash()
 	{
@@ -88,6 +88,7 @@ struct sharedObjectsStruct
 	*hset,*hget,*hgetall,*save,*slaveof,*command,*config,*auth,
 	*info,*echo,*client,*hkeys,*hlen,*keys,*bgsave,*memory,*cluster,*migrate,*debug,
 	*ttl,*lrange,*llen,*sadd,*scard,*psync,*addsync,*setslot,*node,*connect,*delsync,
+	*zadd,
     *integers[REDIS_SHARED_INTEGERS],
     *mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
     *bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
@@ -109,6 +110,8 @@ rObj *createStringObjectFromLongLong(long long value);
 int getLongLongFromObject(rObj *o, long long   *target);
 int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg);
 int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg);
+int getDoubleFromObject(const rObj *o, double *target);
+int getDoubleFromObjectOrReply(xBuffer  &sendBuf, rObj *o, double *target, const char *msg);
 
 
 void addReplyBulkSds(xBuffer &sendBuf, sds s);

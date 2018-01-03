@@ -79,6 +79,9 @@ public:
 	bool scardCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool saddCommand(const std::deque <rObj*> & obj,xSession * session);
 
+	bool zaddCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool zcardCommand(const std::deque <rObj*> & obj,xSession * session);
+
 	int rdbSaveBackground(xSession * session, bool enabled);
 	bool bgsave(xSession * session, bool enabled = false);
 	bool save(xSession * session);
@@ -102,13 +105,13 @@ public:
 	typedef std::function<bool(const std::deque<rObj*> &,xSession *)> commandFunction;
 	std::unordered_map<rObj*,commandFunction,Hash,EEqual> handlerCommandMap;
 	std::unordered_set<rObj*,Hash, EEqual> replyCommandMap;
-	std::unordered_map<int32_t,std::shared_ptr<xSession>> sessions;
+	std::unordered_map<int32_t,xSeesionPtr> sessions;
 	std::unordered_set<rObj*,Hash,EEqual> cluterMaps;
 	
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
 	typedef std::unordered_map<rObj*, std::deque<rObj*>, Hash, Equal> ListMap;
-	typedef std::unordered_map<rObj*,xSortedSet<rObj*,Hash,Equal>> SortedSet;
+	typedef std::unordered_map<rObj*,xSortedSet<rObj*,Hash,Equal>,Hash,Equal> SortedSet;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
 
 	struct SetMapLock

@@ -2,6 +2,7 @@
 
 #include "all.h"
 #include "xZmalloc.h"
+#include "xSds.h"
 
 
 template< typename KeyType,
@@ -11,8 +12,6 @@ class xSortedSet
 {
 private:
     typedef typename std::unordered_map<KeyType, double, HashFn, EqualKey> DictType;
-    typedef typename DictType::iterator DictTypeIterator;
-    typedef typename DictType::const_iterator DictTypeConstIterator;
     typedef typename std::vector<KeyType> KeyVecType;
     typedef typename std::pair<KeyType, double> KeyScorePairType;
     typedef typename std::vector<KeyScorePairType> KeyScoreVecType;
@@ -144,11 +143,10 @@ private:
         /* We may have multiple elements with the same score, what we need
          * is to find the element with both the right score and key. */
         x = x->slevel[0].forward;
-        if (x && score == x->score && x->mKey == key)
+        if (x && score == x->score &&  !memcmp(x->mKey->ptr,key->ptr,sdslen(x->mKey->ptr)))
         {
             deleteNode(x, update);
             zfree(x);
-            //delete x;
             return true;
         }
         else
@@ -319,7 +317,8 @@ private:
         int i;
 
         x = header;
-        for (i = slevel-1; i >= 0; i--) {
+        for (i = slevel-1; i >= 0; i--)
+        {
             while (x->slevel[i].forward && x->slevel[i].forward->score <= score)
             {
                 rank += x->slevel[i].span;
@@ -327,7 +326,7 @@ private:
             }
 
             /* x might be equal to header, so test if is header */
-            if (not x->Iheader && x->mKey == key)
+            if (not x->Iheader && !memcmp(x->mKey->ptr,key->ptr,sdslen(x->mKey->ptr)))
             {
                 return rank;
             }
@@ -358,9 +357,9 @@ private:
         return nullptr;
     }
 
-    void zaddGeneric(KeyType key, double score, bool incr)
+    bool zaddGeneric(KeyType key, double score, bool incr)
     {
-        DictTypeIterator it = dict.find(key);
+        auto it = dict.find(key);
         if (it != dict.end())
         {
             double curscore = it->second;
@@ -368,17 +367,20 @@ private:
             {
                 score += curscore;
             }
+
             if (score != curscore)
             {
                 erase(curscore, key);
                 insert(score, key);
-                dict[key] = score;
+                it->second = score;
             }
+            return false;
         }
         else
         {
             insert(score, key);
-            dict[key] = score;
+            dict.insert(std::make_pair(key,score));
+            return true;
         }
     }
 
@@ -564,7 +566,7 @@ private:
     bool zrankGeneric(KeyType key, bool reverse, unsigned long &rank)
     {
         unsigned long llen = length();
-        DictTypeIterator it = dict.find(key);
+        auto it = dict.find(key);
         if (it != dict.end())
         {
             double score = it->second;
@@ -586,9 +588,9 @@ private:
     }
 
 public:
-    void zadd(KeyType key, double score)
+    bool  zadd(KeyType key, double score)
     {
-        zaddGeneric(key, score, false);
+        return zaddGeneric(key, score, false);
     }
 
     void zincrby(KeyType key, double score)
@@ -598,7 +600,7 @@ public:
 
     void zrem(KeyType key)
     {
-        DictTypeIterator it = dict.find(key);
+        auto it = dict.find(key);
         if (it != dict.end())
         {
             double score = it->second;
@@ -706,7 +708,7 @@ public:
 
     bool zscore(KeyType key, double &score)
     {
-        DictTypeConstIterator it = dict.find(key);
+        auto it = dict.find(key);
         if (it != dict.end())
         {
             score = it->second;
@@ -731,10 +733,8 @@ public:
 public:
     xSortedSet():tail(nullptr), slength(0), slevel(1), dict()
     {
-
         header = (xSkipListNode*)zmalloc(sizeof(xSkipListNode));
         new(header)xSkipListNode(SKIPLIST_MAXLEVEL);
-
     }
 
     ~xSortedSet()
