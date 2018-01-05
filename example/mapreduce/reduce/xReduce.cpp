@@ -37,7 +37,7 @@ void onConnection(const xTcpconnectionPtr& conn,void * data)
 
 void onMessage(const xTcpconnectionPtr& conn, xBuffer* buf, void * data)
 {
-	const char* crlf = nullptr;
+	const char* crlf = nullptr;\\r\n
 	while ( (crlf = buf->findCRLF()) != nullptr)
 	{
 	  const char* tab = std::find(buf->peek(), crlf, '\t');

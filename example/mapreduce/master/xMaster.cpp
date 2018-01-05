@@ -200,10 +200,10 @@ void merge(int m)
   int topk = 10;
   while (!keys.empty())
   {
-		if(--topk < 0)
-		{
-			break;
-		}
+    if(--topk < 0)
+    {
+        break;
+    }
 
     std::pop_heap(keys.begin(), keys.end());
     keys.back().outputTo(out);
