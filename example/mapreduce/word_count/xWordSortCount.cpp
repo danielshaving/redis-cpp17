@@ -19,6 +19,45 @@ typedef __gnu_cxx::__sso_string string;
 
 const size_t kMaxSize = 10 * 1000 * 1000;
 
+int input(int argc, char* argv[])
+{
+  int count = 0;
+  for (int i = 1; i < argc; ++i)
+  {
+    std::cout << "  processing input file " << argv[i] << std::endl;
+    std::map<string, int64_t> counts;
+    std::ifstream in(argv[i]);
+    while (in && !in.eof())
+    {
+      counts.clear();
+      string word;
+      while (in >> word)
+      {
+        counts[word]++;
+        if (counts.size() > kMaxSize)
+        {
+          std::cout << "    split" << std::endl;
+          break;
+        }
+      }
+
+      char buf[256];
+      snprintf(buf, sizeof buf, "segment-%05d", count);
+      std::ofstream out(buf);
+      ++count;
+      std::cout << "  writing " << buf << std::endl;
+      for (const auto& kv : counts)
+      {
+        out << kv.first << '\t' << kv.second << '\n';
+      }
+    }
+  }
+  std::cout << "reading done, " << count << std::endl;
+  return count;
+}
+
+// ======= combine =======
+
 class xSegment  // copyable
 {
  public:
@@ -39,7 +78,7 @@ class xSegment  // copyable
       if (tab != string::npos)
       {
         word = line.substr(0, tab);
-        count = strtol(line.c_str() + tab, nullptr, 10);
+        count = strtol(line.c_str() + tab, NULL, 10);
         return true;
       }
     }
@@ -74,16 +113,16 @@ void output(int i, const std::unordered_map<string, int64_t>& counts)
   }
 }
 
-int combine(int argc, char* argv[])
+int combine(int count)
 {
   std::vector<std::unique_ptr<std::ifstream>> inputs;
   std::vector<xSegment> keys;
 
-  for (int i = 1; i < argc; ++i)
+  for (int i = 0; i < count; ++i)
   {
     char buf[256];
     snprintf(buf, sizeof buf, "segment-%05d", i);
-    inputs.emplace_back(new std::ifstream(argv[i]));
+    inputs.emplace_back(new std::ifstream(buf));
     xSegment rec(inputs.back().get());
     if (rec.next())
     {
@@ -138,22 +177,22 @@ class xSource  // copyable
 {
  public:
   explicit xSource(std::istream* in)
-    : in(in)
+    : in_(in)
   {
   }
 
   bool next()
   {
     string line;
-    if (getline(*in, line))
+    if (getline(*in_, line))
     {
       size_t tab = line.find('\t');
       if (tab != string::npos)
       {
-        count_ = strtol(line.c_str(), nullptr, 10);
-        if (count > 0)
+        count_ = strtol(line.c_str(), NULL, 10);
+        if (count_ > 0)
         {
-          word = line.substr(tab+1);
+          word_ = line.substr(tab+1);
           return true;
         }
       }
@@ -163,18 +202,18 @@ class xSource  // copyable
 
   bool operator<(const xSource& rhs) const
   {
-    return count < rhs.count;
+    return count_ < rhs.count_;
   }
 
   void outputTo(std::ostream& out) const
   {
-    out << count << '\t' << word << '\n';
+    out << count_ << '\t' << word_ << '\n';
   }
 
  private:
-  std::istream* in;
-  int64_t count = 0;
-  string word;
+  std::istream* in_;
+  int64_t count_ = 0;
+  string word_;
 };
 
 void merge(int m)
@@ -200,10 +239,10 @@ void merge(int m)
   int topk = 10;
   while (!keys.empty())
   {
-    if(--topk < 0)
-    {
-        break;
-    }
+	if(--topk < 0)
+	{
+		break;
+	}
 
     std::pop_heap(keys.begin(), keys.end());
     keys.back().outputTo(out);
@@ -222,6 +261,7 @@ void merge(int m)
 
 int main(int argc, char* argv[])
 {
-  int m = combine(argc,argv);
+  int count = input(argc, argv);
+  int m = combine(count);
   merge (m);
 }
