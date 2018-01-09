@@ -1846,6 +1846,7 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 		return false;
 	}
 
+	double scores = 0;
 	size_t  added = 0;
 	size_t hash= obj[0]->hash;
 	std::mutex &mu = sortShards[hash% kShards].mtx;
@@ -1855,33 +1856,63 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 		auto it = sortSet.find(obj[0]);
 		if(it == sortSet.end())
 		{
-			double *scores;
-			if (getDoubleFromObjectOrReply(session->sendBuf,obj[1],scores,nullptr) != REDIS_OK)
+			if (getDoubleFromObjectOrReply(session->sendBuf,obj[1],&scores,nullptr) != REDIS_OK)
 			{
 				return false;
 			}
-			xSortedSet<rObj*,Hash,Equal> set;
-			set.zadd(obj[2],*scores);
+
+			sort_set set;
+			sortDouble.insert(std::make_pair(obj[2],scores));
+			//sortMap.insert(std::make_pair(scores,obj[2]));
 			added++;
 			zfree(obj[1]);
 			for(int i = 3; i < obj.size(); i += 2)
 			{
-				double *scores;
-				if (getDoubleFromObjectOrReply(session->sendBuf,obj[i],scores,nullptr) != REDIS_OK)
+				if (getDoubleFromObjectOrReply(session->sendBuf,obj[i],&scores,nullptr) != REDIS_OK)
 				{
 					return false;
 				}
 
-				if(!set.zadd(obj[i+1],*scores))
+				auto it = sortDouble.find(obj[i + 1]);
+				if(it == sortDouble.end())
 				{
-					zfree(obj[i]);
+					sortDouble.insert(std::make_pair(obj[i + 1],scores));
+					sortMap.insert(std::make_pair(scores,obj[i + 1]));
 				}
 				else
 				{
-					added++;
+					if(scores != it->second)
+					{
+						bool mark = false;
+						auto iter = sortMap.find(it->second);
+						while(iter != sortMap.end())
+						{
+							if(!memcmp(iter->second->ptr,obj[i + 1]->ptr,sdslen(obj[i + 1]->ptr)))
+							{
+								rObj * v = iter->second;
+								sortMap.erase(iter);
+								sortMap.insert(std::make_pair(scores,v));
+								mark = true;
+								break;
+							}
+							++it;
+						}
+
+						assert(mark);
+						it->second = scores;
+						zfree(obj[i]);
+						added++;
+					}
+					else
+					{
+						zfree(obj[i + 1]);
+						zfree(obj[i]);
+					}
+
 				}
 			}
-			sortSet.insert(std::make_pair(obj[0],std::move(set)));
+
+			sortSet.insert(std::make_pair(obj[0],std::move(sortDouble)));
 			addReplyLongLong(session->sendBuf,added);
 			return true;
 		}
@@ -1889,24 +1920,58 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 		{
 			for(int i = 1; i < obj.size(); i += 2)
 			{
-				double *scores;
-				if (getDoubleFromObjectOrReply(session->sendBuf,obj[i],scores,nullptr) != REDIS_OK)
+				if (getDoubleFromObjectOrReply(session->sendBuf,obj[i],&scores,nullptr) != REDIS_OK)
 				{
 					return false;
 				}
 
-				if(!it->second.zadd(obj[i+1],*scores))
+				auto iter  = it->second.find(obj[i + 1]);
+				if(iter == it->second.end())
 				{
-					zfree(obj[i]);
+					sortDouble.insert(std::make_pair(obj[i + 1],scores));
+					sortMap.insert(std::make_pair(scores,obj[i + 1]));
 				}
 				else
 				{
-					added++;
+					if(scores != it->second)
+					{
+						bool mark = false;
+						auto iter = sortMap.find(it->second);
+						while(iter != sortMap.end())
+						{
+							if(!memcmp(iter->second->ptr,obj[i + 1]->ptr,sdslen(obj[i + 1]->ptr)))
+							{
+								rObj * v = iter->second;
+								sortMap.erase(iter);
+								sortMap.insert(std::make_pair(scores,v));
+								mark = true;
+								break;
+							}
+							++it;
+						}
+
+						assert(mark);
+						it->second = scores;
+						zfree(obj[i]);
+						added++;
+					}
+					else
+					{
+						zfree(obj[i + 1]);
+						zfree(obj[i]);
+					}
+
 				}
 			}
+
+			}
+
+
 			addReplyLongLong(session->sendBuf,added);
 		}
 	}
+
+
 	return true;
 }
 
@@ -2185,7 +2250,7 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,xSession * session)
 	int unit = UNIT_SECONDS;	
 	int flags = OBJ_SET_NO_FLAGS;
 
-	for (j = 2; j < obj.size();j++)
+	for (j = 2; j < obj.size(); j++)
 	{
 		const char *a = obj[j]->ptr;
 		rObj *next = (j == obj.size() - 1) ? nullptr : obj[j + 1];

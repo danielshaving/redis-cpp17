@@ -16,34 +16,27 @@ typedef struct redisObject
 		hash = dictGenHashFunction(ptr,sdslen(ptr));
 	}
 
-	unsigned type:4;
-	unsigned encoding:4;
-	size_t hash;
-	char *ptr;
-} rObj;
-
-typedef struct redisSortObject:noncopyable
-{
-	bool operator <(const redisSortObject & r) const
-	{	
-		int cmp = memcmp(key->ptr,r.key->ptr,sdslen(key->ptr));
+	bool operator <(const redisObject & r) const
+	{
+		int cmp = memcmp(ptr,r.ptr,sdslen(ptr));
 		if( cmp < 0)
 		{
 			return true;
 		}
 		else if(cmp == 0)
 		{
-			return memcmp(value->ptr,r.value->ptr,sdslen(value->ptr)) < 0;
+			return memcmp(ptr,r.ptr,sdslen(ptr)) < 0;
 		}
 		else
 		{
 			return false;
 		}
 	}
-
-	rObj * key;
-	rObj * value;
-}rSObj;
+	unsigned type:4;
+	unsigned encoding:4;
+	size_t hash;
+	char *ptr;
+} rObj;
 
 
 struct Hash

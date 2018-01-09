@@ -26,17 +26,22 @@ int string2ll(const char * s,size_t slen, long long * value)
             return 0;
     }
 
-    if (p[0] >= '1' && p[0] <= '9') {
+    if (p[0] >= '1' && p[0] <= '9')
+    {
         v = p[0]-'0';
         p++; plen++;
-    } else if (p[0] == '0' && slen == 1) {
+    }
+    else if (p[0] == '0' && slen == 1)
+    {
         *value = 0;
         return 1;
-    } else {
+    } else
+    {
         return 0;
     }
 
-    while (plen < slen && p[0] >= '0' && p[0] <= '9') {
+    while (plen < slen && p[0] >= '0' && p[0] <= '9')
+    {
         if (v > (ULLONG_MAX / 10))
             return 0;
         v *= 10;
@@ -51,11 +56,14 @@ int string2ll(const char * s,size_t slen, long long * value)
     if (plen < slen)
         return 0;
 
-    if (negative) {
+    if (negative)
+    {
         if (v > ((unsigned long long)(-(LLONG_MIN+1))+1))
             return 0;
         if (value != nullptr) *value = -v;
-    } else {
+    }
+    else
+    {
         if (v > LLONG_MAX) /* Overflow. */
             return 0;
         if (value != nullptr) *value = v;
@@ -74,7 +82,8 @@ int ll2string(char *s, size_t len, long long value)
     if (len == 0) return 0;
     v = (value < 0) ? -value : value;
     p = buf+31; /* point to the last character */
-    do {
+    do
+    {
         *p-- = '0'+(v%10);
         v /= 10;
     } while(v);
@@ -101,10 +110,12 @@ int getLongLongFromObject(rObj *o, long long   *target)
 {
 	long long   value;
 
-	if (o == nullptr) {
+	if (o == nullptr)
+	{
 		value = 0;
 	}
-	else {
+	else
+	{
 
 		if (sdsEncodedObject(o))
 		{
@@ -125,10 +136,13 @@ int getLongLongFromObject(rObj *o, long long   *target)
 int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg) 
 {
     long long value;
-    if (getLongLongFromObject(o, &value) != REDIS_OK) {
-        if (msg != nullptr) {
+    if (getLongLongFromObject(o, &value) != REDIS_OK)
+    {
+        if (msg != nullptr)
+        {
             addReplyError(sendBuf,(char*)msg);
-        } else {
+        } else
+        {
             addReplyError(sendBuf,"value is not an integer or out of range");
         }
         return REDIS_ERR;

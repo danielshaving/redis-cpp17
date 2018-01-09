@@ -14,7 +14,6 @@
 #include "xSentinel.h"
 #include "xCluster.h"
 #include "xRdb.h"
-#include "xSortSet.h"
 
 class xRedis : noncopyable
 {
@@ -108,10 +107,13 @@ public:
 	std::unordered_map<int32_t,xSeesionPtr> sessions;
 	std::unordered_set<rObj*,Hash,EEqual> cluterMaps;
 	
+	typedef std::unordered_map<rObj*,double,Hash,Equal> SortedDouble;
+	typedef std::multimap<double,rObj*> SortedMap;
+	typedef struct sort_set { SortedDouble sortDouble; SortedMap sortMap;};
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
-	typedef std::unordered_map<rObj*, std::deque<rObj*>, Hash, Equal> ListMap;
-	typedef std::unordered_map<rObj*,xSortedSet<rObj*,Hash,Equal>,Hash,Equal> SortedSet;
+	typedef std::unordered_map<rObj*,std::deque<rObj*>, Hash, Equal> ListMap;
+	typedef std::unordered_map<rObj*,sort_set,Hash,Equal> SortedSet;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
 
 	struct SetMapLock

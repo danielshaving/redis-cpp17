@@ -8,8 +8,7 @@ const int kDeleted = 2;
 
 
 xEpoll::xEpoll(xEventLoop * loop)
-:events(1024),
-loop(loop),
+:loop(loop),
 maxFd(0),
 epollFd(-1)
 {
@@ -24,7 +23,7 @@ xEpoll::~xEpoll()
 bool xEpoll::init(int fdCount)
 {
     maxFd = fdCount;
-    epollFd = epoll_create(1024);
+    epollFd = ::epoll_create1(EPOLL_CLOEXEC);
 
     if (epollFd < 0)
     {
