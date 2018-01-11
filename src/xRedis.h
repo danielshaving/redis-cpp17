@@ -97,7 +97,6 @@ public:
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 
-
 public:
 	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommands;
 	std::unordered_set<rObj*,Hash,EEqual>  stopRepliCached;

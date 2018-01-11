@@ -8,7 +8,8 @@ const int kDeleted = 2;
 
 
 xEpoll::xEpoll(xEventLoop * loop)
-:loop(loop),
+:events(16),
+loop(loop),
 maxFd(0),
 epollFd(-1)
 {

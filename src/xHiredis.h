@@ -186,30 +186,35 @@ public:
 };
 
 
-class  xHiredisAsync:noncopyable
+class xHiredis
 {
 public:
-	xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port);
-	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
-	void redisConnCallBack(const xTcpconnectionPtr& conn,void *data);
-    void redisErrorConnCallBack(void *data);
+	xHiredis(xEventLoop *loop):
+		pool(loop),
+		clusterMode(false),
+		count(0)
+	{
 
+	}
 	void clusterReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 	void clusterAskConnCallBack(const xTcpconnectionPtr& conn,void *data);
 	void clusterMoveConnCallBack(const xTcpconnectionPtr& conn,void *data);
 	void clusterErrorConnCallBack(void *data);
+	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 
-public:
-	std::atomic<int> connectCount;
-	xEventLoop *loop;
-	xThreadPool pool;
-    std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;
+	std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;
 	std::unordered_map<int32_t,xRedisAsyncContextPtr> redisMaps;
 	std::unordered_map<int32_t,redisClusterCallback> clusterMaps;
-	std::mutex rtx;
-	std::condition_variable condition;
+
+	xThreadPool & getPoll() { return pool; }
+	void setCount(){ count ++; }
+	int getCount(){ return count; }
+	std::mutex &getMutex(){ return rtx; }
+
+	xThreadPool pool;
 	bool clusterMode;
 	int count;
+	std::mutex rtx;
 };
 
 

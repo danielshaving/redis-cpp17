@@ -1,11 +1,66 @@
-#include "xHiredis.h"
+#include "xHiredisAsync.h"
 
-static int tests = 0, fails = 0;
-#define test(_s) { printf("#%02d ", ++tests); printf(_s); }
-#define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
+xHiredisAsync::xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port)
+:hiredis(loop),
+connectCount(0),
+loop(loop)
+{
+	hiredis.getPoll().setThreadNum(threadCount);
+	hiredis.getPoll().start();
+	for(int i = 0; i < sessionCount; i++)
+	{
+		hiredis.setCount();
+		int c = hiredis.getCount();
+		xTcpClientPtr client(new xTcpClient(hiredis.pool.getNextLoop(),(void*)&c));
+		hiredis.tcpClientMaps.insert(std::make_pair(c,client));
+		client->setConnectionErrorCallBack(std::bind(&xHiredisAsync::redisErrorConnCallBack,this,std::placeholders::_1));
+		client->setConnectionCallback(std::bind(&xHiredisAsync::redisConnCallBack,this,std::placeholders::_1,std::placeholders::_2));
+		client->setMessageCallback(std::bind(&xHiredis::redisReadCallBack,&hiredis,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+		client->connect(ip,port);
+	}
 
-int sessionCount = 0;
-std::atomic<int64_t>  connetCount;
+	{
+		std::unique_lock <std::mutex> lck(hiredis.getMutex());
+		while(connectCount < sessionCount)
+		{
+			condition.wait(lck);
+		}
+	}
+
+	connectCount = 0;
+}
+
+
+void xHiredisAsync::redisErrorConnCallBack(void *data)
+{
+	std::unique_lock<std::mutex> lk(hiredis.getMutex());
+	hiredis.tcpClientMaps.erase(*(int*)data);
+}
+
+
+void xHiredisAsync::redisConnCallBack(const xTcpconnectionPtr& conn,void *data)
+{
+	if(conn->connected())
+	{
+		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
+		ac->c->reader->buf = &(conn->recvBuff);
+		ac->conn = conn;
+		ac->c->fd = conn->getSockfd();
+		{
+			std::unique_lock<std::mutex> lk(hiredis.getMutex());
+			hiredis.redisMaps.insert(std::make_pair(conn->getSockfd(),ac));
+	   	}
+
+		connectCount++;
+		condition.notify_one();
+	}
+	else
+	{
+		std::unique_lock<std::mutex> lk(hiredis.getMutex());
+		hiredis.redisMaps.erase(conn->getSockfd());
+		hiredis.tcpClientMaps.erase(*(int*)data);
+	}
+}
 
 
 static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
@@ -59,7 +114,7 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 		int count = 0;
 		test_cond(true);
 		test("Redis async multithreaded safe test ");
-		for(auto it = redisAsync.redisMaps.begin(); it != redisAsync.redisMaps.end(); ++it)
+		for(auto it = redisAsync.hiredis.redisMaps.begin(); it != redisAsync.hiredis.redisMaps.end(); ++it)
 		{
 			count ++;
 			redisAsyncCommand(it->second,nullptr,nullptr,"set key%d %d",count,it->second->conn->getLoop()->getThreadId());

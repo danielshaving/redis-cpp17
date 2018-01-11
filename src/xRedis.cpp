@@ -39,8 +39,6 @@ pingPong(false)
 
 xRedis::~xRedis()
 {
-    zfree(rIp);
-    zfree(rPort);
 	clear();
 	destorySharedObjects();
 	clearCommand();
@@ -1862,8 +1860,8 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 			}
 
 			sort_set set;
-			sortDouble.insert(std::make_pair(obj[2],scores));
-			//sortMap.insert(std::make_pair(scores,obj[2]));
+			set.sortDouble.insert(std::make_pair(obj[2],scores));
+			set.sortMap.insert(std::make_pair(scores,obj[2]));
 			added++;
 			zfree(obj[1]);
 			for(int i = 3; i < obj.size(); i += 2)
@@ -1873,25 +1871,25 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 					return false;
 				}
 
-				auto it = sortDouble.find(obj[i + 1]);
-				if(it == sortDouble.end())
+				auto it = set.sortDouble.find(obj[i + 1]);
+				if(it == set.sortDouble.end())
 				{
-					sortDouble.insert(std::make_pair(obj[i + 1],scores));
-					sortMap.insert(std::make_pair(scores,obj[i + 1]));
+					set.sortDouble.insert(std::make_pair(obj[i + 1],scores));
+					set.sortMap.insert(std::make_pair(scores,obj[i + 1]));
 				}
 				else
 				{
 					if(scores != it->second)
 					{
 						bool mark = false;
-						auto iter = sortMap.find(it->second);
-						while(iter != sortMap.end())
+						auto iter = set.sortMap.find(it->second);
+						while(iter != set.sortMap.end())
 						{
 							if(!memcmp(iter->second->ptr,obj[i + 1]->ptr,sdslen(obj[i + 1]->ptr)))
 							{
 								rObj * v = iter->second;
-								sortMap.erase(iter);
-								sortMap.insert(std::make_pair(scores,v));
+								set.sortMap.erase(iter);
+								set.sortMap.insert(std::make_pair(scores,v));
 								mark = true;
 								break;
 							}
@@ -1901,6 +1899,7 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 						assert(mark);
 						it->second = scores;
 						zfree(obj[i]);
+						zfree(obj[i + 1]);
 						added++;
 					}
 					else
@@ -1912,7 +1911,7 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 				}
 			}
 
-			sortSet.insert(std::make_pair(obj[0],std::move(sortDouble)));
+			sortSet.insert(std::make_pair(obj[0],std::move(set)));
 			addReplyLongLong(session->sendBuf,added);
 			return true;
 		}
@@ -1925,25 +1924,25 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 					return false;
 				}
 
-				auto iter  = it->second.find(obj[i + 1]);
-				if(iter == it->second.end())
+				auto iter  = it->second.sortDouble.find(obj[i + 1]);
+				if(iter == it->second.sortDouble.end())
 				{
-					sortDouble.insert(std::make_pair(obj[i + 1],scores));
-					sortMap.insert(std::make_pair(scores,obj[i + 1]));
+					it->second.sortDouble.insert(std::make_pair(obj[i + 1],scores));
+					it->second.sortMap.insert(std::make_pair(scores,obj[i + 1]));
 				}
 				else
 				{
-					if(scores != it->second)
+					if(scores != iter->second)
 					{
 						bool mark = false;
-						auto iter = sortMap.find(it->second);
-						while(iter != sortMap.end())
+						auto iterr = it->second.sortMap.find(iter->second);
+						while(iterr != it->second.sortMap.end())
 						{
-							if(!memcmp(iter->second->ptr,obj[i + 1]->ptr,sdslen(obj[i + 1]->ptr)))
+							if(!memcmp(iterr->second->ptr,obj[i + 1]->ptr,sdslen(obj[i + 1]->ptr)))
 							{
-								rObj * v = iter->second;
-								sortMap.erase(iter);
-								sortMap.insert(std::make_pair(scores,v));
+								rObj * v = iterr->second;
+								it->second.sortMap.erase(iterr);
+								it->second.sortMap.insert(std::make_pair(scores,v));
 								mark = true;
 								break;
 							}
@@ -1951,8 +1950,9 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 						}
 
 						assert(mark);
-						it->second = scores;
+						iter->second = scores;
 						zfree(obj[i]);
+						zfree(obj[i + 1]);
 						added++;
 					}
 					else
@@ -1964,13 +1964,10 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 				}
 			}
 
-			}
-
-
-			addReplyLongLong(session->sendBuf,added);
 		}
-	}
 
+		addReplyLongLong(session->sendBuf,added);
+	}
 
 	return true;
 }
@@ -2038,6 +2035,8 @@ bool xRedis::hgetCommand(const std::deque <rObj*> & obj,xSession * session)
 
 void xRedis::clear()
 {
+	zfree(rIp);
+	zfree(rPort);
 	handlerCommandMap.clear();
 	unorderedmapCommands.clear();
 }
@@ -2131,9 +2130,25 @@ void xRedis::clearCommand()
 	}
 
 
+	{
+		for (auto it = sortShards.begin(); it != sortShards.end(); ++it)
+		{
+			auto  &set = (*it).set;
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			for(auto iter = set.begin(); iter != set.end(); ++iter)
+			{
+				for(auto iterr = iter->second.sortDouble.begin(); iterr != iter->second.sortDouble.end(); ++iterr)
+				{
+					zfree(iterr->first);
+				}
+				zfree(iter->first);
+			}
+			set.clear();
+		}
 
+	}
 
-	
 }
 
 
