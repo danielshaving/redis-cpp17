@@ -50,13 +50,13 @@ int main(int argc, char* argv[])
 		ip = argv[1];
 		port = static_cast<uint16_t>(atoi(argv[2]));
 		threadCount = atoi(argv[3]);
-		clusterEnbaled =  atoi(argv[4]);		
+		clusterEnbaled =  atoi(argv[4]);
 		xRedis redis(ip,port,threadCount,clusterEnbaled);
 		redis.run();
 	}
 	else if (argc == 1)
 	{
-		 xRedis redis("0.0.0.0", 6379, 0, 0);
+		 xRedis redis("127.0.0.1", 6379, 0, 0);
 		 redis.run();
 	}
 	else
@@ -67,6 +67,11 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
+
+
+
+
+
 
 
 

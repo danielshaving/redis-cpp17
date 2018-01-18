@@ -79,8 +79,12 @@ public:
 	bool saddCommand(const std::deque <rObj*> & obj,xSession * session);
 
 	bool zaddCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool zrangeCommand(const std::deque<rObj*> &obj,xSession * session);
 	bool zcardCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool zrevrangeCommand(const std::deque <rObj*> & obj,xSession * session);
 
+	bool zrangeGenericCommand(const std::deque <rObj*> & obj,xSession * session,int reverse);
+	
 	int rdbSaveBackground(xSession * session, bool enabled);
 	bool bgsave(xSession * session, bool enabled = false);
 	bool save(xSession * session);
@@ -154,12 +158,12 @@ public:
 
 	xEventLoop loop;
 	xTcpServer server;
-    std::mutex mtx;
-    std::mutex slaveMutex;
-    std::mutex expireMutex;
-    std::mutex sentinelMutex;
-    std::mutex clusterMutex;
-    std::mutex forkMutex;
+	std::mutex mtx;
+	std::mutex slaveMutex;
+	std::mutex expireMutex;
+	std::mutex sentinelMutex;
+	std::mutex clusterMutex;
+	std::mutex forkMutex;
 
 
 	std::atomic<int>   salveCount;
@@ -176,8 +180,8 @@ public:
 	std::atomic<bool>  forkEnabled;
 	std::atomic<int>   forkCondWaitCount;
 
-    std::condition_variable  expireCondition;
-    std::condition_variable  forkCondition;
+	std::condition_variable  expireCondition;
+	std::condition_variable  forkCondition;
 
 	xBuffer	slaveCached;
 	xBuffer	clusterMigratCached;

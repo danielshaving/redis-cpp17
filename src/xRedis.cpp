@@ -25,11 +25,11 @@ pingPong(false)
 	loadDataFromDisk();
 	server.init(&loop, host, port,this);
 	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
-    server.setThreadNum(threadCount);
-    if(threadCount > 1)
-    {
-        this->threadCount = threadCount;
-    }
+	server.setThreadNum(threadCount);
+	if(threadCount > 1)
+	{
+	    this->threadCount = threadCount;
+	}
 	server.start();
 	zmalloc_enable_thread_safeness();
 	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
@@ -67,7 +67,7 @@ void xRedis::serverCron(void * data)
         pid_t pid;
         int statloc;
 
-		if ((pid = wait3(&statloc,WNOHANG,nullptr)) != 0)
+	if ((pid = wait3(&statloc,WNOHANG,nullptr)) != 0)
         {
              int exitcode = WEXITSTATUS(statloc);
              int bysignal = 0;
@@ -269,7 +269,7 @@ void xRedis::loadDataFromDisk()
 	}
 	else if (errno != ENOENT)
 	{
-        LOG_WARN<<"fatal error loading the DB:  Exiting."<<strerror(errno);
+       		LOG_WARN<<"fatal error loading the DB:  Exiting."<<strerror(errno);
  	}
 
 }
@@ -347,7 +347,6 @@ bool xRedis::saddCommand(const std::deque <rObj*> & obj,xSession * session)
 			zfree(obj[0]);
 			for(int i = 1; i < obj.size(); i ++)
 			{
-			
 				auto iter = it->second.find(obj[i]);
 				if(iter == it->second.end())
 				{
@@ -1832,6 +1831,109 @@ bool xRedis::hsetCommand(const std::deque <rObj*> & obj,xSession * session)
 	
 	addReply(session->sendBuf,update ? shared.czero : shared.cone);
 
+	return true;
+}
+
+
+
+
+bool xRedis::zrangeCommand(const std::deque<rObj*> &obj,xSession * session)
+{
+	return zrangeGenericCommand(obj,session,0);
+}
+
+
+bool xRedis::zrevrangeCommand(const std::deque <rObj*> & obj,xSession * session)
+{
+	return zrangeGenericCommand(obj,session,1);
+}
+
+bool xRedis::zrangeGenericCommand(const std::deque <rObj*> & obj,xSession * session,int reverse)
+{
+	if (obj.size()  != 4)
+	{
+		addReplyError(session->sendBuf,"unknown  zrange  param error");
+		return false;
+	}
+
+
+	int rangelen;
+	int withscores = 0;
+	long long start;
+	
+	if (getLongLongFromObjectOrReply(session->sendBuf,obj[1],&start,nullptr) != REDIS_OK)
+	{
+		return false;
+	}
+
+	long long end;
+
+	if (getLongLongFromObjectOrReply(session->sendBuf,obj[2],&end,nullptr) != REDIS_OK)
+	{
+		return false;
+	}
+
+	if ( !strcasecmp(obj[3]->ptr,"withscores"))
+	{
+		withscores = 1;
+	}
+	else if (obj.size() >= 5)
+	{
+		addReply(session->sendBuf,shared.syntaxerr);
+		return false;
+	}
+
+	size_t hash= obj[0]->hash;
+	std::mutex &mu = sortShards[hash% kShards].mtx;
+	auto &sortSet = sortShards[hash% kShards].set;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = sortSet.find(obj[0]);
+		if(it == sortSet.end())
+		{
+			addReply(session->sendBuf,shared.emptymultibulk);
+			return false;
+		}
+		else
+		{	
+			assert(it->second.sortMap.size() ==  it->second.sortDouble.size());
+			int llen = it->second.sortMap.size();
+			
+			if (start < 0) start = llen+start;
+			if (end < 0) end = llen+end;
+			if (start < 0) start = 0;
+
+			if (start > end || start >= llen) 
+			{
+				addReply(session->sendBuf,shared.emptymultibulk);
+				return false;
+			}
+
+			if (end >= llen) 
+			{
+				end = llen-1;	
+			}
+				
+ 		   	rangelen = (end-start)+1;	
+			addReplyMultiBulkLen(session->sendBuf, withscores ? (rangelen*2) : rangelen);
+
+			if(reverse)
+			{
+			
+			}
+			else
+			{
+				for (auto iter = it->second.sortMap.begin();  iter != it->second.sortMap.end(); ++iter)
+				{
+					
+				}
+			}
+			
+			
+		}
+	}
+
+	
 	return true;
 }
 

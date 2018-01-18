@@ -10,29 +10,29 @@ const size_t xBuffer::kInitialSize;
 
 ssize_t xBuffer::readFd(int fd, int* savedErrno)
 {
-  char extrabuf[1024 * 64];
-  struct iovec vec[2];
-  const size_t writable = writableBytes();
-  vec[0].iov_base = begin()+writerIndex;
-  vec[0].iov_len = writable;
-  vec[1].iov_base = extrabuf;
-  vec[1].iov_len = sizeof extrabuf;
-  const int iovcnt = (writable < sizeof extrabuf) ? 2 : 1;
-  const ssize_t n = ::readv(fd, vec, iovcnt);
-  if (n < 0)
-  {
-    *savedErrno = errno;
-  }
-  else if (size_t(n) <= writable)
-  {
-    writerIndex += n;
-  }
-  else
-  {
-    writerIndex = buffer.size();
-    append(extrabuf, n - writable);
-  }
+	char extrabuf[1024 * 64];
+	struct iovec vec[2];
+	const size_t writable = writableBytes();
+	vec[0].iov_base = begin()+writerIndex;
+	vec[0].iov_len = writable;
+	vec[1].iov_base = extrabuf;
+	vec[1].iov_len = sizeof extrabuf;
+	const int iovcnt = (writable < sizeof extrabuf) ? 2 : 1;
+	const ssize_t n = ::readv(fd, vec, iovcnt);
+	if (n < 0)
+	{
+		*savedErrno = errno;
+	}
+	else if (size_t(n) <= writable)
+	{
+		writerIndex += n;
+	}
+	else
+	{
+		writerIndex = buffer.size();
+		append(extrabuf, n - writable);
+	}
 
-  return n;
+	return n;
 }
 

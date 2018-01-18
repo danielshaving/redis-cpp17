@@ -70,21 +70,21 @@ struct EEqual
 
 struct sharedObjectsStruct
 {
-    rObj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *pping,*ping,*pong,*ppong, *space,
-    *colon, *nullbulk, *nullmultibulk, *queued,
-    *emptymultibulk, *wrongtypeerr, *nokeyerr, *syntaxerr, *sameobjecterr,
-    *outofrangeerr, *noscripterr, *loadingerr, *slowscripterr, *bgsaveerr,
-    *masterdownerr, *roslaveerr, *execaborterr, *noautherr, *noreplicaserr,
-    *busykeyerr, *oomerr, *plus, *messagebulk, *pmessagebulk, *subscribebulk,
-    *unsubscribebulk, *psubscribebulk, *punsubscribebulk, *del, *rpop, *lpop,
-    *lpush, *rpush,*emptyscan, *minstring, *maxstring,*sync,*set,*get,*flushdb,*dbsize,
+	rObj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *pping,*ping,*pong,*ppong, *space,
+	*colon, *nullbulk, *nullmultibulk, *queued,
+	*emptymultibulk, *wrongtypeerr, *nokeyerr, *syntaxerr, *sameobjecterr,
+	*outofrangeerr, *noscripterr, *loadingerr, *slowscripterr, *bgsaveerr,
+	*masterdownerr, *roslaveerr, *execaborterr, *noautherr, *noreplicaserr,
+	*busykeyerr, *oomerr, *plus, *messagebulk, *pmessagebulk, *subscribebulk,
+	*unsubscribebulk, *psubscribebulk, *punsubscribebulk, *del, *rpop, *lpop,
+  	*lpush, *rpush,*emptyscan, *minstring, *maxstring,*sync,*set,*get,*flushdb,*dbsize,
 	*hset,*hget,*hgetall,*save,*slaveof,*command,*config,*auth,
 	*info,*echo,*client,*hkeys,*hlen,*keys,*bgsave,*memory,*cluster,*migrate,*debug,
 	*ttl,*lrange,*llen,*sadd,*scard,*psync,*addsync,*setslot,*node,*connect,*delsync,
 	*zadd,
-    *integers[REDIS_SHARED_INTEGERS],
-    *mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
-    *bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
+	*integers[REDIS_SHARED_INTEGERS],
+	*mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
+	*bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
 };
 
 extern sharedObjectsStruct shared;
