@@ -2865,6 +2865,42 @@ void xRedis::initConfig()
 	REGISTER_REDIS_COMMAND(shared.llen,llenCommand);
 	REGISTER_REDIS_COMMAND(shared.sadd,saddCommand);
 	REGISTER_REDIS_COMMAND(shared.zadd,zaddCommand);
+	REGISTER_REDIS_COMMAND(shared.SET,setCommand);
+	REGISTER_REDIS_COMMAND(shared.GET,getCommand);
+	REGISTER_REDIS_COMMAND(shared.FLUSHDB,flushdbCommand);
+	REGISTER_REDIS_COMMAND(shared.DBSIZE,dbsizeCommand);
+	REGISTER_REDIS_COMMAND(shared.HSET,hsetCommand);
+	REGISTER_REDIS_COMMAND(shared.HGET,hgetCommand);
+	REGISTER_REDIS_COMMAND(shared.HGETALL,hgetallCommand);
+	REGISTER_REDIS_COMMAND(shared.PING,pingCommand);
+	REGISTER_REDIS_COMMAND(shared.SAVE,saveCommand);
+	REGISTER_REDIS_COMMAND(shared.SLAVEOF,slaveofCommand);
+	REGISTER_REDIS_COMMAND(shared.SYNC,syncCommand);
+	REGISTER_REDIS_COMMAND(shared.COMMAND,commandCommand);
+	REGISTER_REDIS_COMMAND(shared.CONFIG,configCommand);
+	REGISTER_REDIS_COMMAND(shared.AUTH,authCommand);
+	REGISTER_REDIS_COMMAND(shared.INFO,infoCommand);
+	REGISTER_REDIS_COMMAND(shared.ECHO,echoCommand);
+	REGISTER_REDIS_COMMAND(shared.CLIENT,clientCommand);
+	REGISTER_REDIS_COMMAND(shared.HKEYS,hkeysCommand);
+	REGISTER_REDIS_COMMAND(shared.DEL,delCommand);
+	REGISTER_REDIS_COMMAND(shared.HLEN,hlenCommand);
+	REGISTER_REDIS_COMMAND(shared.KEYS,keysCommand);
+	REGISTER_REDIS_COMMAND(shared.BGSAVE,bgsaveCommand);
+	REGISTER_REDIS_COMMAND(shared.MEMORY,memoryCommand);
+	REGISTER_REDIS_COMMAND(shared.CLUSTER,clusterCommand);
+	REGISTER_REDIS_COMMAND(shared.MIGRATE,migrateCommand);
+	REGISTER_REDIS_COMMAND(shared.DEBUG,debugCommand);
+	REGISTER_REDIS_COMMAND(shared.TTL,ttlCommand);
+	REGISTER_REDIS_COMMAND(shared.LPUSH,lpushCommand);
+	REGISTER_REDIS_COMMAND(shared.LPOP,lpopCommand);
+	REGISTER_REDIS_COMMAND(shared.LRANGE,lrangeCommand);
+	REGISTER_REDIS_COMMAND(shared.RPUSH,rpushCommand);
+	REGISTER_REDIS_COMMAND(shared.RPOP,rpopCommand);
+	REGISTER_REDIS_COMMAND(shared.LLEN,llenCommand);
+	REGISTER_REDIS_COMMAND(shared.SADD,saddCommand);
+	REGISTER_REDIS_COMMAND(shared.ZADD,zaddCommand);
+
 
 #define REGISTER_REDIS_REPLY_COMMAND(msgId) \
     msgId->calHash(); \
