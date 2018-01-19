@@ -91,6 +91,8 @@ typedef struct redisCallback
     void *privdata;
 } redisCallback;
 
+typedef std::list<redisCallback> RedisCallbackList;
+
 typedef struct redisClusterCallback
 {
 	redisClusterCallback()
@@ -98,9 +100,10 @@ typedef struct redisClusterCallback
 		data = nullptr;
 	}
 	char * data;
+	int  len;
+	redisCallback cb;
 };
 
-typedef std::list<redisCallback> RedisCallbackList;
 typedef std::list<redisClusterCallback> RedisClusterCallbackList;
 
 class xRedisContext: noncopyable
@@ -173,7 +176,6 @@ public:
 	void *data;
 	xRedisContextPtr c;
 	xTcpconnectionPtr conn;
-	RedisCallbackList replies;
 	RedisClusterCallbackList clus;
 	std::mutex hiMutex;
 
@@ -196,7 +198,7 @@ public:
 	{
 
 	}
-	void clusterReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
+		
 	void clusterAskConnCallBack(const xTcpconnectionPtr& conn,void *data);
 	void clusterMoveConnCallBack(const xTcpconnectionPtr& conn,void *data);
 	void clusterErrorConnCallBack(void *data);

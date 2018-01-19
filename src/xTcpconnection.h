@@ -51,7 +51,7 @@ public:
 	void sendPipe(xBuffer* message);
 	void sendPipe(const void* message, int len);
 
-    void send(const void* message, int len);
+  	void send(const void* message, int len);
 	void send(xBuffer* message);
 	void send(const stringPiece  &message);
 

@@ -32,6 +32,7 @@ typedef struct redisObject
 			return false;
 		}
 	}
+	
 	unsigned type:4;
 	unsigned encoding:4;
 	size_t hash;
