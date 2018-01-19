@@ -64,9 +64,9 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "Usage: client <host_ip> <port> <threads> <cluster>\n");
 	}
 
-
 	return 0;
 }
+
 
 
 

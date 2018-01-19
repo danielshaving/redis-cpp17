@@ -1533,6 +1533,17 @@ size_t xRedis::getDbsize()
 	}
 
 
+	{
+		for (auto it = sortShards.begin(); it != sortShards.end(); ++it)
+		{
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			size += (*it).set.size();
+		}
+	}
+
+
+
 
 	return size;
 }
@@ -1835,7 +1846,10 @@ bool xRedis::hsetCommand(const std::deque <rObj*> & obj,xSession * session)
 }
 
 
-
+bool xRedis::zcardCommand(const std::deque <rObj*> & obj, xSession * session)
+{
+	return true;
+}
 
 bool xRedis::zrangeCommand(const std::deque<rObj*> &obj,xSession * session)
 {
@@ -1855,7 +1869,6 @@ bool xRedis::zrangeGenericCommand(const std::deque <rObj*> & obj,xSession * sess
 		addReplyError(session->sendBuf,"unknown  zrange  param error");
 		return false;
 	}
-
 
 	int rangelen;
 	int withscores = 0;
@@ -1923,9 +1936,22 @@ bool xRedis::zrangeGenericCommand(const std::deque <rObj*> & obj,xSession * sess
 			}
 			else
 			{
-				for (auto iter = it->second.sortMap.begin();  iter != it->second.sortMap.end(); ++iter)
+				int count = 0;
+				for (auto iter = it->second.sortMap.begin(); iter != it->second.sortMap.end(); ++iter)
 				{
-					
+					if (count++ >= start)
+					{
+						addReplyBulkCBuffer(session->sendBuf, iter->second->ptr, sdslen(iter->second->ptr));
+						if (withscores)
+						{
+							addReplyDouble(session->sendBuf, iter->first);
+						}
+					}
+					if (count >= end)
+					{
+						break;
+					}
+				
 				}
 			}
 			
@@ -1934,7 +1960,7 @@ bool xRedis::zrangeGenericCommand(const std::deque <rObj*> & obj,xSession * sess
 	}
 
 	
-	return true;
+	return false;
 }
 
 
@@ -1978,6 +2004,7 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 				{
 					set.sortDouble.insert(std::make_pair(obj[i + 1],scores));
 					set.sortMap.insert(std::make_pair(scores,obj[i + 1]));
+					added++;
 				}
 				else
 				{
@@ -2019,6 +2046,7 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 		}
 		else
 		{
+			zfree(obj[0]);
 			for(int i = 1; i < obj.size(); i += 2)
 			{
 				if (getDoubleFromObjectOrReply(session->sendBuf,obj[i],&scores,nullptr) != REDIS_OK)
@@ -2031,6 +2059,8 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 				{
 					it->second.sortDouble.insert(std::make_pair(obj[i + 1],scores));
 					it->second.sortMap.insert(std::make_pair(scores,obj[i + 1]));
+					zfree(obj[i]);
+					added++;
 				}
 				else
 				{
@@ -2048,7 +2078,7 @@ bool xRedis::zaddCommand(const std::deque <rObj*> & obj,xSession * session)
 								mark = true;
 								break;
 							}
-							++it;
+							++iterr;
 						}
 
 						assert(mark);
@@ -2865,6 +2895,7 @@ void xRedis::initConfig()
 	REGISTER_REDIS_COMMAND(shared.llen,llenCommand);
 	REGISTER_REDIS_COMMAND(shared.sadd,saddCommand);
 	REGISTER_REDIS_COMMAND(shared.zadd,zaddCommand);
+	REGISTER_REDIS_COMMAND(shared.zrange, zrangeCommand);
 	REGISTER_REDIS_COMMAND(shared.SET,setCommand);
 	REGISTER_REDIS_COMMAND(shared.GET,getCommand);
 	REGISTER_REDIS_COMMAND(shared.FLUSHDB,flushdbCommand);
@@ -2900,7 +2931,7 @@ void xRedis::initConfig()
 	REGISTER_REDIS_COMMAND(shared.LLEN,llenCommand);
 	REGISTER_REDIS_COMMAND(shared.SADD,saddCommand);
 	REGISTER_REDIS_COMMAND(shared.ZADD,zaddCommand);
-
+	REGISTER_REDIS_COMMAND(shared.zrange,zrangeCommand);
 
 #define REGISTER_REDIS_REPLY_COMMAND(msgId) \
     msgId->calHash(); \

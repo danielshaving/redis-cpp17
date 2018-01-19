@@ -359,6 +359,48 @@ void destorySharedObjects()
 	freeStringObject(shared.psync);
 	freeStringObject(shared.sync);
 	freeStringObject(shared.zadd);
+	freeStringObject(shared.PING);
+	freeStringObject(shared.DEL);
+	freeStringObject(shared.RPOP);
+	freeStringObject(shared.LPOP);
+	freeStringObject(shared.LPUSH);
+	freeStringObject(shared.RPUSH);
+	freeStringObject(shared.SET);
+	freeStringObject(shared.GET);
+	freeStringObject(shared.FLUSHDB);
+	freeStringObject(shared.DBSIZE);
+	freeStringObject(shared.HSET);
+	freeStringObject(shared.HGET);
+	freeStringObject(shared.HGETALL);
+	freeStringObject(shared.SAVE);
+	freeStringObject(shared.SLAVEOF);
+	freeStringObject(shared.COMMAND);
+	freeStringObject(shared.CONFIG);
+	freeStringObject(shared.AUTH);
+	freeStringObject(shared.INFO);
+	freeStringObject(shared.ECHO);
+	freeStringObject(shared.CLIENT);
+	freeStringObject(shared.HKEYS);
+	freeStringObject(shared.HLEN);
+	freeStringObject(shared.KEYS);
+	freeStringObject(shared.BGSAVE);
+	freeStringObject(shared.MEMORY);
+	freeStringObject(shared.CLUSTER);
+	freeStringObject(shared.MIGRATE);
+	freeStringObject(shared.DEBUG);
+	freeStringObject(shared.TTL);
+	freeStringObject(shared.LRANGE);
+	freeStringObject(shared.LLEN);
+	freeStringObject(shared.SADD);
+	freeStringObject(shared.SCARD);
+	freeStringObject(shared.ADDSYNC);
+	freeStringObject(shared.SETSLOT);
+	freeStringObject(shared.NODE);
+	freeStringObject(shared.CONNECT);
+	freeStringObject(shared.DELSYNC);
+	freeStringObject(shared.PSYNC);
+	freeStringObject(shared.SYNC);
+	freeStringObject(shared.ZADD);
 
 
 	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
@@ -484,6 +526,7 @@ void createSharedObjects()
 	shared.sync = createStringObject("sync", 4);
 	shared.delsync = createStringObject("delsync", 7);
 	shared.zadd = createStringObject("zadd", 4);
+	shared.zrange = createStringObject("zrange",6);
 
 	shared.PING =  createStringObject("PING", 4);
 	shared.DEL = createStringObject("DEL", 3);
@@ -527,6 +570,7 @@ void createSharedObjects()
 	shared.SYNC = createStringObject("SYNC", 4);
 	shared.DELSYNC = createStringObject("DELSYNC", 7);
 	shared.ZADD = createStringObject("ZADD", 4);
+	shared.ZRANGE = createStringObject("ZRANGE",6);
 
 
     for (j = 0; j < REDIS_SHARED_INTEGERS; j++) {
@@ -704,8 +748,39 @@ void addReplyMultiBulkLen(xBuffer & sendBuf,long length)
 }
 
 
+void addReplyBulkCString(xBuffer & sendBuf, const char *s)
+{
+	if (s == nullptr)
+	{
+		addReply(sendBuf, shared.nullbulk);
+	}
+	else 
+	{
+		addReplyBulkCBuffer(sendBuf, s, strlen(s));
+	}
+}
 
-void addReplyBulkCBuffer(xBuffer & sendBuf,const char *p, size_t len)
+
+void addReplyDouble(xBuffer & sendBuf, double d)
+{
+	char dbuf[128], sbuf[128];
+	int dlen, slen;
+	if (isinf(d)) 
+	{
+		/* Libc in odd systems (Hi Solaris!) will format infinite in a
+		* different way, so better to handle it in an explicit way. */
+		addReplyBulkCString(sendBuf, d > 0 ? "inf" : "-inf");
+	}
+	else {
+		dlen = snprintf(dbuf, sizeof(dbuf), "%.17g", d);
+		slen = snprintf(sbuf, sizeof(sbuf), "$%d\r\n%s\r\n", dlen, dbuf);
+		addReplyString(sendBuf, sbuf, slen);
+	}
+}
+
+
+
+void addReplyBulkCBuffer(xBuffer & sendBuf,const char  *p, size_t len)
 {
 	addReplyLongLongWithPrefix(sendBuf,len,'$');
 	addReplyString(sendBuf,p,len);

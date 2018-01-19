@@ -21,7 +21,6 @@ public:
 	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false);
 	~xRedis();
 	
-	void test();
 	void initConfig();
 	void handleTimeOut(void *data);
 	void serverCron(void * data);
@@ -102,13 +101,13 @@ public:
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 
 public:
-	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommands;
-	std::unordered_set<rObj*,Hash,EEqual>  stopRepliCached;
+	std::unordered_set<rObj*,Hash,Equal>  unorderedmapCommands;
+	std::unordered_set<rObj*,Hash,Equal>  stopRepliCached;
 	typedef std::function<bool(const std::deque<rObj*> &,xSession *)> commandFunction;
-	std::unordered_map<rObj*,commandFunction,Hash,EEqual> handlerCommandMap;
-	std::unordered_set<rObj*,Hash, EEqual> replyCommandMap;
+	std::unordered_map<rObj*,commandFunction,Hash,Equal> handlerCommandMap;
+	std::unordered_set<rObj*,Hash, Equal> replyCommandMap;
 	std::unordered_map<int32_t,xSeesionPtr> sessions;
-	std::unordered_set<rObj*,Hash,EEqual> cluterMaps;
+	std::unordered_set<rObj*,Hash,Equal> cluterMaps;
 	
 	typedef std::unordered_map<rObj*,double,Hash,Equal> SortedDouble;
 	typedef std::multimap<double,rObj*> SortedMap;

@@ -186,7 +186,7 @@ public:
 };
 
 
-class xHiredis
+class xHiredis : noncopyable
 {
 public:
 	xHiredis(xEventLoop *loop):
@@ -202,15 +202,24 @@ public:
 	void clusterErrorConnCallBack(void *data);
 	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
 
-	std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;
-	std::unordered_map<int32_t,xRedisAsyncContextPtr> redisMaps;
-	std::unordered_map<int32_t,redisClusterCallback> clusterMaps;
+	void eraseTcpMap(int data);
+	void eraseRedisMap(int32_t sockfd);
+
+	void insertRedisMap(int sockfd, xRedisAsyncContextPtr ac);
+	void insertTcpMap(int data,xTcpClientPtr tc);
 
 	xThreadPool & getPoll() { return pool; }
 	void setCount(){ count ++; }
 	int getCount(){ return count; }
 	std::mutex &getMutex(){ return rtx; }
-
+	
+	std::unordered_map<int32_t,xRedisAsyncContextPtr> & getRedisMap() { return redisMaps; }
+private:
+	
+	std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;
+	std::unordered_map<int32_t,xRedisAsyncContextPtr> redisMaps;
+	std::unordered_map<int32_t,redisClusterCallback> clusterMaps;
+	
 	xThreadPool pool;
 	bool clusterMode;
 	int count;

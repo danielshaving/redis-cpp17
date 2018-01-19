@@ -81,13 +81,13 @@ struct sharedObjectsStruct
 	*hset,*hget,*hgetall,*save,*slaveof,*command,*config,*auth,
 	*info,*echo,*client,*hkeys,*hlen,*keys,*bgsave,*memory,*cluster,*migrate,*debug,
 	*ttl,*lrange,*llen,*sadd,*scard,*psync,*addsync,*setslot,*node,*connect,*delsync,
-	*zadd,
+	*zadd,*zrange,
 	*PING,*DEL, *RPOP, *LPOP,
 	*LPUSH, *RPUSH,*SYNC,*SET,*GET,*FLUSHDB,*DBSIZE,
 	*HSET,*HGET,*HGETALL,*SAVE,*SLAVEOF,*COMMAND,*CONFIG,*AUTH,
 	*INFO,*ECHO,*CLIENT,*HKEYS,*HLEN,*KEYS,*BGSAVE,*MEMORY,*CLUSTER,*MIGRATE,*DEBUG,
 	*TTL,*LRANGE,*LLEN,*SADD,*SCARD,*PSYNC,*ADDSYNC,*SETSLOT,*NODE,*CONNECT,*DELSYNC,
-	*ZADD,
+	*ZADD,*ZRANGE,
 	*integers[REDIS_SHARED_INTEGERS],
 	*mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
 	*bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
@@ -126,11 +126,13 @@ void addReplyLongLongWithPrefix(xBuffer &sendBuf, long long ll, char prefix);
 void addReplyBulkLen(xBuffer &sendBuf,rObj *obj);
 void addReplyBulk(xBuffer &sendBuf,rObj *obj);
 void addReplyErrorFormat(xBuffer &sendBuf,const char *fmt, ...);
-void addReplyBulkCBuffer(xBuffer &sendBuf,const char *p, size_t len);
+void addReplyBulkCBuffer(xBuffer &sendBuf, const char  *p, size_t len);
 void addReplyLongLong(xBuffer &sendBuf,size_t len);
 void addReplySds(xBuffer &sendBuf,sds s);
 void addReplyStatus(xBuffer &sendBuf, char *status);
 void addReplyStatusLength(xBuffer &sendBuf, char *s, size_t len);
+void addReplyBulkCString(xBuffer & sendBuf, const char *s);
+void addReplyDouble(xBuffer & sendBuf, double d);
 
 long long ustime(void);
 long long mstime(void);

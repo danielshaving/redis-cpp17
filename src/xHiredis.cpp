@@ -901,9 +901,9 @@ int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, voi
 	{
 		std::unique_lock<std::mutex> lk(ac->hiMutex);
 		ac->replies.push_back(std::move(cb));
-		ac->conn->sendPipe(cmd,len);
 	}
 	
+	ac->conn->sendPipe(cmd,len);
    	return REDIS_OK;
 }
 
@@ -1194,8 +1194,6 @@ int redisvAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void
 
 	std::unique_lock<std::mutex> lk(ac->hiMutex);
 	ac->clus.push_back(std::move(call));
-
-	//zfree(cmd);
 	return status;
 }
 
@@ -1659,6 +1657,35 @@ void xHiredis::clusterErrorConnCallBack(void *data)
 	}
 
 }
+
+
+void xHiredis::eraseTcpMap(int data)
+{
+	std::unique_lock<std::mutex> lk(rtx);
+	tcpClientMaps.erase(data);
+}
+
+void xHiredis::eraseRedisMap(int32_t sockfd)
+{
+	std::unique_lock<std::mutex> lk(rtx);
+	redisMaps.erase(sockfd);
+}
+
+
+void xHiredis::insertRedisMap(int sockfd, xRedisAsyncContextPtr ac)
+{
+	std::unique_lock<std::mutex> lk(rtx);
+	redisMaps.insert(std::make_pair(sockfd,ac));
+}
+
+
+void xHiredis::insertTcpMap(int data,xTcpClientPtr tc)
+{
+	std::unique_lock<std::mutex> lk(rtx);
+	tcpClientMaps.insert(std::make_pair(data,tc));
+}
+
+	
 
 
 void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)

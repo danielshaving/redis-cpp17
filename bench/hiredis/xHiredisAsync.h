@@ -8,14 +8,14 @@ int sessionCount = 0;
 std::atomic<int64_t>  connetCount;
 
 
-class  xHiredisAsync
+class  xHiredisAsync : noncopyable
 {
 public:
 	xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port);
 	void redisConnCallBack(const xTcpconnectionPtr& conn,void *data);
-    void redisErrorConnCallBack(void *data);
-
-public:
+        void redisErrorConnCallBack(void *data);
+	xHiredis * getHiredis(){ return &hiredis; }
+private:
 	xHiredis hiredis;
 	std::atomic<int> connectCount;
 	xEventLoop *loop;
