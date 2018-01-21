@@ -2,7 +2,6 @@
 #include "xRedis.h"
 #include "xCurrentThread.h"
 #include "xLog.h"
-#include "xSortSet.h"
 
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char* msg, int len)
