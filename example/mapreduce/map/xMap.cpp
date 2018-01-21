@@ -101,7 +101,7 @@ public:
 
 		for(auto it = tcpVecs.begin(); it != tcpVecs.end(); ++it)
 		{
-			(*it)->connection->shutdown();
+			(*it)->connection->shutdown();//close eagin  close write  ask  TCP fin
 		}
 
 		loop->quit();

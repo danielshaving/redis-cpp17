@@ -24,7 +24,7 @@ int main()
                                          const std::pair<int, WordCount::const_iterator>& rhs) {
     return lhs.first > rhs.first;
   });
-  // printf("%zd\n", sizeof(freq[0]));
+
   for (auto item : freq)
   {
     std::cout << item.first << '\t' << item.second->first << '\n';

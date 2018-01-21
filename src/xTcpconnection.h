@@ -43,7 +43,6 @@ public:
 	void sendInLoop(const stringPiece & message);
 	void sendPipeInLoop(const void* message, size_t len);
 	void sendPipeInLoop(const stringPiece & message);
-	
 
 	static void bindSendInLoop(xTcpconnection* conn, const stringPiece& message);
 	static void bindSendPipeInLoop(xTcpconnection* conn, const stringPiece& message);
@@ -52,7 +51,7 @@ public:
 	void sendPipe(xBuffer* message);
 	void sendPipe(const void* message, int len);
 
-    void send(const void* message, int len);
+  	void send(const void* message, int len);
 	void send(xBuffer* message);
 	void send(const stringPiece  &message);
 

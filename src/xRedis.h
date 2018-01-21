@@ -14,7 +14,6 @@
 #include "xSentinel.h"
 #include "xCluster.h"
 #include "xRdb.h"
-#include "xSortSet.h"
 
 class xRedis : noncopyable
 {
@@ -22,7 +21,6 @@ public:
 	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false);
 	~xRedis();
 	
-	void test();
 	void initConfig();
 	void handleTimeOut(void *data);
 	void serverCron(void * data);
@@ -79,6 +77,14 @@ public:
 	bool scardCommand(const std::deque <rObj*> & obj,xSession * session);
 	bool saddCommand(const std::deque <rObj*> & obj,xSession * session);
 
+	bool zaddCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool zrangeCommand(const std::deque<rObj*> &obj,xSession * session);
+	bool zcardCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool zrevrangeCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool zrangeGenericCommand(const std::deque <rObj*> & obj,xSession * session,int reverse);
+
+
+	
 	int rdbSaveBackground(xSession * session, bool enabled);
 	bool bgsave(xSession * session, bool enabled = false);
 	bool save(xSession * session);
@@ -95,20 +101,22 @@ public:
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 
-
 public:
-	std::unordered_set<rObj*,Hash,EEqual>  unorderedmapCommands;
-	std::unordered_set<rObj*,Hash,EEqual>  stopRepliCached;
+	std::unordered_set<rObj*,Hash,Equal>  unorderedmapCommands;
+	std::unordered_set<rObj*,Hash,Equal>  stopRepliCached;
 	typedef std::function<bool(const std::deque<rObj*> &,xSession *)> commandFunction;
-	std::unordered_map<rObj*,commandFunction,Hash,EEqual> handlerCommandMap;
-	std::unordered_set<rObj*,Hash, EEqual> replyCommandMap;
-	std::unordered_map<int32_t,std::shared_ptr<xSession>> sessions;
-	std::unordered_set<rObj*,Hash,EEqual> cluterMaps;
+	std::unordered_map<rObj*,commandFunction,Hash,Equal> handlerCommandMap;
+	std::unordered_set<rObj*,Hash, Equal> replyCommandMap;
+	std::unordered_map<int32_t,xSeesionPtr> sessions;
+	std::unordered_set<rObj*,Hash,Equal> cluterMaps;
 	
+	typedef std::unordered_map<rObj*,double,Hash,Equal> SortedDouble;
+	typedef std::multimap<double,rObj*> SortedMap;
+	typedef struct sort_set { SortedDouble sortDouble; SortedMap sortMap;};
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
-	typedef std::unordered_map<rObj*, std::deque<rObj*>, Hash, Equal> ListMap;
-	typedef std::unordered_map<rObj*,xSortedSet<rObj*,Hash,Equal>> SortedSet;
+	typedef std::unordered_map<rObj*,std::deque<rObj*>, Hash, Equal> ListMap;
+	typedef std::unordered_map<rObj*,sort_set,Hash,Equal> SortedSet;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
 
 	struct SetMapLock
@@ -150,12 +158,12 @@ public:
 
 	xEventLoop loop;
 	xTcpServer server;
-    std::mutex mtx;
-    std::mutex slaveMutex;
-    std::mutex expireMutex;
-    std::mutex sentinelMutex;
-    std::mutex clusterMutex;
-    std::mutex forkMutex;
+	std::mutex mtx;
+	std::mutex slaveMutex;
+	std::mutex expireMutex;
+	std::mutex sentinelMutex;
+	std::mutex clusterMutex;
+	std::mutex forkMutex;
 
 
 	std::atomic<int>   salveCount;
@@ -172,8 +180,8 @@ public:
 	std::atomic<bool>  forkEnabled;
 	std::atomic<int>   forkCondWaitCount;
 
-    std::condition_variable  expireCondition;
-    std::condition_variable  forkCondition;
+	std::condition_variable  expireCondition;
+	std::condition_variable  forkCondition;
 
 	xBuffer	slaveCached;
 	xBuffer	clusterMigratCached;

@@ -4,7 +4,7 @@ import random
 
 words = 1000000
 word_len = 5
-alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-'
+alphabet = '0123456789_-+=ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 output = open('random_words', 'w')
 for x in xrange(words):

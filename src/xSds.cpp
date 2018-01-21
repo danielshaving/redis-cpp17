@@ -264,7 +264,8 @@ int sdsll2str(char *s, long long value)
 
     /* Reverse the string. */
     p--;
-    while(s < p) {
+    while(s < p)
+    {
         aux = *s;
         *s = *p;
         *p = aux;
@@ -294,7 +295,8 @@ int sdsull2str(char *s, unsigned long long v)
 
     /* Reverse the string. */
     p--;
-    while(s < p) {
+    while(s < p)
+    {
         aux = *s;
         *s = *p;
         *p = aux;
@@ -326,21 +328,25 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap)
 
     /* We try to start using a static buffer for speed.
      * If not possible we revert to heap allocation. */
-    if (buflen > sizeof(staticbuf)) {
+    if (buflen > sizeof(staticbuf))
+    {
         buf = (char*)zmalloc(buflen);
         if (buf == nullptr) return nullptr;
-    } else {
+    } else
+    {
         buflen = sizeof(staticbuf);
     }
 
     /* Try with buffers two times bigger every time we fail to
      * fit the string in the current buffer size. */
-    while(1) {
+    while(1)
+    {
         buf[buflen-2] = '\0';
         va_copy(cpy,ap);
         // T = O(N)
         vsnprintf(buf, buflen, fmt, cpy);
-        if (buf[buflen-2] != '\0') {
+        if (buf[buflen-2] != '\0')
+        {
             if (buf != staticbuf) zfree(buf);
             buflen *= 2;
             buf = (char*)zmalloc(buflen);
@@ -410,28 +416,33 @@ sds sdscatfmt(sds s, char const *fmt, ...)
     va_start(ap,fmt);
     f = fmt;    /* Next format specifier byte to process. */
     i = initlen; /* Position of the next byte to write to dest str. */
-    while(*f) {
+    while(*f)
+    {
         char next, *str;
         size_t l;
         long long num;
         unsigned long long unum;
 
         /* Make sure there is always space for at least 1 char. */
-        if (sh->free == 0) {
+        if (sh->free == 0)
+        {
             s = sdsMakeRoomFor(s,1);
             sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
         }
 
-        switch(*f) {
+        switch(*f)
+        {
         case '%':
             next = *(f+1);
             f++;
-            switch(next) {
+            switch(next)
+            {
             case 's':
             case 'S':
                 str = va_arg(ap,char*);
                 l = (next == 's') ? strlen(str) : sdslen(str);
-                if (sh->free < l) {
+                if (sh->free < l)
+                {
                     s = sdsMakeRoomFor(s,l);
                     sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
                 }
@@ -449,7 +460,8 @@ sds sdscatfmt(sds s, char const *fmt, ...)
                 {
                     char buf[SDS_LLSTR_SIZE];
                     l = sdsll2str(buf,num);
-                    if (sh->free < l) {
+                    if (sh->free < l)
+                    {
                         s = sdsMakeRoomFor(s,l);
                         sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
                     }
@@ -468,7 +480,8 @@ sds sdscatfmt(sds s, char const *fmt, ...)
                 {
                     char buf[SDS_LLSTR_SIZE];
                     l = sdsull2str(buf,unum);
-                    if (sh->free < l) {
+                    if (sh->free < l)
+                    {
                         s = sdsMakeRoomFor(s,l);
                         sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
                     }
@@ -565,23 +578,31 @@ void sdsrange(sds s, int start, int end)
     size_t newlen, len = sdslen(s);
 
     if (len == 0) return;
-    if (start < 0) {
+    if (start < 0)
+    {
         start = len+start;
         if (start < 0) start = 0;
     }
-    if (end < 0) {
+    if (end < 0)
+    {
         end = len+end;
         if (end < 0) end = 0;
     }
     newlen = (start > end) ? 0 : (end-start)+1;
-    if (newlen != 0) {
-        if (start >= (signed)len) {
+    if (newlen != 0)
+    {
+        if (start >= (signed)len)
+        {
             newlen = 0;
-        } else if (end >= (signed)len) {
+        }
+        else if (end >= (signed)len)
+        {
             end = len-1;
             newlen = (start > end) ? 0 : (end-start)+1;
         }
-    } else {
+    }
+    else
+    {
         start = 0;
     }
 
@@ -648,7 +669,8 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
     tokens = (sds*)zmalloc(sizeof(sds)*slots);
     if (tokens == nullptr) return nullptr;
 
-    if (len == 0) {
+    if (len == 0)
+    {
         *count = 0;
         return tokens;
     }
