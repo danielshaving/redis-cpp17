@@ -31,7 +31,7 @@ public:
 
 private:
 	xEventLoop* loop;
-	std::unique_ptr<xAcceptor> 		acceptor;
+	std::unique_ptr<xAcceptor> 	acceptor;
 	std::shared_ptr<xThreadPool> 	threadPool;
 
 

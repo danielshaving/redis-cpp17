@@ -32,9 +32,10 @@ void  xKqueue::epollWait(ChannelList* activeChannels,int msTime)
 {
     struct timespec timeout;
 	timeout.tv_sec = msTime;
+	timeout.tv_nsec = 0;
 
 	auto timerQueue = loop->getTimerQueue();
-	if(timerQueue->size())
+	if(timerQueue->size() > 0 )
 	{
 		auto timer = timerQueue->head();
 		timeout.tv_sec = timer->interval;
