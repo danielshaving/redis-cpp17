@@ -2,9 +2,9 @@
 
 xTimer::xTimer(xTimerCallback && cb, xTimestamp && expiration,bool repeat,double interval,void * data)
 :index(-1),
- repeat(repeat),
- interval(interval),
- expiration(std::move(expiration)),
+repeat(repeat),
+interval(interval),
+expiration(std::move(expiration)),
 callback(std::move(cb)),
 data(data)
 {

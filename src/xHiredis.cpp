@@ -4,7 +4,8 @@ static void __redisReaderSetError(const xRedisReaderPtr  &r, int type, const cha
 {
 	size_t len;
 
-	if (r->reply != nullptr && r->fn && r->fn->freeObjectFuc) {
+	if (r->reply != nullptr && r->fn && r->fn->freeObjectFuc)
+	{
 		r->fn->freeObjectFuc(r->reply);
 		r->reply = nullptr;
 	}
@@ -28,25 +29,27 @@ static void __redisReaderSetError(const xRedisReaderPtr  &r, int type, const cha
 }
 
 
-static size_t chrtos(char *buf, size_t size, char byte) {
+static size_t chrtos(char *buf, size_t size, char byte)
+{
     size_t len = 0;
 
-    switch(byte) {
-    case '\\':
-    case '"':
-        len = snprintf(buf,size,"\"\\%c\"",byte);
-        break;
-    case '\n': len = snprintf(buf,size,"\"\\n\""); break;
-    case '\r': len = snprintf(buf,size,"\"\\r\""); break;
-    case '\t': len = snprintf(buf,size,"\"\\t\""); break;
-    case '\a': len = snprintf(buf,size,"\"\\a\""); break;
-    case '\b': len = snprintf(buf,size,"\"\\b\""); break;
-    default:
-        if (isprint(byte))
-            len = snprintf(buf,size,"\"%c\"",byte);
-        else
-            len = snprintf(buf,size,"\"\\x%02x\"",(unsigned char)byte);
-        break;
+    switch(byte)
+    {
+		case '\\':
+		case '"':
+			len = snprintf(buf,size,"\"\\%c\"",byte);
+			break;
+		case '\n': len = snprintf(buf,size,"\"\\n\""); break;
+		case '\r': len = snprintf(buf,size,"\"\\r\""); break;
+		case '\t': len = snprintf(buf,size,"\"\\t\""); break;
+		case '\a': len = snprintf(buf,size,"\"\\a\""); break;
+		case '\b': len = snprintf(buf,size,"\"\\b\""); break;
+		default:
+			if (isprint(byte))
+				len = snprintf(buf,size,"\"%c\"",byte);
+			else
+				len = snprintf(buf,size,"\"\\x%02x\"",(unsigned char)byte);
+			break;
     }
 
     return len;
@@ -54,7 +57,8 @@ static size_t chrtos(char *buf, size_t size, char byte) {
 
 
 
-static void __redisReaderSetErrorProtocolByte(const xRedisReaderPtr  &r, char byte) {
+static void __redisReaderSetErrorProtocolByte(const xRedisReaderPtr  &r, char byte)
+{
     char cbuf[8], sbuf[128];
 
     chrtos(cbuf,sizeof(cbuf),byte);
@@ -65,7 +69,8 @@ static void __redisReaderSetErrorProtocolByte(const xRedisReaderPtr  &r, char by
 
 
 
-static void __redisReaderSetErrorOOM(const xRedisReaderPtr  &r) {
+static void __redisReaderSetErrorOOM(const xRedisReaderPtr  &r)
+{
     __redisReaderSetError(r,REDIS_ERR_OOM,"Out of memory");
 }
 
@@ -373,7 +378,8 @@ static size_t bulklen(size_t len)
 }
 
 
-static char *nextArgument(char *start, char **str, size_t *len) {
+static char *nextArgument(char *start, char **str, size_t *len)
+{
     char *p = start;
     if (p[0] != '$')
     {

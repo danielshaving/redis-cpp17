@@ -172,7 +172,7 @@ int xSession::processCommand()
 
 		if (redis->clus.clusterSlotNodes.size() == 0)
 		{
-			redis->clus.clusterRedirectClient(this, nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
+			redis->clus.clusterRedirectClient(shared_from_this(), nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
 			clearObj();
 			return REDIS_ERR;
 		}
@@ -180,7 +180,7 @@ int xSession::processCommand()
 		auto it = redis->clus.clusterSlotNodes.find(hashslot);
 		if (it == redis->clus.clusterSlotNodes.end())
 		{
-			redis->clus.clusterRedirectClient(this, nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
+			redis->clus.clusterRedirectClient(shared_from_this(), nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
 			clearObj();
 			return REDIS_ERR;
 		}
@@ -192,7 +192,7 @@ int xSession::processCommand()
 			}
 			else
 			{
-				redis->clus.clusterRedirectClient(this, &(it->second), hashslot, CLUSTER_REDIR_MOVED);
+				redis->clus.clusterRedirectClient(shared_from_this(), &(it->second), hashslot, CLUSTER_REDIR_MOVED);
 				clearObj();
 				return REDIS_ERR;
 			}
@@ -254,7 +254,7 @@ jump:
 		return REDIS_ERR;
 	}
 
-	if(!iter->second(robjs,this))
+	if(!iter->second(robjs,shared_from_this()))
 	{
 		clearObj();
 		return REDIS_ERR;

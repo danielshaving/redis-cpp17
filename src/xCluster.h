@@ -32,11 +32,11 @@ public:
     bool getSlotSet(const std::string &ipPort);
 
 	void structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, const xTcpconnectionPtr & conn);
-	int getSlotOrReply(xSession  * session,rObj * o );
+	int getSlotOrReply(const xSeesionPtr &session,rObj * o );
 	unsigned int keyHashSlot(char *key, int keylen);
 	void syncClusterSlot();
-	void clusterRedirectClient(xSession * session, xClusterNode * node,int hashSlot,int errCode);
-	bool replicationToNode(xSession * session,const std::string &ip,int32_t port);
+	void clusterRedirectClient(const xSeesionPtr &session, xClusterNode * node,int hashSlot,int errCode);
+	bool replicationToNode(const xSeesionPtr &session,const std::string &ip,int32_t port);
 	void delClusterImport(std::deque<rObj*> &robj);
 	void eraseClusterNode(const std::string &ip,int32_t port);
 	void eraseImportSlot(int slot);

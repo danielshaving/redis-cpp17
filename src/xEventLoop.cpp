@@ -25,8 +25,11 @@ xEventLoop::xEventLoop()
 #ifdef __APPLE__
  epoller(new xKqueue(this)),
  op(socketpair(AF_UNIX,SOCK_STREAM,0,wakeupFd)),
+ timerQueue(new xTimerQueue(this)),
  wakeupChannel(new xChannel(this,wakeupFd[1])),
 #endif
+
+
  currentActiveChannel(nullptr),
  running(false),
  eventHandling(false),
@@ -203,9 +206,6 @@ void xEventLoop::queueInLoop(Functor&& cb)
 	}
 }
 
-
-
-
 void xEventLoop::doPendingFunctors()
 {
 	std::vector<Functor> functors;
@@ -233,8 +233,7 @@ void xEventLoop::run()
 		activeChannels.clear();
 		epoller->epollWait(&activeChannels);
 		eventHandling = true;
-		for (ChannelList::iterator it = activeChannels.begin();
-			it != activeChannels.end(); ++it)
+		for (auto it = activeChannels.begin();it != activeChannels.end(); ++it)
 		{
 		  currentActiveChannel = *it;
 		  currentActiveChannel->handleEvent();
