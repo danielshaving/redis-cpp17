@@ -1,9 +1,7 @@
 #pragma once
-
 #include "all.h"
 
 class xEventLoop;
-
 class xChannel: noncopyable
 {
 public:

@@ -1,7 +1,8 @@
 #include "all.h"
 #include "xEventLoop.h"
+#include "xLog.h"
 
-#ifdef LINUX
+#ifdef __linux__
 int createEventfd()
 {
   int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -15,13 +16,13 @@ int createEventfd()
 
 xEventLoop::xEventLoop()
 :threadId(std::this_thread::get_id()),
-#ifdef LINUX
+#ifdef __linux__
  wakeupFd(createEventfd()),
  epoller(new xEpoll(this)),
  timerQueue(new xTimerQueue(this)),
  wakeupChannel(new xChannel(this,wakeupFd)),
 #endif
-#ifdef MAC
+#ifdef __APPLE__
  epoller(new xKqueue(this)),
  op(socketpair(AF_UNIX,SOCK_STREAM,0,wakeupFd)),
  wakeupChannel(new xChannel(this,wakeupFd[1])),
@@ -47,12 +48,12 @@ xEventLoop::~xEventLoop()
 {
 	wakeupChannel->disableAll();
 	wakeupChannel->remove();
-#ifdef LINUX
+#ifdef __linux__
 	::close(wakeupFd);
 #endif
 
 
-#ifdef MAC
+#ifdef __APPLE__
 	::close(wakeupFd[0]);
 	::close(wakeupFd[1]);
 #endif
@@ -100,11 +101,11 @@ bool xEventLoop::hasChannel(xChannel* channel)
 void  xEventLoop::handleRead()
 {
 	uint64_t one = 1;
-#ifdef LINUX
+#ifdef __linux__	
 	ssize_t n = ::read(wakeupFd, &one, sizeof one);
 #endif
 
-#ifdef MAC
+#ifdef __APPLE__
 	ssize_t n = ::read(wakeupFd[1], &one, sizeof one);
 #endif
 	if (n != sizeof one)
@@ -129,11 +130,11 @@ void xEventLoop::wakeup()
 {
 
   uint64_t one = 1;
-#ifdef LINUX
+#ifdef __linux__
   ssize_t n = ::write(wakeupFd, &one, sizeof one);
 #endif
 
-#ifdef MAC
+#ifdef __APPLE__
   ssize_t n = ::write(wakeupFd[0], &one, sizeof one);
 #endif
 

@@ -1,4 +1,5 @@
-#ifdef LINUX
+#ifdef __linux__
+
 #include "xEpoll.h"
 #include "xChannel.h"
 #include "xEventLoop.h"

@@ -50,7 +50,7 @@ void xChannel::handleEventWithGuard()
 {
 	eventHandling = true;
 
-#ifdef LINUX
+#ifdef __linux__
 	if ((revents & EPOLLHUP) && !(revents & EPOLLIN))
 	{
 		if (closeCallback) closeCallback();
@@ -73,7 +73,8 @@ void xChannel::handleEventWithGuard()
 
 #endif
 
-#ifdef MAC
+#ifdef __APPLE__
+
 
 	if (events & kReadEvent)
 	{

@@ -1,13 +1,15 @@
 #pragma once
 #include "all.h"
 
-#include "xChannel.h"
-#ifdef LINUX
-#include "xEpoll.h"
+#include "xChannel.h"	
+
+
+#ifdef __APPLE__
+#include "xKqueue.h"
 #endif
 
-#ifdef MAC
-#include "xKqueue.h"
+#ifdef __linux__
+#include "xEpoll.h"
 #endif
 
 #include "xTimerQueue.h"
@@ -53,16 +55,15 @@ private:
 
     std::thread::id threadId;
     mutable std::mutex mutex;
-
-#ifdef LINUX
-    std::unique_ptr<xEpoll>   epoller;
-    int wakeupFd;
-#endif
-
-#ifdef MAC
+#ifdef __APPLE__
     std::unique_ptr<xKqueue>   epoller;
     int op;
     int wakeupFd[2];
+#endif
+
+#ifdef __linux__
+	std::unique_ptr<xEpoll>   epoller;
+    int wakeupFd;
 #endif
 
     std::unique_ptr<xTimerQueue> timerQueue;

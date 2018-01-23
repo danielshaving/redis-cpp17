@@ -1,5 +1,5 @@
 
-#ifdef MAC
+#ifdef __APPLE__
 #include "xKqueue.h"
 #include "xChannel.h"
 #include "xEventLoop.h"

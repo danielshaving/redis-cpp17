@@ -1,6 +1,5 @@
 #pragma once
-
-#ifdef LINUX
+#ifdef __linux__
 #include "all.h"
 #include "xLog.h"
 
@@ -30,5 +29,4 @@ public:
 	xEventLoop  *loop;
 	int epollFd;
 };
-
 #endif

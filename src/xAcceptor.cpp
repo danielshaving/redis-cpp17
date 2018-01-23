@@ -1,5 +1,5 @@
 #include "xAcceptor.h"
-
+#include "xLog.h"
  xAcceptor::xAcceptor(xEventLoop* loop,std::string ip, int16_t port)
  :loop(loop),
   socket(loop,ip,port),

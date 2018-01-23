@@ -126,7 +126,7 @@ void xPriorityQueue::shiftDown(int hole_index, xTimer *e)
 
 int createTimerfd()
 {
-#ifdef LINUX
+#ifdef __linux__
   int timerfd = ::timerfd_create(CLOCK_MONOTONIC,
                                  TFD_NONBLOCK | TFD_CLOEXEC);
   if (timerfd < 0)
@@ -137,7 +137,7 @@ int createTimerfd()
 
 #endif
 
-#ifdef MAC
+#ifdef __APPLE__
   return -1;
 #endif
 

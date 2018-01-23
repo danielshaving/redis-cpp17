@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef MAC
+#ifdef __APPLE__
 #include "all.h"
 #include "xLog.h"
 

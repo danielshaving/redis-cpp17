@@ -59,11 +59,11 @@
 #include <netdb.h>
 #include <sys/wait.h>
 
-#ifdef MAC
+#ifdef __APPLE__
 #include <sys/event.h>
 #endif
 
-#ifdef LINUX
+#ifdef __linux__
 #include <sys/sendfile.h>
 #include <sys/epoll.h>
 #include <linux/tcp.h>
