@@ -32,7 +32,13 @@ void  xKqueue::epollWait(ChannelList* activeChannels,int msTime)
 {
     struct timespec timeout;
 	timeout.tv_sec = msTime;
-	timeout.tv_nsec = (msTime % 1000) * 1000 * 1000;
+
+	auto timerQueue = loop->getTimerQueue();
+	if(timerQueue->size())
+	{
+		auto timer = timerQueue->head();
+		timeout.tv_sec = timer->interval;
+	}
 
 	int numEvents = kevent(kqueueFd, nullptr,0,&*events.begin(), static_cast<int>(events.size()), &timeout);
 	int savedErrno = errno;
@@ -56,6 +62,7 @@ void  xKqueue::epollWait(ChannelList* activeChannels,int msTime)
 		}
 	}
 
+	loop->handlerTimerQueue();
 }
 
 

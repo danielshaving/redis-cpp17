@@ -124,9 +124,9 @@ void xPriorityQueue::shiftDown(int hole_index, xTimer *e)
 	*(int *)(p[hole_index] = e) = hole_index;
 }
 
+#ifdef __linux__
 int createTimerfd()
 {
-#ifdef __linux__
   int timerfd = ::timerfd_create(CLOCK_MONOTONIC,
                                  TFD_NONBLOCK | TFD_CLOEXEC);
   if (timerfd < 0)
@@ -134,14 +134,8 @@ int createTimerfd()
   	assert(false);
   }
   return timerfd;
-
-#endif
-
-#ifdef __APPLE__
-  return -1;
-#endif
-
 }
+#endif
 
 
 struct timespec howMuchTimeFromNow(xTimestamp when)
@@ -165,7 +159,7 @@ struct timespec howMuchTimeFromNow(xTimestamp when)
 
 void resetTimerfd(int timerfd, xTimestamp expiration)
 {
-#ifdef LINUX
+#ifdef __linux__
 	struct itimerspec newValue;
 	struct itimerspec oldValue;
 	bzero(&newValue, sizeof newValue);
@@ -174,14 +168,11 @@ void resetTimerfd(int timerfd, xTimestamp expiration)
 	int net = ::timerfd_settime(timerfd, 0, &newValue, &oldValue);
 	if(net < 0 )
 	{
-		assert(false);
+		LOG_ERROR<<"timerfd_settime error";
 	}
 #endif
   
 }
-
-
-
 
 void readTimerfd(int timerfd,xTimestamp now)
 {
@@ -195,20 +186,26 @@ void readTimerfd(int timerfd,xTimestamp now)
 
 
 xTimerQueue::xTimerQueue(xEventLoop *loop)
-:loop(loop),
+:loop(loop)
+#ifdef __linux__
 timerfd(createTimerfd()),
 timerfdChannel(loop,timerfd)
+#endif
 {
+#ifdef __linux__
 	timerfdChannel.setReadCallback(std::bind(&xTimerQueue::handleRead, this));
 	timerfdChannel.enableReading();
+#endif
 }
 
 
 xTimerQueue::~xTimerQueue()
 {
+#ifdef __linux__
 	timerfdChannel.disableAll();
 	timerfdChannel.remove();
 	::close(timerfd);
+#endif
 }
 
 xTimer  * xTimerQueue::addTimer(double when, void * data,bool repeat,xTimerCallback&& cb)
@@ -272,7 +269,10 @@ void  xTimerQueue::handleRead()
 {
 	loop->assertInLoopThread();
 	xTimestamp now(xTimestamp::now());
+
+#ifdef __linux__
 	readTimerfd(timerfd,now);
+#endif
 	std::vector<xTimer *> vectors;
 	while(pqueue.size() > 0 )
 	{
@@ -291,7 +291,7 @@ void  xTimerQueue::handleRead()
 	}
 	
 
-	for(auto it = vectors.begin(); it != vectors.end(); it ++)
+	for(auto it = vectors.begin(); it != vectors.end(); ++it)
 	{
 		if( (*it)->repeat)
 		{

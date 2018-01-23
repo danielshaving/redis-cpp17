@@ -119,7 +119,7 @@ void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, voi
 }
 
 
-void xCluster::clusterRedirectClient(xSession * session, xClusterNode * n, int hashSlot, int errCode)
+void xCluster::clusterRedirectClient(const xSeesionPtr &session, xClusterNode * n, int hashSlot, int errCode)
 {
 	if (errCode == CLUSTER_REDIR_CROSS_SLOT) {
 		addReplySds(session->sendBuf, sdsnew("-CROSSSLOT Keys in request don't hash to the same slot\r\n"));
@@ -185,7 +185,7 @@ unsigned int xCluster::keyHashSlot(char *key, int keylen)
 	return crc16(key + s + 1, e - s - 1) & 0x3FFF;
 }
 
-int xCluster::getSlotOrReply(xSession  * session,rObj * o)
+int xCluster::getSlotOrReply(const xSeesionPtr &session,rObj * o)
 {
 	long long slot;
 
@@ -238,7 +238,7 @@ void xCluster::clear()
     sendBuf.retrieveAll();
 }
 
-bool  xCluster::replicationToNode(xSession * session,const std::string &ip,int32_t port)
+bool  xCluster::replicationToNode(const xSeesionPtr &session,const std::string &ip,int32_t port)
 {
     clear();
 

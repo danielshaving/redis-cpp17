@@ -44,6 +44,8 @@ public:
 	  }
     }
 
+    void handlerTimerQueue(){ timerQueue->handleRead(); }
+    xPriorityQueue * getTimerQueue(){ return timerQueue->getPriority();}
     bool isInLoopThread() const { return threadId == std::this_thread::get_id(); }
     bool geteventHandling() const { return eventHandling; }
 

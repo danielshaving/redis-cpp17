@@ -39,10 +39,13 @@ public:
 	void addTimerInLoop(xTimer* timer);
   	xTimer  *addTimer(double  when,void * data,bool repeat,xTimerCallback&& cb);
   	static const int kMicroSecondsPerSecond = 1000 * 1000;
+  	xPriorityQueue *getPriority(){ return &pqueue; }
 private:
 	xEventLoop *loop;
 	xPriorityQueue pqueue;
-	const int timerfd;
+	int timerfd;
+#ifdef __linux__
 	xChannel timerfdChannel;
+#endif
 
 };

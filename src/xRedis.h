@@ -35,59 +35,59 @@ public:
 	void loadDataFromDisk();
 	void flush();
 
-	bool saveCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool pingCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool debugCommand(const std::deque <rObj*> & obj, xSession * session);
-	bool flushdbCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool dbsizeCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool quitCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool delCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool setCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool getCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool hsetCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool saveCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool pingCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool debugCommand(const std::deque <rObj*> & obj, const xSeesionPtr &session);
+	bool flushdbCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool dbsizeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool quitCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool delCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool getCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool hsetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 
-	bool hgetCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool hgetallCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool hlenCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool slaveofCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool syncCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool psyncCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool hgetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool hgetallCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool hlenCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool slaveofCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool syncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool psyncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 
-	bool commandCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool clusterCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool authCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool configCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool infoCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool clientCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool echoCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool hkeysCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool keysCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool commandCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool clusterCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool authCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool configCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool infoCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool clientCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool echoCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool hkeysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool keysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 
-	bool bgsaveCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool memoryCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool sentinelCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool migrateCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool ttlCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool lpushCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool lpopCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool lrangeCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool rpushCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool rpopCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool llenCommand(const std::deque<rObj*> & obj, xSession * session);
-	bool scardCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool saddCommand(const std::deque <rObj*> & obj,xSession * session);
+	bool bgsaveCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool memoryCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool sentinelCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool migrateCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool ttlCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool lpushCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool lpopCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool lrangeCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool rpushCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool rpopCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool llenCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool scardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool saddCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 
-	bool zaddCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool zrangeCommand(const std::deque<rObj*> &obj,xSession * session);
-	bool zcardCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool zrevrangeCommand(const std::deque <rObj*> & obj,xSession * session);
-	bool zrangeGenericCommand(const std::deque <rObj*> & obj,xSession * session,int reverse);
+	bool zaddCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool zrangeCommand(const std::deque<rObj*> &obj,const xSeesionPtr &session);
+	bool zcardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool zrevrangeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool zrangeGenericCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session,int reverse);
 
 
 	
-	int rdbSaveBackground(xSession * session, bool enabled);
-	bool bgsave(xSession * session, bool enabled = false);
-	bool save(xSession * session);
+	int rdbSaveBackground(const xSeesionPtr &session, bool enabled);
+	bool bgsave(const xSeesionPtr &session, bool enabled = false);
+	bool save(const xSeesionPtr &session);
 	int removeCommand(rObj * obj,int &count);
 
 	bool clearClusterMigradeCommand(void * data);
@@ -104,7 +104,7 @@ public:
 public:
 	std::unordered_set<rObj*,Hash,Equal>  unorderedmapCommands;
 	std::unordered_set<rObj*,Hash,Equal>  stopRepliCached;
-	typedef std::function<bool(const std::deque<rObj*> &,xSession *)> commandFunction;
+	typedef std::function<bool(const std::deque<rObj*> &,xSeesionPtr)> commandFunction;
 	std::unordered_map<rObj*,commandFunction,Hash,Equal> handlerCommandMap;
 	std::unordered_set<rObj*,Hash, Equal> replyCommandMap;
 	std::unordered_map<int32_t,xSeesionPtr> sessions;
