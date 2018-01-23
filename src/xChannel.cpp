@@ -2,10 +2,8 @@
 #include "xEventLoop.h"
 
 const int xChannel::kNoneEvent = 0;
-const int xChannel::kReadEvent = EPOLLIN | EPOLLPRI;
-const int xChannel::kWriteEvent = EPOLLOUT;
-
-
+const int xChannel::kReadEvent = POLLIN | POLLPRI;
+const int xChannel::kWriteEvent = POLLOUT;
 
 xChannel::xChannel(xEventLoop *loop,int fd)
 :loop(loop),
@@ -52,6 +50,7 @@ void xChannel::handleEventWithGuard()
 {
 	eventHandling = true;
 
+#ifdef LINUX
 	if ((revents & EPOLLHUP) && !(revents & EPOLLIN))
 	{
 		if (closeCallback) closeCallback();
@@ -71,6 +70,22 @@ void xChannel::handleEventWithGuard()
 	{
 		if (writeCallback) writeCallback();
 	}
+
+#endif
+
+#ifdef MAC
+
+	if (events & kReadEvent)
+	{
+		if (readCallback) readCallback();
+	}
+
+	if (events & kWriteEvent)
+	{
+		if (writeCallback) writeCallback();
+	}
+#endif
+
 
 	eventHandling = false;
 }

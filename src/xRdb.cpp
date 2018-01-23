@@ -921,8 +921,9 @@ bool   xRdb::rdbReplication(char *filename,const xTcpconnectionPtr &conn)
 			{
 				len = sendBytes;
 			}
-
+#ifdef LINUX
 			nwrote = ::sendfile(conn->getSockfd(),fd,&offset,len);
+#endif
 
 			if(nwrote >=0)
 			{

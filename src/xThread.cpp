@@ -1,21 +1,5 @@
 #include "xThread.h"
-#include "xCurrentThread.h"
 #include "xEventLoop.h"
-
-namespace xCurrentThread
-{
-
-	__thread int t_cachedTid = 0;
-	void cacheTid()
-	{
-		if (t_cachedTid == 0)
-		{
-			t_cachedTid =  static_cast<pid_t>(::syscall(SYS_gettid));
-		}
-	}
-}
-
-
 
 xThread::xThread(const ThreadInitCallback& cb)
 :loop(nullptr),

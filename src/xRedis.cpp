@@ -32,7 +32,7 @@ pingPong(false)
 	}
 	server.start();
 	zmalloc_enable_thread_safeness();
-	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
+	//loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
 	
 }
 
@@ -67,67 +67,67 @@ void xRedis::serverCron(void * data)
         pid_t pid;
         int statloc;
 
-	if ((pid = wait3(&statloc,WNOHANG,nullptr)) != 0)
-        {
-             int exitcode = WEXITSTATUS(statloc);
-             int bysignal = 0;
+		if ((pid = wait3(&statloc,WNOHANG,nullptr)) != 0)
+		{
+			 int exitcode = WEXITSTATUS(statloc);
+			 int bysignal = 0;
 
-             if (WIFSIGNALED(statloc)) bysignal = WTERMSIG(statloc);
+			 if (WIFSIGNALED(statloc)) bysignal = WTERMSIG(statloc);
 
-             if (pid == rdbChildPid)
-             {
-                if (!bysignal && exitcode == 0)
-                {
-                    LOG_INFO<<"background saving terminated with success";
-                    if(slavefd != -1)
-                    {
+			 if (pid == rdbChildPid)
+			 {
+				if (!bysignal && exitcode == 0)
+				{
+					LOG_INFO<<"background saving terminated with success";
+					if(slavefd != -1)
+					{
 
-                        std::unique_lock <std::mutex> lck(slaveMutex);
-                        auto it = salvetcpconnMaps.find(slavefd);
-                        if(it == salvetcpconnMaps.end())
-                        {
-                            LOG_WARN<<"master sync send failure";
-                        }
-                        else
-                        {
-                            if(!rdb.rdbReplication("dump.rdb",it->second))
-                            {
-                                it->second->forceClose();
-                                LOG_WARN<<"master sync send failure";
-                            }
-                            else
-                            {
-                                LOG_INFO<<"master sync send success ";
-                            }
-                        }
+						std::unique_lock <std::mutex> lck(slaveMutex);
+						auto it = salvetcpconnMaps.find(slavefd);
+						if(it == salvetcpconnMaps.end())
+						{
+							LOG_WARN<<"master sync send failure";
+						}
+						else
+						{
+							if(!rdb.rdbReplication("dump.rdb",it->second))
+							{
+								it->second->forceClose();
+								LOG_WARN<<"master sync send failure";
+							}
+							else
+							{
+								LOG_INFO<<"master sync send success ";
+							}
+						}
 
-                        slavefd = -1;
-                    }
-                }
-                else if (!bysignal && exitcode != 0)
-                {
-                    LOG_INFO<<"background saving error";
-                }
-                else
-                {
-                    LOG_WARN<<"background saving terminated by signal "<< bysignal;
-                    char tmpfile[256];
-                    snprintf(tmpfile,256,"temp-%d.rdb", (int) rdbChildPid);
-                    unlink(tmpfile);
+						slavefd = -1;
+					}
+				}
+				else if (!bysignal && exitcode != 0)
+				{
+					LOG_INFO<<"background saving error";
+				}
+				else
+				{
+					LOG_WARN<<"background saving terminated by signal "<< bysignal;
+					char tmpfile[256];
+					snprintf(tmpfile,256,"temp-%d.rdb", (int) rdbChildPid);
+					unlink(tmpfile);
 
-                    if (bysignal != SIGUSR1)
-                    {
+					if (bysignal != SIGUSR1)
+					{
 
-                    }
+					}
 
-                 }
-             }
-             else
-             {
-                 LOG_WARN<<"Warning, detected child with unmatched pid: "<<pid;
-             }
+				 }
+			 }
+			 else
+			 {
+				 LOG_WARN<<"Warning, detected child with unmatched pid: "<<pid;
+			 }
 
-		     rdbChildPid = -1;
+			 rdbChildPid = -1;
 
 		}
 

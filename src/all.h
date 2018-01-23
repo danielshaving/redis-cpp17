@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/epoll.h>
+#include <vector>
 #include <list>
 #include <map>
 #include <sys/types.h>
@@ -19,7 +19,6 @@
 #include <signal.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/eventfd.h>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -34,7 +33,6 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <string>
-#include <linux/tcp.h>
 #include <string.h>
 #include <iosfwd>    // for ostream forward-declaration
 #include <string>
@@ -50,7 +48,6 @@
 #include <limits.h>
 #include <stdint.h>
 #include <sys/stat.h>
-#include <sys/timerfd.h>
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -61,7 +58,18 @@
 #include <poll.h>
 #include <netdb.h>
 #include <sys/wait.h>
+
+#ifdef MAC
+#include <sys/event.h>
+#endif
+
+#ifdef LINUX
 #include <sys/sendfile.h>
+#include <sys/epoll.h>
+#include <linux/tcp.h>
+#include <sys/timerfd.h>
+#include <sys/eventfd.h>
+#endif
 
 #define REDIS_CONNECT_RETRIES  10
 

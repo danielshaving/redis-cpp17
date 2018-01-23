@@ -1,3 +1,4 @@
+#ifdef LINUX
 #include "xEpoll.h"
 #include "xChannel.h"
 #include "xEventLoop.h"
@@ -8,12 +9,17 @@ const int kDeleted = 2;
 
 
 xEpoll::xEpoll(xEventLoop * loop)
-:events(16),
+:events(64),
 loop(loop),
-maxFd(0),
 epollFd(-1)
 {
-	init(-1);
+	epollFd = ::epoll_create1(EPOLL_CLOEXEC);
+
+	if (epollFd < 0)
+	{
+		LOG_WARN<<"create epollFd Failed error " << epollFd <<strerror(errno);
+	}
+
 }
 
 xEpoll::~xEpoll()
@@ -21,19 +27,6 @@ xEpoll::~xEpoll()
 	::close(epollFd);
 }
 
-bool xEpoll::init(int fdCount)
-{
-	maxFd = fdCount;
-	epollFd = ::epoll_create1(EPOLL_CLOEXEC);
-
-	if (epollFd < 0)
-	{
-		LOG_WARN<<"create epollFd Failed error " << epollFd <<strerror(errno);
-		return false;
-	}
-
-	return true;
-}
 
 void  xEpoll::epollWait(ChannelList* activeChannels,int msTime)
 {
@@ -54,11 +47,10 @@ void  xEpoll::epollWait(ChannelList* activeChannels,int msTime)
 	}
 	else
 	{
-		// error happens, log uncommon ones
 		if (savedErrno != EINTR)
 		{
 			errno = savedErrno;
-		  	//TRACE("wait error %d",errno);
+		  	LOG_WARN<<"wait error"<<errno;
 		}
 	}
 
@@ -153,9 +145,6 @@ void xEpoll::update(int operation, xChannel* channel)
 	}
 }
 
-
-
-
 void xEpoll::fillActiveChannels(int numEvents, ChannelList* activeChannels) const
 {
 	for (int i = 0; i < numEvents; ++i)
@@ -169,7 +158,7 @@ void xEpoll::fillActiveChannels(int numEvents, ChannelList* activeChannels) cons
 		activeChannels->push_back(channel);
 	}
 }
-
+#endif
 
 
 

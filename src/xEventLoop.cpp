@@ -1,10 +1,7 @@
 #include "all.h"
-
 #include "xEventLoop.h"
 
-
-const int maxCount = 65535;
-
+#ifdef LINUX
 int createEventfd()
 {
   int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -14,14 +11,21 @@ int createEventfd()
   }
   return evtfd;
 }
-
+#endif
 
 xEventLoop::xEventLoop()
-:wakeupFd(createEventfd()),
- threadId(xCurrentThread::tid()),
+:threadId(std::this_thread::get_id()),
+#ifdef LINUX
+ wakeupFd(createEventfd()),
  epoller(new xEpoll(this)),
  timerQueue(new xTimerQueue(this)),
  wakeupChannel(new xChannel(this,wakeupFd)),
+#endif
+#ifdef MAC
+ epoller(new xKqueue(this)),
+ op(socketpair(AF_UNIX,SOCK_STREAM,0,wakeupFd)),
+ wakeupChannel(new xChannel(this,wakeupFd[1])),
+#endif
  currentActiveChannel(nullptr),
  running(false),
  eventHandling(false),
@@ -43,7 +47,15 @@ xEventLoop::~xEventLoop()
 {
 	wakeupChannel->disableAll();
 	wakeupChannel->remove();
+#ifdef LINUX
 	::close(wakeupFd);
+#endif
+
+
+#ifdef MAC
+	::close(wakeupFd[0]);
+	::close(wakeupFd[1]);
+#endif
 }
 
 
@@ -68,9 +80,6 @@ void xEventLoop::removeChannel(xChannel* channel)
 	epoller->removeChannel(channel);
 }
 
-
-
-
 void xEventLoop::cancelAfter(xTimer * timer)
 {
 	timerQueue->cancelTimer(timer);
@@ -80,8 +89,6 @@ xTimer * xEventLoop::runAfter(double  when, void * data,bool repeat,xTimerCallba
 {
 	return timerQueue->addTimer(when,data,repeat,std::move(cb));
 }
-
-
 
 bool xEventLoop::hasChannel(xChannel* channel)
 {
@@ -93,10 +100,16 @@ bool xEventLoop::hasChannel(xChannel* channel)
 void  xEventLoop::handleRead()
 {
 	uint64_t one = 1;
+#ifdef LINUX
 	ssize_t n = ::read(wakeupFd, &one, sizeof one);
+#endif
+
+#ifdef MAC
+	ssize_t n = ::read(wakeupFd[1], &one, sizeof one);
+#endif
 	if (n != sizeof one)
 	{
-		//TRACE("xEventLoop::handleRead() reads error");
+		LOG_ERROR<<"xEventLoop::handleRead() reads error";
 	}
 }
 
@@ -114,12 +127,21 @@ void xEventLoop::quit()
 
 void xEventLoop::wakeup()
 {
+
   uint64_t one = 1;
+#ifdef LINUX
   ssize_t n = ::write(wakeupFd, &one, sizeof one);
+#endif
+
+#ifdef MAC
+  ssize_t n = ::write(wakeupFd[0], &one, sizeof one);
+#endif
+
   if (n != sizeof one)
   {
-    //TRACE("EventLoop::wakeup() wrties error");
+    LOG_ERROR<<"EventLoop::wakeup() wrties error";
   }
+
 }
 
 
@@ -209,8 +231,6 @@ void xEventLoop::run()
 	{
 		activeChannels.clear();
 		epoller->epollWait(&activeChannels);
-
-		// TODO sort channel by priority
 		eventHandling = true;
 		for (ChannelList::iterator it = activeChannels.begin();
 			it != activeChannels.end(); ++it)

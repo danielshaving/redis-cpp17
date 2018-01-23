@@ -17,16 +17,14 @@
 	::close(listenfd);
  }
 
-
-
  void xAcceptor::handleRead()
  {
 	loop->assertInLoopThread();
 
-	struct sockaddr_in client_address;
-	socklen_t client_addrlength = sizeof( client_address );
+	struct sockaddr_in address;
+	socklen_t   len  = sizeof( address );
 
-	int connfd = accept( listenfd, ( struct sockaddr* )&client_address, &client_addrlength );
+	int connfd = accept( listenfd, ( struct sockaddr* )&address, &len);
 	if (connfd >= 0)
 	{
 		if (newConnectionCallback)
@@ -37,7 +35,7 @@
 		else
 		{
 		  ::close(connfd);
-		  //TRACE("xAcceptor::handleRead");
+		  LOG_WARN<<"handleRead";
 		}
 	}
 	else

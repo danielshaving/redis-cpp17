@@ -124,9 +124,9 @@ void xPriorityQueue::shiftDown(int hole_index, xTimer *e)
 	*(int *)(p[hole_index] = e) = hole_index;
 }
 
-
 int createTimerfd()
 {
+#ifdef LINUX
   int timerfd = ::timerfd_create(CLOCK_MONOTONIC,
                                  TFD_NONBLOCK | TFD_CLOEXEC);
   if (timerfd < 0)
@@ -134,7 +134,15 @@ int createTimerfd()
   	assert(false);
   }
   return timerfd;
+
+#endif
+
+#ifdef MAC
+  return -1;
+#endif
+
 }
+
 
 struct timespec howMuchTimeFromNow(xTimestamp when)
 {
@@ -157,6 +165,7 @@ struct timespec howMuchTimeFromNow(xTimestamp when)
 
 void resetTimerfd(int timerfd, xTimestamp expiration)
 {
+#ifdef LINUX
 	struct itimerspec newValue;
 	struct itimerspec oldValue;
 	bzero(&newValue, sizeof newValue);
@@ -167,6 +176,7 @@ void resetTimerfd(int timerfd, xTimestamp expiration)
 	{
 		assert(false);
 	}
+#endif
   
 }
 

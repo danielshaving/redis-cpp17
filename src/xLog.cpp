@@ -88,8 +88,13 @@ void AppendFile::flush()
 
 size_t AppendFile::write(const char* logline, size_t len)
 {
-  // #undef fwrite_unlocked
+#ifdef LINUX
   return ::fwrite_unlocked(logline, 1, len, fp);
+#endif
+
+#ifdef MAC
+  return ::fwrite(logline, 1, len, fp);
+#endif
 }
 
 

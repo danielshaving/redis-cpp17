@@ -63,8 +63,6 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void
 
 	}
 
-
-
     if(sendBuf.readableBytes() > 0 )
     {
         conn->send(&sendBuf);

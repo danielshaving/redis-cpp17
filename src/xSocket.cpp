@@ -86,6 +86,7 @@ bool xSocket::setTimeOut(int sockfd,const struct timeval tv)
 
 void  xSocket::setkeepAlive(int fd,int idle)
 {
+#ifdef LINUX
 	int keepalive = 1;
 	int keepidle = idle;
 	int keepintvl = 2;
@@ -111,6 +112,7 @@ void  xSocket::setkeepAlive(int fd,int idle)
 	{
 		LOG_DEBUG<<"TCP_KEEPCNT";
 	}
+#endif
 }
 
 bool xSocket::createTcpListenSocket()
@@ -138,7 +140,7 @@ bool xSocket::createTcpListenSocket()
 
     if (!setSocketNonBlock(listenSocketFd))
     {
-    	LOG_WARN<<"Set listen socket <%d> to non-block failed!";
+    		LOG_WARN<<"Set listen socket  to non-block failed!";
         return false;
     }
 
@@ -146,7 +148,7 @@ bool xSocket::createTcpListenSocket()
 	
 	if (setsockopt(listenSocketFd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
     {
-    	LOG_SYSERR<<"Set SO_REUSEPORT socket  failed! error "<<strerror(errno);
+		LOG_SYSERR<<"Set SO_REUSEPORT socket  failed! error "<<strerror(errno);
         close(listenSocketFd);
         return false;
     }
@@ -154,8 +156,8 @@ bool xSocket::createTcpListenSocket()
   
     if (setsockopt(listenSocketFd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
     {
-    	LOG_SYSERR<<"Set SO_REUSEADDR socket  failed! error "<<strerror(errno);
-        close(listenSocketFd);
+		LOG_SYSERR<<"Set SO_REUSEADDR socket  failed! error "<<strerror(errno);
+		close(listenSocketFd);
         return false;
     }
 
@@ -173,12 +175,13 @@ bool xSocket::createTcpListenSocket()
         return false;
     }
 
+#ifdef LINUX
     setsockopt(listenSocketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
 
     int len = 65536;
     setsockopt(listenSocketFd, SOL_SOCKET, SO_RCVBUF, (void*)&len, sizeof(len));
     setsockopt(listenSocketFd, SOL_SOCKET, SO_SNDBUF, (void*)&len, sizeof(len));
-
+#endif
     return true;
 }
 
@@ -186,8 +189,10 @@ bool xSocket::createTcpListenSocket()
 
 bool xSocket::setTcpNoDelay(int socketFd, bool on)
 {
+#ifdef LINUX
 	int optval = on ? 1 : 0;
 	::setsockopt(socketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
+#endif
 }
 
 bool  xSocket::setSocketBlock(int socketFd)

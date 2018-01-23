@@ -20,6 +20,9 @@ public:
 	void setCloseCallback(EventCallback&& cb){ closeCallback = std::move(cb); }
 	void setErrorCallback(EventCallback&& cb){ errorCallback = std::move(cb); }
 
+	bool readEnabled() { return events & kReadEvent; }
+	bool writeEnabled() { return events & kWriteEvent; }
+
 	bool isNoneEvent() const { return events == kNoneEvent; }
 	void enableReading() { events |= kReadEvent; update(); }
 	void disableReading() { events &= ~kReadEvent; update(); }

@@ -38,7 +38,6 @@ public:
 	void cancelInloop(xTimer *timer);
 	void addTimerInLoop(xTimer* timer);
   	xTimer  *addTimer(double  when,void * data,bool repeat,xTimerCallback&& cb);
-
   	static const int kMicroSecondsPerSecond = 1000 * 1000;
 private:
 	xEventLoop *loop;

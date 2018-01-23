@@ -1,6 +1,4 @@
-
 #include "xRedis.h"
-#include "xCurrentThread.h"
 #include "xLog.h"
 
 xAsyncLogging *g_asyncLog = nullptr;

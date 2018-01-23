@@ -6,7 +6,7 @@ class xBuffer:noncopyable
 {
  public:
   static const size_t kCheapPrepend = 0;
-  static const size_t kInitialSize = 1024;
+  static const size_t kInitialSize = 4096;
 
   explicit xBuffer(size_t initialSize = kInitialSize)
     : buffer(kCheapPrepend + initialSize),
@@ -187,30 +187,6 @@ class xBuffer:noncopyable
 	writerIndex -= len;
   }
 
-  void appendInt64(int64_t x)
-  {
-	int64_t be64 = htobe64(x);
-	append(&be64, sizeof be64);
-  }
-
-  void appendInt32(int32_t x)
-  {
-	int32_t be32 = htobe32(x);
-	append(&be32, sizeof be32);
-  }
-
-  void appendInt16(int16_t x)
-  {
-	int16_t be16 = htobe16(x);
-	append(&be16, sizeof be16);
-  }
-
-  void appendInt8(int8_t x)
-  {
-	append(&x, sizeof x);
-  }
-
-
   int64_t readInt64()
   {
 	int64_t result = peekInt64();
@@ -268,29 +244,6 @@ class xBuffer:noncopyable
 	assert(readableBytes() >= sizeof(int8_t));
 	int8_t x = *peek();
 	return x;
-  }
-
-  void prependInt64(int64_t x)
-  {
-	int64_t be64 = htobe64(x);
-	prepend(&be64, sizeof be64);
-  }
-
-  void prependInt32(int32_t x)
-  {
-	int32_t be32 = htobe32(x);
-	prepend(&be32, sizeof be32);
-  }
-
-  void prependInt16(int16_t x)
-  {
-	int16_t be16 = htobe16(x);
-	prepend(&be16, sizeof be16);
-  }
-
-  void prependInt8(int8_t x)
-  {
-   	 prepend(&x, sizeof x);
   }
 
   void prepend(const void* /*restrict*/ data, size_t len)

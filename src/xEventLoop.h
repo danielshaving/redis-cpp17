@@ -2,8 +2,14 @@
 #include "all.h"
 
 #include "xChannel.h"
+#ifdef LINUX
 #include "xEpoll.h"
-#include "xCurrentThread.h"
+#endif
+
+#ifdef MAC
+#include "xKqueue.h"
+#endif
+
 #include "xTimerQueue.h"
 #include "xCallback.h"
 
@@ -35,20 +41,30 @@ public:
 	      abortNotInLoopThread();
 	  }
     }
-    bool isInLoopThread() const { return threadId == xCurrentThread::tid(); }
+
+    bool isInLoopThread() const { return threadId == std::this_thread::get_id(); }
     bool geteventHandling() const { return eventHandling; }
 
-    int32_t getThreadId() const { return threadId;}
+    std::thread::id getThreadId() const { return threadId;}
 private:
 
     void abortNotInLoopThread();
     void doPendingFunctors();
 
-    int wakeupFd;
-    const int32_t threadId;
+    std::thread::id threadId;
     mutable std::mutex mutex;
 
+#ifdef LINUX
     std::unique_ptr<xEpoll>   epoller;
+    int wakeupFd;
+#endif
+
+#ifdef MAC
+    std::unique_ptr<xKqueue>   epoller;
+    int op;
+    int wakeupFd[2];
+#endif
+
     std::unique_ptr<xTimerQueue> timerQueue;
     std::unique_ptr<xChannel> wakeupChannel;
     typedef std::vector<xChannel*> ChannelList;

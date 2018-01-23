@@ -69,7 +69,8 @@ void xTcpServer::removeConnection(const xTcpconnectionPtr& conn)
 {
 	loop->runInLoop(std::bind(&xTcpServer::removeConnectionInLoop, this, conn));
 }
-	  /// Not thread safe, but in loop
+
+
 void xTcpServer::removeConnectionInLoop(const xTcpconnectionPtr& conn)
 {
 	loop->assertInLoopThread();

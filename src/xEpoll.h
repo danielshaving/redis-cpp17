@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef LINUX
 #include "all.h"
 #include "xLog.h"
 
@@ -16,7 +17,6 @@ public:
 	xEpoll(xEventLoop * loop);
 	~xEpoll();
 
-	bool	init(int fdCount);
 	void	epollWait(ChannelList* activeChannels,int msTime = 10);
 	bool	hasChannel(xChannel* channel);
 	void	updateChannel(xChannel* channel);
@@ -28,7 +28,7 @@ public:
 	ChannelMap channels;
 	EventList 	events;
 	xEventLoop  *loop;
-	int maxFd;;
 	int epollFd;
 };
 
+#endif
