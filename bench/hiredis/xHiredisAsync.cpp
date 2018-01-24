@@ -1,5 +1,6 @@
 #include "xHiredisAsync.h"
 
+
 xHiredisAsync::xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port)
 :hiredis(loop),
 connectCount(0),
@@ -54,7 +55,7 @@ void xHiredisAsync::redisConnCallBack(const xTcpconnectionPtr& conn,void *data)
 	}
 }
 
-
+int connetCount = 0;
 static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 {
 	redisReply *reply = (redisReply*) r;
@@ -65,13 +66,6 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 		assert(false);
 	}
 
-	long long threadId = 0;
-	string2ll(reply->str,reply->len,&threadId);
-	if(threadId != c->conn->getLoop()->getThreadId())
-	{
-		printf(" %d %d\n",threadId, getpid());
-	    	assert(false);
-	}
 
 	if(++connetCount == sessionCount )
 	{
@@ -88,7 +82,6 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
  	}
  	else
  	{
- 		connetCount = 0;
  		const char* ip = argv[1];
  		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
  		sessionCount = atoi(argv[3]);

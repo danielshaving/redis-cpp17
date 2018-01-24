@@ -28,8 +28,6 @@ xEventLoop::xEventLoop()
  timerQueue(new xTimerQueue(this)),
  wakeupChannel(new xChannel(this,wakeupFd[1])),
 #endif
-
-
  currentActiveChannel(nullptr),
  running(false),
  eventHandling(false),

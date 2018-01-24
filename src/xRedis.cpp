@@ -1,7 +1,8 @@
 #include "xRedis.h"
 
 xRedis::xRedis(const char * ip, int16_t port, int16_t threadCount,bool enbaledCluster)
-:host(ip),
+:server(&loop, host, port,this),
+host(ip),
 port(port),
 threadCount(1),
 masterPort(0),
@@ -23,7 +24,6 @@ pingPong(false)
 	createSharedObjects();
 	initConfig();
 	loadDataFromDisk();
-	server.init(&loop, host, port,this);
 	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
 	server.setThreadNum(threadCount);
 	if(threadCount > 1)
@@ -32,8 +32,7 @@ pingPong(false)
 	}
 	server.start();
 	zmalloc_enable_thread_safeness();
-	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
-	
+	//loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
 }
 
 
@@ -269,7 +268,7 @@ void xRedis::loadDataFromDisk()
 	}
 	else if (errno != ENOENT)
 	{
-       		LOG_WARN<<"fatal error loading the DB:  Exiting."<<strerror(errno);
+       	LOG_WARN<<"fatal error loading the DB:  Exiting."<<strerror(errno);
  	}
 
 }
@@ -2553,7 +2552,6 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessio
 			}
 
 			xTimer * timer = loop.runAfter(milliseconds / 1000,(void *)(ex),false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
-			
 			expireTimers.insert(std::make_pair(ex,timer));
 		}
 
@@ -3013,16 +3011,16 @@ void xRedis::initConfig()
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(shared.migrate);
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(shared.command);
 	
-	sentiThreads =  std::unique_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
-	sentiThreads->detach();
-	repliThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
-	repliThreads->detach();
-	clusterThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
-	clusterThreads->detach();
-
-	repli.init(this);
-	clus.init(this);
-	rdb.init(this);
+//	sentiThreads =  std::unique_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
+//	sentiThreads->detach();
+//	repliThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
+//	repliThreads->detach();
+//	clusterThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
+//	clusterThreads->detach();
+//
+//	repli.init(this);
+//	clus.init(this);
+//	rdb.init(this);
 
 }
 

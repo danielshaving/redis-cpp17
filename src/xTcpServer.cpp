@@ -1,21 +1,15 @@
 #include "xTcpServer.h"
 #include "xTcpconnection.h"
 
-xTcpServer::xTcpServer()
+xTcpServer::xTcpServer(xEventLoop *loop,std::string ip,int16_t port,void *data)
+:loop(loop),
+ acceptor(new xAcceptor(loop,ip,port)),
+ threadPool(new xThreadPool(loop)),
+ data(data)
 {
-
-}
-
-
-void xTcpServer::init(xEventLoop *loop,std::string ip,int16_t port,void *data)
-{
-	this->loop = loop;
-	this->data = data;
-	acceptor =  std::unique_ptr<xAcceptor>(new xAcceptor(loop,ip,port));
-	threadPool = std::shared_ptr<xThreadPool>(new xThreadPool(loop));
 	acceptor->setNewConnectionCallback(std::bind(&xTcpServer::newConnection,this,std::placeholders::_1));
-
 }
+
 
 xTcpServer::~xTcpServer()
 {
@@ -26,8 +20,7 @@ xTcpServer::~xTcpServer()
 	{
 		xTcpconnectionPtr conn = it->second;
 		it->second.reset();
-		conn->getLoop()->runInLoop(
-		  std::bind(&xTcpconnection::connectDestroyed, conn));
+		conn->getLoop()->runInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
 		conn.reset();
 	}
 }
@@ -42,7 +35,7 @@ void xTcpServer::newConnection(int sockfd)
 	conn->setConnectionCallback(connectionCallback);
 	conn->setMessageCallback(messageCallback);
 	conn->setWriteCompleteCallback(writeCompleteCallback);
-	conn->setCloseCallback(std::bind(&xTcpServer::removeConnection, this, std::placeholders::_1)); // FIXME: unsafe
+	conn->setCloseCallback(std::bind(&xTcpServer::removeConnection, this, std::placeholders::_1));
 	loop->runInLoop(std::bind(&xTcpconnection::connectEstablished, conn));
 }
 

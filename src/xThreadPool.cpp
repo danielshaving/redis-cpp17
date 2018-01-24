@@ -46,7 +46,6 @@ xEventLoop* xThreadPool::getNextLoop()
 
 	if (!loops.empty())
 	{
-		// round-robin
 		loop = loops[next];
 		++next;
 		if (next >= loops.size())

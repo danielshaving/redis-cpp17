@@ -24,7 +24,7 @@
 	struct sockaddr_in address;
 	socklen_t   len  = sizeof( address );
 
-	int connfd = accept( listenfd, ( struct sockaddr* )&address, &len);
+	int connfd = ::accept( listenfd, ( struct sockaddr* )&address, &len);
 	if (connfd >= 0)
 	{
 		if (newConnectionCallback)

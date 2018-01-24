@@ -4,7 +4,6 @@
 #include "xTcpClient.h"
 #include "xTcpconnection.h"
 #include "xThreadPool.h"
-#include "xCurrentThread.h"
 #include "xLog.h"
 
 

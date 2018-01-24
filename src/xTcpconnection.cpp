@@ -90,9 +90,9 @@ void xTcpconnection::handleRead()
 		errno = savedErrno;
 		if(errno != ECONNRESET || errno !=  ETIMEDOUT)
 		{
-			//TRACE("TcpConnection::handleRead %d\n",errno);
+			LOG_ERROR<<"TcpConnection::handleRead "<<errno;
 		}
-		//handleError();
+		handleError();
 	}
 }
 
@@ -110,29 +110,28 @@ void xTcpconnection::handleWrite()
 				channel->disableWriting();
 				if (writeCompleteCallback)
 				{
-				  loop->queueInLoop(std::bind(writeCompleteCallback, shared_from_this()));
+					loop->queueInLoop(std::bind(writeCompleteCallback, shared_from_this()));
 				}
 				if (state == kDisconnecting)
 				{
-				  shutdownInLoop();
+					shutdownInLoop();
 				}
 			}
 		}
 		else
 		{
-		  //TRACE_ERR("TcpConnection::handleWrite");
+			LOG_ERROR<<"TcpConnection::handleWrite";
 		}
 
 	}
 	else
 	{
-		//TRACE("Connection fd = %d  is down, no more writing ",channel->getfd());
+		LOG_ERROR<<"Connection fd  is down, no more writing "<< channel->getfd();
 	}
 }
 void xTcpconnection::handleClose()
 {
 	loop->assertInLoopThread();
-	//TRACE("handle close fd: %d",channel->getfd());
 	assert(state == kConnected || state == kDisconnecting);
 	setState(kDisconnected);
 	channel->disableAll();
@@ -142,7 +141,7 @@ void xTcpconnection::handleClose()
 }
 void xTcpconnection::handleError()
 {
-	//TRACE("handleError");
+	LOG_ERROR<<"handleError";
 }
 
 

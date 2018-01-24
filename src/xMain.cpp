@@ -50,8 +50,8 @@ int main(int argc, char* argv[])
 		threadCount = atoi(argv[3]);
 		clusterEnbaled =  atoi(argv[4]);
 		xRedis redis(ip,port,threadCount,clusterEnbaled);
-		LOG_INFO<<"redisIp:"<<ip;
-		LOG_INFO<<"redispoRt:"<<port;
+		LOG_INFO<<"ip:"<<ip;
+		LOG_INFO<<"port:"<<port;
 		redis.run();
 	}
 	else if (argc == 1)
@@ -66,7 +66,6 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
-
 
 
 

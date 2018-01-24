@@ -10,11 +10,8 @@ class xTcpServer: noncopyable
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;
-	xTcpServer();
+	xTcpServer(xEventLoop *loop,std::string ip,int16_t port,void *data);
 	~xTcpServer();
-
-
-	void init(xEventLoop *loop,std::string ip,int16_t port,void *data);
 	void newConnection(int sockfd);
 	void start();
 

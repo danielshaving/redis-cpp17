@@ -75,15 +75,20 @@ void xChannel::handleEventWithGuard()
 
 #ifdef __APPLE__
 
-
-	if (events & kReadEvent)
+	if (readEnabled())
 	{
-		if (readCallback) readCallback();
+		if (readCallback)
+		{
+			readCallback();
+		}
 	}
 
-	if (events & kWriteEvent)
+	if (writeEnabled())
 	{
-		if (writeCallback) writeCallback();
+		if (writeCallback)
+		{
+			writeCallback();
+		}
 	}
 #endif
 

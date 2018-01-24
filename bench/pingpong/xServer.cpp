@@ -3,7 +3,6 @@
 #include "xTcpconnection.h"
 #include "xTcpServer.h"
 #include "xEventLoop.h"
-#include "xCurrentThread.h"
 #include "xLog.h"
 
 void onConnection(const xTcpconnectionPtr& conn,void * data)
@@ -28,7 +27,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		LOG_INFO << "ping pong server pid = " << getpid() << ", tid = " << xCurrentThread::tid();
+		LOG_INFO << "ping pong server pid = " << getpid();
 
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));

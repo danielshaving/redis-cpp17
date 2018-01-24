@@ -3,7 +3,6 @@
 #include "xTcpconnection.h"
 #include "xTcpServer.h"
 #include "xEventLoop.h"
-#include "xCurrentThread.h"
 #include "xLog.h"
 #include "xTimer.h"
 
