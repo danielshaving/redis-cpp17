@@ -28,8 +28,6 @@ xChannel::~xChannel()
 	}
 }
 
-
-
 void xChannel::remove()
 {
 	assert(isNoneEvent());
@@ -43,8 +41,6 @@ void xChannel::update()
 	addedToLoop = true;
 	loop->updateChannel(this);
 }
-
-
 
 void xChannel::handleEventWithGuard()
 {

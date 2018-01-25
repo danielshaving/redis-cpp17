@@ -90,9 +90,9 @@ void xTcpconnection::handleRead()
 		errno = savedErrno;
 		if(errno != ECONNRESET || errno !=  ETIMEDOUT)
 		{
-			LOG_ERROR<<"TcpConnection::handleRead "<<errno;
+			//LOG_ERROR<<"TcpConnection::handleRead "<<errno;
 		}
-		handleError();
+		//handleError();
 	}
 }
 
@@ -341,7 +341,6 @@ void xTcpconnection::connectEstablished()
 	connectionCallback(shared_from_this(),data);
 }
 
-
 void xTcpconnection::connectDestroyed()
 {
 	loop->assertInLoopThread();
@@ -349,7 +348,6 @@ void xTcpconnection::connectDestroyed()
 	{
 		setState(kDisconnected);
 		channel->disableAll();
-
 		connectionCallback(shared_from_this(),data);
 	}
 	channel->remove();

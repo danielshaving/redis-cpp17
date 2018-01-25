@@ -12,6 +12,7 @@ public:
 	void handleEvent();
 	void setTie(const std::shared_ptr<void>&);
 	void setRevents(int revt) { revents = revt; }
+	void setEvents(int revt) { events = revt; }
 	void setIndex(int idx) { index = idx; }
 	void setReadCallback(EventCallback&& cb) { readCallback  = std::move(cb); }
 	void setWriteCallback(EventCallback&& cb){ writeCallback = std::move(cb); }

@@ -21,8 +21,6 @@ void xConnector::start(const char *ip, int16_t port)
 	loop->runInLoop(std::bind(&xConnector::startInLoop, this,ip,port));
 }
 
-
-
 void xConnector::startInLoop(const char *ip, int16_t port)
 {
 	loop->assertInLoopThread();
@@ -58,6 +56,7 @@ void xConnector::resetChannel()
 {
 	channel.reset();
 }
+
 int  xConnector::removeAndResetChannel()
 {
 	channel->disableAll();

@@ -33,6 +33,8 @@ char *ascii_logo =
 
 int main(int argc, char* argv[])
 {
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
 	xLogger::setOutput(asyncOutput);
 	xAsyncLogging log("xredis", 4096);
 	log.start();

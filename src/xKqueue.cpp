@@ -66,7 +66,6 @@ void  xKqueue::epollWait(ChannelList* activeChannels,int msTime)
 	loop->handlerTimerQueue();
 }
 
-
 bool xKqueue::hasChannel(xChannel* channel)
 {
 	loop->assertInLoopThread();
@@ -98,22 +97,17 @@ void xKqueue::updateChannel(xChannel* channel)
 	}
 	else
 	{
-#ifdef DEBUG
 		int fd = channel->getfd();
 		(void)fd;
 		assert(channels.find(fd) != channels.end());
 		assert(channels[fd] == channel);
 		assert(index == kAdded);
-#endif
-		if (channel->isNoneEvent())
+		if(index == kAdded)
 		{
 			delUpdate(channel);
-			channel->setIndex(kDeleted);
 		}
-		else
-		{
-			addUpdate(channel);
-		}
+		channel->setIndex(kDeleted);
+
 	}
 }
 
@@ -121,13 +115,10 @@ void xKqueue::removeChannel(xChannel* channel)
 {
 	loop->assertInLoopThread();
 	int fd = channel->getfd();
-#ifdef DEBUG
 	assert(channels.find(fd) != channels.end());
 	assert(channels[fd] == channel);
-	assert(channel->isNoneEvent());
 	int index = channel->getIndex();
 	assert(index == kAdded || index == kDeleted);
-#endif
 	size_t n = channels.erase(fd);
 	(void)n;
 	assert(n == 1);
@@ -138,21 +129,20 @@ void xKqueue::removeChannel(xChannel* channel)
 
 void	xKqueue::delUpdate(xChannel* channel)
 {
-	struct kevent ev;
 	if (channel->readEnabled())
 	{
-		EV_SET(&ev, channel->getfd(), EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+		struct kevent ev;
+		EV_SET(&ev, channel->getfd(), EVFILT_READ, EV_DELETE, 0, 0, channel);
 		if(kevent(kqueueFd, &ev, 1, nullptr, 0, nullptr) == -1)
 		{
 			LOG_ERROR<<"kqueue failred";
 		}
-
 	}
 
 	if (channel->writeEnabled())
 	{
-		EV_SET(&ev, channel->getfd(), EVFILT_WRITE, EV_DELETE, 0, 0,nullptr);
-		int r = kevent(kqueueFd, &ev, 1, nullptr, 0, nullptr);
+		struct kevent ev;
+		EV_SET(&ev, channel->getfd(), EVFILT_WRITE, EV_DELETE, 0, 0,channel);
 		if(kevent(kqueueFd, &ev, 1, nullptr, 0, nullptr) == -1)
 		{
 			LOG_ERROR<<"kqueue failred";
@@ -163,11 +153,10 @@ void	xKqueue::delUpdate(xChannel* channel)
 
 void	xKqueue::addUpdate(xChannel* channel)
 {
-	struct kevent ev;
 	if (channel->readEnabled())
 	{
-		EV_SET(&ev, channel->getfd(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, channel);
-		int r = kevent(kqueueFd, &ev, 1, nullptr, 0, nullptr);
+		struct kevent ev;
+		EV_SET(&ev, channel->getfd(), EVFILT_READ, EV_ADD, 0, 0, channel);
 		if(kevent(kqueueFd, &ev, 1, nullptr, 0, nullptr) == -1)
 		{
 			LOG_ERROR<<"kqueue failred";
@@ -176,8 +165,8 @@ void	xKqueue::addUpdate(xChannel* channel)
 
 	if (channel->writeEnabled())
 	{
-		EV_SET(&ev, channel->getfd(), EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, channel);
-		int r = kevent(kqueueFd, &ev, 1, nullptr, 0, nullptr);
+		struct kevent ev;
+		EV_SET(&ev, channel->getfd(), EVFILT_WRITE, EV_ADD, 0, 0, channel);
 		if(kevent(kqueueFd, &ev, 1, nullptr, 0, nullptr) == -1)
 		{
 			LOG_ERROR<<"kqueue failred";
@@ -191,14 +180,15 @@ void xKqueue::fillActiveChannels(int numEvents, ChannelList* activeChannels) con
 	for (int i = 0; i < numEvents; ++i)
 	{
 		xChannel* channel = static_cast<xChannel*>(events[i].udata);
-#ifdef DEBUG
-		int fd = channel->getfd();
-		auto  it = channels.find(fd);
-		assert(it != channels.end());
-		assert(it->second == channel);
-		channel->setRevents(events[i].flags);
-#endif
-		activeChannels->push_back(channel);
+		if(channel)
+		{
+			int fd = channel->getfd();
+			auto  it = channels.find(fd);
+			assert(it != channels.end());
+			assert(it->second == channel);
+			activeChannels->push_back(channel);
+		}
+
 	}
 }
 

@@ -15,8 +15,7 @@ xTcpServer::~xTcpServer()
 {
 	loop->assertInLoopThread();
 
-	for (ConnectionMap::iterator it(connections.begin());
-	  it != connections.end(); ++it)
+	for (auto  it = connections.begin(); it != connections.end(); ++it)
 	{
 		xTcpconnectionPtr conn = it->second;
 		it->second.reset();
@@ -54,8 +53,6 @@ void xTcpServer::start()
 {
 	threadPool->start(threadInitCallback);
 	acceptor->listen();
-
-
 }
 
 void xTcpServer::removeConnection(const xTcpconnectionPtr& conn)
@@ -71,8 +68,7 @@ void xTcpServer::removeConnectionInLoop(const xTcpconnectionPtr& conn)
 	(void)n;
 	assert(n == 1);
 	xEventLoop* ioLoop = conn->getLoop();
-	ioLoop->queueInLoop(
-	std::bind(&xTcpconnection::connectDestroyed, conn));
+	ioLoop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
 
 
 }

@@ -26,9 +26,7 @@ public:
     void quit();
     void run();
     void handleRead();
-    void runPipeInLoop(Functor&& cb);
     void runInLoop(Functor&& cb);
-    void queuePipeInLoop(Functor&& cb);
     void queueInLoop(Functor&& cb);
     void wakeup();
     void updateChannel(xChannel* channel);

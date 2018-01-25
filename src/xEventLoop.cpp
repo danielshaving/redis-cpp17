@@ -129,7 +129,6 @@ void xEventLoop::quit()
 
 void xEventLoop::wakeup()
 {
-
   uint64_t one = 1;
 #ifdef __linux__
   ssize_t n = ::write(wakeupFd, &one, sizeof one);
@@ -147,18 +146,6 @@ void xEventLoop::wakeup()
 }
 
 
-void xEventLoop::runPipeInLoop(Functor&& cb)
-{
-	if (isInLoopThread())
-	{
-		cb();
-	}
-	else
-	{
-		queueInLoop(std::move(cb));
-	}
-}
-
 void xEventLoop::runInLoop(Functor&& cb)
 {
 	if (isInLoopThread())
@@ -167,24 +154,8 @@ void xEventLoop::runInLoop(Functor&& cb)
 	}
 	else
 	{
+
 		queueInLoop(std::move(cb));
-	}
-
-}
-
-
-
-void xEventLoop::queuePipeInLoop(Functor&& cb)
-{
-	{
-	 std::unique_lock<std::mutex> lk(mutex);
-	 pendingPipeFunctors.push_back(std::move(cb));
-
-	}
-
-	if (!isInLoopThread() || callingPendingFunctors)
-	{
-		wakeup();
 	}
 
 }
