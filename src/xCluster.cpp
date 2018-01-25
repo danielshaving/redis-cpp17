@@ -3,7 +3,9 @@
 #include "xLog.h"
 #include "xCrc16.h"
 
-xCluster::xCluster():state(true),
+xCluster::xCluster(xRedis * redis)
+:redis(redis),
+state(true),
 isConnect(false),
 replyCount(0)
 {
@@ -538,11 +540,6 @@ void xCluster::connErrorCallBack()
 		std::unique_lock <std::mutex> lck(cmtex);
 		condition.notify_one();
 	}
-}
-
-void xCluster::init(xRedis * redis)
-{
-	this->redis = redis;
 }
 
 

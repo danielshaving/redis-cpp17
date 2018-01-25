@@ -2,8 +2,9 @@
 #include "xRedis.h"
 #include "xLog.h"
 
-xSentinel::xSentinel()
-:start(false),
+xSentinel::xSentinel(xRedis * redis)
+:redis(redis),
+ start(false),
  isreconnect(true),
  port(0)
 {
@@ -87,11 +88,6 @@ void xSentinel::connErrorCallBack()
 	
 	++connectCount;
 	loop->runAfter(5,nullptr,false,std::bind(&xSentinel::reconnectTimer,this,std::placeholders::_1));
-}
-
-void xSentinel::init()
-{
-	
 }
 
 

@@ -2,8 +2,9 @@
 #include "xRedis.h"
 #include "xLog.h"
 
-xReplication::xReplication()
-:start(false),
+xReplication::xReplication(xRedis * redis)
+:redis(redis),
+start(false),
  isreconnect(true),
  port(0),
  salveLen(0),
@@ -19,10 +20,6 @@ xReplication::~xReplication()
 
 }
 
-void xReplication::init(xRedis *redis)
-{
-	this->redis = redis;
-}
 
 void xReplication::connectMaster()
 {

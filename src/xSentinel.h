@@ -8,10 +8,8 @@ class xRedis;
 class xSentinel: noncopyable
 {
 public:
-	xSentinel();
+	xSentinel(xRedis * redis);
 	~xSentinel();
-
-	void init();
 	void connectSentinel();
 	void connErrorCallBack();
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
@@ -19,13 +17,11 @@ public:
 	void reconnectTimer(void * data);
 
 private:
-
+	xRedis *redis;
 	bool start;
 	bool isreconnect;
-
 	xEventLoop *loop;
 	xTcpClient *client;
-	xRedis *redis;
 	std::string ip;
 	int32_t port;
 	xBuffer sendBuf;

@@ -14,6 +14,10 @@ salveCount(0),
 clusterSlotEnabled(false),
 clusterRepliMigratEnabled(false),
 clusterRepliImportEnabeld(false),
+repli(this),
+senti(this),
+clus(this),
+rdb(this),
 forkEnabled(false),
 forkCondWaitCount(0),
 rdbChildPid(-1),
@@ -32,7 +36,7 @@ pingPong(false)
 	}
 	server.start();
 	zmalloc_enable_thread_safeness();
-	//loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
+	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
 }
 
 
@@ -3011,16 +3015,12 @@ void xRedis::initConfig()
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(shared.migrate);
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(shared.command);
 	
-//	sentiThreads =  std::unique_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
-//	sentiThreads->detach();
-//	repliThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
-//	repliThreads->detach();
-//	clusterThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
-//	clusterThreads->detach();
-//
-//	repli.init(this);
-//	clus.init(this);
-//	rdb.init(this);
+	sentiThreads =  std::unique_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
+	sentiThreads->detach();
+	repliThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
+	repliThreads->detach();
+	clusterThreads = std::unique_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
+	clusterThreads->detach();
 
 }
 

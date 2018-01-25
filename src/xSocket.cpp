@@ -86,7 +86,7 @@ bool xSocket::setTimeOut(int sockfd,const struct timeval tv)
 
 void  xSocket::setkeepAlive(int fd,int idle)
 {
-#ifdef LINUX
+#ifdef __linux__
 	int keepalive = 1;
 	int keepidle = idle;
 	int keepintvl = 2;
@@ -175,7 +175,7 @@ bool xSocket::createTcpListenSocket()
         return false;
     }
 
-#ifdef LINUX
+#ifdef __linux__
     setsockopt(listenSocketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
 
     int len = 65536;
@@ -189,7 +189,7 @@ bool xSocket::createTcpListenSocket()
 
 bool xSocket::setTcpNoDelay(int socketFd, bool on)
 {
-#ifdef LINUX
+#ifdef __linux__
 	int optval = on ? 1 : 0;
 	::setsockopt(socketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
 #endif

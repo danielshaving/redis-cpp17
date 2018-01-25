@@ -14,12 +14,11 @@ xRio::~xRio()
 }
 
 
-void xRdb::init(xRedis * redis)
+xRdb::xRdb(xRedis * redis)
+:redis(redis)
 {
-	this->redis = redis;	
+
 }
-
-
 off_t xRdb::rioTell(xRio *r)
 {
 	return r->tellFuc(r);

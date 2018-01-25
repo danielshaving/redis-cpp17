@@ -62,8 +62,7 @@ int  xConnector::removeAndResetChannel()
 	channel->disableAll();
 	channel->remove();
 	int sockfd = channel->getfd();
-	// Can't reset channel_ here, because we are inside Channel::handleEvent
-	loop->queueInLoop(std::bind(&xConnector::resetChannel, this)); // FIXME: unsafe
+	loop->queueInLoop(std::bind(&xConnector::resetChannel, this));
 	return sockfd;
 }
 

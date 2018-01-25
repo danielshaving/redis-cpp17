@@ -9,7 +9,7 @@ class xRedis;
 class xReplication: noncopyable
 {
 public:
-	xReplication();
+	xReplication(xRedis * redis);
 	~xReplication();
 	void init(xRedis *redis);
 	void connectMaster();
@@ -27,12 +27,11 @@ public:
 	void disconnect();
 
 public:
-
+	xRedis *redis;
 	bool start;
 	bool isreconnect;
 	xEventLoop *loop;
 	xTcpClient *client;
-	xRedis *redis;
 	std::string ip;
 	int32_t port;
 	int replLen;

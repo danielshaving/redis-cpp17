@@ -92,7 +92,7 @@ void xTcpconnection::handleRead()
 		{
 			//LOG_ERROR<<"TcpConnection::handleRead "<<errno;
 		}
-		//handleError();
+		handleError();
 	}
 }
 

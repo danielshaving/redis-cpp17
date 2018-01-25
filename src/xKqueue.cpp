@@ -191,7 +191,6 @@ void xKqueue::fillActiveChannels(int numEvents, ChannelList* activeChannels) con
 
 	}
 }
-
 #endif
 
 
