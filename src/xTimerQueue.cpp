@@ -186,7 +186,7 @@ void readTimerfd(int timerfd,xTimestamp now)
 
 
 xTimerQueue::xTimerQueue(xEventLoop *loop)
-:loop(loop),
+:loop(loop)
 #ifdef __linux__
 timerfd(createTimerfd()),
 timerfdChannel(loop,timerfd)
