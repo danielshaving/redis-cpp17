@@ -1,7 +1,7 @@
 #include "xRedis.h"
 
 xRedis::xRedis(const char * ip, int16_t port, int16_t threadCount,bool enbaledCluster)
-:server(&loop, host, port,this),
+:server(&loop, ip, port,nullptr),
 host(ip),
 port(port),
 threadCount(1),
@@ -21,9 +21,7 @@ rdb(this),
 forkEnabled(false),
 forkCondWaitCount(0),
 rdbChildPid(-1),
-slavefd(-1),
-count(0),
-pingPong(false)
+slavefd(-1)
 {
 	createSharedObjects();
 	initConfig();

@@ -53,6 +53,7 @@ public:
 class xRdb: noncopyable
 {
 public:
+	xRdb(){}
 	xRdb(xRedis * redis);
 	off_t  rioTell(xRio *r);
 	size_t rioWrite(xRio *r,const void *buf,size_t len);

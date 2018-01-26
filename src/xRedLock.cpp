@@ -237,7 +237,7 @@ bool xRedLock::lock(const char *resource, const int ttl, xLock &lock)
 			unlock(lock);
 		}
 
-		int delay = rand() % retryDelay + floor(retryDelay / 2);
+		int delay = rand() % retryDelay + retryDelay / 2;
 		usleep(delay * 1000);
 		count--;
 

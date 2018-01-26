@@ -1,4 +1,3 @@
-
 #include "xObject.h"
 sharedObjectsStruct shared;
 
@@ -234,10 +233,7 @@ int getDoubleFromObject(const rObj *o, double *target)
             value = strtod(o->ptr, &eptr);
             if (isspace(((const char*)o->ptr)[0]) ||
                 eptr[0] != '\0' ||
-                (errno == ERANGE &&
-                    (value == HUGE_VAL || value == -HUGE_VAL || value == 0)) ||
-                errno == EINVAL ||
-                isnan(value))
+                (errno == ERANGE && value == 0) || errno == EINVAL)
                 return REDIS_ERR;
         }
         else if (o->encoding == OBJ_ENCODING_INT)
@@ -775,17 +771,9 @@ void addReplyDouble(xBuffer & sendBuf, double d)
 {
 	char dbuf[128], sbuf[128];
 	int dlen, slen;
-	if (isinf(d)) 
-	{
-		/* Libc in odd systems (Hi Solaris!) will format infinite in a
-		* different way, so better to handle it in an explicit way. */
-		addReplyBulkCString(sendBuf, d > 0 ? "inf" : "-inf");
-	}
-	else {
-		dlen = snprintf(dbuf, sizeof(dbuf), "%.17g", d);
-		slen = snprintf(sbuf, sizeof(sbuf), "$%d\r\n%s\r\n", dlen, dbuf);
-		addReplyString(sendBuf, sbuf, slen);
-	}
+	dlen = snprintf(dbuf, sizeof(dbuf), "%.17g", d);
+	slen = snprintf(sbuf, sizeof(sbuf), "$%d\r\n%s\r\n", dlen, dbuf);
+	addReplyString(sendBuf, sbuf, slen);
 }
 
 

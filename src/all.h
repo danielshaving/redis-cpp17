@@ -33,7 +33,6 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <string>
-#include <string.h>
 #include <iosfwd>    // for ostream forward-declaration
 #include <string>
 #include <sys/socket.h>
