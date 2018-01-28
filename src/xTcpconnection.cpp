@@ -90,9 +90,9 @@ void xTcpconnection::handleRead()
 		errno = savedErrno;
 		if(errno != ECONNRESET || errno !=  ETIMEDOUT)
 		{
-			//LOG_ERROR<<"TcpConnection::handleRead "<<errno;
+			LOG_ERROR<<"TcpConnection::handleRead "<<errno;
 		}
-		handleError();
+		//handleError();
 	}
 }
 

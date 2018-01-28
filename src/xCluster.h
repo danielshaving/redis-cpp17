@@ -18,18 +18,17 @@ class xRedis;
 class xCluster : noncopyable
 {
 public:
-	xCluster(){}
 	xCluster(xRedis * redis);
 	~xCluster();
 
-        void clear();
+    void clear();
 	bool connSetCluster(const std::string &ip, int32_t port);
 	void connectCluster();
 	void connErrorCallBack();
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data);
 	void connCallBack(const xTcpconnectionPtr& conn, void *data);
 	void reconnectTimer(void * data);
-        bool getSlotSet(const std::string &ipPort);
+    bool getSlotSet(const std::string &ipPort);
 
 	void structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, const xTcpconnectionPtr & conn);
 	int getSlotOrReply(const xSeesionPtr &session,rObj * o );

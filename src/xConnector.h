@@ -8,44 +8,37 @@
 class xConnector:noncopyable, public std::enable_shared_from_this<xConnector>
 {
 public:
-  typedef std::function<void (int sockfd)> NewConnectionCallback;
-  typedef std::function<void()> ErrorConnectionCallback;
+	typedef std::function<void (int sockfd)> NewConnectionCallback;
+	typedef std::function<void()> ErrorConnectionCallback;
 
-  xConnector(xEventLoop* loop);
-  ~xConnector();
+	xConnector(xEventLoop* loop);
+	~xConnector();
 
-  void setNewConnectionCallback(const NewConnectionCallback& cb)
-  {
-	  newConnectionCallback = cb;
-  }
+	void setNewConnectionCallback(const NewConnectionCallback& cb) { newConnectionCallback = cb; }
+	void setConnectionErrorCallBack(const ErrorConnectionCallback & cb) { errorConnectionCallback = cb; }
 
-  void setConnectionErrorCallBack(const ErrorConnectionCallback & cb)
-  {
-	  errorConnectionCallback = cb;
-  }
+	void start(const char *ip, int16_t port);
+	void stop();
 
-  void start(const char *ip, int16_t port);
-  void stop();
-
-  void startInLoop(const char *ip, int16_t port);
-  void stopInLoop();
-  void connect(const char *ip, int16_t port);
-  void connecting(int sockfd);
-  void resetChannel();
-  int  removeAndResetChannel();
+	void startInLoop(const char *ip, int16_t port);
+	void stopInLoop();
+	void connect(const char *ip, int16_t port);
+	void connecting(int sockfd);
+	void resetChannel();
+	int  removeAndResetChannel();
 
 private:
-  enum States { kDisconnected, kConnecting, kConnected };
-public:
-  void setState(States  s) { state = s; }
-  xEventLoop* loop;
-  std::string ip;
-  int port;
+  	enum States { kDisconnected, kConnecting, kConnected };
+private:
+	void setState(States  s) { state = s; }
+	xEventLoop* loop;
+	std::string ip;
+	int port;
 
-  States state;
-  std::unique_ptr<xChannel> channel;
-  bool isconnect;
-  ErrorConnectionCallback	errorConnectionCallback;
-  NewConnectionCallback newConnectionCallback;
-  xSocket    socket;
+	States state;
+	std::unique_ptr<xChannel> channel;
+	bool isconnect;
+	ErrorConnectionCallback	errorConnectionCallback;
+	NewConnectionCallback newConnectionCallback;
+	xSocket    socket;
 };

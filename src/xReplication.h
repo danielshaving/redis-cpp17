@@ -9,7 +9,6 @@ class xRedis;
 class xReplication: noncopyable
 {
 public:
-	xReplication(){}
 	xReplication(xRedis * redis);
 	~xReplication();
 	void init(xRedis *redis);

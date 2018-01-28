@@ -2335,10 +2335,11 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 		return false;
 	}
 
-	std::string des  = "*";
-	std::string src = obj[0]->ptr;
+	sds pattern =obj[0]->ptr;
+	int plen = sdslen(pattern), allkeys;
+	unsigned long numkeys = 0;
 
-	addReplyMultiBulkLen(session->sendBuf,getDbsize());
+	allkeys = (pattern[0] == '*' && pattern[1] == '\0');
 
 	{
 		for(auto it = setMapShards.begin(); it != setMapShards.end(); ++it)
@@ -2348,11 +2349,13 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 			std::unique_lock <std::mutex> lck(mu);
 			for(auto iter = map.begin(); iter != map.end(); ++iter)
 			{
-				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+				if (allkeys || stringmatchlen(pattern,plen,iter->first->ptr,sdslen(iter->first->ptr),0))
+				{
+					addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+					numkeys++;
+				}
 			}
-
 		}
-
 	}
 
 	{
@@ -2363,11 +2366,13 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 			std::unique_lock <std::mutex> lck(mu);
 			for(auto iter = map.begin(); iter!=map.end(); ++iter)
 			{
-				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+				if (allkeys || stringmatchlen(pattern,plen,iter->first->ptr,sdslen(iter->first->ptr),0))
+				{
+					addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+					numkeys++;
+				}
 			}
-
 		}
-
 	}
 
 	{
@@ -2378,9 +2383,12 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 			std::unique_lock <std::mutex> lck(mu);
 			for(auto iter = map.begin(); iter != map.end();  ++iter)
 			{
-				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+				if (allkeys || stringmatchlen(pattern,plen,iter->first->ptr,sdslen(iter->first->ptr),0))
+				{
+					addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+					numkeys++;
+				}
 			}
-
 		}
 	}
 
@@ -2392,13 +2400,33 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 			std::unique_lock <std::mutex> lck(mu);
 			for(auto iter = map.begin(); iter != map.end();  ++iter)
 			{
-				addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+				if (allkeys || stringmatchlen(pattern,plen,iter->first->ptr,sdslen(iter->first->ptr),0))
+				{
+					addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+					numkeys++;
+				}
 			}
-
 		}
 	}
 
+	{
+		for(auto it = sortShards.begin(); it != sortShards.end(); ++it)
+		{
+			auto &map = (*it).set;
+			std::mutex &mu = (*it).mtx;
+			std::unique_lock <std::mutex> lck(mu);
+			for(auto iter = map.begin(); iter != map.end();  ++iter)
+			{
+				if (allkeys || stringmatchlen(pattern,plen,iter->first->ptr,sdslen(iter->first->ptr),0))
+				{
+					addReplyBulkCBuffer(session->sendBuf,iter->first->ptr,sdslen(iter->first->ptr));
+					numkeys++;
+				}
+			}
+		}
+	}
 
+	prePendReplyLongLongWithPrefix(session->sendBuf,numkeys);
 
 	return false;
 }

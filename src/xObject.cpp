@@ -12,12 +12,14 @@ int string2ll(const char * s,size_t slen, long long * value)
     if (plen == slen)
         return 0;
 
-    if (slen == 1 && p[0] == '0') {
+    if (slen == 1 && p[0] == '0')
+    {
         if (value != nullptr) *value = 0;
         return 1;
     }
 
-    if (p[0] == '-') {
+    if (p[0] == '-')
+    {
         negative = 1;
         p++; plen++;
 
@@ -34,7 +36,8 @@ int string2ll(const char * s,size_t slen, long long * value)
     {
         *value = 0;
         return 1;
-    } else
+    }
+    else
     {
         return 0;
     }
@@ -96,6 +99,161 @@ int ll2string(char *s, size_t len, long long value)
 }
 
 
+/* Glob-style pattern matching. */
+int stringmatchlen(const char *pattern, int patternLen,
+        const char *string, int stringLen, int nocase)
+{
+    while(patternLen)
+    {
+        switch(pattern[0])
+        {
+        case '*':
+            while (pattern[1] == '*')
+            {
+                pattern++;
+                patternLen--;
+            }
+            if (patternLen == 1)
+                return 1; /* match */
+            while(stringLen)
+            {
+                if (stringmatchlen(pattern+1, patternLen-1,
+                            string, stringLen, nocase))
+                    return 1; /* match */
+                string++;
+                stringLen--;
+            }
+            return 0; /* no match */
+            break;
+        case '?':
+            if (stringLen == 0)
+                return 0; /* no match */
+            string++;
+            stringLen--;
+            break;
+        case '[':
+        {
+            int no, match;
+            pattern++;
+            patternLen--;
+            no = pattern[0] == '^';
+            if (no)
+            {
+                pattern++;
+                patternLen--;
+            }
+            match = 0;
+            while(1)
+            {
+                if (pattern[0] == '\\' && patternLen >= 2)
+                {
+                    pattern++;
+                    patternLen--;
+                    if (pattern[0] == string[0])
+                        match = 1;
+                }
+                else if (pattern[0] == ']')
+                {
+                    break;
+                }
+                else if (patternLen == 0)
+                {
+                    pattern--;
+                    patternLen++;
+                    break;
+                }
+                else if (pattern[1] == '-' && patternLen >= 3)
+                {
+                    int start = pattern[0];
+                    int end = pattern[2];
+                    int c = string[0];
+                    if (start > end)
+                    {
+                        int t = start;
+                        start = end;
+                        end = t;
+                    }
+                    if (nocase)
+                    {
+                        start = tolower(start);
+                        end = tolower(end);
+                        c = tolower(c);
+                    }
+                    pattern += 2;
+                    patternLen -= 2;
+                    if (c >= start && c <= end)
+                        match = 1;
+                }
+                else
+                {
+                    if (!nocase)
+                    {
+                        if (pattern[0] == string[0])
+                            match = 1;
+                    }
+                    else
+                    {
+                        if (tolower((int)pattern[0]) == tolower((int)string[0]))
+                            match = 1;
+                    }
+                }
+                pattern++;
+                patternLen--;
+            }
+            if (no)
+                match = !match;
+            if (!match)
+                return 0; /* no match */
+            string++;
+            stringLen--;
+            break;
+        }
+        case '\\':
+            if (patternLen >= 2)
+            {
+                pattern++;
+                patternLen--;
+            }
+            /* fall through */
+        default:
+            if (!nocase)
+            {
+                if (pattern[0] != string[0])
+                    return 0; /* no match */
+            } else
+            {
+                if (tolower((int)pattern[0]) != tolower((int)string[0]))
+                    return 0; /* no match */
+            }
+            string++;
+            stringLen--;
+            break;
+        }
+        pattern++;
+        patternLen--;
+        if (stringLen == 0)
+        {
+            while(*pattern == '*')
+            {
+                pattern++;
+                patternLen--;
+            }
+            break;
+        }
+    }
+
+    if (patternLen == 0 && stringLen == 0)
+        return 1;
+    return 0;
+}
+
+int stringmatch(const char *pattern, const char *string, int nocase)
+{
+    return stringmatchlen(pattern,strlen(pattern),string,strlen(string),nocase);
+}
+
+
+
 rObj * createObject(int type, void *ptr)
 {
 	rObj * o = (rObj*)zmalloc(sizeof(rObj));
@@ -142,7 +300,7 @@ int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, co
             addReplyError(sendBuf,(char*)msg);
         } else
         {
-            addReplyError(sendBuf,"value is not an integer or out of range");
+            addReplyError(sendBuf,"value is no an integer or out of range");
         }
         return REDIS_ERR;
     }
@@ -162,7 +320,7 @@ int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const cha
 		}
 		else 
 		{
-			addReplyError(sendBuf, "value is not an integer or out of range");
+			addReplyError(sendBuf, "value is no an integer or out of range");
 		}
 		return REDIS_ERR;
 	}
@@ -207,7 +365,7 @@ int getDoubleFromObjectOrReply(xBuffer  &sendBuf, rObj *o, double *target, const
         }
         else
         {
-            addReplyError(sendBuf,"value is not a valid float");
+            addReplyError(sendBuf,"value is no a valid float");
         }
         return REDIS_ERR;
     }
@@ -460,13 +618,13 @@ void createSharedObjects()
 	shared.masterdownerr = createObject(REDIS_STRING,sdsnew(
 	    "-MASTERDOWN Link with MASTER is down and slave-serve-stale-data is set to 'no'.\r\n"));
 	shared.bgsaveerr = createObject(REDIS_STRING,sdsnew(
-	    "-MISCONF Redis is configured to save RDB snapshots, but is currently not able to persist on disk. Commands that may modify the data set are disabled. Please check Redis logs for details about the error.\r\n"));
+	    "-MISCONF Redis is configured to save RDB snapshots, but is currently no able to persist on disk. Commands that may modify the data set are disabled. Please check Redis logs for details about the error.\r\n"));
 	shared.roslaveerr = createObject(REDIS_STRING,sdsnew(
 	    "-READONLY You can't write against a read only slave.\r\n"));
 	shared.noautherr = createObject(REDIS_STRING,sdsnew(
 	    "-NOAUTH Authentication required.\r\n"));
 	shared.oomerr = createObject(REDIS_STRING,sdsnew(
-	    "-OOM command not allowed when used memory > 'maxmemory'.\r\n"));
+	    "-OOM command no allowed when used memory > 'maxmemory'.\r\n"));
 	shared.execaborterr = createObject(REDIS_STRING,sdsnew(
 	    "-EXECABORT Transaction discarded because of previous errors.\r\n"));
 	shared.noreplicaserr = createObject(REDIS_STRING,sdsnew(
@@ -676,19 +834,13 @@ void addReplyLongLongWithPrefix(xBuffer &sendBuf,long long ll, char prefix)
 {
 	char buf[128];
 	int len;
-
-	/* Things like $3\r\n or *2\r\n are emitted very often by the protocol
-	 * so we have a few shared objects to use if the integer is small
-	 * like it is most of the times. */
 	if (prefix == '*' && ll < REDIS_SHARED_BULKHDR_LEN) 
 	{
-	    // ???????????
 	    addReply(sendBuf,shared.mbulkhdr[ll]);
 	    return;
 	} 
 	else if (prefix == '$' && ll < REDIS_SHARED_BULKHDR_LEN) 
 	{
-	    // ???????
 	    addReply(sendBuf,shared.bulkhdr[ll]);
 	    return;
 	}
@@ -744,13 +896,31 @@ void addReplyBulkSds(xBuffer &sendBuf, sds s)
 }
 
 
-
 void addReplyMultiBulkLen(xBuffer & sendBuf,long length)
 {
 	if (length < REDIS_SHARED_BULKHDR_LEN)
         addReply(sendBuf,shared.mbulkhdr[length]);
     else
         addReplyLongLongWithPrefix(sendBuf,length,'*');
+}
+
+
+
+void prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length)
+{
+	char buf[128];
+	buf[0] = '*';
+	int len = ll2string(buf+1,sizeof(buf)-1,length);
+	buf[len+1] = '\r';
+	buf[len+2] = '\n';
+	if(length == 0)
+	{
+		sendBuf.append(buf,len + 3);
+	}
+	else
+	{
+		sendBuf.prepend(buf,len + 3);
+	}
 }
 
 
@@ -915,7 +1085,7 @@ unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len)
 unsigned int dictGenHashFunction(const void *key, int len)
 {
 	/* 'm' and 'r' are mixing constants generated offline.
-	 They're not really 'magic', they just happen to work well.  */
+	 They're no really 'magic', they just happen to work well.  */
 	uint32_t seed = dict_hash_function_seed;
 	const uint32_t m = 0x5bd1e995;
 	const int r = 24;

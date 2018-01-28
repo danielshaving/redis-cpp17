@@ -149,7 +149,7 @@ public:
 		mutable std::mutex mtx;
 	};
 
-	const static int kShards = 4096;
+	const static int kShards = 1;
 	std::array<SetMapLock, kShards> setMapShards;
 	std::array<HsetMapLock, kShards> hsetMapShards;
 	std::array<ListMapLock, kShards> listMapShards;

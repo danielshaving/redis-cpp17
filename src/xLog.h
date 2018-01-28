@@ -30,6 +30,7 @@ public:
 	std::string toString() const { return std::string(data, length()); }
 	int  avail() const { return static_cast<int>(end() - cur); }
 	const char* end() const { return data + sizeof data; }
+
 private:
 	char data[SIZE];
 	char *cur;

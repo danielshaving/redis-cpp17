@@ -60,9 +60,11 @@ void  xEpoll::epollWait(ChannelList* activeChannels,int msTime)
 
 bool xEpoll::hasChannel(xChannel* channel)
 {
+#ifdef __DEBUG__
 	loop->assertInLoopThread();
-	ChannelMap::const_iterator it = channels.find(channel->getfd());
+	auto  it = channels.find(channel->getfd());
 	return it != channels.end() && it->second == channel;
+#endif
 }
 
 
@@ -73,6 +75,7 @@ void xEpoll::updateChannel(xChannel* channel)
 	const int index = channel->getIndex();
 	if (index == kNew || index == kDeleted)
 	{
+#ifdef __DEBUG__
 		int fd = channel->getfd();
 		if (index == kNew)
 		{
@@ -84,18 +87,19 @@ void xEpoll::updateChannel(xChannel* channel)
 			assert(channels.find(fd) != channels.end());
 			assert(channels[fd] == channel);
 		}
-
+#endif
 		channel->setIndex(kAdded);
 		update(EPOLL_CTL_ADD, channel);
 	}
 	else
 	{
+#ifdef __DEBUG__
 		int fd = channel->getfd();
 		(void)fd;
 		assert(channels.find(fd) != channels.end());
 		assert(channels[fd] == channel);
 		assert(index == kAdded);
-		
+#endif
 		if (channel->isNoneEvent())
 		{
 			update(EPOLL_CTL_DEL, channel);
@@ -116,11 +120,13 @@ void xEpoll::removeChannel(xChannel* channel)
 
 	loop->assertInLoopThread();
 	int fd = channel->getfd();
+#ifdef __DEBUG__
 	assert(channels.find(fd) != channels.end());
 	assert(channels[fd] == channel);
 	assert(channel->isNoneEvent());
 	int index = channel->getIndex();
 	assert(index == kAdded || index == kDeleted);
+#endif
 	size_t n = channels.erase(fd);
 	(void)n;
 	assert(n == 1);
@@ -142,7 +148,7 @@ void xEpoll::update(int operation, xChannel* channel)
 	int fd = channel->getfd();
 	if (::epoll_ctl(epollFd, operation, fd, &event) < 0)
 	{
-		
+		LOG_ERROR<<"epoll_ctl "<<fd;
 	}
 }
 
@@ -151,10 +157,12 @@ void xEpoll::fillActiveChannels(int numEvents, ChannelList* activeChannels) cons
 	for (int i = 0; i < numEvents; ++i)
 	{
 		xChannel* channel = static_cast<xChannel*>(events[i].data.ptr);
+#ifdef __DEBUG__
 		int fd = channel->getfd();
-		ChannelMap::const_iterator it = channels.find(fd);
+		auto  it = channels.find(fd);
 		assert(it != channels.end());
 		assert(it->second == channel);
+#endif
 		channel->setRevents(events[i].events);
 		activeChannels->push_back(channel);
 	}

@@ -94,12 +94,12 @@ struct sharedObjectsStruct
 	*bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
 };
 
-
-
-
 extern sharedObjectsStruct shared;
 int ll2string(char *s, size_t len, long long value);
 int string2ll(const char * s,size_t slen, long long * value);
+int stringmatchlen(const char *p, int plen, const char *s, int slen, int nocase);
+int stringmatch(const char *p, const char *s, int nocase);
+
 rObj *createRawStringObject(char *ptr, size_t len);
 rObj *createObject(int type, void *ptr);
 rObj *createStringObject(char *ptr, size_t len);
@@ -115,6 +115,7 @@ int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const cha
 int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg);
 int getDoubleFromObject(const rObj *o, double *target);
 int getDoubleFromObjectOrReply(xBuffer  &sendBuf, rObj *o, double *target, const char *msg);
+
 
 
 void addReplyBulkSds(xBuffer &sendBuf, sds s);
@@ -134,6 +135,8 @@ void addReplyStatus(xBuffer &sendBuf, char *status);
 void addReplyStatusLength(xBuffer &sendBuf, char *s, size_t len);
 void addReplyBulkCString(xBuffer & sendBuf, const char *s);
 void addReplyDouble(xBuffer & sendBuf, double d);
+
+void prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length);
 
 long long ustime(void);
 long long mstime(void);
