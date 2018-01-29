@@ -38,7 +38,7 @@ void  xKqueue::epollWait(ChannelList* activeChannels,int msTime)
 		timeout.tv_sec = timer->interval;
 	}
 
-	int numEvents = kevent(kqueueFd, nullptr,0,&*events.begin(), static_cast<int>(events.size()), &timeout);
+	int numEvents = ::kevent(kqueueFd, nullptr,0,&*events.begin(), static_cast<int>(events.size()), &timeout);
 	int savedErrno = errno;
 	if (numEvents > 0)
 	{

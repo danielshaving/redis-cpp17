@@ -31,7 +31,7 @@ xEpoll::~xEpoll()
 
 void  xEpoll::epollWait(ChannelList* activeChannels,int msTime)
 {
-	int numEvents = epoll_wait(epollFd, &*events.begin(), static_cast<int>(events.size()), msTime);
+	int numEvents = ::epoll_wait(epollFd, &*events.begin(), static_cast<int>(events.size()), msTime);
 	int savedErrno = errno;
 
 	if (numEvents > 0)
@@ -120,11 +120,11 @@ void xEpoll::removeChannel(xChannel* channel)
 
 	loop->assertInLoopThread();
 	int fd = channel->getfd();
+	int index = channel->getIndex();
 #ifdef __DEBUG__
 	assert(channels.find(fd) != channels.end());
 	assert(channels[fd] == channel);
 	assert(channel->isNoneEvent());
-	int index = channel->getIndex();
 	assert(index == kAdded || index == kDeleted);
 #endif
 	size_t n = channels.erase(fd);
