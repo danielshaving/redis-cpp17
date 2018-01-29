@@ -92,6 +92,9 @@ void xTcpconnection::handleRead()
 		{
 			LOG_ERROR<<"TcpConnection::handleRead "<<errno;
 		}
+#ifdef __APPLE__
+		handleClose();
+#endif
 		//handleError();
 	}
 }

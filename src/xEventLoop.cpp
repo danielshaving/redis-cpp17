@@ -25,16 +25,19 @@ xEventLoop::xEventLoop()
 #ifdef __APPLE__
  epoller(new xKqueue(this)),
  op(socketpair(AF_UNIX,SOCK_STREAM,0,wakeupFd)),
+ //op(::pipe(wakeupFd)),
  timerQueue(new xTimerQueue(this)),
- wakeupChannel(new xChannel(this,wakeupFd[1])),
+ wakeupChannel(new xChannel(this,wakeupFd[0])),
 #endif
  currentActiveChannel(nullptr),
  running(false),
  eventHandling(false),
  callingPendingFunctors(false)
 {
-	signal(SIGPIPE, SIG_IGN);
-	signal(SIGHUP, SIG_IGN);
+//#ifdef __APPLE__
+//	socket.setFlag(wakeupFd[0],FD_CLOEXEC);
+//	socket.setFlag(wakeupFd[1],FD_CLOEXEC);
+//#endif
 	wakeupChannel->setReadCallback(std::bind(&xEventLoop::handleRead, this));
 	wakeupChannel->enableReading();
 }

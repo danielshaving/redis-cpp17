@@ -3,7 +3,7 @@
 
 #include "xChannel.h"	
 
-
+#include "xSocket.h"
 #ifdef __APPLE__
 #include "xKqueue.h"
 #endif
@@ -78,5 +78,6 @@ private:
     std::vector<Functor> pendingFunctors;
     std::vector<Functor> pendingPipeFunctors;
 
+    xSocket socket;
 };
 

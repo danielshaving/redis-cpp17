@@ -286,7 +286,6 @@ explicit xBuffer(size_t initialSize = kInitialSize)
 	ssize_t readFd(int fd, int* savedErrno);
 
 private:
-
 	char* begin() { return &*buffer.begin(); }
 	char *prepeek() { return begin() + readerIndex; }
 	const char* begin() const { return &*buffer.begin(); }

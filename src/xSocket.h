@@ -14,13 +14,14 @@ public:
 	int  createSocket();
 	int  connect(int sockfd,std::string ip, int16_t port);
 
-	int   getListenFd();
+	int    getListenFd();
 	void  setkeepAlive(int fd,int idle);
 	bool  createTcpListenSocket();
 	bool  setSocketNonBlock(int sockfd);
 	bool  setSocketBlock(int sockfd);
 	bool  setTcpNoDelay(int sockfd,bool on);
 	bool  setTimeOut(int sockfd,const struct timeval tc);
+	int    setFlag(int fd, int flag);
 private:
 	
 	xEventLoop	 *loop;

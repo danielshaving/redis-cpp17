@@ -17,16 +17,13 @@ kqueueFd(-1)
 	if (kqueueFd < 0)
 	{
 		LOG_WARN<<"create kqueueFd Failed error " << kqueueFd <<strerror(errno);
-
 	}
-
 }
 
 xKqueue::~xKqueue()
 {
 	::close(kqueueFd);
 }
-
 
 void  xKqueue::epollWait(ChannelList* activeChannels,int msTime)
 {
@@ -182,13 +179,17 @@ void xKqueue::fillActiveChannels(int numEvents, ChannelList* activeChannels) con
 		xChannel* channel = static_cast<xChannel*>(events[i].udata);
 		if(channel)
 		{
+//			 if (events[i].flags & EV_ERROR)
+//			 {
+//				 LOG_ERROR<<"kevent error";
+//				 continue;
+//			 }
 			int fd = channel->getfd();
 			auto  it = channels.find(fd);
 			assert(it != channels.end());
 			assert(it->second == channel);
 			activeChannels->push_back(channel);
 		}
-
 	}
 }
 #endif

@@ -67,6 +67,14 @@ int xSocket::connect(int sockfd,std::string ip, int16_t port)
 	return  ::connect(sockfd, (struct sockaddr *)&sin, sizeof(sin));
 }
 
+
+
+int xSocket::setFlag(int fd, int flag)
+{
+	   int ret = fcntl(fd, F_GETFD);
+	   return fcntl(fd, F_SETFD, ret | flag);
+}
+
 bool xSocket::setTimeOut(int sockfd,const struct timeval tv)
 {
     if (setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&tv,sizeof(tv)) == -1)
