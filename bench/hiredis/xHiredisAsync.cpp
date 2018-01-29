@@ -6,13 +6,13 @@ xHiredisAsync::xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,
 connectCount(0),
 loop(loop)
 {
-	hiredis.getPoll().setThreadNum(threadCount);
-	hiredis.getPoll().start();
+	hiredis.getPool().setThreadNum(threadCount);
+	hiredis.getPool().start();
 	for(int i = 0; i < sessionCount; i++)
 	{
 		hiredis.setCount();
 		int c = hiredis.getCount();
-		xTcpClientPtr client(new xTcpClient(hiredis.getPoll().getNextLoop(),(void*)&c));
+		xTcpClientPtr client(new xTcpClient(hiredis.getPool().getNextLoop(),(void*)&c));
 		hiredis.insertTcpMap(c,client);
 		client->setConnectionErrorCallBack(std::bind(&xHiredisAsync::redisErrorConnCallBack,this,std::placeholders::_1));
 		client->setConnectionCallback(std::bind(&xHiredisAsync::redisConnCallBack,this,std::placeholders::_1,std::placeholders::_2));
@@ -66,7 +66,6 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 		assert(false);
 	}
 
-
 	if(++connetCount == sessionCount )
 	{
 		test_cond(true);
@@ -97,7 +96,7 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 		for(auto it = redisMap.begin(); it != redisMap.end(); ++it)
 		{
 			count ++;
-			redisAsyncCommand(it->second,nullptr,nullptr,"set key%d %d",count,it->second->conn->getLoop()->getThreadId());
+			redisAsyncCommand(it->second,nullptr,nullptr,"set key%d %d",count,count);
 			redisAsyncCommand(it->second,getCallback,nullptr,"get key%d",count);
 		}
 

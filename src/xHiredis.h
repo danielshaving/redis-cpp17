@@ -245,7 +245,6 @@ public:
 
 	std::unordered_map<int32_t,xRedisAsyncContextPtr> & getRedisMap() { return redisMaps; }
 private:
-
 	std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;
 	std::unordered_map<int32_t,xRedisAsyncContextPtr> redisMaps;
 	std::unordered_map<int32_t,redisClusterCallback> clusterMaps;
