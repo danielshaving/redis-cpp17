@@ -3,7 +3,7 @@
 #include "xTcpconnection.h"
 #include "xObject.h"
 #include "xSds.h"
-
+#include "xUtil.h"
 
 class xSentinel;
 class xRedis;

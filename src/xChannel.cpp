@@ -24,7 +24,9 @@ xChannel::~xChannel()
 	assert(!addedToLoop);
 	if (loop->isInLoopThread())
 	{
+#ifdef __DEBUG__
 		assert(!loop->hasChannel(this));
+#endif
 	}
 }
 

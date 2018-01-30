@@ -158,7 +158,7 @@
 #define REDIS_AOF_REWRITE_MIN_SIZE (64*1024*1024)
 #define REDIS_AOF_REWRITE_ITEMS_PER_CMD 64
 #define REDIS_SLOWLOG_LOG_SLOWER_THAN 10000
-#define REDIS_SLOWLOG_MAX_length 128
+#define REDIS_SLOWLOG_MAX_LENGTH 128
 #define REDIS_MAX_CLIENTS 10000
 #define REDIS_AUTHPASS_MAX_length 512
 #define REDIS_DEFAULT_SLAVE_PRIORITY 100
@@ -339,8 +339,9 @@
 #define CLUSTER_SLOTS 16384
 #define CLUSTER_OK 0          /* Everything looks ok */
 #define CLUSTER_FAIL 1        /* The cluster can't work */
-#define CLUSTER_NAMElength 40    /* sha1 hex lengthgth */
+#define CLUSTER_NAMELEN 40    /* sha1 hex lengthgth */
 #define CLUSTER_PORT_INCR 10000 /* Cluster port = baseport + PORT_INCR */
+
 
 
  /* Redirection errors returned by getNodeByQuery(). */

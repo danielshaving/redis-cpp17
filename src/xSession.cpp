@@ -13,7 +13,7 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
  fromMaster(false),
  fromSlave(false)
 {
-	command = createStringObject(nullptr,10);
+	command = redis->object.createStringObject(nullptr,10);
 	conn->setMessageCallback(
 	        std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
 }
@@ -118,7 +118,7 @@ int xSession::processCommand()
 			if (strcasecmp(robjs[0]->ptr,"auth") != 0)
 			{
 				clearObj();
-				addReplyErrorFormat(sendBuf,"NOAUTH Authentication required");
+				redis->object.addReplyErrorFormat(sendBuf,"NOAUTH Authentication required");
 				return REDIS_ERR;
 			}
 		}
@@ -219,7 +219,7 @@ jump:
 			if(checkCommand(command))
 			{
 				clearObj();
-				addReplyErrorFormat(sendBuf,"slaveof command unknown");
+				redis->object.addReplyErrorFormat(sendBuf,"slaveof command unknown");
 				return REDIS_ERR;
 			}
 		}
@@ -250,7 +250,7 @@ jump:
 	if(iter == redis->handlerCommandMap.end() )
 	{
 		clearObj();
-		addReplyErrorFormat(sendBuf,"command unknown");
+		redis->object.addReplyErrorFormat(sendBuf,"command unknown");
 		return REDIS_ERR;
 	}
 
@@ -313,7 +313,7 @@ int xSession::processInlineBuffer(xBuffer *recvBuf)
 		 if(recvBuf->readableBytes() > PROTO_INLINE_MAX_SIZE)
 		 {
 			LOG_WARN << "Protocol error";
-			addReplyError(sendBuf,"Protocol error: too big inline request");
+			redis->object.addReplyError(sendBuf,"Protocol error: too big inline request");
 			recvBuf->retrieveAll();
 		 }
 		 return REDIS_ERR;
@@ -332,7 +332,7 @@ int xSession::processInlineBuffer(xBuffer *recvBuf)
 	if (argv == nullptr) 
 	{
 		LOG_WARN << "Protocol error";
-		addReplyError(sendBuf,"Protocol error: unbalanced quotes in request");
+		redis->object.addReplyError(sendBuf,"Protocol error: unbalanced quotes in request");
 		recvBuf->retrieveAll();
 		return REDIS_ERR;
     }
@@ -346,7 +346,7 @@ int xSession::processInlineBuffer(xBuffer *recvBuf)
 		}
 		else
 		{
-			rObj * obj = (rObj*)createStringObject(argv[j],sdslen(argv[j]));
+			rObj * obj = (rObj*)redis->object.createStringObject(argv[j],sdslen(argv[j]));
 			obj->calHash();
 			robjs.push_back(obj);
 		}
@@ -371,7 +371,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		{
 			if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 			{
-				addReplyError(sendBuf,"Protocol error: too big mbulk count string");
+				redis->object.addReplyError(sendBuf,"Protocol error: too big mbulk count string");
 				LOG_INFO<<"Protocol error: too big mbulk count string";
 				recvBuf->retrieveAll();
 			}
@@ -396,7 +396,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		ok = string2ll(queryBuf + 1,newline - ( queryBuf + 1),&ll);
 		if(!ok || ll > 1024 * 1024)
 		{
-			addReplyError(sendBuf,"Protocol error: invalid multibulk length");
+			redis->object.addReplyError(sendBuf,"Protocol error: invalid multibulk length");
 			LOG_INFO<<"Protocol error: invalid multibulk length";
 			recvBuf->retrieveAll();
 			return REDIS_ERR;
@@ -422,7 +422,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			{
 				if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 				{
-					addReplyError(sendBuf,"Protocol error: too big bulk count string");
+					redis->object.addReplyError(sendBuf,"Protocol error: too big bulk count string");
 					LOG_INFO<<"Protocol error: too big bulk count string";
 					recvBuf->retrieveAll();
 					return REDIS_ERR;
@@ -438,7 +438,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 
 			if(queryBuf[pos] != '$')
 			{
-				addReplyErrorFormat(sendBuf,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
+				redis->object.addReplyErrorFormat(sendBuf,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
 				LOG_INFO<<"Protocol error: expected '$'";
 				recvBuf->retrieveAll();
 				return REDIS_ERR;
@@ -448,7 +448,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			ok = string2ll(queryBuf + pos +  1,newline - (queryBuf + pos + 1),&ll);
 			if(!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
-				addReplyError(sendBuf,"Protocol error: invalid bulk length");
+				redis->object.addReplyError(sendBuf,"Protocol error: invalid bulk length");
 				LOG_INFO<<"Protocol error: invalid bulk length";
 				recvBuf->retrieveAll();
 				return REDIS_ERR;
@@ -475,7 +475,7 @@ int xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			}
 			else
 			{
-				rObj * obj = (rObj*)createStringObject((char*)(queryBuf + pos),bulklen);
+				rObj * obj = (rObj*)redis->object.createStringObject((char*)(queryBuf + pos),bulklen);
 				obj->calHash();
 				robjs.push_back(obj);
 			}

@@ -1,4 +1,4 @@
-#ifdef __linux__
+#ifdef __APPLE__
 #include "xPoll.h"
 #include "xChannel.h"
 #include "xEventLoop.h"

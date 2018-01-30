@@ -70,7 +70,7 @@ public:
 	int rdbSaveMillisecondTime(xRio *rdb, long long t);
 	int rdbSaveType(xRio *rdb, unsigned char type);
 	int rdbSaveLen(xRio *rdb, uint32_t len);
-	int rdbSave(char *filename,bool enabled = true);
+	int rdbSave(char *filename);
 	int rdbSaveRio(xRio *rdb, int *error);
 	int rdbSaveObject(xRio *rdb, rObj *o);
 	int rdbSaveStringObject(xRio *rdb, rObj *obj);
@@ -113,6 +113,7 @@ public:
 	int rdbSyncWrite(const char *buf,FILE * fp,size_t len);
 	int rdbSyncClose(char * fileName,FILE * fp);
 
+	void setBlockEnable(bool enabled) { blockEnabled = enabled; }
 public:
 	xRedis * redis;
     bool blockEnabled;

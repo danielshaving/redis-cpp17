@@ -2,7 +2,6 @@
 #include "all.h"
 
 #include "xChannel.h"	
-
 #include "xSocket.h"
 #ifdef __APPLE__
 #include "xKqueue.h"

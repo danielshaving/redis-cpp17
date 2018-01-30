@@ -1,260 +1,8 @@
 #include "xObject.h"
-sharedObjectsStruct shared;
-
-
-int string2ll(const char * s,size_t slen, long long * value)
-{
-	const char *p = s;
-    size_t plen = 0;
-    int negative = 0;
-    unsigned long long v;
-
-    if (plen == slen)
-        return 0;
-
-    if (slen == 1 && p[0] == '0')
-    {
-        if (value != nullptr) *value = 0;
-        return 1;
-    }
-
-    if (p[0] == '-')
-    {
-        negative = 1;
-        p++; plen++;
-
-        if (plen == slen)
-            return 0;
-    }
-
-    if (p[0] >= '1' && p[0] <= '9')
-    {
-        v = p[0]-'0';
-        p++; plen++;
-    }
-    else if (p[0] == '0' && slen == 1)
-    {
-        *value = 0;
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
-
-    while (plen < slen && p[0] >= '0' && p[0] <= '9')
-    {
-        if (v > (ULLONG_MAX / 10))
-            return 0;
-        v *= 10;
-
-        if (v > (ULLONG_MAX - (p[0]-'0')))
-            return 0;
-        v += p[0]-'0';
-
-        p++; plen++;
-    }
-
-    if (plen < slen)
-        return 0;
-
-    if (negative)
-    {
-        if (v > ((unsigned long long)(-(LLONG_MIN+1))+1))
-            return 0;
-        if (value != nullptr) *value = -v;
-    }
-    else
-    {
-        if (v > LLONG_MAX) /* Overflow. */
-            return 0;
-        if (value != nullptr) *value = v;
-    }
-    return 1;
-
-}
-
-
-int ll2string(char *s, size_t len, long long value)
-{
-    char buf[32], *p;
-    unsigned long long v;
-    size_t l;
-
-    if (len == 0) return 0;
-    v = (value < 0) ? -value : value;
-    p = buf+31; /* point to the last character */
-    do
-    {
-        *p-- = '0'+(v%10);
-        v /= 10;
-    } while(v);
-    if (value < 0) *p-- = '-';
-    p++;
-    l = 32-(p-buf);
-    if (l+1 > len) l = len-1; /* Make sure it fits, including the nul term */
-    memcpy(s,p,l);
-    s[l] = '\0';
-    return l;
-}
-
-
-/* Glob-style pattern matching. */
-int stringmatchlen(const char *pattern, int patternLen,
-        const char *string, int stringLen, int nocase)
-{
-    while(patternLen)
-    {
-        switch(pattern[0])
-        {
-        case '*':
-            while (pattern[1] == '*')
-            {
-                pattern++;
-                patternLen--;
-            }
-            if (patternLen == 1)
-                return 1; /* match */
-            while(stringLen)
-            {
-                if (stringmatchlen(pattern+1, patternLen-1,
-                            string, stringLen, nocase))
-                    return 1; /* match */
-                string++;
-                stringLen--;
-            }
-            return 0; /* no match */
-            break;
-        case '?':
-            if (stringLen == 0)
-                return 0; /* no match */
-            string++;
-            stringLen--;
-            break;
-        case '[':
-        {
-            int no, match;
-            pattern++;
-            patternLen--;
-            no = pattern[0] == '^';
-            if (no)
-            {
-                pattern++;
-                patternLen--;
-            }
-            match = 0;
-            while(1)
-            {
-                if (pattern[0] == '\\' && patternLen >= 2)
-                {
-                    pattern++;
-                    patternLen--;
-                    if (pattern[0] == string[0])
-                        match = 1;
-                }
-                else if (pattern[0] == ']')
-                {
-                    break;
-                }
-                else if (patternLen == 0)
-                {
-                    pattern--;
-                    patternLen++;
-                    break;
-                }
-                else if (pattern[1] == '-' && patternLen >= 3)
-                {
-                    int start = pattern[0];
-                    int end = pattern[2];
-                    int c = string[0];
-                    if (start > end)
-                    {
-                        int t = start;
-                        start = end;
-                        end = t;
-                    }
-                    if (nocase)
-                    {
-                        start = tolower(start);
-                        end = tolower(end);
-                        c = tolower(c);
-                    }
-                    pattern += 2;
-                    patternLen -= 2;
-                    if (c >= start && c <= end)
-                        match = 1;
-                }
-                else
-                {
-                    if (!nocase)
-                    {
-                        if (pattern[0] == string[0])
-                            match = 1;
-                    }
-                    else
-                    {
-                        if (tolower((int)pattern[0]) == tolower((int)string[0]))
-                            match = 1;
-                    }
-                }
-                pattern++;
-                patternLen--;
-            }
-            if (no)
-                match = !match;
-            if (!match)
-                return 0; /* no match */
-            string++;
-            stringLen--;
-            break;
-        }
-        case '\\':
-            if (patternLen >= 2)
-            {
-                pattern++;
-                patternLen--;
-            }
-            /* fall through */
-        default:
-            if (!nocase)
-            {
-                if (pattern[0] != string[0])
-                    return 0; /* no match */
-            } else
-            {
-                if (tolower((int)pattern[0]) != tolower((int)string[0]))
-                    return 0; /* no match */
-            }
-            string++;
-            stringLen--;
-            break;
-        }
-        pattern++;
-        patternLen--;
-        if (stringLen == 0)
-        {
-            while(*pattern == '*')
-            {
-                pattern++;
-                patternLen--;
-            }
-            break;
-        }
-    }
-
-    if (patternLen == 0 && stringLen == 0)
-        return 1;
-    return 0;
-}
-
-int stringmatch(const char *pattern, const char *string, int nocase)
-{
-    return stringmatchlen(pattern,strlen(pattern),string,strlen(string),nocase);
-}
 
 
 
-rObj * createObject(int type, void *ptr)
+rObj * xObjects::createObject(int type, void *ptr)
 {
 	rObj * o = (rObj*)zmalloc(sizeof(rObj));
 	o->type = REDIS_ENCODING_RAW;
@@ -263,7 +11,7 @@ rObj * createObject(int type, void *ptr)
 }
 
 
-int getLongLongFromObject(rObj *o, long long   *target)
+int xObjects::getLongLongFromObject(rObj *o, long long   *target)
 {
 	long long   value;
 
@@ -288,9 +36,7 @@ int getLongLongFromObject(rObj *o, long long   *target)
 
 }
 
-
-
-int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg) 
+int xObjects::getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg)
 {
     long long value;
     if (getLongLongFromObject(o, &value) != REDIS_OK)
@@ -309,7 +55,7 @@ int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, co
 }
 
 
-int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg)
+int xObjects::getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg)
 {
 	long  long value;
 	if (getLongLongFromObject(o, &value) != REDIS_OK)
@@ -329,12 +75,12 @@ int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const cha
 	return REDIS_OK;
 }
 
-rObj *createStringObjectFromLongLong(long long value)
+rObj * xObjects::createStringObjectFromLongLong(long long value)
 {
 	rObj *o;
 	if(value <=0 && value < REDIS_SHARED_INTEGERS)
 	{
-		o = shared.integers[value];
+		o = integers[value];
 	}
 	else
 	{
@@ -354,7 +100,7 @@ rObj *createStringObjectFromLongLong(long long value)
 
 
 
-int getDoubleFromObjectOrReply(xBuffer  &sendBuf, rObj *o, double *target, const char *msg)
+int xObjects::getDoubleFromObjectOrReply(xBuffer  &sendBuf, rObj *o, double *target, const char *msg)
 {
     double value;
     if (getDoubleFromObject(o, &value) != REDIS_OK)
@@ -374,7 +120,7 @@ int getDoubleFromObjectOrReply(xBuffer  &sendBuf, rObj *o, double *target, const
 }
 
 
-int getDoubleFromObject(const rObj *o, double *target)
+int xObjects::getDoubleFromObject(const rObj *o, double *target)
 {
     double value;
     char *eptr;
@@ -407,9 +153,7 @@ int getDoubleFromObject(const rObj *o, double *target)
     return REDIS_OK;
 }
 
-
-
-void freeStringObject(rObj *o) 
+void xObjects::freeStringObject(rObj *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW)
     {
@@ -418,7 +162,7 @@ void freeStringObject(rObj *o)
 }
 
 
-void decrRefCount(rObj *o) 
+void xObjects::decrRefCount(rObj *o)
 {
 	switch(o->type)
 	{
@@ -429,329 +173,337 @@ void decrRefCount(rObj *o)
 }
 
 
-void destorySharedObjects()
+xObjects::xObjects()
 {
-	freeStringObject(shared.crlf);
-	freeStringObject(shared.ok);
-	freeStringObject(shared.err);
-	freeStringObject(shared.emptybulk);
-	freeStringObject(shared.czero);
-	freeStringObject(shared.cone);
-	freeStringObject(shared.cnegone);
-	freeStringObject(shared.nullbulk);
-	freeStringObject(shared.nullmultibulk);
-	freeStringObject(shared.emptymultibulk);
-	freeStringObject(shared.pping);
-	freeStringObject(shared.ping);
-	freeStringObject(shared.pong);
-	freeStringObject(shared.ppong);
-	freeStringObject(shared.queued);
-	freeStringObject(shared.emptyscan);
-	freeStringObject(shared.wrongtypeerr);
-	freeStringObject(shared.nokeyerr);
-	freeStringObject(shared.syntaxerr);
-	freeStringObject(shared.sameobjecterr);
-	freeStringObject(shared.outofrangeerr);
-	freeStringObject(shared.noscripterr);
-	freeStringObject(shared.loadingerr);
-	freeStringObject(shared.slowscripterr);
-	freeStringObject(shared.masterdownerr);
-	freeStringObject(shared.bgsaveerr);
-	freeStringObject(shared.roslaveerr);
-	freeStringObject(shared.noautherr);
-	freeStringObject(shared.oomerr);
-	freeStringObject(shared.execaborterr);
-	freeStringObject(shared.noreplicaserr);
-	freeStringObject(shared.busykeyerr);
-	freeStringObject(shared.space);
-	freeStringObject(shared.colon);
-	freeStringObject(shared.plus);
-	freeStringObject(shared.messagebulk);
-	freeStringObject(shared.pmessagebulk);
-	freeStringObject(shared.subscribebulk);
-	freeStringObject(shared.unsubscribebulk);
-	freeStringObject(shared.psubscribebulk);
-	freeStringObject(shared.punsubscribebulk);
-	freeStringObject(shared.del);
-	freeStringObject(shared.rpop);
-	freeStringObject(shared.lpop);
-	freeStringObject(shared.lpush);
-	freeStringObject(shared.rpush);
-	freeStringObject(shared.set);
-	freeStringObject(shared.get);
-	freeStringObject(shared.flushdb);
-	freeStringObject(shared.dbsize);
-	freeStringObject(shared.hset);
-	freeStringObject(shared.hget);
-	freeStringObject(shared.hgetall);
-	freeStringObject(shared.save);
-	freeStringObject(shared.slaveof);
-	freeStringObject(shared.command);
-	freeStringObject(shared.config);
-	freeStringObject(shared.auth);
-	freeStringObject(shared.info);
-	freeStringObject(shared.echo);
-	freeStringObject(shared.client);
-	freeStringObject(shared.hkeys);
-	freeStringObject(shared.hlen);
-	freeStringObject(shared.keys);
-	freeStringObject(shared.bgsave);
-	freeStringObject(shared.memory);
-	freeStringObject(shared.cluster);
-	freeStringObject(shared.migrate);
-	freeStringObject(shared.debug);
-	freeStringObject(shared.ttl);
-	freeStringObject(shared.lrange);
-	freeStringObject(shared.llen);
-	freeStringObject(shared.sadd);
-	freeStringObject(shared.scard);
-	freeStringObject(shared.addsync);
-	freeStringObject(shared.setslot);
-	freeStringObject(shared.node);
-	freeStringObject(shared.connect);
-	freeStringObject(shared.delsync);
-	freeStringObject(shared.psync);
-	freeStringObject(shared.sync);
-	freeStringObject(shared.zadd);
-	freeStringObject(shared.zrevrange);
-	freeStringObject(shared.zcard);
+	createSharedObjects();
+}
+
+xObjects::~xObjects()
+{
+	destorySharedObjects();
+}
+
+void xObjects::destorySharedObjects()
+{
+	freeStringObject(crlf);
+	freeStringObject(ok);
+	freeStringObject(err);
+	freeStringObject(emptybulk);
+	freeStringObject(czero);
+	freeStringObject(cone);
+	freeStringObject(cnegone);
+	freeStringObject(nullbulk);
+	freeStringObject(nullmultibulk);
+	freeStringObject(emptymultibulk);
+	freeStringObject(pping);
+	freeStringObject(ping);
+	freeStringObject(pong);
+	freeStringObject(ppong);
+	freeStringObject(queued);
+	freeStringObject(emptyscan);
+	freeStringObject(wrongtypeerr);
+	freeStringObject(nokeyerr);
+	freeStringObject(syntaxerr);
+	freeStringObject(sameobjecterr);
+	freeStringObject(outofrangeerr);
+	freeStringObject(noscripterr);
+	freeStringObject(loadingerr);
+	freeStringObject(slowscripterr);
+	freeStringObject(masterdownerr);
+	freeStringObject(bgsaveerr);
+	freeStringObject(roslaveerr);
+	freeStringObject(noautherr);
+	freeStringObject(oomerr);
+	freeStringObject(execaborterr);
+	freeStringObject(noreplicaserr);
+	freeStringObject(busykeyerr);
+	freeStringObject(space);
+	freeStringObject(colon);
+	freeStringObject(plus);
+	freeStringObject(messagebulk);
+	freeStringObject(pmessagebulk);
+	freeStringObject(subscribebulk);
+	freeStringObject(unsubscribebulk);
+	freeStringObject(psubscribebulk);
+	freeStringObject(punsubscribebulk);
+	freeStringObject(del);
+	freeStringObject(rpop);
+	freeStringObject(lpop);
+	freeStringObject(lpush);
+	freeStringObject(rpush);
+	freeStringObject(set);
+	freeStringObject(get);
+	freeStringObject(flushdb);
+	freeStringObject(dbsize);
+	freeStringObject(hset);
+	freeStringObject(hget);
+	freeStringObject(hgetall);
+	freeStringObject(save);
+	freeStringObject(slaveof);
+	freeStringObject(command);
+	freeStringObject(config);
+	freeStringObject(auth);
+	freeStringObject(info);
+	freeStringObject(echo);
+	freeStringObject(client);
+	freeStringObject(hkeys);
+	freeStringObject(hlen);
+	freeStringObject(keys);
+	freeStringObject(bgsave);
+	freeStringObject(memory);
+	freeStringObject(cluster);
+	freeStringObject(migrate);
+	freeStringObject(debug);
+	freeStringObject(ttl);
+	freeStringObject(lrange);
+	freeStringObject(llen);
+	freeStringObject(sadd);
+	freeStringObject(scard);
+	freeStringObject(addsync);
+	freeStringObject(setslot);
+	freeStringObject(node);
+	freeStringObject(connect);
+	freeStringObject(delsync);
+	freeStringObject(psync);
+	freeStringObject(sync);
+	freeStringObject(zadd);
+	freeStringObject(zrevrange);
+	freeStringObject(zcard);
 	
-	freeStringObject(shared.PING);
-	freeStringObject(shared.DEL);
-	freeStringObject(shared.RPOP);
-	freeStringObject(shared.LPOP);
-	freeStringObject(shared.LPUSH);
-	freeStringObject(shared.RPUSH);
-	freeStringObject(shared.SET);
-	freeStringObject(shared.GET);
-	freeStringObject(shared.FLUSHDB);
-	freeStringObject(shared.DBSIZE);
-	freeStringObject(shared.HSET);
-	freeStringObject(shared.HGET);
-	freeStringObject(shared.HGETALL);
-	freeStringObject(shared.SAVE);
-	freeStringObject(shared.SLAVEOF);
-	freeStringObject(shared.COMMAND);
-	freeStringObject(shared.CONFIG);
-	freeStringObject(shared.AUTH);
-	freeStringObject(shared.INFO);
-	freeStringObject(shared.ECHO);
-	freeStringObject(shared.CLIENT);
-	freeStringObject(shared.HKEYS);
-	freeStringObject(shared.HLEN);
-	freeStringObject(shared.KEYS);
-	freeStringObject(shared.BGSAVE);
-	freeStringObject(shared.MEMORY);
-	freeStringObject(shared.CLUSTER);
-	freeStringObject(shared.MIGRATE);
-	freeStringObject(shared.DEBUG);
-	freeStringObject(shared.TTL);
-	freeStringObject(shared.LRANGE);
-	freeStringObject(shared.LLEN);
-	freeStringObject(shared.SADD);
-	freeStringObject(shared.SCARD);
-	freeStringObject(shared.ADDSYNC);
-	freeStringObject(shared.SETSLOT);
-	freeStringObject(shared.NODE);
-	freeStringObject(shared.CONNECT);
-	freeStringObject(shared.DELSYNC);
-	freeStringObject(shared.PSYNC);
-	freeStringObject(shared.SYNC);
-	freeStringObject(shared.ZADD);
-	freeStringObject(shared.ZREVRANGE);
-	freeStringObject(shared.ZCARD);
+	freeStringObject(PING);
+	freeStringObject(DEL);
+	freeStringObject(RPOP);
+	freeStringObject(LPOP);
+	freeStringObject(LPUSH);
+	freeStringObject(RPUSH);
+	freeStringObject(SET);
+	freeStringObject(GET);
+	freeStringObject(FLUSHDB);
+	freeStringObject(DBSIZE);
+	freeStringObject(HSET);
+	freeStringObject(HGET);
+	freeStringObject(HGETALL);
+	freeStringObject(SAVE);
+	freeStringObject(SLAVEOF);
+	freeStringObject(COMMAND);
+	freeStringObject(CONFIG);
+	freeStringObject(AUTH);
+	freeStringObject(INFO);
+	freeStringObject(ECHO);
+	freeStringObject(CLIENT);
+	freeStringObject(HKEYS);
+	freeStringObject(HLEN);
+	freeStringObject(KEYS);
+	freeStringObject(BGSAVE);
+	freeStringObject(MEMORY);
+	freeStringObject(CLUSTER);
+	freeStringObject(MIGRATE);
+	freeStringObject(DEBUG);
+	freeStringObject(TTL);
+	freeStringObject(LRANGE);
+	freeStringObject(LLEN);
+	freeStringObject(SADD);
+	freeStringObject(SCARD);
+	freeStringObject(ADDSYNC);
+	freeStringObject(SETSLOT);
+	freeStringObject(NODE);
+	freeStringObject(CONNECT);
+	freeStringObject(DELSYNC);
+	freeStringObject(PSYNC);
+	freeStringObject(SYNC);
+	freeStringObject(ZADD);
+	freeStringObject(ZREVRANGE);
+	freeStringObject(ZCARD);
 	
 
 
 	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
 	{
-		freeStringObject(shared.integers[j]);
+		freeStringObject(integers[j]);
 	}
 
 	for (int j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{
-		freeStringObject(shared.mbulkhdr[j]);
+		freeStringObject(mbulkhdr[j]);
 	}
-
-
 
 }
 
 
-void createSharedObjects()
+void xObjects::createSharedObjects()
 {
 	int j;
 
-	shared.crlf = createObject(REDIS_STRING,sdsnew("\r\n"));
-	shared.ok = createObject(REDIS_STRING,sdsnew("+OK\r\n"));
-	shared.err = createObject(REDIS_STRING,sdsnew("-ERR\r\n"));
-	shared.emptybulk = createObject(REDIS_STRING,sdsnew("$0\r\n\r\n"));
-	shared.czero = createObject(REDIS_STRING,sdsnew(":0\r\n"));
-	shared.cone = createObject(REDIS_STRING,sdsnew(":1\r\n"));
-	shared.cnegone = createObject(REDIS_STRING,sdsnew(":-1\r\n"));
-	shared.nullbulk = createObject(REDIS_STRING,sdsnew("$-1\r\n"));
-	shared.nullmultibulk = createObject(REDIS_STRING,sdsnew("*-1\r\n"));
-	shared.emptymultibulk = createObject(REDIS_STRING,sdsnew("*0\r\n"));
-	shared.pping = createObject(REDIS_STRING, sdsnew("PPING\r\n"));
-	shared.ping = createObject(REDIS_STRING,sdsnew("PING\r\n"));
-	shared.pong = createObject(REDIS_STRING, sdsnew("+PONG\r\n"));
-	shared.ppong = createObject(REDIS_STRING,sdsnew("PPONG"));
-	shared.queued = createObject(REDIS_STRING,sdsnew("+QUEUED\r\n"));
-	shared.emptyscan = createObject(REDIS_STRING,sdsnew("*2\r\n$1\r\n0\r\n*0\r\n"));
+	crlf = createObject(REDIS_STRING,sdsnew("\r\n"));
+	ok = createObject(REDIS_STRING,sdsnew("+OK\r\n"));
+	err = createObject(REDIS_STRING,sdsnew("-ERR\r\n"));
+	emptybulk = createObject(REDIS_STRING,sdsnew("$0\r\n\r\n"));
+	czero = createObject(REDIS_STRING,sdsnew(":0\r\n"));
+	cone = createObject(REDIS_STRING,sdsnew(":1\r\n"));
+	cnegone = createObject(REDIS_STRING,sdsnew(":-1\r\n"));
+	nullbulk = createObject(REDIS_STRING,sdsnew("$-1\r\n"));
+	nullmultibulk = createObject(REDIS_STRING,sdsnew("*-1\r\n"));
+	emptymultibulk = createObject(REDIS_STRING,sdsnew("*0\r\n"));
+	pping = createObject(REDIS_STRING, sdsnew("PPING\r\n"));
+	ping = createObject(REDIS_STRING,sdsnew("PING\r\n"));
+	pong = createObject(REDIS_STRING, sdsnew("+PONG\r\n"));
+	ppong = createObject(REDIS_STRING,sdsnew("PPONG"));
+	queued = createObject(REDIS_STRING,sdsnew("+QUEUED\r\n"));
+	emptyscan = createObject(REDIS_STRING,sdsnew("*2\r\n$1\r\n0\r\n*0\r\n"));
 
-	shared.wrongtypeerr = createObject(REDIS_STRING,sdsnew(
+	wrongtypeerr = createObject(REDIS_STRING,sdsnew(
 	    "-WRONGTYPE Operation against a key holding the wrong kind of value\r\n"));
-	shared.nokeyerr = createObject(REDIS_STRING,sdsnew(
+	nokeyerr = createObject(REDIS_STRING,sdsnew(
 	    "-ERR no such key\r\n"));
-	shared.syntaxerr = createObject(REDIS_STRING,sdsnew(
+	syntaxerr = createObject(REDIS_STRING,sdsnew(
 	    "-ERR syntax error\r\n"));
-	shared.sameobjecterr = createObject(REDIS_STRING,sdsnew(
+	sameobjecterr = createObject(REDIS_STRING,sdsnew(
 	    "-ERR source and destination objects are the same\r\n"));
-	shared.outofrangeerr = createObject(REDIS_STRING,sdsnew(
+	outofrangeerr = createObject(REDIS_STRING,sdsnew(
 	    "-ERR index out of range\r\n"));
-	shared.noscripterr = createObject(REDIS_STRING,sdsnew(
+	noscripterr = createObject(REDIS_STRING,sdsnew(
 	    "-NOSCRIPT No matching script. Please use EVAL.\r\n"));
-	shared.loadingerr = createObject(REDIS_STRING,sdsnew(
+	loadingerr = createObject(REDIS_STRING,sdsnew(
 	    "-LOADING Redis is loading the dataset in memory\r\n"));
-	shared.slowscripterr = createObject(REDIS_STRING,sdsnew(
+	slowscripterr = createObject(REDIS_STRING,sdsnew(
 	    "-BUSY Redis is busy running a script. You can only call SCRIPT KILL or SHUTDOWN NOSAVE.\r\n"));
-	shared.masterdownerr = createObject(REDIS_STRING,sdsnew(
+	masterdownerr = createObject(REDIS_STRING,sdsnew(
 	    "-MASTERDOWN Link with MASTER is down and slave-serve-stale-data is set to 'no'.\r\n"));
-	shared.bgsaveerr = createObject(REDIS_STRING,sdsnew(
+	bgsaveerr = createObject(REDIS_STRING,sdsnew(
 	    "-MISCONF Redis is configured to save RDB snapshots, but is currently no able to persist on disk. Commands that may modify the data set are disabled. Please check Redis logs for details about the error.\r\n"));
-	shared.roslaveerr = createObject(REDIS_STRING,sdsnew(
+	roslaveerr = createObject(REDIS_STRING,sdsnew(
 	    "-READONLY You can't write against a read only slave.\r\n"));
-	shared.noautherr = createObject(REDIS_STRING,sdsnew(
+	noautherr = createObject(REDIS_STRING,sdsnew(
 	    "-NOAUTH Authentication required.\r\n"));
-	shared.oomerr = createObject(REDIS_STRING,sdsnew(
+	oomerr = createObject(REDIS_STRING,sdsnew(
 	    "-OOM command no allowed when used memory > 'maxmemory'.\r\n"));
-	shared.execaborterr = createObject(REDIS_STRING,sdsnew(
+	execaborterr = createObject(REDIS_STRING,sdsnew(
 	    "-EXECABORT Transaction discarded because of previous errors.\r\n"));
-	shared.noreplicaserr = createObject(REDIS_STRING,sdsnew(
+	noreplicaserr = createObject(REDIS_STRING,sdsnew(
 	    "-NOREPLICAS Not enough good slaves to write.\r\n"));
-	shared.busykeyerr = createObject(REDIS_STRING,sdsnew(
+	busykeyerr = createObject(REDIS_STRING,sdsnew(
 	    "-BUSYKEY Target key name already exists.\r\n"));
 
-	shared.space = createObject(REDIS_STRING,sdsnew(" "));
-	shared.colon = createObject(REDIS_STRING,sdsnew(":"));
-	shared.plus = createObject(REDIS_STRING,sdsnew("+"));
+	space = createObject(REDIS_STRING,sdsnew(" "));
+	colon = createObject(REDIS_STRING,sdsnew(":"));
+	plus = createObject(REDIS_STRING,sdsnew("+"));
 
 
-	shared.messagebulk = createStringObject("$7\r\nmessage\r\n",13);
-	shared.pmessagebulk = createStringObject("$8\r\npmessage\r\n",14);
-	shared.subscribebulk = createStringObject("$9\r\nsubscribe\r\n",15);
-	shared.unsubscribebulk = createStringObject("$11\r\nunsubscribe\r\n",18);
-	shared.psubscribebulk = createStringObject("$10\r\npsubscribe\r\n",17);
-	shared.punsubscribebulk = createStringObject("$12\r\npunsubscribe\r\n",19);
+	messagebulk = createStringObject("$7\r\nmessage\r\n",13);
+	pmessagebulk = createStringObject("$8\r\npmessage\r\n",14);
+	subscribebulk = createStringObject("$9\r\nsubscribe\r\n",15);
+	unsubscribebulk = createStringObject("$11\r\nunsubscribe\r\n",18);
+	psubscribebulk = createStringObject("$10\r\npsubscribe\r\n",17);
+	punsubscribebulk = createStringObject("$12\r\npunsubscribe\r\n",19);
 
 
-	shared.del = createStringObject("del", 3);
-	shared.rpop = createStringObject("rpop", 4);
-	shared.lpop = createStringObject("lpop", 4);
-	shared.lpush = createStringObject("lpush", 5);
-	shared.rpush = createStringObject("rpush", 5);
-	shared.set = createStringObject("set", 3);
-	shared.get = createStringObject("get", 3);
-	shared.flushdb = createStringObject("flushdb", 7);
-	shared.dbsize = createStringObject("dbsize", 6);
-	shared.hset = createStringObject("hset", 4);
-	shared.hget = createStringObject("hget", 4);
-	shared.hgetall = createStringObject("hgetall", 7);
-	shared.save = createStringObject("save", 4);
-	shared.slaveof = createStringObject("slaveof", 7);
-	shared.command = createStringObject("command", 7);
-	shared.config = createStringObject("config", 6);
-	shared.auth = createStringObject("rpush", 5);
-	shared.info = createStringObject("info", 4);
-	shared.echo = createStringObject("echo", 4);
-	shared.client = createStringObject("client", 6);
-	shared.hkeys = createStringObject("hkeys", 5);
-	shared.hlen = createStringObject("hlen", 4);
-	shared.keys = createStringObject("keys", 4);
-	shared.bgsave = createStringObject("bgsave", 6);
-	shared.memory = createStringObject("memory", 6);
-	shared.cluster = createStringObject("cluster", 7);
-	shared.migrate = createStringObject("migrate", 7);
-	shared.debug = createStringObject("debug", 5);
-	shared.ttl = createStringObject("ttl", 3);
-	shared.lrange = createStringObject("lrange", 6);
-	shared.llen = createStringObject("llen", 4);
-	shared.sadd = createStringObject("sadd", 4);
-	shared.scard = createStringObject("scard", 5);
-	shared.addsync = createStringObject("addsync", 7);
-	shared.setslot = createStringObject("setslot", 7);
-	shared.node = createStringObject("node", 4);
-	shared.connect = createStringObject("connect", 7);
-	shared.psync = createStringObject("psync", 5);
-	shared.sync = createStringObject("sync", 4);
-	shared.delsync = createStringObject("delsync", 7);
-	shared.zadd = createStringObject("zadd", 4);
-	shared.zrange = createStringObject("zrange",6);
-	shared.zrevrange = createStringObject("zrevrange",9);
-	shared.zcard = createStringObject("zcard",5);
+	del = createStringObject("del", 3);
+	rpop = createStringObject("rpop", 4);
+	lpop = createStringObject("lpop", 4);
+	lpush = createStringObject("lpush", 5);
+	rpush = createStringObject("rpush", 5);
+	set = createStringObject("set", 3);
+	get = createStringObject("get", 3);
+	flushdb = createStringObject("flushdb", 7);
+	dbsize = createStringObject("dbsize", 6);
+	hset = createStringObject("hset", 4);
+	hget = createStringObject("hget", 4);
+	hgetall = createStringObject("hgetall", 7);
+	save = createStringObject("save", 4);
+	slaveof = createStringObject("slaveof", 7);
+	command = createStringObject("command", 7);
+	config = createStringObject("config", 6);
+	auth = createStringObject("rpush", 5);
+	info = createStringObject("info", 4);
+	echo = createStringObject("echo", 4);
+	client = createStringObject("client", 6);
+	hkeys = createStringObject("hkeys", 5);
+	hlen = createStringObject("hlen", 4);
+	keys = createStringObject("keys", 4);
+	bgsave = createStringObject("bgsave", 6);
+	memory = createStringObject("memory", 6);
+	cluster = createStringObject("cluster", 7);
+	migrate = createStringObject("migrate", 7);
+	debug = createStringObject("debug", 5);
+	ttl = createStringObject("ttl", 3);
+	lrange = createStringObject("lrange", 6);
+	llen = createStringObject("llen", 4);
+	sadd = createStringObject("sadd", 4);
+	scard = createStringObject("scard", 5);
+	addsync = createStringObject("addsync", 7);
+	setslot = createStringObject("setslot", 7);
+	node = createStringObject("node", 4);
+	connect = createStringObject("connect", 7);
+	psync = createStringObject("psync", 5);
+	sync = createStringObject("sync", 4);
+	delsync = createStringObject("delsync", 7);
+	zadd = createStringObject("zadd", 4);
+	zrange = createStringObject("zrange",6);
+	zrevrange = createStringObject("zrevrange",9);
+	zcard = createStringObject("zcard",5);
 
-	shared.PING =  createStringObject("PING", 4);
-	shared.DEL = createStringObject("DEL", 3);
-	shared.RPOP = createStringObject("RPOP", 4);
-	shared.LPOP = createStringObject("LPOP", 4);
-	shared.LPUSH = createStringObject("LPUSH", 5);
-	shared.RPUSH = createStringObject("RPUSH", 5);
-	shared.SET = createStringObject("SET", 3);
-	shared.GET = createStringObject("GET", 3);
-	shared.FLUSHDB = createStringObject("FLUSHDB", 7);
-	shared.DBSIZE = createStringObject("DBSIZE", 6);
-	shared.HSET = createStringObject("HSET", 4);
-	shared.HGET = createStringObject("HGET", 4);
-	shared.HGETALL = createStringObject("HGETALL", 7);
-	shared.SAVE = createStringObject("SAVE", 4);
-	shared.SLAVEOF = createStringObject("SLAVEOF", 7);
-	shared.COMMAND = createStringObject("COMMAND", 7);
-	shared.CONFIG = createStringObject("CONFIG", 6);
-	shared.AUTH = createStringObject("RPUSH", 5);
-	shared.INFO = createStringObject("INFO", 4);
-	shared.ECHO = createStringObject("ECHO", 4);
-	shared.CLIENT = createStringObject("CLIENT", 6);
-	shared.HKEYS = createStringObject("HKEYS", 5);
-	shared.HLEN = createStringObject("HLEN", 4);
-	shared.KEYS = createStringObject("KEYS", 4);
-	shared.BGSAVE = createStringObject("BGSAVE", 6);
-	shared.MEMORY = createStringObject("MEMORY", 6);
-	shared.CLUSTER = createStringObject("CLUSTER", 7);
-	shared.MIGRATE = createStringObject("MIGRATE", 7);
-	shared.DEBUG = createStringObject("DEBUG", 5);
-	shared.TTL = createStringObject("TTL", 3);
-	shared.LRANGE = createStringObject("LRANGE", 6);
-	shared.LLEN = createStringObject("LLEN", 4);
-	shared.SADD = createStringObject("SADD", 4);
-	shared.SCARD = createStringObject("SCARD", 5);
-	shared.ADDSYNC = createStringObject("ADDSYNC", 7);
-	shared.SETSLOT = createStringObject("SETSLOT", 7);
-	shared.NODE = createStringObject("NODE", 4);
-	shared.CONNECT = createStringObject("CONNECT", 7);
-	shared.PSYNC = createStringObject("PSYNC", 5);
-	shared.SYNC = createStringObject("SYNC", 4);
-	shared.DELSYNC = createStringObject("DELSYNC", 7);
-	shared.ZADD = createStringObject("ZADD", 4);
-	shared.ZRANGE = createStringObject("ZRANGE",6);
-	shared.ZREVRANGE = createStringObject("ZRANGE",9);
-	shared.ZCARD = createStringObject("ZCARD",5);
+	PING =  createStringObject("PING", 4);
+	DEL = createStringObject("DEL", 3);
+	RPOP = createStringObject("RPOP", 4);
+	LPOP = createStringObject("LPOP", 4);
+	LPUSH = createStringObject("LPUSH", 5);
+	RPUSH = createStringObject("RPUSH", 5);
+	SET = createStringObject("SET", 3);
+	GET = createStringObject("GET", 3);
+	FLUSHDB = createStringObject("FLUSHDB", 7);
+	DBSIZE = createStringObject("DBSIZE", 6);
+	HSET = createStringObject("HSET", 4);
+	HGET = createStringObject("HGET", 4);
+	HGETALL = createStringObject("HGETALL", 7);
+	SAVE = createStringObject("SAVE", 4);
+	SLAVEOF = createStringObject("SLAVEOF", 7);
+	COMMAND = createStringObject("COMMAND", 7);
+	CONFIG = createStringObject("CONFIG", 6);
+	AUTH = createStringObject("RPUSH", 5);
+	INFO = createStringObject("INFO", 4);
+	ECHO = createStringObject("ECHO", 4);
+	CLIENT = createStringObject("CLIENT", 6);
+	HKEYS = createStringObject("HKEYS", 5);
+	HLEN = createStringObject("HLEN", 4);
+	KEYS = createStringObject("KEYS", 4);
+	BGSAVE = createStringObject("BGSAVE", 6);
+	MEMORY = createStringObject("MEMORY", 6);
+	CLUSTER = createStringObject("CLUSTER", 7);
+	MIGRATE = createStringObject("MIGRATE", 7);
+	DEBUG = createStringObject("DEBUG", 5);
+	TTL = createStringObject("TTL", 3);
+	LRANGE = createStringObject("LRANGE", 6);
+	LLEN = createStringObject("LLEN", 4);
+	SADD = createStringObject("SADD", 4);
+	SCARD = createStringObject("SCARD", 5);
+	ADDSYNC = createStringObject("ADDSYNC", 7);
+	SETSLOT = createStringObject("SETSLOT", 7);
+	NODE = createStringObject("NODE", 4);
+	CONNECT = createStringObject("CONNECT", 7);
+	PSYNC = createStringObject("PSYNC", 5);
+	SYNC = createStringObject("SYNC", 4);
+	DELSYNC = createStringObject("DELSYNC", 7);
+	ZADD = createStringObject("ZADD", 4);
+	ZRANGE = createStringObject("ZRANGE",6);
+	ZREVRANGE = createStringObject("ZRANGE",9);
+	ZCARD = createStringObject("ZCARD",5);
 
 
-    for (j = 0; j < REDIS_SHARED_INTEGERS; j++) {
-        shared.integers[j] = createObject(REDIS_STRING,(void*)(long)j);
-        shared.integers[j]->encoding = REDIS_ENCODING_INT;
+    for (j = 0; j < REDIS_SHARED_INTEGERS; j++)
+    {
+        integers[j] = createObject(REDIS_STRING,(void*)(long)j);
+        integers[j]->encoding = REDIS_ENCODING_INT;
     }
 
 
-    for (j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++) {
-        shared.mbulkhdr[j] = createObject(REDIS_STRING,
-            sdscatprintf(sdsempty(),"*%d\r\n",j));
-        shared.bulkhdr[j] = createObject(REDIS_STRING,
-            sdscatprintf(sdsempty(),"$%d\r\n",j));
+    for (j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
+    {
+		mbulkhdr[j] = createObject(REDIS_STRING,sdscatprintf(sdsempty(),"*%d\r\n",j));
+		bulkhdr[j] = createObject(REDIS_STRING,sdscatprintf(sdsempty(),"$%d\r\n",j));
     }
 //
-	//shared.minstring = createStringObject("minstring",9);
-    //shared.maxstring = createStringObject("maxstring",9);
+	//minstring = createStringObject("minstring",9);
+    //maxstring = createStringObject("maxstring",9);
 	
 
 
@@ -759,17 +511,17 @@ void createSharedObjects()
 
 
 
-rObj * createStringObject(char *ptr, size_t len)
+rObj * xObjects::createStringObject(char *ptr, size_t len)
 {
 	return createEmbeddedStringObject(ptr,len);
 }
 
-rObj *createRawStringObject(char *ptr, size_t len)
+rObj * xObjects::createRawStringObject(char *ptr, size_t len)
 {
 	return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
 
-rObj * createEmbeddedStringObject(char *ptr, size_t len)
+rObj * xObjects::createEmbeddedStringObject(char *ptr, size_t len)
 {
 	rObj *o = (rObj*)zmalloc(sizeof(rObj)+sizeof(struct sdshdr)+len+1);
 	struct sdshdr *sh = (sdshdr*)(o+1);
@@ -794,54 +546,59 @@ rObj * createEmbeddedStringObject(char *ptr, size_t len)
 
 
 
-void addReplyBulkLen(xBuffer & sendBuf,rObj *obj)
+void xObjects::addReplyBulkLen(xBuffer & sendBuf,rObj *obj)
 {
 	size_t len;
 
-	if (sdsEncodedObject(obj)) {
+	if (sdsEncodedObject(obj))
+	{
 	    len = sdslen((const sds)obj->ptr);
-	} else {
+	}
+	else
+	{
 	    long n = (long)obj->ptr;
 
 	    /* Compute how many bytes will take this integer as a radix 10 string */
 	    len = 1;
-	    if (n < 0) {
+	    if (n < 0)
+	    {
 	        len++;
 	        n = -n;
 	    }
-	    while((n = n/10) != 0) {
+	    while((n = n/10) != 0)
+	    {
 	        len++;
 	    }
 	}
 
 	if (len < REDIS_SHARED_BULKHDR_LEN)
-	    addReply(sendBuf,shared.bulkhdr[len]);
+	    addReply(sendBuf,bulkhdr[len]);
 	else
 	    addReplyLongLongWithPrefix(sendBuf,len,'$');
 
 }
 
 
-void addReplyBulk(xBuffer &sendBuf,rObj *obj)
+void xObjects::addReplyBulk(xBuffer &sendBuf,rObj *obj)
 {
 	addReplyBulkLen(sendBuf,obj);
 	addReply(sendBuf,obj);
-	addReply(sendBuf,shared.crlf);
+	addReply(sendBuf,crlf);
 }
 
 
-void addReplyLongLongWithPrefix(xBuffer &sendBuf,long long ll, char prefix)
+void xObjects::addReplyLongLongWithPrefix(xBuffer &sendBuf,long long ll, char prefix)
 {
 	char buf[128];
 	int len;
 	if (prefix == '*' && ll < REDIS_SHARED_BULKHDR_LEN) 
 	{
-	    addReply(sendBuf,shared.mbulkhdr[ll]);
+	    addReply(sendBuf,mbulkhdr[ll]);
 	    return;
 	} 
 	else if (prefix == '$' && ll < REDIS_SHARED_BULKHDR_LEN) 
 	{
-	    addReply(sendBuf,shared.bulkhdr[ll]);
+	    addReply(sendBuf,bulkhdr[ll]);
 	    return;
 	}
 
@@ -854,59 +611,59 @@ void addReplyLongLongWithPrefix(xBuffer &sendBuf,long long ll, char prefix)
 }
 
 
-void addReplyLongLong(xBuffer &sendBuf,size_t len)
+void xObjects::addReplyLongLong(xBuffer &sendBuf,size_t len)
 {
 	if (len == 0)
-		addReply(sendBuf,shared.czero);
+		addReply(sendBuf,czero);
 	else if (len == 1)
-		addReply(sendBuf,shared.cone);
+		addReply(sendBuf,cone);
 	else
 		addReplyLongLongWithPrefix(sendBuf,len,':');
 }
 
-void addReplyStatusLength(xBuffer &sendBuf, char *s, size_t len)
+void xObjects::addReplyStatusLength(xBuffer &sendBuf, char *s, size_t len)
 {
 	addReplyString(sendBuf,"+",1);
 	addReplyString(sendBuf,s,len);
 	addReplyString(sendBuf,"\r\n",2);
 }
 
-void addReplyStatus(xBuffer &sendBuf, char *status)
+void xObjects::addReplyStatus(xBuffer &sendBuf, char *status)
 {
     addReplyStatusLength(sendBuf,status,strlen(status));
 }
 
-void addReplyError(xBuffer &sendBuf,const char *str)
+void xObjects::addReplyError(xBuffer &sendBuf,const char *str)
 {
 	addReplyErrorLength(sendBuf,str,strlen(str));
 }
 
-void addReply(xBuffer &sendBuf,rObj *obj)
+void xObjects::addReply(xBuffer &sendBuf,rObj *obj)
 {
 	sendBuf.append(obj->ptr,sdslen((const sds)obj->ptr));
 }
 
 /* Add sds to reply (takes ownership of sds and frees it) */
-void addReplyBulkSds(xBuffer &sendBuf, sds s)
+void xObjects::addReplyBulkSds(xBuffer &sendBuf, sds s)
 {
 	addReplySds(sendBuf,sdscatfmt(sdsempty(),"$%u\r\n",
 	    (unsigned long)sdslen(s)));
 	addReplySds(sendBuf,s);
-	addReply(sendBuf,shared.crlf);
+	addReply(sendBuf,crlf);
 }
 
 
-void addReplyMultiBulkLen(xBuffer & sendBuf,long length)
+void xObjects::addReplyMultiBulkLen(xBuffer & sendBuf,long length)
 {
 	if (length < REDIS_SHARED_BULKHDR_LEN)
-        addReply(sendBuf,shared.mbulkhdr[length]);
+        addReply(sendBuf,mbulkhdr[length]);
     else
         addReplyLongLongWithPrefix(sendBuf,length,'*');
 }
 
 
 
-void prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length)
+void xObjects::prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length)
 {
 	char buf[128];
 	buf[0] = '*';
@@ -924,11 +681,11 @@ void prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length)
 }
 
 
-void addReplyBulkCString(xBuffer & sendBuf, const char *s)
+void xObjects::addReplyBulkCString(xBuffer & sendBuf, const char *s)
 {
 	if (s == nullptr)
 	{
-		addReply(sendBuf, shared.nullbulk);
+		addReply(sendBuf, nullbulk);
 	}
 	else 
 	{
@@ -937,7 +694,7 @@ void addReplyBulkCString(xBuffer & sendBuf, const char *s)
 }
 
 
-void addReplyDouble(xBuffer & sendBuf, double d)
+void xObjects::addReplyDouble(xBuffer & sendBuf, double d)
 {
 	char dbuf[128], sbuf[128];
 	int dlen, slen;
@@ -946,16 +703,14 @@ void addReplyDouble(xBuffer & sendBuf, double d)
 	addReplyString(sendBuf, sbuf, slen);
 }
 
-
-
-void addReplyBulkCBuffer(xBuffer & sendBuf,const char  *p, size_t len)
+void xObjects::addReplyBulkCBuffer(xBuffer & sendBuf,const char  *p, size_t len)
 {
 	addReplyLongLongWithPrefix(sendBuf,len,'$');
 	addReplyString(sendBuf,p,len);
-	addReply(sendBuf,shared.crlf);
+	addReply(sendBuf,crlf);
 }
 
-void addReplyErrorFormat(xBuffer & sendBuf,const char *fmt, ...)
+void xObjects::addReplyErrorFormat(xBuffer & sendBuf,const char *fmt, ...)
 {
 	size_t l, j;
 	va_list ap;
@@ -963,7 +718,8 @@ void addReplyErrorFormat(xBuffer & sendBuf,const char *fmt, ...)
 	sds s = sdscatvprintf(sdsempty(),fmt,ap);
 	va_end(ap);
 	l = sdslen(s);
-	for (j = 0; j < l; j++) {
+	for (j = 0; j < l; j++)
+	{
 	    if (s[j] == '\r' || s[j] == '\n') s[j] = ' ';
 	}
 	addReplyErrorLength(sendBuf,s,sdslen(s));
@@ -972,99 +728,26 @@ void addReplyErrorFormat(xBuffer & sendBuf,const char *fmt, ...)
 
 
 
-void addReplyString(xBuffer & sendBuf,const char *s, size_t len)
+void xObjects::addReplyString(xBuffer & sendBuf,const char *s, size_t len)
 {
 	sendBuf.append(s,len);
 }
 
 
 
-void addReplySds(xBuffer &sendBuf, sds s)
+void xObjects::addReplySds(xBuffer &sendBuf, sds s)
 {
 	sendBuf.append(s, sdslen(s));
 	sdsfree(s);
 }
 
 
-void addReplyErrorLength(xBuffer & sendBuf,const char *s,size_t len)
+void xObjects::addReplyErrorLength(xBuffer & sendBuf,const char *s,size_t len)
 {
 	addReplyString(sendBuf,"-ERR ",5);
 	addReplyString(sendBuf,s,len);
 	addReplyString(sendBuf,"\r\n",2);
 }
-
-
-long long ustime(void)
-{
-	struct timeval tv;
-	long long ust;
-
-	gettimeofday(&tv, nullptr);
-	ust = ((long long)tv.tv_sec)*1000000;
-	ust += tv.tv_usec;
-	return ust;
-}
-
-/* Return the UNIX time in milliseconds */
-long long mstime(void) 
-{
-	return ustime()/1000;
-}
-
-
-/* Return the UNIX time in seconds */
-long long setime(void) 
-{
-	return ustime()/1000/1000;
-}
-
-
-
-/* Toggle the 16 bit unsigned integer pointed by *p from little endian to
- * big endian */
-void memrev16(void *p)
-{
-	unsigned char *x = (unsigned char *)p, t;
-
-	t = x[0];
-	x[0] = x[1];
-	x[1] = t;
-}
-
-/* Toggle the 32 bit unsigned integer pointed by *p from little endian to
- * big endian */
-void memrev32(void *p) 
-{
-	unsigned char *x = (unsigned char *)p, t;
-
-	t = x[0];
-	x[0] = x[3];
-	x[3] = t;
-	t = x[1];
-	x[1] = x[2];
-	x[2] = t;
-}
-
-/* Toggle the 64 bit unsigned integer pointed by *p from little endian to
- * big endian */
-void memrev64(void *p) 
-{
-	unsigned char *x = (unsigned char *)p, t;
-
-	t = x[0];
-	x[0] = x[7];
-	x[7] = t;
-	t = x[1];
-	x[1] = x[6];
-	x[6] = t;
-	t = x[2];
-	x[2] = x[5];
-	x[5] = t;
-	t = x[3];
-	x[3] = x[4];
-	x[4] = t;
-}
-
 
 
 const uint32_t dict_hash_function_seed = 5381;
@@ -1096,7 +779,8 @@ unsigned int dictGenHashFunction(const void *key, int len)
 	/* Mix 4 bytes at a time into the hash */
 	const unsigned char *data = (const unsigned char *)key;
 
-	while(len >= 4) {
+	while(len >= 4)
+	{
 		uint32_t k = *(uint32_t*)data;
 
 		k *= m;
@@ -1126,42 +810,6 @@ unsigned int dictGenHashFunction(const void *key, int len)
 
 	return (unsigned int)h;
 }
-
-
-
-
-/* Convert an amount of bytes into a human readable string in the form
- * of 100B, 2G, 100M, 4K, and so forth. */
-void bytesToHuman(char *s, unsigned long long n)
-{
-	double d;
-
-	if (n < 1024) {
-	    /* Bytes */
-	    sprintf(s,"%lluB",n);
-	    return;
-	} else if (n < (1024*1024)) {
-	    d = (double)n/(1024);
-	    sprintf(s,"%.2fK",d);
-	} else if (n < (1024LL*1024*1024)) {
-	    d = (double)n/(1024*1024);
-	    sprintf(s,"%.2fM",d);
-	} else if (n < (1024LL*1024*1024*1024)) {
-	    d = (double)n/(1024LL*1024*1024);
-	    sprintf(s,"%.2fG",d);
-	} else if (n < (1024LL*1024*1024*1024*1024)) {
-	    d = (double)n/(1024LL*1024*1024*1024);
-	    sprintf(s,"%.2fT",d);
-	} else if (n < (1024LL*1024*1024*1024*1024*1024)) {
-	    d = (double)n/(1024LL*1024*1024*1024*1024);
-	    sprintf(s,"%.2fP",d);
-	} else {
-	    /* Let's hope we never need this */
-	    sprintf(s,"%lluB",n);
-	}
-}
-
-
 
 
 

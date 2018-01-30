@@ -90,7 +90,9 @@ void xTcpconnection::handleRead()
 		errno = savedErrno;
 		if(errno != ECONNRESET || errno !=  ETIMEDOUT)
 		{
+#ifdef __DEBUG__
 			LOG_ERROR<<"TcpConnection::handleRead "<<errno;
+#endif
 		}
 #ifdef __APPLE__
 		handleClose();

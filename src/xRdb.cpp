@@ -279,9 +279,9 @@ rObj * xRdb::rdbLoadIntegerObject(xRio *rdb, int enctype, int encode)
     }
 
 	if (encode)
-        return createStringObjectFromLongLong(val);
+        return redis->object.createStringObjectFromLongLong(val);
     else
-        return createObject(REDIS_STRING,sdsfromlonglong(val));
+        return redis->object.createObject(REDIS_STRING,sdsfromlonglong(val));
 	
 	
 }
@@ -307,7 +307,7 @@ rObj * xRdb::rdbLoadLzfStringObject(xRio *rdb)
 	if (rioRead(rdb, c, clen) == 0) goto err;
 	if (lzf_decompress(c, clen, val, len) == 0) goto err;
 
-	obj = createStringObject(val, len);
+	obj = redis->object.createStringObject(val, len);
 	sdsfree(val);
 	zfree(c);
 	return obj;
@@ -346,7 +346,7 @@ rObj * xRdb::rdbGenericLoadStringObject(xRio *rdb, int encode)
 		return nullptr;
 	}
 
-	o = createStringObject(nullptr, len);
+	o = redis->object.createStringObject(nullptr, len);
 	if (len && rioRead(rdb, (void*)o->ptr, len) == 0)
 	{
 		return nullptr;
@@ -920,7 +920,7 @@ bool   xRdb::rdbReplication(char *filename,const xTcpconnectionPtr &conn)
 			{
 				len = sendBytes;
 			}
-#ifdef LINUX
+#ifdef __linux__
 			nwrote = ::sendfile(conn->getSockfd(),fd,&offset,len);
 #endif
 
@@ -1453,7 +1453,7 @@ int xRdb::rdbSaveRio(xRio *rdb,int *error)
 	
 	return REDIS_OK;
 }
-int xRdb::rdbSave(char *filename,bool enabled)
+int xRdb::rdbSave(char *filename)
 {
 	char tmpfile[256];
 	FILE *fp;
@@ -1475,7 +1475,6 @@ int xRdb::rdbSave(char *filename,bool enabled)
 		goto werr;
 	}
 
-    blockEnabled = enabled;
 	if (fflush(fp) == EOF) goto werr;
 	if (fsync(fileno(fp)) == -1) goto werr;
 	if (fclose(fp) == EOF) goto werr;

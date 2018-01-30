@@ -4,13 +4,13 @@
 #include "xTcpClient.h"
 #include "xSocket.h"
 #include "xSession.h"
-
-
+#include "xUtil.h"
 
 struct xClusterNode
 {
 	std::string ip;
 	int32_t  port;
+	char name[CLUSTER_NAMELEN];
 };
 
 

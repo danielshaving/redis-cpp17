@@ -14,6 +14,8 @@
 #include "xSentinel.h"
 #include "xCluster.h"
 #include "xRdb.h"
+#include "xUtil.h"
+
 
 class xRedis : noncopyable
 {
@@ -166,7 +168,7 @@ public:
 	std::mutex forkMutex;
 
 
-	std::atomic<int>   salveCount;
+	std::atomic<int>    salveCount;
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  authEnabled;
@@ -175,22 +177,23 @@ public:
 	std::atomic<bool>  clusterSlotEnabled;
 	std::atomic<bool>  clusterRepliMigratEnabled;
 	std::atomic<bool>  clusterRepliImportEnabeld;
-	std::atomic<int>   rdbChildPid;
-	std::atomic<int>   slavefd;
+	std::atomic<int>    rdbChildPid;
+	std::atomic<int>    slavefd;
 	std::atomic<bool>  forkEnabled;
-	std::atomic<int>   forkCondWaitCount;
+	std::atomic<int>    forkCondWaitCount;
 
 	std::condition_variable  expireCondition;
 	std::condition_variable  forkCondition;
 
-	xBuffer	slaveCached;
-	xBuffer	clusterMigratCached;
-	xBuffer	clusterImportCached;
+	xBuffer	 slaveCached;
+	xBuffer	 clusterMigratCached;
+	xBuffer	 clusterImportCached;
 	
-	xReplication   repli;
-	xSentinel      senti;
-	xCluster       clus;
-	xRdb	       rdb;
+	xObjects			 object;
+	xReplication   	 repli;
+	xSentinel     		 senti;
+	xCluster      		 clus;
+	xRdb	       			 rdb;
 
 	std::unique_ptr<std::thread > repliThreads;
 	std::unique_ptr<std::thread > sentiThreads;

@@ -60,13 +60,10 @@ void  xEpoll::epollWait(ChannelList* activeChannels,int msTime)
 
 bool xEpoll::hasChannel(xChannel* channel)
 {
-#ifdef __DEBUG__
 	loop->assertInLoopThread();
 	auto  it = channels.find(channel->getfd());
 	return it != channels.end() && it->second == channel;
-#endif
 }
-
 
 
 void xEpoll::updateChannel(xChannel* channel)
@@ -75,19 +72,21 @@ void xEpoll::updateChannel(xChannel* channel)
 	const int index = channel->getIndex();
 	if (index == kNew || index == kDeleted)
 	{
-#ifdef __DEBUG__
 		int fd = channel->getfd();
 		if (index == kNew)
 		{
+#ifdef __DEBUG__
 			assert(channels.find(fd) == channels.end());
+#endif
 			channels[fd] = channel;
 		}
 		else 
 		{
+#ifdef __DEBUG__
 			assert(channels.find(fd) != channels.end());
 			assert(channels[fd] == channel);
-		}
 #endif
+		}
 		channel->setIndex(kAdded);
 		update(EPOLL_CTL_ADD, channel);
 	}
@@ -117,7 +116,6 @@ void xEpoll::updateChannel(xChannel* channel)
 
 void xEpoll::removeChannel(xChannel* channel)
 {
-
 	loop->assertInLoopThread();
 	int fd = channel->getfd();
 	int index = channel->getIndex();
