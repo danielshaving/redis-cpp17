@@ -40,31 +40,33 @@ public:
 	void handleError();
 
 	void sendInLoop(const void* message, size_t len);
-	void sendInLoop(const stringPiece & message);
+	void sendInLoop(const xStringPiece & message);
 	void sendPipeInLoop(const void* message, size_t len);
-	void sendPipeInLoop(const stringPiece & message);
+	void sendPipeInLoop(const xStringPiece & message);
 
-	static void bindSendInLoop(xTcpconnection* conn, const stringPiece& message);
-	static void bindSendPipeInLoop(xTcpconnection* conn, const stringPiece& message);
+	static void bindSendInLoop(xTcpconnection* conn, const xStringPiece& message);
+	static void bindSendPipeInLoop(xTcpconnection* conn, const xStringPiece& message);
 	
-	void sendPipe(const stringPiece & message);
+	void sendPipe(const xStringPiece & message);
 	void sendPipe(xBuffer* message);
 	void sendPipe(const void* message, int len);
 
   	void send(const void* message, int len);
 	void send(xBuffer* message);
-	void send(const stringPiece  &message);
+	void send(const xStringPiece  &message);
 
 
 	bool disconnected() const { return state == kDisconnected; }
 	bool connected();
 	void forceCloseInLoop();
 	void connectEstablished();
-	const void *getContext()const{ return context;}
-	void setContext(void * context) { this->context = context;}
+#ifdef __CXX17__
+	const std::any& getContext() const { return context; }
+	void setContext(std::any& context) { this->context = context; }
+#endif
 	void connectDestroyed();
-	void setData(void *data);
-	void * getData() {return data;}
+	void setData(void *data) { this->data = data; }
+	void * getData()  {return data; }
 	void shutdown();
 	void shutdownInLoop();
 	void forceClose();
@@ -84,7 +86,9 @@ public:
 	StateE state;
 	std::shared_ptr<xChannel> channel;
 	void 	*data;
-	void 	*context;
+#ifdef __CXX17__
+	std::any  context;
+#endif
 	std::string host;
 	int32_t port;
 

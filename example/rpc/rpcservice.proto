@@ -1,0 +1,45 @@
+syntax = "proto3";
+package rpc;
+
+option cc_generic_services = true;
+option java_generic_services = true;
+option py_generic_services = true;
+
+option java_package = "rpc.protorpc";
+option java_outer_classname = "RpcServiceProto";
+
+//import "google/protobuf/descriptor.proto";
+import "rpc.proto";
+
+message ListRpcRequest
+{
+	string service_name = 1;
+	bool list_method = 2;
+}
+
+message ListRpcResponse
+{
+	ErrorCode error = 1;
+	string service_name = 2;
+	string method_name = 3;
+}
+
+message GetServiceRequest
+{
+	string service_name = 1;
+}
+
+message GetServiceResponse
+{
+	ErrorCode error = 1;
+	repeated string proto_file = 2;
+	repeated string proto_file_name = 3;
+}
+
+// the meta service
+service RpcService
+{
+	rpc listRpc (ListRpcRequest) returns (ListRpcResponse);
+	rpc getService (GetServiceRequest) returns (GetServiceResponse);
+}
+

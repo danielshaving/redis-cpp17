@@ -1,5 +1,7 @@
 #pragma once
 #include "all.h"
+#include "xBuffer.h"
+
 const int kSmallBuffer = 4000;
 const int kLargeBuffer = 4000*10;
 
@@ -30,6 +32,7 @@ public:
 	std::string toString() const { return std::string(data, length()); }
 	int  avail() const { return static_cast<int>(end() - cur); }
 	const char* end() const { return data + sizeof data; }
+	xStringPiece toStringPiece() const { return xStringPiece(data, length()); }
 
 private:
 	char data[SIZE];
@@ -41,19 +44,13 @@ class AppendFile : noncopyable
 {
  public:
   explicit AppendFile(std::string  &filename);
-
   ~AppendFile();
-
   void append(const char* logline, const size_t len);
-
   void flush();
-
   size_t getWrittenBytes() const { return writtenBytes; }
 
  private:
-
   size_t write(const char* logline, size_t len);
-
   FILE* fp;
   char buffer[64*1024];
   size_t writtenBytes;
@@ -76,16 +73,13 @@ class xLogFile :noncopyable
 
  private:
   void append_unlocked(const char* logline, int len);
-
   static std::string getLogFileName(const std::string& basename, time_t* now);
-
   const std::string basename;
   const size_t rollSize;
   const int flushInterval;
   const int checkEveryN;
 
   int count;
-
   mutable std::mutex mutex;
   time_t startOfPeriod;
   time_t lastRoll;
@@ -146,8 +140,6 @@ private:
 	BufferVector buffers;
 };
 
-
-
 class T
 {
  public:
@@ -190,7 +182,6 @@ public:
 		return *this;
 	}
 	self& operator<<(double);
-
 	self& operator<<(char v)
 	{
 		buffer.append(&v, 1);
@@ -201,11 +192,11 @@ public:
 	{
 		if (str)
 		{
-		  buffer.append(str, strlen(str));
+			buffer.append(str, strlen(str));
 		}
 		else
 		{
-		  buffer.append("(null)", 6);
+			buffer.append("(null)", 6);
 		}
 		return *this;
 	}
@@ -218,6 +209,19 @@ public:
 	self& operator<<(const std::string& v)
 	{
 		buffer.append(v.c_str(), v.size());
+		return *this;
+	}
+
+	self& operator<<(const xStringPiece& v)
+	{
+		buffer.append(v.data(), v.size());
+		return *this;
+	}
+
+
+	self& operator<<(const xBuffer& v)
+	{
+		*this << v.toStringPiece();
 		return *this;
 	}
 

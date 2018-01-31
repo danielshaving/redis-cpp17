@@ -676,7 +676,7 @@ void xObjects::prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length)
 	}
 	else
 	{
-		sendBuf.prepend(buf,len + 3);
+		sendBuf.preapend(buf,len + 3);
 	}
 }
 

@@ -187,6 +187,7 @@ public:
 	}sub;
 };
 
+
 int redisContextConnectTcp(const xRedisContextPtr &c, const char *addr, int port, const struct timeval *timeout);
 xRedisContextPtr redisConnectWithTimeout(const char *ip, int port, const struct timeval tv);
 xRedisContextPtr redisConnect(const char *ip, int port);
@@ -242,7 +243,6 @@ public:
 	void setCount(){ count ++; }
 	int getCount(){ return count; }
 	std::mutex &getMutex(){ return rtx; }
-
 	std::unordered_map<int32_t,xRedisAsyncContextPtr> & getRedisMap() { return redisMaps; }
 private:
 	std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;

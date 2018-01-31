@@ -1,0 +1,32 @@
+syntax = "proto3";
+option java_package = "rpc.protorpc";
+option java_outer_classname = "RpcProto";
+
+enum MessageType
+{
+	REQUEST = 0;
+	RESPONSE = 1;
+	ERROR = 2; // not used
+}
+
+enum ErrorCode
+{
+	NO_ERROR = 0;
+	WRONG_PROTO = 1;
+	NO_SERVICE = 2;
+	NO_METHOD = 3;
+	INVALID_REQUEST = 4;
+	INVALID_RESPONSE = 5;
+	TIMEOUT = 6;
+}
+
+message RpcMessage
+{
+	MessageType type = 1;
+	fixed64 id = 2;
+	string service = 3;
+	string method = 4;
+	bytes request = 5;
+	bytes response = 6;
+	ErrorCode error = 7;
+}

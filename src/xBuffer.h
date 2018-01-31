@@ -136,7 +136,7 @@ explicit xBuffer(size_t initialSize = kInitialSize)
 		hasWritten(len);
 	}
 
-	void append(const stringPiece & str)
+	void append(const xStringPiece & str)
 	{
 		append(str.data(), str.size());
 	}
@@ -145,6 +145,24 @@ explicit xBuffer(size_t initialSize = kInitialSize)
 	{
 		append(static_cast<const char*>(data), len);
 	}
+
+	void appendInt32(int32_t x)
+	{
+		int32_t be32 = x;
+		append(&be32, sizeof be32);
+	}
+
+	void appendInt16(int16_t x)
+	{
+		int16_t be16 = x;
+		append(&be16, sizeof be16);
+	}
+
+	void appendInt8(int8_t x)
+	{
+		append(&x, sizeof x);
+	}
+
 
 	void prependInt64(int64_t x)
 	{
@@ -171,10 +189,18 @@ explicit xBuffer(size_t initialSize = kInitialSize)
 
 	void prepend(const void * data, size_t len)
 	{
+		assert(len <= prependableBytes());
+		readerIndex -= len;
+		const char * d = static_cast<const char*>(data);
+		std::copy(d,d + len,begin() + readerIndex);
+	}
+
+	void preapend(const void * data, size_t len)
+	{
 		prepend(static_cast<const char*>(data),len);
 	}
 
-	void prepend(const char * /*restrict*/ data, size_t len)
+	void preapend(const char * /*restrict*/ data, size_t len)
 	{
 		ensureWritableBytes(len);
 		std::copy(prepeek(), prepeek() + writableBytes(), prepeek() + len);
@@ -265,9 +291,9 @@ explicit xBuffer(size_t initialSize = kInitialSize)
 		return x;
 	}
 
-	stringPiece toStringPiece() const
+	xStringPiece toStringPiece() const
 	{
-		return stringPiece(peek(), static_cast<int>(readableBytes()));
+		return xStringPiece(peek(), static_cast<int>(readableBytes()));
 	}
 
 	void shrink(size_t reserve)

@@ -26,10 +26,7 @@ xTcpconnection::~xTcpconnection()
 }
 
 
-void xTcpconnection::setData(void *data)
-{
-	this->data = data;
-}
+
 void xTcpconnection::shutdown()
 {
     if (state == kConnected)
@@ -187,11 +184,11 @@ void xTcpconnection::sendPipe(xBuffer* buf)
 void xTcpconnection::sendPipe(const void* message, int len)
 {
 
-    send(stringPiece(static_cast<const char*>(message), len));
+    send(xStringPiece(static_cast<const char*>(message), len));
 
 }
 
-void xTcpconnection::sendPipe(const stringPiece & message)
+void xTcpconnection::sendPipe(const xStringPiece & message)
 {
 	if (state == kConnected)
 	{
@@ -210,11 +207,11 @@ void xTcpconnection::sendPipe(const stringPiece & message)
 
 void xTcpconnection::send(const void* message, int len)
 {
-	send(stringPiece(static_cast<const char*>(message), len));
+	send(xStringPiece(static_cast<const char*>(message), len));
 }
 
 
-void xTcpconnection::send(const stringPiece & message)
+void xTcpconnection::send(const xStringPiece & message)
 {
 	if (state == kConnected)
 	{
@@ -231,7 +228,7 @@ void xTcpconnection::send(const stringPiece & message)
 	}
 }
 
-void xTcpconnection::sendPipeInLoop(const stringPiece & message)
+void xTcpconnection::sendPipeInLoop(const xStringPiece & message)
 {
 	sendPipeInLoop(message.data(),message.size());
 }
@@ -247,13 +244,13 @@ void xTcpconnection::sendPipeInLoop(const void* message, size_t len)
 	}
 }
 
-void xTcpconnection::bindSendPipeInLoop(xTcpconnection* conn, const stringPiece& message)
+void xTcpconnection::bindSendPipeInLoop(xTcpconnection* conn, const xStringPiece& message)
 {
 	conn->sendPipeInLoop(message.data(),message.size());
 }
 
 
-void xTcpconnection::bindSendInLoop(xTcpconnection* conn, const stringPiece& message)
+void xTcpconnection::bindSendInLoop(xTcpconnection* conn, const xStringPiece& message)
 {
 	 conn->sendInLoop(message.data(),message.size());
 }
@@ -275,7 +272,7 @@ void xTcpconnection::send(xBuffer* buf)
 	}
 }
 
-void xTcpconnection::sendInLoop(const stringPiece & message)
+void xTcpconnection::sendInLoop(const xStringPiece & message)
 {
 	sendInLoop(message.data(),message.size());
 }

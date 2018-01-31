@@ -10,8 +10,6 @@ DEPS=$(patsubst %.o,%.d,$(OBJS))
 
 LIB=  #./libjemalloc.a # ./libhiredis.a    /usr/lib64/libprofiler.so.0 #-ltcmalloc
 
-
-
 SO_LIB= 
 
 

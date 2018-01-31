@@ -58,6 +58,10 @@
 #include <netdb.h>
 #include <sys/wait.h>
 
+#ifdef __CXX17__
+#include <any>
+#endif
+
 #ifdef __APPLE__
 #include <sys/event.h>
 #endif
@@ -367,15 +371,15 @@ class noncopyable
   noncopyable& operator =(const noncopyable&);
 };
 
-class stringArg
+class xStringArg
 {
 public:
-	stringArg(const char * str)
+	xStringArg(const char * str)
 	:str(str)
 	{
 
 	}
-	stringArg(const std::string & str)
+	xStringArg(const std::string & str)
 	:str(str.c_str())
 	{
 
@@ -386,19 +390,19 @@ private:
 };
 
 
-class stringPiece
+class xStringPiece
 {
  public:
-	stringPiece()
+	xStringPiece()
 	: ptr(nullptr), length(0) { }
-	stringPiece(const char* str)
+	xStringPiece(const char* str)
 	: ptr(str), length(static_cast<int>(strlen(ptr))) { }
-	stringPiece(const unsigned char* str)
+	xStringPiece(const unsigned char* str)
 	: ptr(reinterpret_cast<const char*>(str)),
 	length(static_cast<int>(strlen(ptr))) { }
-	stringPiece(const std::string& str)
+	xStringPiece(const std::string& str)
 	: ptr(str.data()), length(static_cast<int>(str.size())) { }
-	stringPiece(const char* offset, int length)
+	xStringPiece(const char* offset, int length)
 	: ptr(offset), length(length) { }
 
 	std::string as_string() const { return std::string(data(),size());}
@@ -439,17 +443,17 @@ class stringPiece
   	char operator[](int i) const { return ptr[i]; }
 
 
-	bool operator==(const stringPiece& x) const
+	bool operator==(const xStringPiece& x) const
 	{
 	  	 return ((length == x.length) &&
 			   (memcmp(ptr, x.ptr, length) == 0));
 	 }
-	 bool operator!=(const stringPiece& x) const
+	 bool operator!=(const xStringPiece& x) const
 	 {
 	  	 return !(*this == x);
 	 }
 
-	int compare(const stringPiece& x) const
+	int compare(const xStringPiece& x) const
 	{
 		int r = memcmp(ptr, x.ptr, length < x.length ? length : x.length);
 		if (r == 0)
@@ -465,7 +469,7 @@ class stringPiece
 		target->assign(ptr, length);
 	}
 
-	bool startsWith(const stringPiece& x) const
+	bool startsWith(const xStringPiece& x) const
 	{
 		return ((length >= x.length) && (memcmp(ptr, x.ptr, x.length) == 0));
 	}

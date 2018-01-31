@@ -136,7 +136,6 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 	
 }
 
-
 void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data)
 {
 	while(recvBuf->readableBytes() >= sdslen(redis->object.ok->ptr))

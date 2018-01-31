@@ -151,12 +151,13 @@ public:
 		mutable std::mutex mtx;
 	};
 
-	const static int kShards = 1;
-	std::array<SetMapLock, kShards> setMapShards;
+	const static int kShards = 4096;
+
+	std::array<SetMapLock, kShards> 	setMapShards;
 	std::array<HsetMapLock, kShards> hsetMapShards;
-	std::array<ListMapLock, kShards> listMapShards;
-	std::array<SetLock, kShards> setShards;
-	std::array<SortSet,kShards> sortShards;
+	std::array<ListMapLock, kShards>  listMapShards;
+	std::array<SetLock, kShards> 		setShards;
+	std::array<SortSet,kShards> 			sortShards;
 
 	xEventLoop loop;
 	xTcpServer server;
@@ -200,21 +201,21 @@ public:
 	std::unique_ptr<std::thread > clusterThreads;
 
 	std::unordered_map<int32_t,xTcpconnectionPtr>  salvetcpconnMaps;
-	std::unordered_map<int32_t,xTcpconnectionPtr> clustertcpconnMaps;
-	std::unordered_map<int32_t,xTimer*> repliTimers;
-	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
+	std::unordered_map<int32_t,xTcpconnectionPtr>  clustertcpconnMaps;
+	std::unordered_map<int32_t,xTimer*> 				 repliTimers;
+	std::unordered_map<rObj*,xTimer*,Hash,Equal>   expireTimers;
 	
-	xSocket socket;
+	xSocket 	socket;
 	std::string host;
 	std::string password;
 
 	int16_t port;
 	int16_t threadCount;
 
-	std::string masterHost;
+	std::string 		masterHost;
 	std::atomic<int> masterPort;
 	std::atomic<int> masterfd;
-	std::string ipPort;
+	std::string 		ipPort;
 
 	rObj * rIp;
 	rObj * rPort;

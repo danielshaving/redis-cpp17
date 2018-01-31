@@ -1,0 +1,22 @@
+syntax = "proto3";
+option cc_generic_services = true;
+option java_generic_services = true;
+option py_generic_services = true;
+
+message SudokuRequest 
+{
+  string checkerboard = 1;
+}
+
+message SudokuResponse
+{
+  bool solved = 1;
+  string checkerboard = 2;
+}
+
+service SudokuService
+{
+  rpc Solve (SudokuRequest) returns (SudokuResponse);
+}
+
+
