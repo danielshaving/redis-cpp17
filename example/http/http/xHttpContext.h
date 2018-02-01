@@ -20,7 +20,7 @@ public:
 	bool parseRequest(xBuffer *buf);
 
 	bool gotAll() const
-	{;
+	{
 		return state == kGotAll;
 	}
 
