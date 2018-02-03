@@ -26,7 +26,7 @@ slavefd(-1)
 {
 	initConfig();
 	loadDataFromDisk();
-	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
+	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1));
 	server.setThreadNum(threadCount);
 	if(threadCount > 1)
 	{
@@ -63,7 +63,7 @@ void xRedis::replyCheck()
 
 }
 
-void xRedis::serverCron(void * data)
+void xRedis::serverCron(const std::any &context)
 {
     if(rdbChildPid != -1)
     {
@@ -138,24 +138,23 @@ void xRedis::serverCron(void * data)
 	}
 }
 
-void xRedis::handleTimeOut(void * data)
+void xRedis::handleTimeOut(const std::any & context)
 {
 	loop.quit();
 }
 
-void xRedis::handleSetExpire(void * data)
+void xRedis::handleSetExpire(const std::any & context)
 {
-	rObj * obj = (rObj*) data;
-	int32_t count = 0 ;
-	removeCommand(obj,count);
+	rObj * obj = std::any_cast<rObj*>(context);
+	int32_t c;
+	removeCommand(obj,c);
 }
 
 
-void xRedis::handleSalveRepliTimeOut(void * data)
+void xRedis::handleSalveRepliTimeOut(const std::any & context)
 {
-	int32_t *sockfd = (int32_t *)data;
 	std::unique_lock <std::mutex> lck(slaveMutex);
-	auto it = salvetcpconnMaps.find(*sockfd);
+	auto it = salvetcpconnMaps.find(std::any_cast<int32_t>(context));
 	if(it != salvetcpconnMaps.end())
 	{
 		it->second->forceClose();
@@ -217,7 +216,7 @@ void xRedis::clearRepliState(int32_t sockfd)
 
 
 }
-void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
+void xRedis::connCallBack(const xTcpconnectionPtr& conn)
 {
 	if(conn->connected())
 	{
@@ -248,7 +247,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn,void *data)
 }
 
 
-bool xRedis::deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf,void  *data)
+bool xRedis::deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf)
 {
  	return true;
 }
@@ -1433,9 +1432,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 
     repliEnabled = true;
     forkCondWaitCount = 0;
-	session->conn->setMessageCallback(
-		std::bind(&xReplication::slaveCallBack, &repli, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-
+	session->conn->setMessageCallback(std::bind(&xReplication::slaveCallBack, &repli, std::placeholders::_1, std::placeholders::_2));
 
 	if(!bgsave(session,true))
 	{

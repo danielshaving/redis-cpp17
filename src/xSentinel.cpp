@@ -17,13 +17,13 @@ xSentinel::~xSentinel()
 	
 }
 
-void xSentinel::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
+void xSentinel::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 {
 	
 }
 
 
-void xSentinel::connCallBack(const xTcpconnectionPtr& conn,void *data)
+void xSentinel::connCallBack(const xTcpconnectionPtr& conn)
 {
 	if(conn->connected())
 	{
@@ -52,8 +52,8 @@ void xSentinel::connectSentinel()
 	start = true;
 	xEventLoop loop;
 	xTcpClient client(&loop,this);
-	client.setConnectionCallback(std::bind(&xSentinel::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	client.setMessageCallback( std::bind(&xSentinel::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+	client.setConnectionCallback(std::bind(&xSentinel::connCallBack, this, std::placeholders::_1));
+	client.setMessageCallback( std::bind(&xSentinel::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
 	client.setConnectionErrorCallBack(std::bind(&xSentinel::connErrorCallBack, this));
 	this->loop = &loop;
 	this->client = & client;
@@ -61,7 +61,7 @@ void xSentinel::connectSentinel()
 	loop.run();
 }
 
-void xSentinel::reconnectTimer(void * data)
+void xSentinel::reconnectTimer(const std::any &context)
 {
 	LOG_INFO<<"Reconnect..........";
 	client->connect(ip.c_str(),port);

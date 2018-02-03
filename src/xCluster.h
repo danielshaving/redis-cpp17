@@ -30,9 +30,9 @@ public:
 	bool connSetCluster(const char *ip, int16_t port);
 	void connectCluster();
 	void connErrorCallBack();
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data);
-	void connCallBack(const xTcpconnectionPtr& conn, void *data);
-	void reconnectTimer(void *data);
+	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
+	void connCallBack(const xTcpconnectionPtr& conn);
+	void reconnectTimer(const std::any &context);
     bool getSlotSet(const std::string &ipPort);
 
 	void structureProtocolSetCluster(std::string host, int16_t port, xBuffer &sendBuf, const xTcpconnectionPtr &conn);

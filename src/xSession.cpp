@@ -14,8 +14,7 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
  fromSlave(false)
 {
 	command = redis->object.createStringObject(nullptr,10);
-	conn->setMessageCallback(
-	        std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+	conn->setMessageCallback(std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
 }
 
 xSession::~xSession()
@@ -23,7 +22,7 @@ xSession::~xSession()
 	zfree(command);
 }
 
-void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
+void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 {
 	while(recvBuf->readableBytes() > 0 )
 	{

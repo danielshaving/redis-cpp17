@@ -7,12 +7,12 @@ xTcpClient::xTcpClient()
 
 }
 
-xTcpClient::xTcpClient(xEventLoop *loop,void *data)
+xTcpClient::xTcpClient(xEventLoop *loop,const std::any & context)
 : connector(new xConnector(loop)),
 loop(loop),
 isconnect(false),
 nextConnId(0),
-data(data)
+context(context)
 {
 	  connector->setNewConnectionCallback(std::bind(&xTcpClient::newConnection, this, std::placeholders::_1));
 	  connector->setConnectionErrorCallBack(std::bind(&xTcpClient::errorConnection,this));
@@ -61,10 +61,10 @@ xTcpClient::~xTcpClient()
 }
 
 
-void xTcpClient::connect(const char *ip,int32_t port)
+void xTcpClient::connect(const char *ip,int16_t port)
 {
 	 isconnect = true;
-	 this->host= ip;
+	 this->ip = ip;
 	 this->port = port;
 	 connector->start(ip,port);
 }
@@ -95,13 +95,13 @@ void xTcpClient::stop()
 
 void xTcpClient::errorConnection()
 {
-	connectionErrorCallBack(data);
+	connectionErrorCallBack(context);
 }
 
 
-void xTcpClient::newConnection(int sockfd)
+void xTcpClient::newConnection(int32_t sockfd)
 {
-	xTcpconnectionPtr conn(new xTcpconnection(loop,sockfd,data));
+	xTcpconnectionPtr conn(new xTcpconnection(loop,sockfd,context));
 	conn->setConnectionCallback(connectionCallback);
 	conn->setMessageCallback(messageCallback);
 	conn->setWriteCompleteCallback(writeCompleteCallback);

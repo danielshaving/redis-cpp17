@@ -1,11 +1,11 @@
 #include "xTcpServer.h"
 #include "xTcpconnection.h"
 
-xTcpServer::xTcpServer(xEventLoop *loop,std::string ip,int16_t port,void *data)
+xTcpServer::xTcpServer(xEventLoop *loop,std::string ip,int16_t port,const std::any & context)
 :loop(loop),
  acceptor(new xAcceptor(loop,ip,port)),
  threadPool(new xThreadPool(loop)),
- data(data)
+ context(context)
 {
 	acceptor->setNewConnectionCallback(std::bind(&xTcpServer::newConnection,this,std::placeholders::_1));
 }
@@ -25,11 +25,11 @@ xTcpServer::~xTcpServer()
 }
 
 
-void xTcpServer::newConnection(int sockfd)
+void xTcpServer::newConnection(int32_t sockfd)
 {
 	loop->assertInLoopThread();
 	xEventLoop* loop = threadPool->getNextLoop();
-	xTcpconnectionPtr conn(new xTcpconnection(loop,sockfd,data));
+	xTcpconnectionPtr conn(new xTcpconnection(loop,sockfd,context));
 	connections[sockfd] = conn;
 	conn->setConnectionCallback(connectionCallback);
 	conn->setMessageCallback(messageCallback);
@@ -38,11 +38,6 @@ void xTcpServer::newConnection(int sockfd)
 	loop->runInLoop(std::bind(&xTcpconnection::connectEstablished, conn));
 }
 
-
-void xTcpServer::setData(void *data)
-{
-	this->data = data;
-}
 
 void xTcpServer::setThreadNum(int numThreads)
 {

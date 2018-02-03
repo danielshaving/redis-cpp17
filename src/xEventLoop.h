@@ -32,7 +32,7 @@ public:
     void removeChannel(xChannel* channel);
     bool hasChannel(xChannel* channel);
     void cancelAfter(xTimer * timer);
-    xTimer  *runAfter(double  when,void * data,bool repeat,xTimerCallback&& cb);
+    xTimer  *runAfter(double  when,const std::any &context,bool repeat,xTimerCallback&& cb);
     void assertInLoopThread()
     {
 	  if (!isInLoopThread())

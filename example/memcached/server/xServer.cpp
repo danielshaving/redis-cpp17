@@ -2,7 +2,7 @@
 
 
 
-xItem::xItem(stringPiepe keyArg,
+xItem::xItem(xStringPiece keyArg,
            uint32_t flagsArg,
            int exptimeArg,
            int valuelen,
@@ -54,7 +54,7 @@ void xItem::output(xBuffer* out, bool needCas) const
 	out->append(value(), valueLen);
 }
 
-void xItem::resetKey(stringPiepe k)
+void xItem::resetKey(xStringPiece k)
 {
 	assert(k.size() <= 250);
 	keyLen = k.size();
@@ -71,7 +71,7 @@ static bool isBinaryProtocol(uint8_t firstByte)
 
 struct xConnect::Reader
 {
-	Reader(std::vector<stringPiepe>::iterator &beg, std::vector<stringPiepe>::iterator end)
+	Reader(std::vector<xStringPiece>::iterator &beg, std::vector<xStringPiece>::iterator end)
 	  : first(beg),
 	    last(end)
 	{
@@ -95,8 +95,8 @@ struct xConnect::Reader
 	}
 
  private:
- 	std::vector<stringPiepe>::iterator  first;
-	std::vector<stringPiepe>::iterator  last;
+ 	std::vector<xStringPiece>::iterator  first;
+	std::vector<xStringPiece>::iterator  last;
 };
 
 
@@ -167,7 +167,7 @@ void xConnect::discardValue(xBuffer* buf)
 
 
 
-bool xConnect::processRequest(stringPiepe request)
+bool xConnect::processRequest(xStringPiece request)
 {
 	assert(command.empty());
 	assert(!noreply);
@@ -178,7 +178,7 @@ bool xConnect::processRequest(stringPiepe request)
 	
 	if (request.size() >= 8)
 	{
-		stringPiepe end(request.end() - 8, 8);
+		xStringPiece end(request.end() - 8, 8);
 		if (end == " noreply")
 		{
 			noreply = true;
@@ -186,7 +186,7 @@ bool xConnect::processRequest(stringPiepe request)
 		}
 	}
 
-	std::vector<stringPiepe> tokenizers;
+	std::vector<xStringPiece> tokenizers;
 	const char *next = request.begin();
 	const char *end = request.end();
 	
@@ -199,7 +199,7 @@ bool xConnect::processRequest(stringPiepe request)
 			break;
 		}
 
-		stringPiepe tok;
+		xStringPiece tok;
 		const char * start = next;
 		const char* sp = static_cast<const char*>(memchr(start, ' ', end - start));
 		if (sp)
@@ -235,7 +235,7 @@ bool xConnect::processRequest(stringPiepe request)
 		bool cas = command == "gets";
 		while (beg != tokenizers.end())
 		{
-			stringPiepe key = *beg;
+			xStringPiece key = *beg;
 			bool good = key.size() <= kLongestKeySize;
 			if (!good)
 			{
@@ -297,7 +297,7 @@ void xConnect::resetRequest()
 
 
 
-void xConnect::reply(stringPiepe msg)
+void xConnect::reply(xStringPiece msg)
 {
 	if (!noreply)
 	{
@@ -307,7 +307,7 @@ void xConnect::reply(stringPiepe msg)
 
 
 
-bool xConnect::doUpdate(std::vector<stringPiepe>::iterator  &beg, std::vector<stringPiepe>::iterator  end)
+bool xConnect::doUpdate(std::vector<xStringPiece>::iterator  &beg, std::vector<xStringPiece>::iterator  end)
 {
 	if (command == "set")
 		policy = xItem::kSet;
@@ -324,7 +324,7 @@ bool xConnect::doUpdate(std::vector<stringPiepe>::iterator  &beg, std::vector<st
 	else
 	assert(false);
 
-	stringPiepe key = (*beg);
+	xStringPiece key = (*beg);
 	++beg;
 	bool good = key.size() <= kLongestKeySize;
 
@@ -379,10 +379,10 @@ bool xConnect::doUpdate(std::vector<stringPiepe>::iterator  &beg, std::vector<st
 	}
 }
 
-void xConnect::doDelete(std::vector<stringPiepe>::iterator &beg, std::vector<stringPiepe>::iterator end)
+void xConnect::doDelete(std::vector<xStringPiece>::iterator &beg, std::vector<xStringPiece>::iterator end)
 {
 	assert(command == "delete");
-	stringPiepe key = *beg;
+	xStringPiece key = *beg;
 	bool good = key.size() <= kLongestKeySize;
 	++beg;
 	if (!good)
@@ -434,7 +434,7 @@ void xConnect::onMessage(const xTcpconnectionPtr & conn,xBuffer *buf,void * data
 				if (crlf)
 				{
 					int len = static_cast<int>(crlf - buf->peek());
-					stringPiepe request(buf->peek(), len);
+					xStringPiece request(buf->peek(), len);
 					if (processRequest(request))
 					{
 						resetRequest();
@@ -471,7 +471,7 @@ xMemcacheServer::xMemcacheServer(xEventLoop *loop,const Options & op)
 ops(op),
 startTime(time(0))
 {
-	server.setConnectionCallback(std::bind(&xMemcacheServer::onConnection,this,std::placeholders::_1, std::placeholders::_2));
+	server.setConnectionCallback(std::bind(&xMemcacheServer::onConnection,this,std::placeholders::_1));
 }
 
 xMemcacheServer::~xMemcacheServer()
@@ -492,7 +492,7 @@ void xMemcacheServer::start()
 }
 
 
-void xMemcacheServer::quit(void * data)
+void xMemcacheServer::quit(const std::any &context)
 {
 	loop->quit();
 }
@@ -619,7 +619,7 @@ bool xMemcacheServer::deleteItem(const ConstItemPtr & key)
 }
 
 
-void xMemcacheServer::onConnection(const xTcpconnectionPtr & conn,void * data)
+void xMemcacheServer::onConnection(const xTcpconnectionPtr & conn)
 {
 	if(conn->connected())
 	{

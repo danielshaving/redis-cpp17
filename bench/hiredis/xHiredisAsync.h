@@ -9,10 +9,11 @@ static int tests = 0, fails = 0;
 class xHiredisAsync
 {
 public:
-	xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int32_t port);
-	void redisErrorConnCallBack(void *data);
-	void redisConnCallBack(const xTcpconnectionPtr& conn,void *data);
-	xHiredis *getHiredis() { return &hiredis;}
+	xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int16_t port);
+	void redisErrorConnCallBack(const std::any &context);
+	void redisConnCallBack(const xTcpconnectionPtr& conn);
+	xHiredis *getHiredis() { return &hiredis; }
+
 private:
 	xHiredis  hiredis;
 	int connectCount;

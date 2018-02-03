@@ -37,7 +37,7 @@ public:
 	void cancelTimer(xTimer *timer);
 	void cancelInloop(xTimer *timer);
 	void addTimerInLoop(xTimer* timer);
-  	xTimer  *addTimer(double  when,void * data,bool repeat,xTimerCallback&& cb);
+  	xTimer  *addTimer(double  when, const std::any &context, bool repeat, xTimerCallback&& cb);
   	static const int kMicroSecondsPerSecond = 1000 * 1000;
   	xPriorityQueue *getPriority(){ return &pqueue; }
 private:

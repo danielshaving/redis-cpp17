@@ -57,10 +57,7 @@
 #include <poll.h>
 #include <netdb.h>
 #include <sys/wait.h>
-
-#ifdef __CXX17__
 #include <any>
-#endif
 
 #ifdef __APPLE__
 #include <sys/event.h>

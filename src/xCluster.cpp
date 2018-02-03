@@ -18,7 +18,7 @@ xCluster::~xCluster()
 
 }
 
-void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data)
+void xCluster::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 {
 	while (recvBuf->readableBytes() > 0)
 	{
@@ -338,7 +338,7 @@ bool  xCluster::replicationToNode(const xSeesionPtr &session,const std::string &
         std::unique_lock <std::mutex> lck(redis->clusterMutex);
         for (auto it = redis->clustertcpconnMaps.begin(); it != redis->clustertcpconnMaps.end(); ++it)
         {
-            it->second->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+            it->second->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2));
         }
 
         deques.push_back(redis->object.cluster);
@@ -387,7 +387,7 @@ bool xCluster::getSlotSet(const std::string &ipPort)
 }
 
 
-void xCluster::connCallBack(const xTcpconnectionPtr& conn, void *data)
+void xCluster::connCallBack(const xTcpconnectionPtr& conn)
 {
 	if (conn->connected())
 	{
@@ -495,8 +495,8 @@ void xCluster::eraseClusterNode(const std::string &ip ,int16_t port)
 bool  xCluster::connSetCluster(const char *ip, int16_t port)
 {
 	std::shared_ptr<xTcpClient> client(new xTcpClient(loop, this));
-	client->setConnectionCallback(std::bind(&xCluster::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
-	client->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	client->setConnectionCallback(std::bind(&xCluster::connCallBack, this, std::placeholders::_1));
+	client->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2));
 	client->setConnectionErrorCallBack(std::bind(&xCluster::connErrorCallBack, this));
 	client->connect(ip, port);
 	tcpvectors.push_back(client);
@@ -527,7 +527,7 @@ void xCluster::connectCluster()
 	loop.run();
 }
 
-void xCluster::reconnectTimer(void * data)
+void xCluster::reconnectTimer(const std::any &context)
 {
 	LOG_INFO << "Reconnect..........";
 }

@@ -26,8 +26,8 @@ void xReplication::connectMaster()
 	start = true;
 	xEventLoop loop;
 	xTcpClient client(&loop,this);
-	client.setConnectionCallback(std::bind(&xReplication::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	client.setMessageCallback( std::bind(&xReplication::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+	client.setConnectionCallback(std::bind(&xReplication::connCallBack, this, std::placeholders::_1));
+	client.setMessageCallback( std::bind(&xReplication::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
 	client.setConnectionErrorCallBack(std::bind(&xReplication::connErrorCallBack, this));
 	this->client = & client;
 	this->loop = &loop;
@@ -75,7 +75,7 @@ void xReplication::syncWithMaster(const xTcpconnectionPtr& conn)
 	
 }
 
-void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
+void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 {
 	while (recvBuf->readableBytes() >= 4)
 	{
@@ -136,7 +136,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,
 	
 }
 
-void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data)
+void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 {
 	while(recvBuf->readableBytes() >= sdslen(redis->object.ok->ptr))
 	{
@@ -177,7 +177,7 @@ void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 }
 
 
-void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
+void xReplication::connCallBack(const xTcpconnectionPtr& conn)
 {
 	if(conn->connected())
 	{
@@ -208,7 +208,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn,void *data)
 	}
 }
 
-void xReplication::reconnectTimer(void * data)
+void xReplication::reconnectTimer(const std::any &context)
 {
 	LOG_INFO<<"reconnect..........";
 	client->connect(ip.c_str(),port);
@@ -220,7 +220,7 @@ void xReplication::connErrorCallBack()
 
 }
 
-void xReplication::replicationSetMaster(rObj * obj,int32_t port)
+void xReplication::replicationSetMaster(rObj * obj,int16_t port)
 {
 	this->ip = obj->ptr;
 	this->port = port;

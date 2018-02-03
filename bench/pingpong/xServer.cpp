@@ -5,7 +5,7 @@
 #include "xEventLoop.h"
 #include "xLog.h"
 
-void onConnection(const xTcpconnectionPtr& conn,void * data)
+void onConnection(const xTcpconnectionPtr& conn)
 {
 	if (conn->connected())
 	{
@@ -13,7 +13,7 @@ void onConnection(const xTcpconnectionPtr& conn,void * data)
 	}
 }
 
-void onMessage(const xTcpconnectionPtr& conn, xBuffer* buf, void * data)
+void onMessage(const xTcpconnectionPtr& conn, xBuffer* buf)
 {
  	conn->send(buf);
 }

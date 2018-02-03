@@ -10,7 +10,7 @@ class xTcpconnection:noncopyable,public std::enable_shared_from_this<xTcpconnect
 {
 public:
 	enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };
-	xTcpconnection(xEventLoop *loop,int sockfd,void *data);
+	xTcpconnection(xEventLoop *loop,int32_t sockfd,const std::any & context);
 	~xTcpconnection();
 
 	xEventLoop	 *getLoop();
@@ -60,17 +60,16 @@ public:
 	bool connected();
 	void forceCloseInLoop();
 	void connectEstablished();
-#ifdef __CXX17__
-	const std::any& getContext() const { return context; }
-	void setContext(std::any& context) { this->context = context; }
-#endif
+
 	void connectDestroyed();
-	void setData(void *data) { this->data = data; }
-	void * getData()  {return data; }
 	void shutdown();
 	void shutdownInLoop();
 	void forceClose();
 	
+	std::any* getContext() { return &context; }
+	const std::any& getContext() const { return context; }
+	void setContext(const std::any& context) { this->context = context; }
+
 public:
 	xEventLoop  *loop;
 	int sockfd;
@@ -85,10 +84,7 @@ public:
 	size_t highWaterMark;
 	StateE state;
 	std::shared_ptr<xChannel> channel;
-	void 	*data;
-#ifdef __CXX17__
 	std::any  context;
-#endif
 	std::string ip;
 	int16_t  port;
 

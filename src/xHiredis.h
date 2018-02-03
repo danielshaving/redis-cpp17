@@ -8,7 +8,7 @@
 #include "xThreadPool.h"
 
 class xRedisAsyncContext;
-typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, void*, void*);
+typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, void*, const std::any& );
 typedef struct redisReply :noncopyable
 {
     int32_t type;
@@ -92,7 +92,8 @@ public:
 typedef struct redisCallback
 {
     redisCallbackFn *fn;
-    void *privdata;
+    std::any privdata;
+    //void *privdata;
 } redisCallback;
 
 typedef std::list<redisCallback> RedisCallbackList;
@@ -129,7 +130,7 @@ public:
 	int32_t redisBufferWrite(int32_t * done);
 	int32_t redisGetReply(void * *reply);
 	int32_t redisGetReplyFromReader(void * *reply);
-	int32_t redisContextConnectTcp(const char *addr, int32_t port, const struct timeval *timeout);
+	int32_t redisContextConnectTcp(const char *addr, int16_t port, const struct timeval *timeout);
 	int32_t redisAppendCommand(const char *format, ...);
 
 	int32_t err;
@@ -148,9 +149,9 @@ class xRedisAsyncContext: noncopyable
 public:
 	xRedisAsyncContext();
 	~xRedisAsyncContext();
-	int32_t __redisAsyncCommand(redisCallbackFn *fn, void *privdata, char *cmd, size_t len);
-	int32_t redisvAsyncCommand(redisCallbackFn *fn, void *privdata, const char *format, va_list ap);
-	int32_t redisAsyncCommand(redisCallbackFn *fn, void *privdata, const char *format, ...);
+	int32_t __redisAsyncCommand(redisCallbackFn *fn, const std::any& privdata, char *cmd, size_t len);
+	int32_t redisvAsyncCommand(redisCallbackFn *fn, const std::any& privdata, const char *format, va_list ap);
+	int32_t redisAsyncCommand(redisCallbackFn *fn, const std::any& privdata, const char *format, ...);
 	int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc, const char ** argv, const size_t *argvlen);
 
 	int32_t err;
@@ -174,10 +175,10 @@ class xHiredis : noncopyable
 public:
 	xHiredis(xEventLoop *loop);
 	xHiredis(xEventLoop *loop,bool clusterMode);
-	void clusterAskConnCallBack(const xTcpconnectionPtr& conn,void *data);
-	void clusterMoveConnCallBack(const xTcpconnectionPtr& conn,void *data);
-	void clusterErrorConnCallBack(void *data);
-	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
+	void clusterAskConnCallBack(const xTcpconnectionPtr& conn);
+	void clusterMoveConnCallBack(const xTcpconnectionPtr& conn);
+	void clusterErrorConnCallBack(const std::any &context);
+	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
 	void eraseTcpMap(int32_t data);
 	void eraseRedisMap(int32_t sockfd);
 	void insertRedisMap(int32_t sockfd, xRedisAsyncContextPtr ac);

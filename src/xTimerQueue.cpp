@@ -208,11 +208,11 @@ xTimerQueue::~xTimerQueue()
 #endif
 }
 
-xTimer  * xTimerQueue::addTimer(double when, void * data,bool repeat,xTimerCallback&& cb)
+xTimer  * xTimerQueue::addTimer(double when, const std::any &context,bool repeat,xTimerCallback&& cb)
 {
 	xTimestamp time(addTime(xTimestamp::now(), when));
 	xTimer * timer = (xTimer*)zmalloc(sizeof(xTimer));
-	new(timer)xTimer(std::move(cb), std::move(time), repeat, when, data);
+	new(timer)xTimer(std::move(cb), std::move(time), repeat, when, context);
 	loop->runInLoop(std::bind(&xTimerQueue::addTimerInLoop,this,timer));
 	return timer;
 }

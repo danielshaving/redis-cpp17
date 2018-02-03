@@ -11,18 +11,18 @@ int count = 0;
 std::vector<xTimer*> timers;
 
 
-void canceltimerOut(void * data)
+void canceltimerOut(const std::any &context)
 {
-	xEventLoop *loop = (xEventLoop*)data;
+	xEventLoop *loop = std::any_cast<xEventLoop*>(context);
 	loop->quit();
 }
 
 
-void runtimerOut(void * data)
+void runtimerOut(const std::any &context)
 {
 	if(++count >=num)
 	{
-		xEventLoop *loop = (xEventLoop*)data;
+		xEventLoop *loop = std::any_cast<xEventLoop*>(context);
 		for(auto it = timers.begin(); it != timers.end(); ++it)
 		{
 			loop->cancelAfter(*it);

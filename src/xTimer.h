@@ -58,7 +58,7 @@ class xTimer
 {
 public:
 	xTimer() {}
-	xTimer(xTimerCallback && cb, xTimestamp && expiration,bool	repeat,double interval,void * data);
+	xTimer(xTimerCallback && cb, xTimestamp && expiration,bool	repeat,double interval,const std::any &context);
 	xTimestamp getExpiration() const  { return expiration;}
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
 	void restart(xTimestamp now);
@@ -70,7 +70,7 @@ public:
 	double interval;
 	xTimestamp expiration;
 	xTimerCallback callback;
-	void * data = nullptr;
+	std::any context;
 };
 
 

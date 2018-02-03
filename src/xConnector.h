@@ -33,7 +33,7 @@ private:
 	void setState(States  s) { state = s; }
 	xEventLoop* loop;
 	std::string ip;
-	int port;
+	int16_t port;
 
 	States state;
 	std::unique_ptr<xChannel> channel;

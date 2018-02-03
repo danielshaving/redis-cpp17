@@ -28,8 +28,8 @@ public:
 	 ack(0),
 	 sent(0)
 	{
-		client.setConnectionCallback(std::bind(&xClient::connCallBack,this,std::placeholders::_1,std::placeholders::_2));
-		client.setMessageCallback(std::bind(&xClient::readCallBack,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+		client.setConnectionCallback(std::bind(&xClient::connCallBack,this,std::placeholders::_1));
+		client.setMessageCallback(std::bind(&xClient::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
 		client.connect(ip,port);
 	}
 
@@ -41,7 +41,7 @@ public:
 		condition.notify_one();
 	}
 
-	void connCallBack(const xTcpconnectionPtr& conn,void *data)
+	void connCallBack(const xTcpconnectionPtr& conn)
 	{
 		if(conn->connected())
 		{
@@ -57,7 +57,7 @@ public:
 		}
 	}
 
-	void readCallBack(const xTcpconnectionPtr& conn,xBuffer * buffer,void *data)
+	void readCallBack(const xTcpconnectionPtr& conn,xBuffer * buffer)
 	{
 		if(operation == kSet)
 		{

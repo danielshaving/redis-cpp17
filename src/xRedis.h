@@ -24,15 +24,15 @@ public:
 	~xRedis();
 	
 	void initConfig();
-	void handleTimeOut(void *data);
-	void serverCron(void * data);
-	void handleSalveRepliTimeOut(void * data);
-	void handleSetExpire(void * data);
+	void handleTimeOut(const std::any & context);
+	void serverCron(const std::any & context);
+	void handleSalveRepliTimeOut(const std::any & context);
+	void handleSetExpire(const std::any & context);
    	void handleForkTimeOut();
 
 	void run();
-	void connCallBack(const xTcpconnectionPtr& conn,void *data);
-	bool deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf,void  *data);
+	void connCallBack(const xTcpconnectionPtr& conn);
+	bool deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf);
 	void replyCheck();
 	void loadDataFromDisk();
 	void flush();

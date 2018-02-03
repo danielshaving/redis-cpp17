@@ -22,8 +22,8 @@ public:
 		bytesWritten(0),
 		messagesRead(0)
 	{
-		cli.setConnectionCallback(std::bind(&xConnect::connCallBack, this, std::placeholders::_1, std::placeholders::_2));
-		cli.setMessageCallback(std::bind(&xConnect::readCallBack, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+		cli.setConnectionCallback(std::bind(&xConnect::connCallBack, this, std::placeholders::_1));
+		cli.setMessageCallback(std::bind(&xConnect::readCallBack, this, std::placeholders::_1, std::placeholders::_2));
 		cli.setConnectionErrorCallBack(std::bind(&xConnect::connErrorCallBack, this));
 	}
 
@@ -42,13 +42,13 @@ public:
 
 private:
 
-	void connCallBack(const xTcpconnectionPtr& conn, void *data);
-	void connErrorCallBack()
+	void connCallBack(const xTcpconnectionPtr& conn);
+	void connErrorCallBack(const std::any &context)
 	{
 		//LOG_WARN<<"tcp connect failure";
 	}
 
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* buf, void *data)
+	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* buf)
 	{
 		++messagesRead;
 		bytesRead +=  buf->readableBytes();
@@ -156,7 +156,7 @@ private:
 };
 
 
-void xConnect::connCallBack(const xTcpconnectionPtr & conn,void * data)
+void xConnect::connCallBack(const xTcpconnectionPtr & conn)
 {
 	if (conn->connected())
 	{

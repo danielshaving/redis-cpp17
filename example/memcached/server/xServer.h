@@ -24,7 +24,7 @@ public:
 		kCas,
 	};
 
-	static ItemPtr makeItem(stringPiepe keyArg,
+	static ItemPtr makeItem(xStringPiece keyArg,
 							  uint32_t flagsArg,
 							  int exptimeArg,
 							  int valuelen,
@@ -34,7 +34,7 @@ public:
 	  }
 
 	
-	xItem(stringPiepe keyArg,
+	xItem(xStringPiece keyArg,
 		 uint32_t flagsArg,
 		 int exptimeArg,
 		 int valuelen,
@@ -54,10 +54,10 @@ public:
 	void setCas(uint64_t casArg) { cas = casArg;}
 	size_t neededBytes() const;
 	size_t getHash() const { return hash; }
-	stringPiepe getKey()const { return stringPiepe(data,keyLen); }
+	xStringPiece getKey()const { return xStringPiece(data,keyLen); }
 	void append(const char* data, size_t len);
 	void output(xBuffer* out, bool needCas = false) const;
-	void resetKey(stringPiepe k);
+	void resetKey(xStringPiece k);
 
 	bool endsWithCRLF() const
 	{
@@ -98,23 +98,22 @@ public:
 	bytesRead(0),
 	requestsProcessed(0)
 	{
-		 conn->setMessageCallback(
-	        std::bind(&xConnect::onMessage, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
+		 conn->setMessageCallback(std::bind(&xConnect::onMessage, this, std::placeholders::_1,std::placeholders::_2));
 	}
 	
 
-	void onMessage(const xTcpconnectionPtr  & conn,xBuffer *buf,void * data);
+	void onMessage(const xTcpconnectionPtr  & conn,xBuffer *buf);
 
 	void onWriteComplete(const xTcpconnectionPtr& conn);
 	void receiveValue(xBuffer* buf);
 	void discardValue(xBuffer* buf);
 
-	bool processRequest(stringPiepe request);
+	bool processRequest(xStringPiece request);
 	void resetRequest();
-	void reply(stringPiepe msg);
+	void reply(xStringPiece msg);
 	struct Reader;
-	bool doUpdate(std::vector<stringPiepe>::iterator &beg,std::vector<stringPiepe>::iterator end);
-	void doDelete(std::vector<stringPiepe>::iterator &beg, std::vector<stringPiepe>::iterator end);
+	bool doUpdate(std::vector<xStringPiece>::iterator &beg,std::vector<xStringPiece>::iterator end);
+	void doDelete(std::vector<xStringPiece>::iterator &beg, std::vector<xStringPiece>::iterator end);
 	
 
 private:
@@ -175,7 +174,7 @@ public:
 
 	
 	void setThreadNum(int threads) { server.setThreadNum(threads); }
-	void quit(void * data);
+	void quit(const std::any &context);
 	void init();
 	void start();
 	void stop();
@@ -186,7 +185,7 @@ public:
 	bool deleteItem(const ConstItemPtr & key);
 
 private:
-	void onConnection(const xTcpconnectionPtr & conn,void * data);
+	void onConnection(const xTcpconnectionPtr & conn);
 
 	xEventLoop *loop;
 	std::unordered_map<int32_t,SessionPtr>  sessions;

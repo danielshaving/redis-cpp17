@@ -13,14 +13,14 @@ public:
 	~xReplication();
 	void init(xRedis *redis);
 	void connectMaster();
-	void replicationSetMaster(rObj * obj,int32_t port);
+	void replicationSetMaster(rObj * obj,int16_t port);
 
 	void connErrorCallBack();
-	void slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data);
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
-	void connCallBack(const xTcpconnectionPtr& conn,void *data);
+	void slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
+	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
+	void connCallBack(const xTcpconnectionPtr& conn);
 
-	void reconnectTimer(void * data);
+	void reconnectTimer(const std::any &context);
 	void syncWithMaster(const xTcpconnectionPtr& conn);
 	void replicationCron();
 	void syncWrite(const xTcpconnectionPtr& conn);

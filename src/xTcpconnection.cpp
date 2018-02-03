@@ -2,12 +2,12 @@
 #include "xEventLoop.h"
 #include "xTcpconnection.h"
 
-xTcpconnection::xTcpconnection(xEventLoop *loop,int sockfd,void *data)
+xTcpconnection::xTcpconnection(xEventLoop *loop,int32_t sockfd,const std::any & context)
 :loop(loop),
  sockfd(sockfd),
  state(kConnecting),
  channel(new xChannel(loop,sockfd)),
- data(data)
+ context(context)
 {
 	channel->setReadCallback(
 	  std::bind(&xTcpconnection::handleRead, this));
@@ -76,7 +76,7 @@ void xTcpconnection::handleRead()
 	ssize_t n = recvBuff.readFd(channel->getfd(), &savedErrno);
 	if (n > 0)
 	{
-		messageCallback(shared_from_this(), &recvBuff,data);
+		messageCallback(shared_from_this(), &recvBuff);
 	}
 	else if (n == 0)
 	{
@@ -138,7 +138,7 @@ void xTcpconnection::handleClose()
 	setState(kDisconnected);
 	channel->disableAll();
 	xTcpconnectionPtr guardThis(shared_from_this());
-	connectionCallback(guardThis,data);
+	connectionCallback(guardThis);
 	closeCallback(guardThis);
 }
 
@@ -341,7 +341,7 @@ void xTcpconnection::connectEstablished()
 	setState(kConnected);
 	channel->setTie(shared_from_this());
 	channel->enableReading();
-	connectionCallback(shared_from_this(),data);
+	connectionCallback(shared_from_this());
 }
 
 void xTcpconnection::connectDestroyed()
@@ -351,7 +351,7 @@ void xTcpconnection::connectDestroyed()
 	{
 		setState(kDisconnected);
 		channel->disableAll();
-		connectionCallback(shared_from_this(),data);
+		connectionCallback(shared_from_this());
 	}
 	channel->remove();
 }

@@ -9,11 +9,11 @@ class xTcpClient: noncopyable
 {
 public:
 	xTcpClient();
-	xTcpClient(xEventLoop *loop,void *data);
+	xTcpClient(xEventLoop *loop,const std::any & context);
 	~xTcpClient();
 
 
-	void connect(const char * ip,int32_t port);
+	void connect(const char * ip,int16_t port);
 	void disconnect();
 	void stop();
 
@@ -24,16 +24,20 @@ public:
 
 	xEventLoop * getLoop(){ return loop; }
 
+	std::any* getContext() { return &context; }
+	const std::any& getContext() const { return context; }
+	void setContext(const std::any& context) { this->context = context; }
+
 public:
 	void errorConnection();
-	void newConnection(int sockfd);
+	void newConnection(int32_t sockfd);
 	void removeConnection(const xTcpconnectionPtr& conn);
 
 	xConnectorPtr connector;
 	xEventLoop *loop;
 
-	std::string host;
-	int port;
+	std::string ip;
+	int16_t port;
 	bool isconnect;
 	int nextConnId;
 	mutable std::mutex mutex;
@@ -43,7 +47,7 @@ public:
 	WriteCompleteCallback writeCompleteCallback;
 
 	xTcpconnectionPtr connection;
-	void *data;
+	std::any context;
 
 
 };
