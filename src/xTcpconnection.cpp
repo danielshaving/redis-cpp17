@@ -141,9 +141,10 @@ void xTcpconnection::handleClose()
 	connectionCallback(guardThis,data);
 	closeCallback(guardThis);
 }
+
 void xTcpconnection::handleError()
 {
-	LOG_ERROR<<"handleError";
+	//LOG_ERROR<<"handleError";
 }
 
 

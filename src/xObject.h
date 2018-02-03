@@ -58,10 +58,12 @@ struct Equal
 
 };
 
+
+class xRedis;
 class xObjects
 {
 public:
-	xObjects();
+	xObjects(xRedis * redis);
 	~xObjects();
 
 	void createSharedObjects();
@@ -122,6 +124,13 @@ public:
 	*integers[REDIS_SHARED_INTEGERS],
 	*mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
 	*bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
+
+	rObj * rIp;
+	rObj * rPort;
+
+private:
+	xRedis * redis;
+
 };
 
 

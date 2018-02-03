@@ -83,14 +83,14 @@ public:
 	bool zrangeCommand(const std::deque<rObj*> &obj,const xSeesionPtr &session);
 	bool zcardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool zrevrangeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-	bool zrangeGenericCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session,int reverse);
+	bool zrangeGenericCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session,int32_t reverse);
 
 
 	
-	int rdbSaveBackground(const xSeesionPtr &session, bool enabled);
+	int32_t rdbSaveBackground(const xSeesionPtr &session, bool enabled);
 	bool bgsave(const xSeesionPtr &session, bool enabled = false);
 	bool save(const xSeesionPtr &session);
-	int removeCommand(rObj * obj,int &count);
+	int32_t removeCommand(rObj * obj,int32_t &count);
 
 	bool clearClusterMigradeCommand(void * data);
 	void forkClear();
@@ -122,7 +122,7 @@ public:
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
 
 	struct SetMapLock
-	{		
+	{
 		SetMap setMap;
 		mutable std::mutex mtx;
 	};
@@ -151,13 +151,13 @@ public:
 		mutable std::mutex mtx;
 	};
 
-	const static int kShards = 4096;
+	const static int32_t kShards = 4096;
 
-	std::array<SetMapLock, kShards> 	setMapShards;
+	std::array<SetMapLock, kShards>	setMapShards;
 	std::array<HsetMapLock, kShards> hsetMapShards;
-	std::array<ListMapLock, kShards>  listMapShards;
-	std::array<SetLock, kShards> 		setShards;
-	std::array<SortSet,kShards> 			sortShards;
+	std::array<ListMapLock, kShards>	listMapShards;
+	std::array<SetLock, kShards>	setShards;
+	std::array<SortSet, kShards>	sortShards;
 
 	xEventLoop loop;
 	xTcpServer server;
@@ -168,8 +168,6 @@ public:
 	std::mutex clusterMutex;
 	std::mutex forkMutex;
 
-
-	std::atomic<int>    salveCount;
 	std::atomic<bool>  clusterEnabled;
 	std::atomic<bool>  slaveEnabled;
 	std::atomic<bool>  authEnabled;
@@ -178,10 +176,11 @@ public:
 	std::atomic<bool>  clusterSlotEnabled;
 	std::atomic<bool>  clusterRepliMigratEnabled;
 	std::atomic<bool>  clusterRepliImportEnabeld;
-	std::atomic<int>    rdbChildPid;
-	std::atomic<int>    slavefd;
 	std::atomic<bool>  forkEnabled;
-	std::atomic<int>    forkCondWaitCount;
+	std::atomic<int32_t>	forkCondWaitCount;
+	std::atomic<int32_t>	rdbChildPid;
+	std::atomic<int32_t>	slavefd;
+	std::atomic<int32_t>	salveCount;
 
 	std::condition_variable  expireCondition;
 	std::condition_variable  forkCondition;
@@ -190,11 +189,12 @@ public:
 	xBuffer	 clusterMigratCached;
 	xBuffer	 clusterImportCached;
 	
-	xObjects			 object;
-	xReplication   	 repli;
-	xSentinel     		 senti;
-	xCluster      		 clus;
-	xRdb	       			 rdb;
+	xObjects	object;
+	xReplication	repli;
+	xSentinel	senti;
+	xCluster	clus;
+	xRdb		rdb;
+	xSocket	socket;
 
 	std::unique_ptr<std::thread > repliThreads;
 	std::unique_ptr<std::thread > sentiThreads;
@@ -202,23 +202,17 @@ public:
 
 	std::unordered_map<int32_t,xTcpconnectionPtr>  salvetcpconnMaps;
 	std::unordered_map<int32_t,xTcpconnectionPtr>  clustertcpconnMaps;
-	std::unordered_map<int32_t,xTimer*> 				 repliTimers;
+	std::unordered_map<int32_t,xTimer*>	repliTimers;
 	std::unordered_map<rObj*,xTimer*,Hash,Equal>   expireTimers;
 	
-	xSocket 	socket;
-	std::string host;
-	std::string password;
-
+	std::string	ip;
+	std::string	password;
+	std::string masterHost;
+	std::string	ipPort;
 	int16_t port;
 	int16_t threadCount;
-
-	std::string 		masterHost;
-	std::atomic<int> masterPort;
-	std::atomic<int> masterfd;
-	std::string 		ipPort;
-
-	rObj * rIp;
-	rObj * rPort;
+	int32_t masterPort;
+	int32_t masterfd;
 };
 
 

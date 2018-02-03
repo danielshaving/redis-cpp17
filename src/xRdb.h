@@ -112,8 +112,8 @@ public:
 	int  rdbWrite(char *filename,const char *buf, size_t len);
 	int rdbSyncWrite(const char *buf,FILE * fp,size_t len);
 	int rdbSyncClose(char * fileName,FILE * fp);
-
 	void setBlockEnable(bool enabled) { blockEnabled = enabled; }
+
 public:
 	xRedis * redis;
     bool blockEnabled;

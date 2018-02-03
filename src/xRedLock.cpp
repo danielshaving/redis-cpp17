@@ -3,9 +3,9 @@
 
 
 /* Turn the plain C strings into Sds strings */
-static char **convertToSds(int count, char** args)
+static char **convertToSds(int32_t count, char** args)
 {
-	int j;
+	int32_t j;
 	char **sds = (char**)zmalloc(sizeof(char*)*count);
 	for(j = 0; j < count; j++)
 		sds[j] = sdsnew(args[j]);
@@ -27,8 +27,8 @@ xLock::~xLock()
 }
 
 
-int xRedLock::defaultRetryCount  = 3;
-int xRedLock::defaultRetryDelay = 100;
+int32_t xRedLock::defaultRetryCount  = 3;
+int32_t xRedLock::defaultRetryDelay = 100;
 float xRedLock::clockDriftFactor = 0.01;
 
 xRedLock::xRedLock()
@@ -65,7 +65,7 @@ sds	 xRedLock::getUniqueLockId()
 	{
 		sds s;
 		s = sdsempty();
-		for (int i = 0; i < 20; i++)
+		for (int32_t i = 0; i < 20; i++)
 		{
 			s = sdscatprintf(s, "%02X", buffer[i]);
 		}
@@ -81,11 +81,11 @@ sds	 xRedLock::getUniqueLockId()
 
 
 
-int  xRedLock::lockInstance(const xRedisContextPtr &c,const char * resource,const  char *val,const int ttl)
+int32_t  xRedLock::lockInstance(const xRedisContextPtr &c,const char * resource,const  char *val,const int32_t ttl)
 {
 
 	redisReply *reply;
-	reply = (redisReply *)redisCommand(c, "set %s %s px %d nx",resource, val, ttl);
+	reply = (redisReply *)c->redisCommand("set %s %s px %d nx",resource, val, ttl);
 
 	if (reply)
 	{
@@ -110,19 +110,19 @@ int  xRedLock::lockInstance(const xRedisContextPtr &c,const char * resource,cons
 }
 
 
-redisReply * xRedLock::commandArgv(const xRedisContextPtr &c, int argc, char **inargv)
+redisReply * xRedLock::commandArgv(const xRedisContextPtr &c, int32_t argc, char **inargv)
 {
 	char **argv = convertToSds(argc, inargv);
 	/* Setup argument length */
 	size_t *argvlen;
 	argvlen = (size_t *)zmalloc(argc * sizeof(size_t));
-	for (int j = 0; j < argc; j++)
+	for (int32_t j = 0; j < argc; j++)
 	{
 		argvlen[j] = sdslen(argv[j]);
 	}
 
 	redisReply *reply = nullptr;
-	reply = (redisReply *)redisCommandArgv(c, argc, (const char **)argv, argvlen);
+	reply = (redisReply *)c->redisCommandArgv(argc, (const char **)argv, argvlen);
 	if (reply)
 	{
 		LOG_INFO<<"redisCommandArgv return "<< reply->integer;
@@ -135,7 +135,7 @@ redisReply * xRedLock::commandArgv(const xRedisContextPtr &c, int argc, char **i
 
 void  xRedLock::unlockInstance(const xRedisContextPtr &c,const char * resource,const  char *val)
 {
-	int argc = 5;
+	int32_t argc = 5;
 	char *unlockScriptArgv[] = {(char*)"EVAL",
 								unlockScript,
 								(char*)"1",
@@ -160,7 +160,7 @@ bool xRedLock::unlock(const xLock &lock)
 	return true;
 }
 
-bool xRedLock::lock(const char *resource, const int ttl, xLock &lock)
+bool xRedLock::lock(const char *resource, const int32_t ttl, xLock &lock)
 {
 	sds val = getUniqueLockId();
 	if (!val)
@@ -173,15 +173,15 @@ bool xRedLock::lock(const char *resource, const int ttl, xLock &lock)
 
 	LOG_INFO<<"Get the unique id is" <<val;
 
-	int count = retryCount;
-	int n = 0;
+	int32_t count = retryCount;
+	int32_t n = 0;
 	do
 	{
-		int startTime = (int)time(nullptr) * 1000;
+		int32_t startTime = (int32_t)time(nullptr) * 1000;
 
 		for(auto it = syncServerMaps.begin(); it != syncServerMaps.end();)
 		{
-			int r = lockInstance(it->second,resource,val,ttl);
+			int32_t r = lockInstance(it->second,resource,val,ttl);
 			if(r == 1)
 			{
 				n++;
@@ -217,8 +217,8 @@ bool xRedLock::lock(const char *resource, const int ttl, xLock &lock)
 
 		}
 
-		int drift = (ttl * clockDriftFactor) + 2;
-		int validityTime = ttl - ((int)time(nullptr) * 1000 - startTime) - drift;
+		int32_t drift = (ttl * clockDriftFactor) + 2;
+		int32_t validityTime = ttl - ((int32_t)time(nullptr) * 1000 - startTime) - drift;
 		LOG_INFO<<"The resource validty time is "<< validityTime<<" is "<<quoRum;
 		if (n >=  quoRum && validityTime > 0)
 		{
@@ -237,7 +237,7 @@ bool xRedLock::lock(const char *resource, const int ttl, xLock &lock)
 			unlock(lock);
 		}
 
-		int delay = rand() % retryDelay + retryDelay / 2;
+		int32_t delay = rand() % retryDelay + retryDelay / 2;
 		usleep(delay * 1000);
 		count--;
 
@@ -247,7 +247,7 @@ bool xRedLock::lock(const char *resource, const int ttl, xLock &lock)
 }
 
 
-void  xRedLock::syncAddServerUrl(const char *ip,const int port)
+void  xRedLock::syncAddServerUrl(const char *ip,const int32_t port)
 {
 	xRedisContextPtr c;
 	redisReply *reply;
@@ -270,7 +270,7 @@ void  xRedLock::syncAddServerUrl(const char *ip,const int port)
 }
 
 
-void xRedLock::asyncAddServerUrl(const char *ip,const int port)
+void xRedLock::asyncAddServerUrl(const char *ip,const int32_t port)
 {
 
 }

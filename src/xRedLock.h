@@ -10,7 +10,7 @@ public:
 	xLock();
 	~xLock();
 
-	int validityTime;
+	int32_t validityTime;
 	sds  resource;
 	sds  val;
 };
@@ -22,26 +22,25 @@ public:
 	xRedLock();
 	~xRedLock();
 
-	void syncAddServerUrl(const char *ip,const int port);
-	void asyncAddServerUrl(const char *ip,const int port);
-	redisReply * commandArgv(const xRedisContextPtr &c, int argc, char **inargv);
+	void syncAddServerUrl(const char *ip,const int32_t port);
+	void asyncAddServerUrl(const char *ip,const int32_t port);
+	redisReply * commandArgv(const xRedisContextPtr &c, int32_t argc, char **inargv);
 	sds getUniqueLockId();
-	bool lock(const char *resource, const int ttl, xLock &lock);
+	bool lock(const char *resource, const int32_t ttl, xLock &lock);
 	bool unlock(const xLock &lock);
 	void unlockInstance(const xRedisContextPtr &c,const char * resource,const  char *val);
-	int  lockInstance(const xRedisContextPtr &c,const char * resource,const  char *val,const int ttl);
+	int32_t  lockInstance(const xRedisContextPtr &c,const char * resource,const  char *val,const int32_t ttl);
 
 private:
-
-	static int defaultRetryCount;
-	static int defaultRetryDelay;
+	static int32_t defaultRetryCount;
+	static int32_t defaultRetryDelay;
 	static float clockDriftFactor;
 
 	sds 	unlockScript;
-	int 	retryCount;
-	int 	retryDelay;
-	int	quoRum;
-	int	fd;
+	int32_t 	retryCount;
+	int32_t 	retryDelay;
+	int32_t	quoRum;
+	int32_t	fd;
 	xLock	continueLock;
 	sds	continueLockScript;
 

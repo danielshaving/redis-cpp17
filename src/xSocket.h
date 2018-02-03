@@ -7,10 +7,10 @@ class xSocket: noncopyable
 public:
     typedef std::function<void (int sockfd,const std::string &ip, int16_t port)> NewConnectionCallback;
 	xSocket();
-	xSocket(xEventLoop *loop,std::string ip, int16_t port);
+	xSocket(xEventLoop *loop,const std::string &ip, int16_t port);
 	~xSocket();
 
-	bool getpeerName(int32_t sockfd,std::string *ip, int32_t &port);
+	bool getpeerName(int32_t sockfd,std::string *ip, int16_t &port);
 	int  createSocket();
 	int  connect(int sockfd,std::string ip, int16_t port);
 
@@ -22,14 +22,12 @@ public:
 	bool  setTcpNoDelay(int sockfd,bool on);
 	bool  setTimeOut(int sockfd,const struct timeval tc);
 	int    setFlag(int fd, int flag);
-private:
-	
-	xEventLoop	 *loop;
-	std::string 	ip;
-	int32_t  port;
 
+private:
+	xEventLoop	 *loop;
+	std::string ip;
+	int16_t port;
 	int  listenSocketFd;
-	int  maxSocketFd;
 	int  onlineNumber;
 	bool protocol;
 

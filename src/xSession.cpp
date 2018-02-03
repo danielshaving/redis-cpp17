@@ -109,7 +109,7 @@ bool xSession::checkCommand(rObj*  robjs)
 }
 
 
-int xSession::processCommand()
+int32_t xSession::processCommand()
 {
 	if(redis->authEnabled)
 	{
@@ -141,7 +141,7 @@ int xSession::processCommand()
 		}
 
 		char * key = robjs[0]->ptr;
-		int hashslot = redis->clus.keyHashSlot((char*)key, sdslen(key));
+		int32_t hashslot = redis->clus.keyHashSlot((char*)key, sdslen(key));
 		
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
 		if(redis->clusterRepliMigratEnabled)
@@ -186,7 +186,7 @@ int xSession::processCommand()
 		}
 		else
 		{
-			if (redis->host == it->second.ip && redis->port == it->second.port)
+			if (redis->ip == it->second.ip && redis->port == it->second.port)
 			{
 				//FIXME
 			}
@@ -298,11 +298,11 @@ void xSession::reset()
 	}
 }
 
-int xSession::processInlineBuffer(xBuffer *recvBuf)
+int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
 {
     const char *newline;
     const char *queryBuf = recvBuf->peek();
-    int  j;
+    int32_t  j;
     size_t queryLen;
     sds *argv, aux;
 	  
@@ -358,10 +358,10 @@ int xSession::processInlineBuffer(xBuffer *recvBuf)
    
 }
 
-int xSession::processMultibulkBuffer(xBuffer *recvBuf)
+int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 {
 	const char * newline = nullptr;
-	int pos = 0,ok;
+	int32_t pos = 0,ok;
 	long long ll = 0 ;
 	const char * queryBuf = recvBuf->peek();
 	if(multibulklen == 0)

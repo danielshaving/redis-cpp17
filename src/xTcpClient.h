@@ -23,8 +23,8 @@ public:
 	void setWriteCompleteCallback(WriteCompleteCallback&& cb) { writeCompleteCallback = std::move(cb); }
 
 	xEventLoop * getLoop(){ return loop; }
-public:
 
+public:
 	void errorConnection();
 	void newConnection(int sockfd);
 	void removeConnection(const xTcpconnectionPtr& conn);

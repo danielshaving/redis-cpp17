@@ -1,5 +1,5 @@
 #include "xObject.h"
-
+#include "xRedis.h"
 
 
 rObj * xObjects::createObject(int type, void *ptr)
@@ -173,14 +173,15 @@ void xObjects::decrRefCount(rObj *o)
 }
 
 
-xObjects::xObjects()
+xObjects::xObjects(xRedis * redis)
+:redis(redis)
 {
-	createSharedObjects();
+
 }
 
 xObjects::~xObjects()
 {
-	destorySharedObjects();
+
 }
 
 void xObjects::destorySharedObjects()
@@ -326,6 +327,9 @@ void xObjects::destorySharedObjects()
 	{
 		freeStringObject(mbulkhdr[j]);
 	}
+
+	zfree(rIp);
+	zfree(rPort);
 
 }
 
@@ -504,11 +508,129 @@ void xObjects::createSharedObjects()
 //
 	//minstring = createStringObject("minstring",9);
     //maxstring = createStringObject("maxstring",9);
-	
+
+
+    char buf[8];
+	int len = ll2string(buf,sizeof(buf),redis->port);
+	rPort = createStringObject(buf,len);
+	rIp = createStringObject((char*)(redis->ip.c_str()),redis->ip.length());
+
+#define REGISTER_REDIS_COMMAND(msgId, func) \
+    msgId->calHash(); \
+	redis->handlerCommandMap[msgId] = std::bind(&xRedis::func, redis, std::placeholders::_1, std::placeholders::_2);
+	REGISTER_REDIS_COMMAND(set,setCommand);
+	REGISTER_REDIS_COMMAND(get,getCommand);
+	REGISTER_REDIS_COMMAND(flushdb,flushdbCommand);
+	REGISTER_REDIS_COMMAND(dbsize,dbsizeCommand);
+	REGISTER_REDIS_COMMAND(hset,hsetCommand);
+	REGISTER_REDIS_COMMAND(hget,hgetCommand);
+	REGISTER_REDIS_COMMAND(hgetall,hgetallCommand);
+	REGISTER_REDIS_COMMAND(ping,pingCommand);
+	REGISTER_REDIS_COMMAND(save,saveCommand);
+	REGISTER_REDIS_COMMAND(slaveof,slaveofCommand);
+	REGISTER_REDIS_COMMAND(sync,syncCommand);
+	REGISTER_REDIS_COMMAND(command,commandCommand);
+	REGISTER_REDIS_COMMAND(config,configCommand);
+	REGISTER_REDIS_COMMAND(auth,authCommand);
+	REGISTER_REDIS_COMMAND(info,infoCommand);
+	REGISTER_REDIS_COMMAND(echo,echoCommand);
+	REGISTER_REDIS_COMMAND(client,clientCommand);
+	REGISTER_REDIS_COMMAND(hkeys,hkeysCommand);
+	REGISTER_REDIS_COMMAND(del,delCommand);
+	REGISTER_REDIS_COMMAND(hlen,hlenCommand);
+	REGISTER_REDIS_COMMAND(keys,keysCommand);
+	REGISTER_REDIS_COMMAND(bgsave,bgsaveCommand);
+	REGISTER_REDIS_COMMAND(memory,memoryCommand);
+	REGISTER_REDIS_COMMAND(cluster,clusterCommand);
+	REGISTER_REDIS_COMMAND(migrate,migrateCommand);
+	REGISTER_REDIS_COMMAND(debug,debugCommand);
+	REGISTER_REDIS_COMMAND(ttl,ttlCommand);
+	REGISTER_REDIS_COMMAND(lpush,lpushCommand);
+	REGISTER_REDIS_COMMAND(lpop,lpopCommand);
+	REGISTER_REDIS_COMMAND(lrange,lrangeCommand);
+	REGISTER_REDIS_COMMAND(rpush,rpushCommand);
+	REGISTER_REDIS_COMMAND(rpop,rpopCommand);
+	REGISTER_REDIS_COMMAND(llen,llenCommand);
+	REGISTER_REDIS_COMMAND(sadd,saddCommand);
+	REGISTER_REDIS_COMMAND(zadd,zaddCommand);
+	REGISTER_REDIS_COMMAND(zrange, zrangeCommand);
+	REGISTER_REDIS_COMMAND(zrevrange, zrevrangeCommand);
+	REGISTER_REDIS_COMMAND(zcard, zcardCommand);
+	REGISTER_REDIS_COMMAND(SET,setCommand);
+	REGISTER_REDIS_COMMAND(GET,getCommand);
+	REGISTER_REDIS_COMMAND(FLUSHDB,flushdbCommand);
+	REGISTER_REDIS_COMMAND(DBSIZE,dbsizeCommand);
+	REGISTER_REDIS_COMMAND(HSET,hsetCommand);
+	REGISTER_REDIS_COMMAND(HGET,hgetCommand);
+	REGISTER_REDIS_COMMAND(HGETALL,hgetallCommand);
+	REGISTER_REDIS_COMMAND(PING,pingCommand);
+	REGISTER_REDIS_COMMAND(SAVE,saveCommand);
+	REGISTER_REDIS_COMMAND(SLAVEOF,slaveofCommand);
+	REGISTER_REDIS_COMMAND(SYNC,syncCommand);
+	REGISTER_REDIS_COMMAND(COMMAND,commandCommand);
+	REGISTER_REDIS_COMMAND(CONFIG,configCommand);
+	REGISTER_REDIS_COMMAND(AUTH,authCommand);
+	REGISTER_REDIS_COMMAND(INFO,infoCommand);
+	REGISTER_REDIS_COMMAND(ECHO,echoCommand);
+	REGISTER_REDIS_COMMAND(CLIENT,clientCommand);
+	REGISTER_REDIS_COMMAND(HKEYS,hkeysCommand);
+	REGISTER_REDIS_COMMAND(DEL,delCommand);
+	REGISTER_REDIS_COMMAND(HLEN,hlenCommand);
+	REGISTER_REDIS_COMMAND(KEYS,keysCommand);
+	REGISTER_REDIS_COMMAND(BGSAVE,bgsaveCommand);
+	REGISTER_REDIS_COMMAND(MEMORY,memoryCommand);
+	REGISTER_REDIS_COMMAND(CLUSTER,clusterCommand);
+	REGISTER_REDIS_COMMAND(MIGRATE,migrateCommand);
+	REGISTER_REDIS_COMMAND(DEBUG,debugCommand);
+	REGISTER_REDIS_COMMAND(TTL,ttlCommand);
+	REGISTER_REDIS_COMMAND(LPUSH,lpushCommand);
+	REGISTER_REDIS_COMMAND(LPOP,lpopCommand);
+	REGISTER_REDIS_COMMAND(LRANGE,lrangeCommand);
+	REGISTER_REDIS_COMMAND(RPUSH,rpushCommand);
+	REGISTER_REDIS_COMMAND(RPOP,rpopCommand);
+	REGISTER_REDIS_COMMAND(LLEN,llenCommand);
+	REGISTER_REDIS_COMMAND(SADD,saddCommand);
+	REGISTER_REDIS_COMMAND(ZADD,zaddCommand);
+	REGISTER_REDIS_COMMAND(ZRANGE,zrangeCommand);
+	REGISTER_REDIS_COMMAND(ZREVRANGE,zrevrangeCommand);
+	REGISTER_REDIS_COMMAND(ZCARD, zcardCommand);
+
+
+#define REGISTER_REDIS_REPLY_COMMAND(msgId) \
+    msgId->calHash(); \
+    redis->replyCommandMap.insert(msgId);
+	REGISTER_REDIS_REPLY_COMMAND(addsync);
+	REGISTER_REDIS_REPLY_COMMAND(setslot);
+	REGISTER_REDIS_REPLY_COMMAND(node);
+	REGISTER_REDIS_REPLY_COMMAND(connect);
+	REGISTER_REDIS_REPLY_COMMAND(delsync);
+	REGISTER_REDIS_REPLY_COMMAND(cluster);
+	REGISTER_REDIS_REPLY_COMMAND(rIp);
+	REGISTER_REDIS_REPLY_COMMAND(rPort);
+
+
+#define REGISTER_REDIS_CHECK_COMMAND(msgId) \
+    msgId->calHash(); \
+    redis->unorderedmapCommands.insert(msgId);
+	REGISTER_REDIS_CHECK_COMMAND(set);
+	REGISTER_REDIS_CHECK_COMMAND(hset);
+	REGISTER_REDIS_CHECK_COMMAND(lpush);
+	REGISTER_REDIS_CHECK_COMMAND(rpush);
+	REGISTER_REDIS_CHECK_COMMAND(sadd);
+	REGISTER_REDIS_CHECK_COMMAND(lpop);
+	REGISTER_REDIS_CHECK_COMMAND(rpop);
+	REGISTER_REDIS_CHECK_COMMAND(del);
+	REGISTER_REDIS_CHECK_COMMAND(flushdb);
+
+#define REGISTER_REDIS_CLUSTER_CHECK_COMMAND(msgId) \
+    msgId->calHash(); \
+    redis->cluterMaps.insert(msgId);
+	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(cluster);
+	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(migrate);
+	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(command);
 
 
 }
-
 
 
 rObj * xObjects::createStringObject(char *ptr, size_t len)

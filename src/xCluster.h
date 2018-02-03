@@ -9,8 +9,13 @@
 struct xClusterNode
 {
 	std::string ip;
-	int32_t  port;
-	char name[CLUSTER_NAMELEN];
+	std::string name;
+	int16_t port;
+	int64_t createTime;
+	int32_t flag;
+	uint64_t configEpoch;
+	struct xClusterNode *slaves;
+	struct xClusterNode *master;
 };
 
 
@@ -22,24 +27,24 @@ public:
 	~xCluster();
 
     void clear();
-	bool connSetCluster(const std::string &ip, int32_t port);
+	bool connSetCluster(const char *ip, int16_t port);
 	void connectCluster();
 	void connErrorCallBack();
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf, void *data);
 	void connCallBack(const xTcpconnectionPtr& conn, void *data);
-	void reconnectTimer(void * data);
+	void reconnectTimer(void *data);
     bool getSlotSet(const std::string &ipPort);
 
-	void structureProtocolSetCluster(std::string host, int32_t port, xBuffer &sendBuf, const xTcpconnectionPtr & conn);
-	int getSlotOrReply(const xSeesionPtr &session,rObj * o );
-	unsigned int keyHashSlot(char *key, int keylen);
+	void structureProtocolSetCluster(std::string host, int16_t port, xBuffer &sendBuf, const xTcpconnectionPtr &conn);
+	int32_t getSlotOrReply(const xSeesionPtr &session,rObj *o );
+	uint32_t keyHashSlot(char *key, int32_t keylen);
 	void syncClusterSlot();
-	void clusterRedirectClient(const xSeesionPtr &session, xClusterNode * node,int hashSlot,int errCode);
-	bool replicationToNode(const xSeesionPtr &session,const std::string &ip,int32_t port);
+	void clusterRedirectClient(const xSeesionPtr &session, xClusterNode * node,int32_t hashSlot,int32_t errCode);
+	bool replicationToNode(const xSeesionPtr &session,const std::string &ip,int16_t port);
 	void delClusterImport(std::deque<rObj*> &robj);
-	void eraseClusterNode(const std::string &ip,int32_t port);
-	void eraseImportSlot(int slot);
-	void getKeyInSlot(int slot, rObj **keys, int count);
+	void eraseClusterNode(const std::string &ip,int16_t port);
+	void eraseImportSlot(int32_t slot);
+	void getKeyInSlot(int32_t slot, rObj **keys, int32_t count);
 
 public:
 	xEventLoop *loop;
@@ -53,7 +58,7 @@ public:
 	std::unordered_map<std::string, std::unordered_set<int32_t>> importingSlotsFrom;
 	std::condition_variable condition;
 	std::mutex cmtex;
-	std::atomic<int> replyCount;
+	std::atomic<int32_t> replyCount;
 	std::deque<rObj*> deques;
 	xBuffer sendBuf;
 	std::unordered_set<int32_t>  uset;

@@ -17,9 +17,9 @@ public:
 	 void clearObj();
 	 void reset();
 	 void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
-	 int processMultibulkBuffer(xBuffer *recvBuf);
-	 int processInlineBuffer(xBuffer *recvBuf);
-	 int processCommand();
+	 int32_t processMultibulkBuffer(xBuffer *recvBuf);
+	 int32_t processInlineBuffer(xBuffer *recvBuf);
+	 int32_t processCommand();
 	 bool checkCommand(rObj*  robjs);
 
 public:

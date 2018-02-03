@@ -11,9 +11,9 @@ class xRedisAsyncContext;
 typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, void*, void*);
 typedef struct redisReply :noncopyable
 {
-    int type;
+    int32_t type;
     long long integer;
-    int len;
+    int32_t len;
     char *str;
     size_t elements;
     struct redisReply **element;
@@ -22,18 +22,18 @@ typedef struct redisReply :noncopyable
 
 typedef struct redisReadTask:noncopyable
 {
-    int type;
-    int elements;
-    int idx;
+    int32_t type;
+    int32_t elements;
+    int32_t idx;
     void *obj;
     struct redisReadTask *parent;
     void *privdata;
 } redisReadTask;
 
 
-redisReply * createReplyObject(int type);
+redisReply * createReplyObject(int32_t type);
 void * createString(const redisReadTask * task, const char * str, size_t len);
-void * createArray(const redisReadTask * task, int elements);
+void * createArray(const redisReadTask * task, int32_t elements);
 void * createInteger(const redisReadTask * task, long long value);
 void * createNil(const redisReadTask * task);
 void freeReply(void *reply);
@@ -51,32 +51,36 @@ typedef struct redisReplyObjectFunctions:noncopyable
 	}
 	
 	std::function<void *(const redisReadTask *,const char *,size_t)> createStringFuc;
-	std::function<void *(const redisReadTask*, int)> createArrayFuc;
+	std::function<void *(const redisReadTask*, int32_t)> createArrayFuc;
 	std::function<void *(const redisReadTask*, long long)> createIntegerFuc;
 	std::function<void *(const redisReadTask*)> createNilFuc;
 	std::function<void (void*)> freeObjectFuc;
 } redisFunc;
 
 
-
 class xRedisReader:noncopyable
 {
 public:
-	xRedisReader()
-	:fn(new redisFunc())
-	{
-		xBuffer buffer;
-		pos = 0;
-		err = 0;
-		errstr[0] = '\0';
-		ridx 	= -1;
-		buf = &buffer;
-	}
-	
-	int ridx;
+	xRedisReader();
+
+	int32_t redisReaderGetReply(void * *reply);
+	void redisReaderSetError(int32_t type, const char *str);
+	void redisReaderSetErrorProtocolByte(char byte);
+	void redisReaderSetErrorOOM();
+	void moveToNextTask();
+	int32_t processLineItem();
+	int32_t processBulkItem();
+	int32_t processMultiBulkItem();
+	int32_t processItem();
+
+	long long readLongLong(const char * s);
+	const char * readBytes(uint32_t bytes);
+	const char * readLine(int32_t * _len);
+
+	int32_t ridx;
 	void *reply;
 	void *privdata;
-	int err;
+	int32_t err;
 	char errstr[128];
 	size_t pos;
 	xBuffer  *buf;
@@ -92,7 +96,6 @@ typedef struct redisCallback
 } redisCallback;
 
 typedef std::list<redisCallback> RedisCallbackList;
-
 typedef struct redisClusterCallback
 {
 	redisClusterCallback()
@@ -100,78 +103,57 @@ typedef struct redisClusterCallback
 		data = nullptr;
 	}
 	char * data;
-	int  len;
+	int32_t  len;
 	redisCallback cb;
 };
 
 typedef std::list<redisClusterCallback> RedisClusterCallbackList;
-
 class xRedisContext: noncopyable
 {
 public:
-	xRedisContext()
-	:reader(new xRedisReader()),
-	 sender(new xBuffer())
-	{
-		clear();
-	}
+	xRedisContext();
+	~xRedisContext();
+	void clear();
+	int32_t redisvAppendCommand(const char * format, va_list ap);
+	int32_t __redisAppendCommand(const char * cmd, size_t len);
+	void * redisCommand(const char * format, ...);
+	void * redisvCommand(const char * format, va_list ap);
+	void * redisCommandArgv(int32_t argc, const char * *argv, const size_t * argvlen);
+	int32_t redisAppendFormattedCommand(const char *cmd, size_t len);
+	int32_t redisAppendCommandArgv(int32_t argc, const char * *argv, const size_t * argvlen);
+	void redisSetError(int32_t type, const char * str);
+	void *redisBlockForReply();
+	int32_t redisContextWaitReady(long msec);
+	int32_t redisCheckSocketError();
+	int32_t redisBufferRead();
+	int32_t redisBufferWrite(int32_t * done);
+	int32_t redisGetReply(void * *reply);
+	int32_t redisGetReplyFromReader(void * *reply);
+	int32_t redisContextConnectTcp(const char *addr, int32_t port, const struct timeval *timeout);
+	int32_t redisAppendCommand(const char *format, ...);
 
-	~xRedisContext()
-	{
-		if(fd > 0)
-		{
-			::close(fd);
-		}
-	}
-
-	void clear()
-	{
-		flags	&= ~REDIS_BLOCK;
-		err = 0;
-		errstr[0] = '\0';
-		fd = 0 ;
-	}
-	
-	int err;
+	int32_t err;
 	char errstr[128];
-	int fd;
-	int flags;
+	int32_t fd;
+	int32_t flags;
 	const char *addr;
-	int port;
+	int32_t port;
 	xRedisReaderPtr reader;
 	xBufferPtr sender;
 };
 
+
 class xRedisAsyncContext: noncopyable
 {
 public:
-	xRedisAsyncContext():c(new (xRedisContext))
-	{
-		conn = nullptr;
-		err = 0;
-		errstr = nullptr;
-		data = nullptr;
-		c->flags &= ~REDIS_CONNECTED;
-	}
+	xRedisAsyncContext();
+	~xRedisAsyncContext();
+	int32_t __redisAsyncCommand(redisCallbackFn *fn, void *privdata, char *cmd, size_t len);
+	int32_t redisvAsyncCommand(redisCallbackFn *fn, void *privdata, const char *format, va_list ap);
+	int32_t redisAsyncCommand(redisCallbackFn *fn, void *privdata, const char *format, ...);
+	int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc, const char ** argv, const size_t *argvlen);
 
-	~xRedisAsyncContext()
-	{
-		if(conn != nullptr)
-		{
-			conn->forceClose();
-		}
-
-		for(auto it = clus.begin(); it != clus.end(); ++it)
-		{
-			if((*it).data)
-			{
-				zfree((*it).data);
-			}
-
-		}
-	}
-
-	int err;
+	int32_t err;
 	char *errstr;
 	void *data;
 	xRedisContextPtr c;
@@ -187,63 +169,26 @@ public:
 	}sub;
 };
 
-
-int redisContextConnectTcp(const xRedisContextPtr &c, const char *addr, int port, const struct timeval *timeout);
-xRedisContextPtr redisConnectWithTimeout(const char *ip, int port, const struct timeval tv);
-xRedisContextPtr redisConnect(const char *ip, int port);
-
-int redisAppendCommand(xRedisContextPtr c, const char *format, ...);
-int __redisAsyncCommand(const xRedisAsyncContextPtr &ac,redisCallbackFn *fn, void *privdata, char *cmd, size_t len);
-int redisvFormatCommand(char * *target, const char * format, va_list ap);
-int redisvAsyncCommand(const xRedisAsyncContextPtr &ac, redisCallbackFn *fn, void *privdata, const char *format, va_list ap);
-int redisAsyncCommand(const xRedisAsyncContextPtr &ac, redisCallbackFn *fn, void *privdata, const char *format, ...);
-
-int redisAppendFormattedCommand(xRedisContextPtr c, const char *cmd, size_t len);
-int redisFormatCommand(char **target, const char *format, ...);
-int redisFormatCommandArgv(char * *target, int argc, const char * *argv, const size_t * argvlen);
-int redisAppendCommandArgv(const xRedisContextPtr  & c, int argc, const char * *argv, const size_t * argvlen);
-int redisFormatSdsCommandArgv(sds *target, int argc, const char ** argv, const size_t *argvlen);
-
-int redisvAppendCommand(const xRedisContextPtr  & c, const char * format, va_list ap);
-int __redisAppendCommand(const xRedisContextPtr & c, const char * cmd, size_t len);
-void * redisCommand(const xRedisContextPtr  & c, const char * format, ...);
-void * redisvCommand(const xRedisContextPtr  & c, const char * format, va_list ap);
-void * redisCommandArgv(const xRedisContextPtr  & c, int argc, const char * *argv, const size_t * argvlen);
-
-int redisBufferRead(const xRedisContextPtr & c);
-int redisBufferWrite(const xRedisContextPtr & c, int * done);
-int redisGetReply(const xRedisContextPtr & c, void * *reply);
-int redisGetReplyFromReader(const xRedisContextPtr & c, void * *reply);
-int redisReaderGetReply(const xRedisReaderPtr & r,void * *reply);
-void __redisSetError(const xRedisContextPtr & c, int type, const char * str);
-
 class xHiredis : noncopyable
 {
 public:
-	xHiredis(xEventLoop *loop):
-		pool(loop),
-		clusterMode(false),
-		count(0)
-	{
-
-	}
-
+	xHiredis(xEventLoop *loop);
+	xHiredis(xEventLoop *loop,bool clusterMode);
 	void clusterAskConnCallBack(const xTcpconnectionPtr& conn,void *data);
 	void clusterMoveConnCallBack(const xTcpconnectionPtr& conn,void *data);
 	void clusterErrorConnCallBack(void *data);
 	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data);
-
-	void eraseTcpMap(int data);
+	void eraseTcpMap(int32_t data);
 	void eraseRedisMap(int32_t sockfd);
-
-	void insertRedisMap(int sockfd, xRedisAsyncContextPtr ac);
-	void insertTcpMap(int data,xTcpClientPtr tc);
+	void insertRedisMap(int32_t sockfd, xRedisAsyncContextPtr ac);
+	void insertTcpMap(int32_t data,xTcpClientPtr tc);
 
 	xThreadPool & getPool() { return pool; }
 	void setCount(){ count ++; }
-	int getCount(){ return count; }
+	int32_t getCount(){ return count; }
 	std::mutex &getMutex(){ return rtx; }
 	std::unordered_map<int32_t,xRedisAsyncContextPtr> & getRedisMap() { return redisMaps; }
+
 private:
 	std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;
 	std::unordered_map<int32_t,xRedisAsyncContextPtr> redisMaps;
@@ -251,8 +196,14 @@ private:
 
 	xThreadPool pool;
 	bool clusterMode;
-	int count;
+	int32_t count;
 	std::mutex rtx;
 };
 
+static int32_t redisFormatCommand(char **target, const char *format, ...);
+static int32_t redisFormatCommandArgv(char * *target, int32_t argc, const char * *argv, const size_t * argvlen);
+static int32_t redisvFormatCommand(char * *target, const char * format, va_list ap);
+
+xRedisContextPtr redisConnectWithTimeout(const char *ip, int32_t port, const struct timeval tv);
+xRedisContextPtr redisConnect(const char *ip, int32_t port);
 

@@ -63,15 +63,12 @@ xEventLoop::~xEventLoop()
 #endif
 }
 
-
-
 void xEventLoop::updateChannel(xChannel* channel)
 {
 	assert(channel->ownerLoop() == this);
 	assertInLoopThread();
 	epoller->updateChannel(channel);
 }
-
 
 void xEventLoop::removeChannel(xChannel* channel)
 {
@@ -118,7 +115,6 @@ void  xEventLoop::handleRead()
 	}
 }
 
-
 void xEventLoop::quit()
 {
 	running = false;
@@ -127,8 +123,6 @@ void xEventLoop::quit()
 		wakeup();
 	}
 }
-
-
 
 void xEventLoop::wakeup()
 {
@@ -148,7 +142,6 @@ void xEventLoop::wakeup()
 
 }
 
-
 void xEventLoop::runInLoop(Functor&& cb)
 {
 	if (isInLoopThread())
@@ -160,9 +153,7 @@ void xEventLoop::runInLoop(Functor&& cb)
 
 		queueInLoop(std::move(cb));
 	}
-
 }
-
 
 void xEventLoop::queueInLoop(Functor&& cb)
 {
@@ -195,7 +186,6 @@ void xEventLoop::doPendingFunctors()
 
 	callingPendingFunctors = false;
 }
-
 
 void xEventLoop::run()
 {

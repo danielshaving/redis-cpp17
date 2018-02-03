@@ -34,10 +34,10 @@ public:
 	xTcpClient *client;
 	std::string ip;
 	int32_t port;
-	int replLen;
-	int replState;
+	int32_t replLen;
+	int32_t replState;
 	xBuffer sendBuf;
-	int connectCount;
+	int32_t connectCount;
 	xSocket socket;
 	FILE * fp ;
 	int32_t salveLen;

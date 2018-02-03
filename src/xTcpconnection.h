@@ -89,7 +89,7 @@ public:
 #ifdef __CXX17__
 	std::any  context;
 #endif
-	std::string host;
-	int32_t port;
+	std::string ip;
+	int16_t  port;
 
 };

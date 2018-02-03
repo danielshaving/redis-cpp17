@@ -4,9 +4,9 @@
 #include "xChannel.h"
 #include "xEventLoop.h"
 
-const int kNew = -1;
-const int kAdded = 1;
-const int kDeleted = 2;
+const int32_t kNew = -1;
+const int32_t kAdded = 1;
+const int32_t kDeleted = 2;
 
 
 xEpoll::xEpoll(xEventLoop * loop)
@@ -29,10 +29,10 @@ xEpoll::~xEpoll()
 }
 
 
-void  xEpoll::epollWait(ChannelList* activeChannels,int msTime)
+void  xEpoll::epollWait(ChannelList* activeChannels,int32_t msTime)
 {
-	int numEvents = ::epoll_wait(epollFd, &*events.begin(), static_cast<int>(events.size()), msTime);
-	int savedErrno = errno;
+	int32_t numEvents = ::epoll_wait(epollFd, &*events.begin(), static_cast<int32_t>(events.size()), msTime);
+	int32_t savedErrno = errno;
 
 	if (numEvents > 0)
 	{
@@ -69,10 +69,10 @@ bool xEpoll::hasChannel(xChannel* channel)
 void xEpoll::updateChannel(xChannel* channel)
 {
 	loop->assertInLoopThread();
-	const int index = channel->getIndex();
+	const int32_t index = channel->getIndex();
 	if (index == kNew || index == kDeleted)
 	{
-		int fd = channel->getfd();
+		int32_t fd = channel->getfd();
 		if (index == kNew)
 		{
 #ifdef __DEBUG__
@@ -93,7 +93,7 @@ void xEpoll::updateChannel(xChannel* channel)
 	else
 	{
 #ifdef __DEBUG__
-		int fd = channel->getfd();
+		int32_t fd = channel->getfd();
 		(void)fd;
 		assert(channels.find(fd) != channels.end());
 		assert(channels[fd] == channel);
@@ -117,8 +117,8 @@ void xEpoll::updateChannel(xChannel* channel)
 void xEpoll::removeChannel(xChannel* channel)
 {
 	loop->assertInLoopThread();
-	int fd = channel->getfd();
-	int index = channel->getIndex();
+	int32_t fd = channel->getfd();
+	int32_t index = channel->getIndex();
 #ifdef __DEBUG__
 	assert(channels.find(fd) != channels.end());
 	assert(channels[fd] == channel);
@@ -137,26 +137,26 @@ void xEpoll::removeChannel(xChannel* channel)
 	channel->setIndex(kNew);
 }
 
-void xEpoll::update(int operation, xChannel* channel)
+void xEpoll::update(int32_t operation, xChannel* channel)
 {
 	struct epoll_event event;
 	bzero(&event, sizeof event);
 	event.events = channel->getEvents();
 	event.data.ptr = channel;
-	int fd = channel->getfd();
+	int32_t fd = channel->getfd();
 	if (::epoll_ctl(epollFd, operation, fd, &event) < 0)
 	{
 		LOG_ERROR<<"epoll_ctl "<<fd;
 	}
 }
 
-void xEpoll::fillActiveChannels(int numEvents, ChannelList* activeChannels) const
+void xEpoll::fillActiveChannels(int32_t numEvents, ChannelList* activeChannels) const
 {
-	for (int i = 0; i < numEvents; ++i)
+	for (int32_t i = 0; i < numEvents; ++i)
 	{
 		xChannel* channel = static_cast<xChannel*>(events[i].data.ptr);
 #ifdef __DEBUG__
-		int fd = channel->getfd();
+		int32_t fd = channel->getfd();
 		auto  it = channels.find(fd);
 		assert(it != channels.end());
 		assert(it->second == channel);
