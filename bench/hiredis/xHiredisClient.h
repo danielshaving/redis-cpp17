@@ -9,7 +9,7 @@ struct redisAsyncContext;
 class xHiredisClient :public std::enable_shared_from_this<xHiredisClient>,noncopyable
 {
 public:
-	typedef std::function<void (xHiredisClient *,int)> ConnectCallback;
+	typedef std::function<void (xHiredisClient *,int)>   ConnectCallback;
 	typedef std::function<void (xHiredisClient *,int)>   DisconnectCallback;
 	typedef std::function<void (xHiredisClient *,redisReply*)> CommandCallback;
 

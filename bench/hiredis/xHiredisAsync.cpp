@@ -96,8 +96,8 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, void *privdata)
 		for(auto it = redisMap.begin(); it != redisMap.end(); ++it)
 		{
 			count ++;
-			redisAsyncCommand(it->second,nullptr,nullptr,"set key%d %d",count,count);
-			redisAsyncCommand(it->second,getCallback,nullptr,"get key%d",count);
+			it->second->redisAsyncCommand(nullptr,nullptr,"set key%d %d",count,count);
+			it->second->redisAsyncCommand(getCallback,nullptr,"get key%d",count);
 		}
 
  		loop.run();
