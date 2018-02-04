@@ -160,7 +160,7 @@ public:
 	xRedisContextPtr c;
 	xTcpconnectionPtr conn;
 	RedisClusterCallbackList clus;
-	std::mutex hiMutex;
+	std::mutex mtx;
 
 	struct
 	{
@@ -175,6 +175,7 @@ class xHiredis : noncopyable
 public:
 	xHiredis(xEventLoop *loop);
 	xHiredis(xEventLoop *loop,bool clusterMode);
+
 	void clusterAskConnCallBack(const xTcpconnectionPtr& conn);
 	void clusterMoveConnCallBack(const xTcpconnectionPtr& conn);
 	void clusterErrorConnCallBack(const std::any &context);

@@ -21,10 +21,7 @@ xRedisContext::xRedisContext()
 
 xRedisContext::~xRedisContext()
 {
-	if(fd > 0)
-	{
-		::close(fd);
-	}
+
 }
 
 void xRedisContext::clear()
@@ -32,7 +29,7 @@ void xRedisContext::clear()
 	flags	&= ~REDIS_BLOCK;
 	err = 0;
 	errstr[0] = '\0';
-	fd = 0 ;
+	fd = 0;
 }
 
 
@@ -47,11 +44,6 @@ xRedisAsyncContext::xRedisAsyncContext():c(new (xRedisContext))
 
 xRedisAsyncContext::~xRedisAsyncContext()
 {
-	if(conn != nullptr)
-	{
-		conn->forceClose();
-	}
-
 	for(auto it = clus.begin(); it != clus.end(); ++it)
 	{
 		if((*it).data)
@@ -960,7 +952,7 @@ int32_t xRedisAsyncContext::__redisAsyncCommand(redisCallbackFn *fn, const std::
 	call.cb = std::move(cb);
 
 	{
-		std::unique_lock<std::mutex> lk(hiMutex);
+		std::unique_lock<std::mutex> lk(mtx);
 		clus.push_back(std::move(call));
 	}
 
@@ -1675,7 +1667,7 @@ void xHiredis::clusterMoveConnCallBack(const xTcpconnectionPtr& conn)
 		}
 
 		{
-			std::unique_lock<std::mutex> lk(ac->hiMutex);
+			std::unique_lock<std::mutex> lk(ac->mtx);
 			ac->clus.push_back(std::move(cb));
 		}
 		
@@ -1710,7 +1702,7 @@ void xHiredis::clusterAskConnCallBack(const xTcpconnectionPtr& conn)
 		}
 
 		{
-			std::unique_lock<std::mutex> lk(ac->hiMutex);
+			std::unique_lock<std::mutex> lk(ac->mtx);
 			ac->clus.push_back(std::move(cb));
 		}
 		
@@ -1765,9 +1757,6 @@ void xHiredis::insertTcpMap(int32_t data,xTcpClientPtr tc)
 	tcpClientMaps.insert(std::make_pair(data,tc));
 }
 
-	
-
-
 void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 {
 	xRedisAsyncContextPtr redis;
@@ -1805,7 +1794,7 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 			
 			redisClusterCallback call;
 			{
-				std::unique_lock<std::mutex> lk(redis->hiMutex);
+				std::unique_lock<std::mutex> lk(redis->mtx);
 				assert(!redis->clus.empty());
 				call = std::move(redis->clus.front());
 				redis->clus.pop_front();
@@ -1841,7 +1830,7 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 		 }
 
 		 {
-			 std::unique_lock<std::mutex> lk(redis->hiMutex);
+			 std::unique_lock<std::mutex> lk(redis->mtx);
 			 assert(!redis->clus.empty());
 			 cb = std::move(redis->clus.front());
 			 redis->clus.pop_front();
