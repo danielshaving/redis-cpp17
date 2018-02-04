@@ -1,5 +1,5 @@
 TARGET= ./redis-server
-CFLAGS := -Wall -w  -g3 -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=gnu++17 #-std=c++11   -D__CXX17__  #-DUSE_JEMALLOC
+CFLAGS := -Wall -w  -g3 -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=gnu++17  #-std=c++11   -D__CXX17__  #-DUSE_JEMALLOC
 cppfiles := $(shell ls *.cpp)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cpp,./%.o, $(cppfiles) $(cfiles))
@@ -18,10 +18,10 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	${CXX} -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread
+	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread
 
 ${CXXOBJS}:./%.o:../src/%.cpp
-	${CXX} -MMD -c -o $@ $< ${CFLAGS} 
+	g++-7 -MMD -c -o $@ $< ${CFLAGS} 
 
 ${COBJS}:./%.o:../src/%.c
 	${CC} -MMD -c -o $@ $< ${CFLAGS} 

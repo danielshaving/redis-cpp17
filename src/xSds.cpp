@@ -13,7 +13,6 @@ sds sdsnewlen(const void *init, size_t initlen)
         sh = (sdshdr*)zcalloc(sizeof(struct sdshdr)+initlen+1);
     }
 
-
     if (sh == nullptr) return nullptr;
     sh->len = initlen;
     sh->free = 0;

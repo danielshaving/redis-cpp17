@@ -8,9 +8,6 @@ void asyncOutput(const char* msg, int len)
 	g_asyncLog->append(msg, len);
 }
 
-
-
-
 char *ascii_logo =
 "                _._                                                  \n"
 "           _.-``__ ''-._                                             \n"

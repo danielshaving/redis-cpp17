@@ -2,7 +2,6 @@
 
 
 xRedisReader::xRedisReader()
-:fn(new redisFunc())
 {
 	xBuffer buffer;
 	pos = 0;
@@ -13,8 +12,7 @@ xRedisReader::xRedisReader()
 }
 
 xRedisContext::xRedisContext()
-:reader(new xRedisReader()),
- sender(new xBuffer())
+:reader(new xRedisReader())
 {
 	clear();
 }
@@ -57,9 +55,9 @@ xRedisAsyncContext::~xRedisAsyncContext()
  void  xRedisReader::redisReaderSetError(int32_t type, const char *str)
 {
 	size_t len;
-	if (reply != nullptr && fn && fn->freeObjectFuc)
+	if (reply != nullptr && fn.freeObjectFuc)
 	{
-		fn->freeObjectFuc(reply);
+		fn.freeObjectFuc(reply);
 		reply = nullptr;
 	}
 
@@ -502,16 +500,16 @@ int32_t xRedisReader::processLineItem()
 	{
 		if (cur->type == REDIS_REPLY_INTEGER)
 		{
-			if (fn && fn->createIntegerFuc)
-				obj = fn->createIntegerFuc(cur, readLongLong(p));
+			if (fn.createIntegerFuc)
+				obj = fn.createIntegerFuc(cur, readLongLong(p));
 			else
 				obj = (void *)REDIS_REPLY_INTEGER;
 		}
 		else
 		{
 			/* Type will be error or status. */
-			if (fn && fn->createStringFuc)
-				obj = fn->createStringFuc(cur, p, len);
+			if (fn.createStringFuc)
+				obj = fn.createStringFuc(cur, p, len);
 			else
 				obj = (void *) (size_t) (cur->type);
 		}
@@ -556,8 +554,8 @@ int32_t xRedisReader::processBulkItem()
 		if (len < 0)
 		{
 			/* The nil object can always be created. */
-			if (fn && fn->createNilFuc)
-				obj = fn->createNilFuc(cur);
+			if (fn.createNilFuc)
+				obj = fn.createNilFuc(cur);
 			else
 				obj = (void *)REDIS_REPLY_NIL;
 
@@ -570,8 +568,8 @@ int32_t xRedisReader::processBulkItem()
 
 			if (pos + bytelen <= buf->readableBytes())
 			{
-				if (fn && fn->createStringFuc)
-					obj = fn->createStringFuc(cur, s + 2, len);
+				if (fn.createStringFuc)
+					obj = fn.createStringFuc(cur, s + 2, len);
 				else
 					obj = (void *)REDIS_REPLY_STRING;
 
@@ -625,8 +623,8 @@ int32_t xRedisReader::processMultiBulkItem()
 
 		if (elements == -1)
 		{
-			if (fn && fn->createNilFuc)
-				obj = fn->createNilFuc(cur);
+			if (fn.createNilFuc)
+				obj = fn.createNilFuc(cur);
 			else
 				obj = (void *)REDIS_REPLY_NIL;
 
@@ -640,8 +638,8 @@ int32_t xRedisReader::processMultiBulkItem()
 		}
 		else
 		{
-			if (fn && fn->createArrayFuc)
-				obj = fn->createArrayFuc(cur, elements);
+			if (fn.createArrayFuc)
+				obj = fn.createArrayFuc(cur, elements);
 			else
 				obj = (void *)
 				REDIS_REPLY_ARRAY;
@@ -825,9 +823,9 @@ int32_t xRedisContext::redisBufferWrite( int32_t * done)
 		return REDIS_ERR;
 	}
 
-	if (sender->readableBytes() > 0)
+	if (sender.readableBytes() > 0)
 	{
-		nwritten =  ::write(fd, sender->peek(), sender->readableBytes());
+		nwritten =  ::write(fd, sender.peek(), sender.readableBytes());
 		if (nwritten  < 0 )
 		{
 			if ((errno == EAGAIN && ! (flags & REDIS_BLOCK)) || (errno == EINTR))
@@ -842,20 +840,20 @@ int32_t xRedisContext::redisBufferWrite( int32_t * done)
 		}
 		else if (nwritten > 0)
 		{
-			if (nwritten == (signed) sender->readableBytes())
+			if (nwritten == (signed) sender.readableBytes())
 			{
-				sender->retrieveAll();
+				sender.retrieveAll();
 			}
 			else
 			{
-				sender->retrieve(nwritten);
+				sender.retrieve(nwritten);
 			}
 		}
 	}
 
 	if (done != nullptr)
 	{
-		*done =(sender->readableBytes() == 0);
+		*done =(sender.readableBytes() == 0);
 	}
 
 	return REDIS_OK;
@@ -1266,7 +1264,7 @@ void * xRedisContext::redisBlockForReply()
 
 int32_t xRedisContext::__redisAppendCommand(const char * cmd, size_t len)
 {
-	sender->append(cmd,len);
+	sender.append(cmd,len);
 	return REDIS_OK;
 }
 
@@ -1800,7 +1798,6 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 				redis->clus.pop_front();
 			}	
 		
-
 			setCount();
 			xTcpClientPtr client(new xTcpClient(pool.getNextLoop(),(void*)&count));
 
@@ -1809,7 +1806,6 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 				tcpClientMaps.insert(std::make_pair(count,client));
 				clusterMaps.insert(std::make_pair(count,std::move(call)));
 			}
-
 
 			client->setConnectionErrorCallBack(std::bind(&xHiredis::clusterErrorConnCallBack,this,std::placeholders::_1));
 			client->setMessageCallback(std::bind(&xHiredis::redisReadCallBack,this,std::placeholders::_1,std::placeholders::_2));
@@ -1842,7 +1838,7 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 			 cb.cb.fn(redis,reply,cb.cb.privdata);
 		 }
 
-		 redis->c->reader->fn->freeObjectFuc(reply);
+		 redis->c->reader->fn.freeObjectFuc(reply);
 	 }
 
 }

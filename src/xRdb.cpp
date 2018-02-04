@@ -508,6 +508,15 @@ int xRdb::rdbSaveList(xRio *rdb)
 }
 
 
+int xRdb::rdbSaveSortSet(xRio *rdb)
+{
+	if (rdbSaveType(rdb,REDIS_RDB_SORTSET) == -1) return REDIS_ERR;
+
+	if (rdbSaveType(rdb,REDIS_RDB_SORTSET) == -1) return REDIS_ERR;
+
+	return REDIS_OK;
+}
+
 int xRdb::rdbSaveSet(xRio *rdb)
 {
 	if (rdbSaveType(rdb,REDIS_RDB_SET) == -1) return REDIS_ERR;
@@ -521,8 +530,7 @@ int xRdb::rdbSaveSet(xRio *rdb)
             mu.lock();
         }
 
-
-		for(auto iter = map.begin(); iter != map.end(); iter++)
+		for(auto iter = map.begin(); iter != map.end(); ++iter)
 		{
 			if (rdbSaveKey(rdb,iter->first,0) == -1)
 			{
@@ -1435,6 +1443,7 @@ int xRdb::rdbSaveRio(xRio *rdb,int *error)
 	rdbSaveSet(rdb);
 	rdbSaveHset(rdb);
 	rdbSaveList(rdb);
+	rdbSaveSortSet(rdb);
 
 	rdbSaveExpire(rdb);
 

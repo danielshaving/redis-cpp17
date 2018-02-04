@@ -4,7 +4,6 @@
 #include "xTcpClient.h"
 #include "xSocket.h"
 #include "xSession.h"
-#include "xUtil.h"
 
 struct xClusterNode
 {
@@ -34,6 +33,7 @@ public:
 	void connCallBack(const xTcpconnectionPtr& conn);
 	void reconnectTimer(const std::any &context);
     bool getSlotSet(const std::string &ipPort);
+    void cretateClusterNode(int32_t slot,const std::string &ip,int16_t port);
 
 	void structureProtocolSetCluster(std::string host, int16_t port, xBuffer &sendBuf, const xTcpconnectionPtr &conn);
 	int32_t getSlotOrReply(const xSeesionPtr &session,rObj *o );

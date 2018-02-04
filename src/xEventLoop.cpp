@@ -158,9 +158,8 @@ void xEventLoop::runInLoop(Functor&& cb)
 void xEventLoop::queueInLoop(Functor&& cb)
 {
 	{
-	 std::unique_lock<std::mutex> lk(mutex);
-	 pendingFunctors.push_back(std::move(cb));
-
+		 std::unique_lock<std::mutex> lk(mutex);
+		 pendingFunctors.push_back(std::move(cb));
 	}
 
 	if (!isInLoopThread() || callingPendingFunctors)
@@ -197,9 +196,10 @@ void xEventLoop::run()
 		eventHandling = true;
 		for (auto it = activeChannels.begin();it != activeChannels.end(); ++it)
 		{
-		  currentActiveChannel = *it;
-		  currentActiveChannel->handleEvent();
+			currentActiveChannel = *it;
+			currentActiveChannel->handleEvent();
 		}
+
 		currentActiveChannel = nullptr;
 		eventHandling = false;
 		doPendingFunctors();

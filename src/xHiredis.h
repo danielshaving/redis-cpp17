@@ -62,7 +62,6 @@ class xRedisReader:noncopyable
 {
 public:
 	xRedisReader();
-
 	int32_t redisReaderGetReply(void * *reply);
 	void redisReaderSetError(int32_t type, const char *str);
 	void redisReaderSetErrorProtocolByte(char byte);
@@ -85,7 +84,7 @@ public:
 	size_t pos;
 	xBuffer  *buf;
 	redisReadTask rstack[9];
-	std::shared_ptr<redisFunc> fn;
+	redisFunc fn;
 };
 
 
@@ -93,7 +92,6 @@ typedef struct redisCallback
 {
     redisCallbackFn *fn;
     std::any privdata;
-    //void *privdata;
 } redisCallback;
 
 typedef std::list<redisCallback> RedisCallbackList;
@@ -114,6 +112,7 @@ class xRedisContext: noncopyable
 public:
 	xRedisContext();
 	~xRedisContext();
+
 	void clear();
 	int32_t redisvAppendCommand(const char * format, va_list ap);
 	int32_t __redisAppendCommand(const char * cmd, size_t len);
@@ -140,7 +139,7 @@ public:
 	const char *addr;
 	int32_t port;
 	xRedisReaderPtr reader;
-	xBufferPtr sender;
+	xBuffer sender;
 };
 
 
@@ -149,6 +148,7 @@ class xRedisAsyncContext: noncopyable
 public:
 	xRedisAsyncContext();
 	~xRedisAsyncContext();
+
 	int32_t __redisAsyncCommand(redisCallbackFn *fn, const std::any& privdata, char *cmd, size_t len);
 	int32_t redisvAsyncCommand(redisCallbackFn *fn, const std::any& privdata, const char *format, va_list ap);
 	int32_t redisAsyncCommand(redisCallbackFn *fn, const std::any& privdata, const char *format, ...);
@@ -186,9 +186,9 @@ public:
 	void insertTcpMap(int32_t data,xTcpClientPtr tc);
 
 	xThreadPool & getPool() { return pool; }
-	void setCount(){ count ++; }
-	int32_t getCount(){ return count; }
-	std::mutex &getMutex(){ return rtx; }
+	void setCount() { count ++; }
+	int32_t getCount() { return count; }
+	std::mutex &getMutex() { return rtx; }
 	std::unordered_map<int32_t,xRedisAsyncContextPtr> & getRedisMap() { return redisMaps; }
 
 private:

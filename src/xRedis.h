@@ -16,7 +16,6 @@
 #include "xRdb.h"
 #include "xUtil.h"
 
-
 class xRedis : noncopyable
 {
 public:
@@ -161,6 +160,7 @@ public:
 
 	xEventLoop loop;
 	xTcpServer server;
+
 	std::mutex mtx;
 	std::mutex slaveMutex;
 	std::mutex expireMutex;
@@ -207,8 +207,9 @@ public:
 	
 	std::string	ip;
 	std::string	password;
-	std::string masterHost;
+	std::string 	masterHost;
 	std::string	ipPort;
+
 	int16_t port;
 	int16_t threadCount;
 	int32_t masterPort;

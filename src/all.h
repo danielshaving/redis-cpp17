@@ -182,20 +182,20 @@
 #define REDIS_DEFAULT_STOP_WRITES_ON_BGSAVE_ERROR 1
 #define REDIS_DEFAULT_RDB_COMPRESSION 1
 #define REDIS_DEFAULT_RDB_CHECKSUM 1
-#define REDIS_DEFAULT_RDB_FIlengthAME "dump.rdb"
+#define REDIS_DEFAULT_RDB_FILENGTHAME "dump.rdb"
 #define REDIS_DEFAULT_SLAVE_SERVE_STALE_DATA 1
 #define REDIS_DEFAULT_SLAVE_READ_ONLY 1
 #define REDIS_DEFAULT_REPL_DISABLE_TCP_NODELAY 0
 #define REDIS_DEFAULT_MAXMEMORY 0
 #define REDIS_DEFAULT_MAXMEMORY_SAMPLES 5
-#define REDIS_DEFAULT_AOF_FIlengthAME "appendonly.aof"
+#define REDIS_DEFAULT_AOF_FILENGTHAME "appendonly.aof"
 #define REDIS_DEFAULT_AOF_NO_FSYNC_ON_REWRITE 0
 #define REDIS_DEFAULT_ACTIVE_REHASHING 1
 #define REDIS_DEFAULT_AOF_REWRITE_INCREMENTAL_FSYNC 1
 #define REDIS_DEFAULT_MIN_SLAVES_TO_WRITE 0
 #define REDIS_DEFAULT_MIN_SLAVES_MAX_LAG 10
-#define REDIS_IP_STR_length INET6_ADDRSTRlength
-#define REDIS_PEER_ID_length (REDIS_IP_STR_length+32) /* Must be enough for ip:port */
+#define REDIS_IP_STR_LENGTH INET6_ADDRSTRLENGTH
+#define REDIS_PEER_ID_LENGTH (REDIS_IP_STR_LENGTH+32) /* Must be enough for ip:port */
 #define REDIS_BINDADDR_MAX 16
 #define REDIS_MIN_RESERVED_FDS 32
 #define REDIS_ENCODING_RAW 0     /* Raw representation */
@@ -271,6 +271,7 @@
 #define REDIS_RDB_SET 102
 #define REDIS_RDB_SORT_SET 103
 #define REDIS_RDB_LIST 104
+#define REDIS_RDB_SORTSET 105
 
 #define REDIS_EXPIRE_TIME 109
 
@@ -278,9 +279,9 @@
 #define RDB_OPCODE_EOF 110
 
 /* Protocol and I/O related defines */
-#define PROTO_MAX_QUERYBUF_length  (1024*1024*1024) /* 1GB max query buffer. */
-#define PROTO_IOBUF_length         (1024*16)  /* Generic I/O buffer size */
-#define PROTO_REPLY_CHUNK_BYTES (16*1024) /* 16k output buffer */
+#define PROTO_MAX_QUERYBUF_LENGTH  (1024*1024*1024) /* 1GB max query buffer. */
+#define PROTO_IOBUF_LENGTH         (1024*64)  /* Generic I/O buffer size */
+#define PROTO_REPLY_CHUNK_BYTES (64*1024) /* 64k output buffer */
 #define PROTO_INLINE_MAX_SIZE   (1024*64 * 64) /* Max size of inline reads */
 #define PROTO_MBULK_BIG_ARG     (1024*32)
 #define LONG_STR_SIZE      21          /* Bytes needed for long -> str + '\0' */
@@ -358,6 +359,7 @@
 #define CLUSTER_SYNC 0
 #define CLUSTER_SYNCING  1
 #define CLUSTER_SYNCED 2
+
 #define sdsEncodedObject(objptr) (objptr->encoding == REDIS_ENCODING_RAW || objptr->encoding == REDIS_ENCODING_EMBSTR)
 
 class noncopyable

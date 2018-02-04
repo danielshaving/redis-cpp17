@@ -2,6 +2,7 @@
 #include "xRedis.h"
 #include "xLog.h"
 #include "xCrc16.h"
+#include "xUtil.h"
 
 xCluster::xCluster(xRedis * redis)
 :redis(redis),
@@ -15,6 +16,23 @@ replyCount(0)
 
 xCluster::~xCluster()
 {
+
+}
+
+
+void  xCluster::cretateClusterNode(int32_t slot,const std::string &ip,int16_t port)
+{
+	char name[CLUSTER_NAMELEN] = { 0 };
+	getRandomHexChars(name,CLUSTER_NAMELEN);
+
+	xClusterNode node;
+	node.name = name;
+	node.configEpoch = -1;
+	node.flag =-1;
+	node.createTime = time(0);
+	node.ip = ip;
+	node.port = port;
+	clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
 
 }
 

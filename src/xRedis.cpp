@@ -994,14 +994,14 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 	else if (!strcasecmp(obj[0]->ptr, "addsync"))
 	{
 		int32_t slot;
-		long long  p;
+		long long  port;
 		if ((slot = clus.getSlotOrReply(session, obj[1])) == 0)
 		{
 			LOG_INFO << "getSlotOrReply error ";
 			return false;
 		}
 
-		if (object.getLongLongFromObject(obj[3], &p) != REDIS_OK)
+		if (object.getLongLongFromObject(obj[3], &port) != REDIS_OK)
 		{
 			object.addReplyError(session->sendBuf, "Invalid or out of range port");
 			return  REDIS_ERR;
@@ -1013,10 +1013,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 		{
 			clusterSlotEnabled = true;
 			LOG_INFO << "addsync success:" << slot;
-			xClusterNode node;
-			node.ip = obj[2]->ptr;
-			node.port = p;
-			clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
+			clus.cretateClusterNode(slot,obj[2]->ptr,port);
 		}
 		else
 		{
@@ -1094,17 +1091,13 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 			auto it = clus.clusterSlotNodes.find(slot);
 			if (it == clus.clusterSlotNodes.end())
 			{
-				xClusterNode  node;
-				node.ip = ip;
-				node.port = this->port;
 				clus.deques.push_back(object.cluster);
 				clus.deques.push_back(object.addsync);
 				clus.deques.push_back(object.createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr)));
 				clus.deques.push_back(object.rIp);
 				clus.deques.push_back(object.rPort);
-
 				clus.syncClusterSlot();
-				clus.clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
+				clus.cretateClusterNode(slot,this->ip,this->port);
 				LOG_INFO << "addslots success " << slot;
 			}
 			else

@@ -8,20 +8,20 @@ xSocket::xSocket(xEventLoop *loop,const std::string &ip, int16_t port)
  ip(ip),
  port(port)
 {
-	   listenSocketFd = -1;
-	   onlineNumber = 0;
-	   createTcpListenSocket();
+	listenSocketFd = -1;
+	onlineNumber = 0;
+	createTcpListenSocket();
 }
 
 xSocket::xSocket()
 {
-    listenSocketFd = -1;
-    onlineNumber = 0;
+	listenSocketFd = -1;
+	onlineNumber = 0;
 }
 
 xSocket::~xSocket()
 {
-	 ::close(listenSocketFd);
+	::close(listenSocketFd);
 }
 
 
@@ -48,7 +48,6 @@ bool xSocket::getpeerName(int32_t fd,std::string *ip, int16_t &port)
 	}
 
 }
-
 
 int  xSocket::createSocket()
 {

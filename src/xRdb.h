@@ -83,6 +83,7 @@ public:
 	int rdbSaveHset(xRio *rdb);
 	int rdbSaveList(xRio *rdb);
 	int rdbSaveSet(xRio *rdb);
+	int rdbSaveSortSet(xRio *rdb);
 	int rdbSaveExpire(xRio * rdb);
 	int rdbSaveObjectType(xRio *rdb, rObj *o);
 
