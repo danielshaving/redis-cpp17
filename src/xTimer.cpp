@@ -1,6 +1,11 @@
 #include "xTimer.h"
 
-xTimer::xTimer(xTimerCallback && cb, xTimestamp && expiration,bool repeat,double interval,const  std::any &data)
+xTimer::xTimer()
+{
+
+}
+
+xTimer::xTimer(xTimerCallback && cb, xTimestamp && expiration,bool repeat,double interval,const  std::any &context)
 :index(-1),
 repeat(repeat),
 interval(interval),

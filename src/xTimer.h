@@ -57,13 +57,15 @@ inline double timeDifference(xTimestamp high, xTimestamp low)
 class xTimer
 {
 public:
-	xTimer() {}
+	xTimer();
 	xTimer(xTimerCallback && cb, xTimestamp && expiration,bool	repeat,double interval,const std::any &context);
+	~xTimer();
+
 	xTimestamp getExpiration() const  { return expiration;}
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
 	void restart(xTimestamp now);
-	~xTimer();
 	void run();
+
 public:	
 	int32_t index;
 	bool	repeat;
