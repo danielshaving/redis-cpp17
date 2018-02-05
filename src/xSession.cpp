@@ -133,9 +133,8 @@ int32_t xSession::processCommand()
 			}
 		}
 
-		if(robjs.size() <=0)
+		if(robjs.empty())
 		{
-            LOG_WARN<<"robj queues size nullptr";
             goto jump;
 		}
 

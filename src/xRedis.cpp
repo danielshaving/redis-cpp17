@@ -225,7 +225,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		std::unique_lock <std::mutex> lck(mtx);;
 		sessions[conn->getSockfd()] = session;
-		//LOG_INFO<<"Client connect success";
+		LOG_INFO<<"Client connect success";
 	}
 	else
 	{
@@ -242,7 +242,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn)
 			sessions.erase(conn->getSockfd());
 		}
 
-		//LOG_INFO<<"Client disconnect";
+		LOG_INFO<<"Client disconnect";
 	}
 }
 
@@ -712,11 +712,11 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 		clus.connSetCluster(obj[1]->ptr, port);
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr, "info") && obj.size() == 1)
+	else if (!strcasecmp(obj[0]->ptr, "nodes") && obj.size() == 1)
 	{
 		sds ci = sdsempty(), ni = sdsempty();
 
-		ci = sdscatprintf(sdsempty(), "%s %s:%d ------connetc slot:",
+		ci = sdscatprintf(sdsempty(), "%s %s:%d ------ slot:",
 			(ip + "::" + std::to_string(port)).c_str(),
 			ip.c_str(),
 			port);
@@ -736,7 +736,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 
 			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); ++it)
 			{
-				ni = sdscatprintf(sdsempty(), "%s %s:%d ------connetc slot:",
+				ni = sdscatprintf(sdsempty(), "%s %s:%d ------ slot:",
 					(it->second->ip +  "::" + std::to_string(it->second->port)).c_str(),
 					it->second->ip.c_str(),
 					it->second->port);
@@ -1096,8 +1096,8 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 				clus.deques.push_back(object.createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr)));
 				clus.deques.push_back(object.rIp);
 				clus.deques.push_back(object.rPort);
-				clus.syncClusterSlot();
 				clus.cretateClusterNode(slot,this->ip,this->port);
+				clus.syncClusterSlot();
 				LOG_INFO << "addslots success " << slot;
 			}
 			else

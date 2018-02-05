@@ -84,13 +84,10 @@ public:
 	bool zrevrangeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool zrangeGenericCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session,int32_t reverse);
 
-
-	
 	int32_t rdbSaveBackground(const xSeesionPtr &session, bool enabled);
 	bool bgsave(const xSeesionPtr &session, bool enabled = false);
 	bool save(const xSeesionPtr &session);
 	int32_t removeCommand(rObj * obj,int32_t &count);
-
 	bool clearClusterMigradeCommand(void * data);
 	void forkClear();
 	void clearCommand();
@@ -98,7 +95,6 @@ public:
 	void clearRepliState(int32_t sockfd);
 	void clearClusterState(int32_t sockfd);
 	void clearDeques(std::deque<rObj*> & robj);
-
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 
