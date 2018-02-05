@@ -19,7 +19,6 @@ public:
 	std::vector<xEventLoop*> getAllLoops();
 	bool getStarted() const { return started; }
 
-
 private:
 	xEventLoop * baseLoop;
 	bool  		 started;

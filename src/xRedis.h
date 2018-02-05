@@ -207,7 +207,7 @@ public:
 	
 	std::string	ip;
 	std::string	password;
-	std::string 	masterHost;
+	std::string masterHost;
 	std::string	ipPort;
 
 	int16_t port;

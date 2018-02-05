@@ -1720,25 +1720,28 @@ void xHiredis::clusterErrorConnCallBack(const std::any &context)
 	std::unique_lock<std::mutex> lk(rtx);
 	tcpClientMaps.erase(std::any_cast<int32_t>(context));
 	auto it = clusterMaps.find(std::any_cast<int32_t>(context));
-	if(it != clusterMaps.end())
-	{
-		zfree(it->second.data);
-		clusterMaps.erase(it);
-	}
+	assert(it != clusterMaps.end());
+	zfree(it->second.data);
+	clusterMaps.erase(it);
+
 
 }
 
 
-void xHiredis::eraseTcpMap(int32_t data)
+void xHiredis::eraseTcpMap(int32_t context)
 {
 	std::unique_lock<std::mutex> lk(rtx);
-	tcpClientMaps.erase(data);
+	auto it =  tcpClientMaps.find(context);
+	assert(it != tcpClientMaps.end());
+	tcpClientMaps.erase(it);
 }
 
 void xHiredis::eraseRedisMap(int32_t sockfd)
 {
 	std::unique_lock<std::mutex> lk(rtx);
-	redisMaps.erase(sockfd);
+	auto it = redisMaps.find(sockfd);
+	assert(it != redisMaps.end());
+	redisMaps.erase(it);
 }
 
 

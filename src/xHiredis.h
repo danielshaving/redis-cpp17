@@ -180,7 +180,7 @@ public:
 	void clusterMoveConnCallBack(const xTcpconnectionPtr& conn);
 	void clusterErrorConnCallBack(const std::any &context);
 	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
-	void eraseTcpMap(int32_t data);
+	void eraseTcpMap(int32_t context);
 	void eraseRedisMap(int32_t sockfd);
 	void insertRedisMap(int32_t sockfd, xRedisAsyncContextPtr ac);
 	void insertTcpMap(int32_t data,xTcpClientPtr tc);
@@ -189,7 +189,8 @@ public:
 	void setCount() { count ++; }
 	int32_t getCount() { return count; }
 	std::mutex &getMutex() { return rtx; }
-	std::unordered_map<int32_t,xRedisAsyncContextPtr> & getRedisMap() { return redisMaps; }
+	std::unordered_map<int32_t,xRedisAsyncContextPtr> &getRedisMap() { return redisMaps; }
+	std::unordered_map<int32_t,xTcpClientPtr> &getClientMap() { return tcpClientMaps; }
 
 private:
 	std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;
