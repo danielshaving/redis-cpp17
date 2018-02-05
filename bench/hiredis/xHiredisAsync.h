@@ -1,7 +1,9 @@
 #pragma once
 #include "xHiredis.h"
 
-int sessionCount = 0;
+std::atomic<int32_t> sessionCount = 0;
+std::atomic<int32_t> gconnetCount = 0;
+std::atomic<int32_t> sconnetCount = 0;
 static int tests = 0, fails = 0;
 #define test(_s) { printf("#%02d ", ++tests); printf(_s); }
 #define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
@@ -13,10 +15,12 @@ public:
 	void redisErrorConnCallBack(const std::any &context);
 	void redisConnCallBack(const xTcpconnectionPtr& conn);
 	xHiredis *getHiredis() { return &hiredis; }
+	void serverCron(const std::any & context);
 
 private:
 	xHiredis  hiredis;
 	int connectCount;
 	xEventLoop *loop;
 	std::condition_variable condition;
+	bool cron;
 };

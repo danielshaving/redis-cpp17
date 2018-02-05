@@ -1,10 +1,10 @@
 #include "xHiredisAsync.h"
 
-
 xHiredisAsync::xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int16_t port)
 :hiredis(loop),
 connectCount(0),
-loop(loop)
+loop(loop),
+cron(true)
 {
 	hiredis.getPool().setThreadNum(threadCount);
 	hiredis.getPool().start();
@@ -25,8 +25,6 @@ loop(loop)
 	{
 		condition.wait(lk);
 	}
-
-	connectCount = 0;
 }
 
 
@@ -50,13 +48,16 @@ void xHiredisAsync::redisConnCallBack(const xTcpconnectionPtr& conn)
 	}
 	else
 	{
+		if(--connectCount == 0)
+		{
+			test_cond(true);
+		}
 		hiredis.eraseTcpMap(*(std::any_cast<int32_t>(conn->getContext())));
 		hiredis.eraseRedisMap(conn->getSockfd());
 	}
 }
 
 
-std::atomic<int32_t> sconnetCount = 0;
 static void setCallback(const xRedisAsyncContextPtr &c, void *r, const std::any &privdata)
 {
 	redisReply *reply = (redisReply*) r;
@@ -71,8 +72,6 @@ static void setCallback(const xRedisAsyncContextPtr &c, void *r, const std::any 
 	assert(threadId == std::this_thread::get_id());
 	sconnetCount++;
 }
-
-std::atomic<int32_t> gconnetCount = 0;
 
 static void getCallback(const xRedisAsyncContextPtr &c, void *r, const std::any &privdata)
 {
@@ -92,6 +91,21 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, const std::any 
 		test_cond(true);
 	}
 }
+
+void xHiredisAsync::serverCron(const std::any & context)
+{
+	if(cron && gconnetCount == sessionCount  && sconnetCount == sessionCount)
+	{
+		test("Redis async close safe test");
+		auto  &clientMap = hiredis.getClientMap();
+		for(auto it = clientMap.begin(); it != clientMap.end(); ++it)
+		{
+			it->second->disconnect();
+		}
+		cron = false;
+	}
+}
+
 
 
  int main(int argc, char* argv[])
@@ -121,6 +135,7 @@ static void getCallback(const xRedisAsyncContextPtr &c, void *r, const std::any 
 			it->second->redisAsyncCommand(getCallback,it->second->conn->getLoop()->getThreadId(),"get key%d",count);
 		}
 
+		loop.runAfter(1.0,nullptr,true,std::bind(&xHiredisAsync::serverCron,&redisAsync,std::placeholders::_1));
  		loop.run();
  	}
  	return 0;
