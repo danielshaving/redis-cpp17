@@ -154,7 +154,6 @@ public:
 	std::array<ListMapLock, kShards>	listMapShards;
 	std::array<SetLock, kShards>	setShards;
 	std::array<SortSet, kShards>	sortShards;
-	std::array<MapLock,kShards>		mapShareds;
 
 	xEventLoop loop;
 	xTcpServer server;
@@ -205,7 +204,7 @@ public:
 	
 	std::string	ip;
 	std::string	password;
-	std::string   masterHost;
+	std::string     masterHost;
 	std::string	ipPort;
 
 	std::string master;
