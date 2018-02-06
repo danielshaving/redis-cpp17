@@ -1,6 +1,12 @@
 #include "xHiredis.h"
 
 
+
+xRedisReader::xRedisReader(xBuffer & recvBuff)
+{
+	buf = &recvBuff;
+}
+
 xRedisReader::xRedisReader()
 {
 	xBuffer buffer;
@@ -17,6 +23,13 @@ xRedisContext::xRedisContext()
 	clear();
 }
 
+
+xRedisContext::xRedisContext(xBuffer & recvBuff,int32_t sockfd)
+:reader(new xRedisReader(recvBuff)),
+ fd(sockfd)
+{
+	clear();
+}
 xRedisContext::~xRedisContext()
 {
 
@@ -31,18 +44,32 @@ void xRedisContext::clear()
 }
 
 
-xRedisAsyncContext::xRedisAsyncContext():c(new (xRedisContext))
+
+void xRedisContext::setBlock()
 {
-	conn = nullptr;
+	flags |= REDIS_BLOCK;
+}
+
+
+void xRedisContext::setConnected()
+{
+	flags &= ~REDIS_CONNECTED;
+}
+
+
+xRedisAsyncContext::xRedisAsyncContext(xBuffer & recvBuff,xTcpconnectionPtr conn,int32_t sockfd)
+:c(new xRedisContext(recvBuff,sockfd)),
+ conn(conn)
+{
 	err = 0;
 	errstr = nullptr;
 	data = nullptr;
-	c->flags &= ~REDIS_CONNECTED;
+	c->setConnected();
 }
 
 xRedisAsyncContext::~xRedisAsyncContext()
 {
-	for(auto it = clus.begin(); it != clus.end(); ++it)
+	for(auto it = asynCb.begin(); it != asynCb.end(); ++it)
 	{
 		if((*it).data)
 		{
@@ -944,14 +971,14 @@ int32_t xRedisAsyncContext::__redisAsyncCommand(redisCallbackFn *fn, const std::
 	redisCallback cb;
 	cb.fn = fn;
 	cb.privdata = privdata;
-	redisClusterCallback call;
+	redisAsyncCallback call;
 	call.data = cmd;
 	call.len = len;
 	call.cb = std::move(cb);
 
 	{
 		std::unique_lock<std::mutex> lk(mtx);
-		clus.push_back(std::move(call));
+		asynCb.push_back(std::move(call));
 	}
 
 	conn->sendPipe(cmd,len);
@@ -1605,27 +1632,28 @@ int32_t xRedisContext::redisContextConnectTcp(const char *addr, int16_t port, co
 
 	socket.setSocketBlock(sockfd);
 	socket.setTcpNoDelay(sockfd,true);
-	this->addr = addr;
+
+	this->ip = addr;
 	this->port= port;
+
 	return REDIS_OK;
 }
 
-xRedisContextPtr redisConnect(const char *ip, int32_t port)
+xRedisContextPtr redisConnect(const char *ip, int16_t port)
 {
 	xRedisContextPtr c (new xRedisContext);
-	c->flags |= REDIS_BLOCK;
+	c->setBlock();
 	c->redisContextConnectTcp(ip,port,nullptr);
 	return c;
 }
 
-xRedisContextPtr  redisConnectWithTimeout(const char *ip, int32_t port, const struct timeval tv)
+xRedisContextPtr  redisConnectWithTimeout(const char *ip, int16_t port, const struct timeval tv)
 {
 	xRedisContextPtr c (new xRedisContext);
-	c->flags |= REDIS_BLOCK;
+	c->setBlock();
 	c->redisContextConnectTcp(ip,port,&tv);
 	return c;	
 }
-
 
 
 xHiredis::xHiredis(xEventLoop *loop):
@@ -1651,24 +1679,21 @@ void xHiredis::clusterMoveConnCallBack(const xTcpconnectionPtr& conn)
 	int32_t *context = std::any_cast<int32_t>(conn->getContext());
 	if(conn->connected())
 	{
-		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
-		ac->c->reader->buf = &(conn->recvBuff);
-		ac->conn = conn;
-		ac->c->fd = conn->getSockfd();
+		xRedisAsyncContextPtr ac (new xRedisAsyncContext(conn->recvBuff,conn,conn->getSockfd()));
 		insertRedisMap(conn->getSockfd(),ac);
-		redisClusterCallback cb;
+		redisAsyncCallback cb;
+
 		{
 			std::unique_lock<std::mutex> lk(rtx);
 			auto it = clusterMaps.find(*context);
 			assert(it !=clusterMaps.end());
 			cb = std::move(it->second);
 			clusterMaps.erase(*context);
-			
 		}
 
 		{
 			std::unique_lock<std::mutex> lk(ac->mtx);
-			ac->clus.push_back(std::move(cb));
+			ac->asynCb.push_back(std::move(cb));
 		}
 		
 		conn->sendPipe(cb.data,cb.len);
@@ -1686,14 +1711,11 @@ void xHiredis::clusterAskConnCallBack(const xTcpconnectionPtr& conn)
 	int32_t *context = std::any_cast<int32_t>(conn->getContext());
 	if(conn->connected())
 	{
-		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
-		ac->c->reader->buf = &(conn->recvBuff);
-		ac->conn = conn;
-		ac->c->fd = conn->getSockfd();
+		xRedisAsyncContextPtr ac (new xRedisAsyncContext(conn->recvBuff,conn,conn->getSockfd()));
 		insertRedisMap(conn->getSockfd(),ac);
 		conn->sendPipe("*1\r\n$6\r\nASKING\r\n");
 
-		redisClusterCallback cb;
+		redisAsyncCallback cb;
 		{
 			std::unique_lock<std::mutex> lk(rtx);
 			auto it = clusterMaps.find(*context);
@@ -1704,7 +1726,7 @@ void xHiredis::clusterAskConnCallBack(const xTcpconnectionPtr& conn)
 
 		{
 			std::unique_lock<std::mutex> lk(ac->mtx);
-			ac->clus.push_back(std::move(cb));
+			ac->asynCb.push_back(std::move(cb));
 		}
 		
 		conn->sendPipe(cb.data,cb.len);
@@ -1776,7 +1798,7 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 		redis = it->second;
 	}
 
-	 redisClusterCallback cb;
+	 redisAsyncCallback cb;
 	 redisReply  *reply = nullptr;
 	 int32_t status;
 	 while((status = redis->c->redisGetReply((void**)&reply)) == REDIS_OK)
@@ -1801,12 +1823,12 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 			int32_t port = atoi(s+1);
 			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<ip<<" "<<port;
 			
-			redisClusterCallback call;
+			redisAsyncCallback call;
 			{
 				std::unique_lock<std::mutex> lk(redis->mtx);
-				assert(!redis->clus.empty());
-				call = std::move(redis->clus.front());
-				redis->clus.pop_front();
+				assert(!redis->asynCb.empty());
+				call = std::move(redis->asynCb.front());
+				redis->asynCb.pop_front();
 			}	
 		
 			setCount();
@@ -1830,16 +1852,16 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 				client->setConnectionCallback(std::bind(&xHiredis::clusterAskConnCallBack,this,std::placeholders::_1));
 			}
 
-			redis->c->reader->fn.freeObjectFuc(reply);
+			freeReply(reply);
 			client->connect(ip.c_str(),port);
 		 }
 		 else
 		 {
 				 {
 					 std::unique_lock<std::mutex> lk(redis->mtx);
-					 assert(!redis->clus.empty());
-					 cb = std::move(redis->clus.front());
-					 redis->clus.pop_front();
+					 assert(!redis->asynCb.empty());
+					 cb = std::move(redis->asynCb.front());
+					 redis->asynCb.pop_front();
 					 zfree(cb.data);
 				 }
 
@@ -1847,7 +1869,7 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 				 {
 					 cb.cb.fn(redis,reply,cb.cb.privdata);
 				 }
-				 redis->c->reader->fn.freeObjectFuc(reply);
+				freeReply(reply);
 		 }
 
 	 }

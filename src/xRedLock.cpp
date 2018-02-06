@@ -190,7 +190,7 @@ bool xRedLock::lock(const char *resource, const int32_t ttl, xLock &lock)
 			else if(r ==-1)
 			{
 				LOG_INFO<<"reconnect redis..................";
-				auto c = redisConnectWithTimeout(it->second->addr, it->second->port, timeout);
+				auto c = redisConnectWithTimeout(it->second->ip, it->second->port, timeout);
 				if (c == nullptr || c->err)
 				{
 					if (c)
@@ -247,7 +247,7 @@ bool xRedLock::lock(const char *resource, const int32_t ttl, xLock &lock)
 }
 
 
-void  xRedLock::syncAddServerUrl(const char *ip,const int32_t port)
+void  xRedLock::syncAddServerUrl(const char *ip,const int16_t port)
 {
 	xRedisContextPtr c;
 	redisReply *reply;
@@ -270,7 +270,7 @@ void  xRedLock::syncAddServerUrl(const char *ip,const int32_t port)
 }
 
 
-void xRedLock::asyncAddServerUrl(const char *ip,const int32_t port)
+void xRedLock::asyncAddServerUrl(const char *ip,const int16_t port)
 {
 
 }

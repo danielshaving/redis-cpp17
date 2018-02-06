@@ -109,12 +109,13 @@ public:
 	
 	typedef std::unordered_map<rObj*,double,Hash,Equal> SortedDouble;
 	typedef std::multimap<double,rObj*> SortedMap;
-	typedef struct sort_set { SortedDouble sortDouble; SortedMap sortMap;};
+	typedef struct sort_set { SortedDouble sortDouble; SortedMap sortMap; };
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
 	typedef std::unordered_map<rObj*,std::deque<rObj*>, Hash, Equal> ListMap;
 	typedef std::unordered_map<rObj*,sort_set,Hash,Equal> SortedSet;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
+
 
 	struct SetMapLock
 	{
@@ -149,10 +150,11 @@ public:
 	const static int32_t kShards = 4096;
 
 	std::array<SetMapLock, kShards>	setMapShards;
-	std::array<HsetMapLock, kShards> hsetMapShards;
+	std::array<HsetMapLock, kShards>hsetMapShards;
 	std::array<ListMapLock, kShards>	listMapShards;
 	std::array<SetLock, kShards>	setShards;
 	std::array<SortSet, kShards>	sortShards;
+	std::array<MapLock,kShards>		mapShareds;
 
 	xEventLoop loop;
 	xTcpServer server;
@@ -185,11 +187,11 @@ public:
 	xBuffer	 clusterMigratCached;
 	xBuffer	 clusterImportCached;
 	
-	xObjects	object;
-	xReplication	repli;
-	xSentinel	senti;
+	xObjects		object;
+	xReplication		repli;
+	xSentinel		senti;
 	xCluster	clus;
-	xRdb		rdb;
+	xRdb	rdb;
 	xSocket	socket;
 
 	std::unique_ptr<std::thread > repliThreads;
@@ -203,8 +205,11 @@ public:
 	
 	std::string	ip;
 	std::string	password;
-	std::string masterHost;
+	std::string   masterHost;
 	std::string	ipPort;
+
+	std::string master;
+	std::string slave;
 
 	int16_t port;
 	int16_t threadCount;

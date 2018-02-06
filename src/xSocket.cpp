@@ -54,7 +54,7 @@ int  xSocket::createSocket()
 	return socket(AF_INET, SOCK_STREAM, 0);
 }
 
-int xSocket::connect(int sockfd,std::string ip, int16_t port)
+int  xSocket::connect(int sockfd,const std::string &ip, int16_t port)
 {
 	struct sockaddr_in sin;
 	memset(&sin, 0, sizeof(sin));
@@ -146,8 +146,8 @@ bool xSocket::createTcpListenSocket()
 
     if (!setSocketNonBlock(listenSocketFd))
     {
-    		LOG_WARN<<"Set listen socket  to non-block failed!";
-        return false;
+		LOG_WARN<<"Set listen socket  to non-block failed!";
+		return false;
     }
 
     int optval = 1;

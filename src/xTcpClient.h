@@ -22,7 +22,6 @@ public:
 	void setWriteCompleteCallback(WriteCompleteCallback&& cb) { writeCompleteCallback = std::move(cb); }
 
 	xEventLoop * getLoop(){ return loop; }
-
 	std::any* getContext() { return &context; }
 	const std::any& getContext() const { return context; }
 	void setContext(const std::any& context) { this->context = context; }

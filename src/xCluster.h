@@ -9,9 +9,9 @@ struct xClusterNode
 {
 	std::string ip;
 	std::string name;
+	std::string flag;
 	int16_t port;
 	int64_t createTime;
-	int32_t flag;
 	uint64_t configEpoch;
 	struct xClusterNode *slaves;
 	struct xClusterNode *master;
@@ -45,6 +45,8 @@ public:
 	void eraseClusterNode(const std::string &ip,int16_t port);
 	void eraseImportSlot(int32_t slot);
 	void getKeyInSlot(int32_t slot, rObj **keys, int32_t count);
+
+	sds showClusterNodes();
 
 public:
 	xEventLoop *loop;

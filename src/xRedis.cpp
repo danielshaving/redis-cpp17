@@ -629,7 +629,6 @@ bool xRedis::migrateCommand(const std::deque<rObj*> & obj, const xSeesionPtr &se
 	}
 
 	clus.replicationToNode(session,ip,port);
-
 	object.addReply(session->sendBuf, object.ok);
 
 	return false;
@@ -655,13 +654,11 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 
 		if (object.getLongLongFromObject(obj[2], &port) != REDIS_OK)
 		{
-			object.addReplyErrorFormat(session->sendBuf, "Invalid TCP port specified: %s",
-				(char*)obj[2]->ptr);
+			object.addReplyErrorFormat(session->sendBuf, "Invalid TCP port specified: %s", (char*)obj[2]->ptr);
 			return false;
 		}
 
-		if (ip.c_str() && !memcmp(ip.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr))
-			&& this->port == port)
+		if (ip.c_str() && !memcmp(ip.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)) && this->port == port)
 		{
 			LOG_WARN << "cluster  meet  connect self error .";
 			object.addReplyErrorFormat(session->sendBuf, "Don't connect self ");
@@ -700,7 +697,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 
 		{
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); it++)
+			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); ++it)
 			{
 				if (port == it->second->port && !memcmp(it->second->ip.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)))
 				{
@@ -714,53 +711,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 	}
 	else if (!strcasecmp(obj[0]->ptr, "nodes") && obj.size() == 1)
 	{
-		sds ci = sdsempty(), ni = sdsempty();
-
-		ci = sdscatprintf(sdsempty(), "%s %s:%d ------ slot:",
-			(ip + "::" + std::to_string(port)).c_str(),
-			ip.c_str(),
-			port);
-		{
-			std::unique_lock <std::mutex> lck(clusterMutex);
-			for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); ++it)
-			{
-				if (it->second.ip == ip && it->second.port == port)
-				{
-					ni = sdscatprintf(sdsempty(), "%d ",
-						it->first);
-					ci = sdscatsds(ci, ni);
-					sdsfree(ni);
-				}
-			}
-			ci = sdscatlen(ci, "\n", 1);
-
-			for (auto it = clustertcpconnMaps.begin(); it != clustertcpconnMaps.end(); ++it)
-			{
-				ni = sdscatprintf(sdsempty(), "%s %s:%d ------ slot:",
-					(it->second->ip +  "::" + std::to_string(it->second->port)).c_str(),
-					it->second->ip.c_str(),
-					it->second->port);
-
-				ci = sdscatsds(ci, ni);
-				sdsfree(ni);
-			
-				for (auto iter = clus.clusterSlotNodes.begin(); iter != clus.clusterSlotNodes.end(); ++iter)
-				{
-					if (iter->second.ip == it->second->ip && iter->second.port == it->second->port)
-					{
-						ni = sdscatprintf(sdsempty(), "%d ",
-							iter->first);
-						ci = sdscatsds(ci, ni);
-						sdsfree(ni);
-					}
-					
-				}
-				ci = sdscatlen(ci, "\n", 1);
-
-			}
-		}
-
-		rObj *o = object.createObject(OBJ_STRING, ci);
+		rObj *o = object.createObject(OBJ_STRING, clus.showClusterNodes());
 		object.addReplyBulk(session->sendBuf, o);
 		object.decrRefCount(o);
 		return false;
@@ -870,8 +821,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 		int32_t slot;
 		if ((slot = clus.getSlotOrReply(session, obj[1])) == -1)
 		{
-			object.addReplyErrorFormat(session->sendBuf, "Invalid slot %d",
-				(char*)obj[1]->ptr);
+			object.addReplyErrorFormat(session->sendBuf, "Invalid slot %d" ,(char*)obj[1]->ptr);
 			return false;
 		}
 
@@ -2478,7 +2428,7 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessio
 	}
 	
 
-	long long milliseconds = 0; /* initialized to avoid any harmness warning */
+	long long milliseconds = 0;
 
 	if (expire)
 	{
@@ -2705,6 +2655,7 @@ bool xRedis::lrangeCommand(const std::deque<rObj*> & obj, const xSeesionPtr &ses
 
 	long  start;
 	long end;
+
 	if ((object.getLongFromObjectOrReply(session->sendBuf, obj[1], &start, nullptr) != REDIS_OK) ||
 		(object.getLongFromObjectOrReply(session->sendBuf, obj[2], &end,nullptr) != REDIS_OK))
 	{
@@ -2869,7 +2820,6 @@ bool xRedis::rpopCommand(const std::deque<rObj*> & obj, const xSeesionPtr &sessi
 		}
 	}
 
-
 	return false;
 }
 
@@ -2880,6 +2830,8 @@ void xRedis::flush()
 
 void xRedis::initConfig()
 {
+	master = "master";
+	slave = "slave";
 	zmalloc_enable_thread_safeness();
 	ipPort = this->ip + "::" + std::to_string(port);
 	object.createSharedObjects();

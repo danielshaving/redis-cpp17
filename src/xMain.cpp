@@ -1,6 +1,7 @@
 #include "xRedis.h"
 #include "xLog.h"
 
+
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char* msg, int len)
 {
@@ -26,6 +27,7 @@ char *ascii_logo =
 "      `-._    `-.__.-'    _.-'                                       \n"
 "          `-._        _.-'                                           \n"
 "              `-.__.-'                                               \n";
+
 
 
 int main(int argc, char* argv[])

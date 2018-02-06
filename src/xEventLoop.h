@@ -42,11 +42,11 @@ public:
     }
 
     void handlerTimerQueue(){ timerQueue->handleRead(); }
-    xPriorityQueue * getTimerQueue(){ return timerQueue->getPriority();}
+    xPriorityQueue * getTimerQueue(){ return timerQueue->getPriority(); }
     bool isInLoopThread() const { return threadId == std::this_thread::get_id(); }
     bool geteventHandling() const { return eventHandling; }
 
-    std::thread::id getThreadId() const { return threadId;}
+    std::thread::id getThreadId() const { return threadId; }
 private:
 
     void abortNotInLoopThread();

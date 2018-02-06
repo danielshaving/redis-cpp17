@@ -21,8 +21,8 @@ public:
 	xRedLock();
 	~xRedLock();
 
-	void syncAddServerUrl(const char *ip,const int32_t port);
-	void asyncAddServerUrl(const char *ip,const int32_t port);
+	void syncAddServerUrl(const char *ip,const int16_t port);
+	void asyncAddServerUrl(const char *ip,const int16_t port);
 	redisReply * commandArgv(const xRedisContextPtr &c, int32_t argc, char **inargv);
 	sds getUniqueLockId();
 	bool lock(const char *resource, const int32_t ttl, xLock &lock);

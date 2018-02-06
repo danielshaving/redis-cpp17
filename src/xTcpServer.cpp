@@ -64,6 +64,4 @@ void xTcpServer::removeConnectionInLoop(const xTcpconnectionPtr& conn)
 	assert(n == 1);
 	xEventLoop* ioLoop = conn->getLoop();
 	ioLoop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
-
-
 }

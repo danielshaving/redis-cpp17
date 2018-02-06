@@ -21,11 +21,11 @@ public:
 
 private:
 	xEventLoop * baseLoop;
-	bool  		 started;
-	int 		 numThreads;
-	int			 next;
+	bool	started;
+	int	numThreads;
+	int	next;
 
-	std::vector<std::shared_ptr<xThread>>    threads;
+	std::vector<std::shared_ptr<xThread>>	threads;
 	std::vector<xEventLoop*> loops;
 
 

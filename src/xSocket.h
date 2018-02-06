@@ -12,7 +12,7 @@ public:
 
 	bool getpeerName(int32_t sockfd,std::string *ip, int16_t &port);
 	int  createSocket();
-	int  connect(int sockfd,std::string ip, int16_t port);
+	int  connect(int sockfd,const std::string &ip, int16_t port);
 
 	int    getListenFd();
 	void  setkeepAlive(int fd,int idle);

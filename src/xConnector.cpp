@@ -47,7 +47,6 @@ void xConnector::stopInLoop()
 	{
 		setState(kDisconnected);
 		int sockfd = removeAndResetChannel();
-
 	}
 }
 

@@ -17,14 +17,14 @@ public:
 		if(avail() > len)
 		{
 			memcpy(cur,buf,len);
-			cur+=len;
+			cur += len;
 		}
 	}
 
 	const char * getData()const { return data; }
 	int length() const { return static_cast<int>(cur - data); }
 	char *current() { return cur; }
-	void add(size_t len) { cur +=len; }
+	void add(size_t len) { cur += len; }
 
 	void reset(){ cur = data;}
 	void bzero(){ ::bzero(data,sizeof data); }

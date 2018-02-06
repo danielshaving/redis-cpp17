@@ -28,10 +28,11 @@ void  xCluster::cretateClusterNode(int32_t slot,const std::string &ip,int16_t po
 	xClusterNode node;
 	node.name = name;
 	node.configEpoch = -1;
-	node.flag =-1;
 	node.createTime = time(0);
 	node.ip = ip;
 	node.port = port;
+	node.master = nullptr;
+	node.slaves = nullptr;
 	clusterSlotNodes.insert(std::make_pair(slot, std::move(node)));
 
 }
@@ -463,13 +464,34 @@ void xCluster::connCallBack(const xTcpconnectionPtr& conn)
 
 
 
+sds xCluster::showClusterNodes()
+{
+	sds ci = sdsempty(), ni = sdsempty();
+	{
+		std::unique_lock <std::mutex> lck(redis->clusterMutex);
+		for (auto it = clusterSlotNodes.begin(); it != clusterSlotNodes.end(); ++it)
+		{
+			ni = sdscatprintf(sdsempty(), "%s %s:%d slot:",it->second.name.c_str(),it->second.ip.c_str(),it->second.port);
+			ci = sdscatsds(ci, ni);
+			sdsfree(ni);
+			ni = sdscatprintf(sdsempty(), "%d ",it->first);
+			ci = sdscatsds(ci, ni);
+			sdsfree(ni);
+			ci = sdscatlen(ci, "\n", 1);
+		}
+	}
+
+	ci = sdscatlen(ci, "\n", 1);
+	return ci;
+}
+
 void xCluster::getKeyInSlot(int32_t hashslot,rObj **keys,int32_t count)
 {
 	int32_t j = 0;
 	for(auto it = redis->setMapShards.begin(); it != redis->setMapShards.end();++it)
 	{
 		std::unique_lock <std::mutex> lck((*it).mtx);
-		for(auto iter = (*it).setMap.begin(); iter !=  (*it).setMap.end(); iter ++)
+		for(auto iter = (*it).setMap.begin(); iter !=  (*it).setMap.end(); ++iter)
 		{
 			if(count ==0)
 			{
@@ -504,7 +526,7 @@ void xCluster::eraseClusterNode(const std::string &ip ,int16_t port)
 			continue;
 		}
 
-		it ++;
+		++it;
 	}
 
 }
