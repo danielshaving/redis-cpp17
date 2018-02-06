@@ -42,7 +42,7 @@ void xHttpServer::onConnection(const xTcpconnectionPtr & conn)
 	{
 		LOG_INFO<<"connecct";
 		xHttpContext context;
-		conn->setData((void*)&context);
+		conn->setContext((void*)&context);
 	}
 	else
 	{
@@ -53,7 +53,7 @@ void xHttpServer::onConnection(const xTcpconnectionPtr & conn)
 
 void xHttpServer::onMessage(const xTcpconnectionPtr &conn,xBuffer *recvBuf)
 {
-	xHttpContext * context = (xHttpContext*)(conn->getData());
+	xHttpContext * context = std::any_cast<xHttpContext>(conn->getContext());
 	if(!context->parseRequest(recvBuf))
 	{
 		conn->send("HTTP/1.1 400 Bad Request\r\n\r\n");
