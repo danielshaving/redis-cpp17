@@ -4,13 +4,11 @@
 
 
 xSocket::xSocket(xEventLoop *loop,const std::string &ip, int16_t port)
-:loop(loop),
- ip(ip),
- port(port)
+:loop(loop)
 {
 	listenSocketFd = -1;
 	onlineNumber = 0;
-	createTcpListenSocket();
+	createTcpListenSocket(ip,port);
 }
 
 xSocket::xSocket()
@@ -121,7 +119,7 @@ void  xSocket::setkeepAlive(int fd,int idle)
 #endif
 }
 
-bool xSocket::createTcpListenSocket()
+bool xSocket::createTcpListenSocket(const std::string &ip,int16_t port)
 {
     struct sockaddr_in serverAdress;
     serverAdress.sin_family = AF_INET;

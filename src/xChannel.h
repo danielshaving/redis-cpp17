@@ -2,7 +2,7 @@
 #include "all.h"
 
 class xEventLoop;
-class xChannel: noncopyable
+class xChannel : noncopyable
 {
 public:
 	typedef std::function<void()> EventCallback;

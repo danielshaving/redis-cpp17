@@ -5,7 +5,7 @@
 #include "xSocket.h"
 
 class xRedis;
-class xSentinel: noncopyable
+class xSentinel : noncopyable
 {
 public:
 	xSentinel(xRedis * redis);

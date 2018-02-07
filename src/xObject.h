@@ -7,8 +7,7 @@
 #include "xLog.h"
 #include "xUtil.h"
 
-unsigned int dictGenHashFunction(const void *key, int len) ;
-unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len);
+
 typedef struct redisObject
 {		
 	void calHash()
@@ -60,7 +59,7 @@ struct Equal
 
 
 class xRedis;
-class xObjects
+class xObjects : noncopyable
 {
 public:
 	xObjects(xRedis * redis);

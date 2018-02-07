@@ -6,7 +6,7 @@
 #include "xChannel.h"
 
 class xEventLoop;
-class xTcpconnection:noncopyable,public std::enable_shared_from_this<xTcpconnection>
+class xTcpconnection : noncopyable,public std::enable_shared_from_this<xTcpconnection>
 {
 public:
 	enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };

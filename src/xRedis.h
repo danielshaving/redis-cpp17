@@ -97,12 +97,14 @@ public:
 	void clearDeques(std::deque<rObj*> & robj);
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
+	bool getClusterMap(rObj * command);
+	auto  & getHandlerCommandMap() { return handlerCommandMap; }
 
 public:
+	typedef std::function<bool(const std::deque<rObj*> &,xSeesionPtr)> CommandFunc;
 	std::unordered_set<rObj*,Hash,Equal>  unorderedmapCommands;
 	std::unordered_set<rObj*,Hash,Equal>  stopRepliCached;
-	typedef std::function<bool(const std::deque<rObj*> &,xSeesionPtr)> commandFunction;
-	std::unordered_map<rObj*,commandFunction,Hash,Equal> handlerCommandMap;
+	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommandMap;
 	std::unordered_set<rObj*,Hash, Equal> replyCommandMap;
 	std::unordered_map<int32_t,xSeesionPtr> sessions;
 	std::unordered_set<rObj*,Hash,Equal> cluterMaps;
@@ -187,12 +189,12 @@ public:
 	xBuffer	 clusterImportCached;
 	
 	xObjects		object;
-	xReplication		repli;
+	xReplication	repli;
 	xSentinel		senti;
 	xCluster	clus;
 	xRdb	rdb;
 	xSocket	socket;
-
+	
 	std::unique_ptr<std::thread > repliThreads;
 	std::unique_ptr<std::thread > sentiThreads;
 	std::unique_ptr<std::thread > clusterThreads;
@@ -204,7 +206,7 @@ public:
 	
 	std::string	ip;
 	std::string	password;
-	std::string     masterHost;
+	std::string  masterHost;
 	std::string	ipPort;
 
 	std::string master;

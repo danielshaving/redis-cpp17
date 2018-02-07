@@ -2,7 +2,7 @@
 
 #include "all.h"
 
-class xBuffer:noncopyable
+class xBuffer : noncopyable
 {
 public:
 	static const size_t kCheapPrepend = 8;
@@ -129,7 +129,7 @@ explicit xBuffer(size_t initialSize = kInitialSize)
 		return result;
 	}
 
-	void append(const char* /*restrict*/ data, size_t len)
+	void append(const char* data, size_t len)
 	{
 		ensureWritableBytes(len);
 		std::copy(data, data+len, beginWrite());
@@ -141,7 +141,7 @@ explicit xBuffer(size_t initialSize = kInitialSize)
 		append(str.data(), str.size());
 	}
 
-	void append(const void* /*restrict*/ data, size_t len)
+	void append(const void* data, size_t len)
 	{
 		append(static_cast<const char*>(data), len);
 	}
@@ -200,7 +200,7 @@ explicit xBuffer(size_t initialSize = kInitialSize)
 		prepend(static_cast<const char*>(data),len);
 	}
 
-	void preapend(const char * /*restrict*/ data, size_t len)
+	void preapend(const char * data, size_t len)
 	{
 		ensureWritableBytes(len);
 		std::copy(prepeek(), prepeek() + writableBytes(), prepeek() + len);
@@ -334,6 +334,7 @@ private:
 			assert(readable == readableBytes());
 		}
 	}
+	
 private:
 	std::vector<char> buffer;
 	size_t readerIndex;

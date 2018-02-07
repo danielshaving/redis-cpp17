@@ -54,7 +54,7 @@ inline double timeDifference(xTimestamp high, xTimestamp low)
 }
 
 
-class xTimer
+class xTimer : noncopyable
 {
 public:
 	xTimer();

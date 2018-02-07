@@ -32,6 +32,7 @@ slavefd(-1)
 	{
 	    this->threadCount = threadCount;
 	}
+	
 	server.start();
 	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
 
@@ -169,15 +170,13 @@ void xRedis::clearDeques(std::deque<rObj*> & robj)
 {
 	for (auto it = robj.begin(); it != robj.end(); ++it)
 	{
-	    (*it)->calHash();
+	      (*it)->calHash();
 		auto iter = replyCommandMap.find(*it);
 		if (iter == replyCommandMap.end())
 		{
 			zfree(*it);
 		}
-
 	}
-
 }
 
 
@@ -213,7 +212,6 @@ void xRedis::clearRepliState(int32_t sockfd)
 		}
 
 	}
-
 
 }
 void xRedis::connCallBack(const xTcpconnectionPtr& conn)
@@ -381,20 +379,20 @@ bool xRedis::memoryCommand(const std::deque <rObj*> & obj,const xSeesionPtr &ses
 	{
 		object.addReplyErrorFormat(session->sendBuf,"unknown memory  error");
 		return false;
-		}
+	}
 #ifdef USE_JEMALLOC
 
-		char tmp[32];
-		unsigned narenas = 0;
-		size_t sz = sizeof(unsigned);
-		if (!je_mallctl("arenas.narenas", &narenas, &sz, NULL, 0))
+	char tmp[32];
+	unsigned narenas = 0;
+	size_t sz = sizeof(unsigned);
+	if (!je_mallctl("arenas.narenas", &narenas, &sz, nullptr, 0))
+	{
+		sprintf(tmp, "arena.%d.purge", narenas);
+		if (!je_mallctl(tmp, nullptr, 0, nullptr, 0))
 		{
-			sprintf(tmp, "arena.%d.purge", narenas);
-			if (!je_mallctl(tmp, NULL, 0, NULL, 0))
-			{
-				object.addReply(session->sendBuf, object.ok);
-				return false;
-			}
+			object.addReply(session->sendBuf, object.ok);
+			return false;
+		}
 	}
 
 #endif
@@ -726,7 +724,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 			return false;
 			
 
-		if (object.getLongLongFromObjectOrReply(session->sendBuf,obj[2],&maxkeys,nullptr)!= REDIS_OK)
+		if (object.getLongLongFromObjectOrReply(session->sendBuf,obj[2],&maxkeys,nullptr) != REDIS_OK)
 			return false;
 	
 		if (slot < 0 || slot >= 16384 || maxkeys < 0) 
@@ -736,12 +734,15 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 		}
 		
 		keys = (rObj**)zmalloc(sizeof(rObj*) * maxkeys);
-		
 		clus.getKeyInSlot(slot,keys,maxkeys);
 		object.addReplyMultiBulkLen(session->sendBuf,numkeys);
 		for (j = 0; j < numkeys; j++)
-			object.addReplyBulk(session->sendBuf,keys[j]);
+		{
+			object.addReplyBulk(session->sendBuf,keys[j]);	
+		}
+		
 		zfree(keys);
+		
 		return false;
 		
 	}
@@ -757,7 +758,11 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 	}
 	else if (!strcasecmp(obj[0]->ptr, "setslot") && obj.size() >= 3)
 	{		
-		if( !strcasecmp(obj[1]->ptr, "node") )
+		if(!!strcasecmp(obj[1]->ptr, "stable") )
+		{
+			
+		}
+		else if( !strcasecmp(obj[1]->ptr, "node") )
 		{
 			std::string imipPort = obj[2]->ptr;
 			{
@@ -795,16 +800,16 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 				int32_t slot;
 				if ((slot = clus.getSlotOrReply(session, obj[i])) == -1)
 				{
-					object.addReplyErrorFormat(session->sendBuf, "Invalid slot %d",(char*)obj[i]->ptr);
+					object.addReplyErrorFormat(session->sendBuf, "Invalid slot %s",obj[i]->ptr);
 					return false;
 				}
 				
 				std::unique_lock <std::mutex> lck(clusterMutex);
-				auto it = clus.clusterSlotNodes.find(slot);
-				if(it != clus.clusterSlotNodes.end())
+				auto it = clus.checkClusterSlot(slot);
+				if(it != nullptr)
 				{
-					it->second.ip = fromIp;
-					it->second.port = fromPort;
+					it->ip = fromIp;
+					it->port = fromPort;
 				}
 				else
 				{
@@ -826,41 +831,36 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 		}
 
 		std::string nodeName = obj[3]->ptr;
-		if (nodeName == ip + "::" + std::to_string(port))
+		bool mark = false;
 		{
-			object.addReplyErrorFormat(session->sendBuf, "setslot self server error ");
+			std::unique_lock <std::mutex> lck(clusterMutex);
+			for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); ++it)
+			{
+				if(slot == it->first && nodeName == it->second.name)
+				{
+					mark = true;
+					break;
+				}
+			}
+		}
+
+		if (!mark)
+		{
+			object.addReplyErrorFormat(session->sendBuf, "setslot slot node no found error ");
 			return false;
 		}
 		
+	
 		if( !strcasecmp(obj[2]->ptr, "importing") && obj.size() == 4)
-		{
-			bool mark = false;
-			{
-				std::unique_lock <std::mutex> lck(clusterMutex);
-				for (auto it = clus.clusterSlotNodes.begin(); it != clus.clusterSlotNodes.end(); ++it)
-				{
-					std::string node = it->second.ip + "::" + std::to_string(it->second.port);
-					if (node == nodeName && slot == it->first)
-					{
-						mark = true;
-						break;
-					}
-				}
-			}
-
-			if (!mark)
-			{
-				object.addReplyErrorFormat(session->sendBuf, "setslot slot node no found error ");
-				return false;
-			}
-		
+		{		
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			auto it = clus.importingSlotsFrom.find(nodeName);
-			if (it == clus.importingSlotsFrom.end())
+			auto &map = clus.getImporting();
+			auto it = map.find(nodeName);
+			if (it == map.end())
 			{
 				std::unordered_set<int32_t> uset;
 				uset.insert(slot);
-				clus.importingSlotsFrom.insert(std::make_pair(std::move(nodeName), std::move(uset)));
+				map.insert(std::make_pair(std::move(nodeName), std::move(uset)));
 			}
 			else
 			{
@@ -881,12 +881,13 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 		else if (!strcasecmp(obj[2]->ptr, "migrating") && obj.size() == 4)
 		{
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			auto it = clus.migratingSlosTos.find(nodeName);
-			if (it == clus.migratingSlosTos.end())
+			auto &map = clus.getMigrating();
+			auto it = map.find(nodeName);
+			if (it == map.end())
 			{
 				std::unordered_set<int32_t> uset;
 				uset.insert(slot);
-				clus.migratingSlosTos.insert(std::make_pair(std::move(nodeName), std::move(uset)));
+				map.insert(std::make_pair(std::move(nodeName), std::move(uset)));
 			}
 			else
 			{
@@ -907,16 +908,6 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 			object.addReplyErrorFormat(session->sendBuf, "Invalid  param ");
 			return false;
 		}
-
-		
-	}
-	else if(!strcasecmp(obj[0]->ptr, "delimport"))
-	{
-		std::unique_lock <std::mutex> lck(clusterMutex);
-		clus.importingSlotsFrom.clear();
-		clusterRepliImportEnabeld = false;
-		LOG_INFO << "delimport success:";
-		return false;
 	}
 	else if (!strcasecmp(obj[0]->ptr, "delsync"))
 	{
@@ -927,21 +918,16 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 			return false;
 		}
 
-        {
-            std::unique_lock <std::mutex> lck(clusterMutex);
-            clus.clusterSlotNodes.erase(slot);
-
-            if (clus.clusterSlotNodes.size() == 0)
-            {
-                clusterSlotEnabled = false;
-            }
+		{
+			std::unique_lock <std::mutex> lck(clusterMutex);
+			clus.eraseClusterNode(slot);
 		}
 
 		LOG_INFO << "delsync success:" << slot;
 		return false;
 
 	}
-	else if (!strcasecmp(obj[0]->ptr, "addsync"))
+	else if (!strcasecmp(obj[0]->ptr, "addsync") && obj.size() == 5)
 	{
 		int32_t slot;
 		long long  port;
@@ -958,16 +944,15 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 		}
 
 		std::unique_lock <std::mutex> lck(clusterMutex);
-		auto it = clus.clusterSlotNodes.find(slot);
-		if (it == clus.clusterSlotNodes.end())
+		if(clus.checkClusterSlot(slot) == nullptr)
 		{
-			clusterSlotEnabled = true;
 			LOG_INFO << "addsync success:" << slot;
-			clus.cretateClusterNode(slot,obj[2]->ptr,port);
+			clus.cretateClusterNode(slot,obj[2]->ptr,port,obj[4]->ptr);
 		}
 		else
 		{
-			LOG_INFO << "clusterSlotNodes insert error ";
+			object.addReplyErrorFormat(session->sendBuf, "cluster insert error:%d",slot);
+			LOG_INFO << "cluster insert error "<<slot;
 		}
 
 		return false;
@@ -997,21 +982,17 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 				return false;
 			}
 
-			auto it = clus.clusterSlotNodes.find(slot);
-			if (it != clus.clusterSlotNodes.end())
+			if(clus.checkClusterSlot(slot) == nullptr)
 			{
-				clus.deques.push_back(object.cluster);
-				clus.deques.push_back(object.delsync);
-				clus.deques.push_back(object.createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr)));
+				clus.delSlotDeques(obj[j],slot);
 				clus.syncClusterSlot();
-				clus.clusterSlotNodes.erase(slot);
 				LOG_INFO << "deslots success " << slot;
 			}
-		}
-
-		if (clus.clusterSlotNodes.size() == 0)
-		{
-			clusterSlotEnabled = false;
+			else
+			{
+				object.addReplyErrorFormat(session->sendBuf, "not found deslots error %d:",slot);
+				LOG_INFO << "not found deslots " << slot;
+			}
 		}
 
 	}
@@ -1032,21 +1013,18 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 			}
 
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			if (clustertcpconnMaps.size() == 0)
+			if (clustertcpconnMaps.empty())
 			{
 				object.addReplyErrorFormat(session->sendBuf, "execute cluster meet ip:port");
 				return false;
 			}
 
-			auto it = clus.clusterSlotNodes.find(slot);
-			if (it == clus.clusterSlotNodes.end())
+			if(clus.checkClusterSlot(slot) == nullptr)
 			{
-				clus.deques.push_back(object.cluster);
-				clus.deques.push_back(object.addsync);
-				clus.deques.push_back(object.createStringObject(obj[j]->ptr, sdslen(obj[j]->ptr)));
-				clus.deques.push_back(object.rIp);
-				clus.deques.push_back(object.rPort);
-				clus.cretateClusterNode(slot,this->ip,this->port);
+				char name[CLUSTER_NAMELEN];
+				getRandomHexChars(name,CLUSTER_NAMELEN);
+				clus.cretateClusterNode(slot,this->ip,this->port,name);
+				clus.addSlotDeques(obj[j],name);
 				clus.syncClusterSlot();
 				LOG_INFO << "addslots success " << slot;
 			}
@@ -1056,7 +1034,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 				return false;
 			}
 		}
-		clusterSlotEnabled = true;
+	
 	}
 	else
 	{
@@ -1091,6 +1069,16 @@ void xRedis::structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs
 	}
 }
 
+
+bool xRedis::getClusterMap(rObj * command)
+{
+	auto it = cluterMaps.find(command);
+	if(it == cluterMaps.end())
+	{
+		return false;
+	}
+	return true;
+}
 
 
 bool xRedis::bgsave(const xSeesionPtr &session,bool enabled)
@@ -1175,6 +1163,7 @@ void xRedis::forkClear()
 
      clustertcpconnMaps.clear();
 }
+
 int32_t xRedis::rdbSaveBackground(const xSeesionPtr &session, bool enabled)
 {
 	if(rdbChildPid != -1)
@@ -2432,7 +2421,7 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessio
 
 	if (expire)
 	{
-		if (object.getLongLongFromObjectOrReply(session->sendBuf, expire, &milliseconds, NULL) != REDIS_OK)
+		if (object.getLongLongFromObjectOrReply(session->sendBuf, expire, &milliseconds, nullptr) != REDIS_OK)
 		   return false;
 		if (milliseconds <= 0)
 		{

@@ -2,10 +2,9 @@
 #include "all.h"
 
 class xEventLoop;
-class xSocket: noncopyable
+class xSocket : noncopyable
 {
 public:
-    typedef std::function<void (int sockfd,const std::string &ip, int16_t port)> NewConnectionCallback;
 	xSocket();
 	xSocket(xEventLoop *loop,const std::string &ip, int16_t port);
 	~xSocket();
@@ -16,7 +15,7 @@ public:
 
 	int    getListenFd();
 	void  setkeepAlive(int fd,int idle);
-	bool  createTcpListenSocket();
+	bool  createTcpListenSocket(const std::string &ip,int16_t port);
 	bool  setSocketNonBlock(int sockfd);
 	bool  setSocketBlock(int sockfd);
 	bool  setTcpNoDelay(int sockfd,bool on);
@@ -25,8 +24,6 @@ public:
 
 private:
 	xEventLoop	 *loop;
-	std::string ip;
-	int16_t port;
 	int  listenSocketFd;
 	int  onlineNumber;
 	bool protocol;

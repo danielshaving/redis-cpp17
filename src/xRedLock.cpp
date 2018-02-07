@@ -1,8 +1,5 @@
 #include "xRedLock.h"
 
-
-
-/* Turn the plain C strings into Sds strings */
 static char **convertToSds(int32_t count, char** args)
 {
 	int32_t j;
@@ -38,11 +35,9 @@ xRedLock::xRedLock()
 	retryCount = defaultRetryCount;
 	retryDelay = defaultRetryDelay;
 	quoRum     = 0;
-	// open rand file
 	fd = open("/dev/urandom", O_RDONLY);
 	if (fd == -1)
 	{
-		//Open error handling
 		printf("Can't open file /dev/urandom\n");
 		exit(-1);
 	}
@@ -113,7 +108,6 @@ int32_t  xRedLock::lockInstance(const xRedisContextPtr &c,const char * resource,
 redisReply * xRedLock::commandArgv(const xRedisContextPtr &c, int32_t argc, char **inargv)
 {
 	char **argv = convertToSds(argc, inargv);
-	/* Setup argument length */
 	size_t *argvlen;
 	argvlen = (size_t *)zmalloc(argc * sizeof(size_t));
 	for (int32_t j = 0; j < argc; j++)

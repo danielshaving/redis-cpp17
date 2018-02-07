@@ -123,28 +123,22 @@ int32_t xSession::processCommand()
 		}
 	}
 
-	if (redis->clusterEnabled && redis->clusterSlotEnabled)
+	if (redis->clusterEnabled )
 	{
+		if(redis->getClusterMap(command))
 		{
-			auto it = redis->cluterMaps.find(command);
-			if(it != redis->cluterMaps.end())
-			{
-				goto jump;
-			}
+			goto jump;
 		}
-
-		if(robjs.empty())
-		{
-            goto jump;
-		}
-
+			
+		assert(!robjs.empty());
 		char * key = robjs[0]->ptr;
-		int32_t hashslot = redis->clus.keyHashSlot((char*)key, sdslen(key));
+		int32_t hashslot = redis->clus.keyHashSlot(key, sdslen(key));
 		
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
 		if(redis->clusterRepliMigratEnabled)
 		{
-			for(auto it = redis->clus.migratingSlosTos.begin(); it != redis->clus.migratingSlosTos.end(); ++it)
+			auto &map  = redis->clus.getMigrating();
+			for(auto it = map.begin(); it != map.end(); ++it)
 			{
 				auto iter = it->second.find(hashslot);
 				if(iter != it->second.end())
@@ -157,7 +151,8 @@ int32_t xSession::processCommand()
 
 		if(redis->clusterRepliImportEnabeld)
 		{
-			for(auto it = redis->clus.importingSlotsFrom.begin(); it != redis->clus.importingSlotsFrom.end(); ++it)
+			auto &map  = redis->clus.getImporting();
+			for(auto it = map.begin(); it != map.end(); ++it)
 			{
 				auto iter = it->second.find(hashslot);
 				if(iter !=  it->second.end())
@@ -168,15 +163,8 @@ int32_t xSession::processCommand()
 			}
 		}
 
-		if (redis->clus.clusterSlotNodes.size() == 0)
-		{
-			redis->clus.clusterRedirectClient(shared_from_this(), nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
-			clearObj();
-			return REDIS_ERR;
-		}
-
-		auto it = redis->clus.clusterSlotNodes.find(hashslot);
-		if (it == redis->clus.clusterSlotNodes.end())
+		auto it = redis->clus.checkClusterSlot(hashslot);
+		if (it == nullptr)
 		{
 			redis->clus.clusterRedirectClient(shared_from_this(), nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
 			clearObj();
@@ -184,13 +172,13 @@ int32_t xSession::processCommand()
 		}
 		else
 		{
-			if (redis->ip == it->second.ip && redis->port == it->second.port)
+			if (redis->ip == it->ip && redis->port == it->port)
 			{
 				//FIXME
 			}
 			else
 			{
-				redis->clus.clusterRedirectClient(shared_from_this(), &(it->second), hashslot, CLUSTER_REDIR_MOVED);
+				redis->clus.clusterRedirectClient(shared_from_this(), it, hashslot, CLUSTER_REDIR_MOVED);
 				clearObj();
 				return REDIS_ERR;
 			}
@@ -229,7 +217,7 @@ jump:
 
 				{
 					std::unique_lock <std::mutex> lck(redis->slaveMutex);
-					if(redis->salveCount <  redis->salvetcpconnMaps.size())
+					if(redis->salveCount < redis->salvetcpconnMaps.size())
 					{
 						redis->structureRedisProtocol(redis->slaveCached,robjs);
 					}
@@ -244,15 +232,17 @@ jump:
 
 	}
 
-	auto iter = redis->handlerCommandMap.find(command);
-	if(iter == redis->handlerCommandMap.end() )
+
+	auto & map = redis->getHandlerCommandMap();
+	auto it = map.find(command);
+	if(it == map.end())
 	{
 		clearObj();
 		redis->object.addReplyErrorFormat(sendBuf,"command unknown");
 		return REDIS_ERR;
 	}
 
-	if(!iter->second(robjs,shared_from_this()))
+	if(!it->second(robjs,shared_from_this()))
 	{
 		clearObj();
 		return REDIS_ERR;
@@ -276,18 +266,18 @@ void xSession::clearObj()
 
 void xSession::reset()
 {
-    argc = 0;
-    multibulklen = 0;
-    bulklen = -1;
-    robjs.clear();
+	argc = 0;
+	multibulklen = 0;
+	bulklen = -1;
+	robjs.clear();
 
-    if(replyBuffer)
-    {
-        sendBuf.retrieveAll();
-        replyBuffer = false;
-    }
+	if(replyBuffer)
+	{
+	    sendBuf.retrieveAll();
+	    replyBuffer = false;
+	}
 
-    if(fromMaster)
+	if(fromMaster)
 	{
 		sendBuf.retrieveAll();
 		sendSlaveBuf.retrieveAll();
@@ -298,24 +288,24 @@ void xSession::reset()
 
 int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
 {
-    const char *newline;
-    const char *queryBuf = recvBuf->peek();
-    int32_t  j;
-    size_t queryLen;
-    sds *argv, aux;
+    	const char *newline;
+	const char *queryBuf = recvBuf->peek();
+	int32_t  j;
+	size_t queryLen;
+	sds *argv, aux;
 	  
-    /* Search for end of line */
-    newline = strchr(queryBuf,'\n');
-    if(newline == nullptr)
-    {
+	newline = strchr(queryBuf,'\n');
+	if(newline == nullptr)
+	{
 		 if(recvBuf->readableBytes() > PROTO_INLINE_MAX_SIZE)
 		 {
 			LOG_WARN << "Protocol error";
 			redis->object.addReplyError(sendBuf,"Protocol error: too big inline request");
 			recvBuf->retrieveAll();
 		 }
+		 
 		 return REDIS_ERR;
-    }
+	}
 
 	if (newline && newline != queryBuf && *(newline-1) == '\r')
 	newline--;

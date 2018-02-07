@@ -6,12 +6,12 @@
 #include "xSocket.h"
 
 class xRedis;
-class xReplication: noncopyable
+class xReplication : noncopyable
 {
 public:
 	xReplication(xRedis * redis);
 	~xReplication();
-	void init(xRedis *redis);
+	
 	void connectMaster();
 	void replicationSetMaster(rObj * obj,int16_t port);
 

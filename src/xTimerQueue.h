@@ -7,7 +7,7 @@
 class xEventLoop;
 class xTimerId;
 
-class xPriorityQueue: noncopyable
+class xPriorityQueue : noncopyable
 {
 public:
 	xPriorityQueue();
@@ -28,7 +28,7 @@ public:
 	int n,a;
 };
 
-class xTimerQueue: noncopyable
+class xTimerQueue : noncopyable
 {
 public:
 	xTimerQueue(xEventLoop *loop);
