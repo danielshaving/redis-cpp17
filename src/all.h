@@ -107,6 +107,7 @@
 #define REDIS_SET 2
 #define REDIS_ZSET 3
 #define REDIS_HASH 4
+#define REDIS_EXPIRE 5
 
 /* Object types */
 #define OBJ_STRING 0
@@ -114,6 +115,7 @@
 #define OBJ_SET 2
 #define OBJ_ZSET 3
 #define OBJ_HASH 4
+#define OBJ_EXPIRE 5
 
 #define OBJ_SET_NO_FLAGS 0
 #define OBJ_SET_NX (1<<0)     /* Set if key not exists. */
@@ -246,6 +248,7 @@
 #define REDIS_RDB_TYPE_SET    2
 #define REDIS_RDB_TYPE_ZSET   3
 #define REDIS_RDB_TYPE_HASH   4
+#define REDIS_RDB_TYPE_EXPIRE  5
 
 /* Object types for encoded objects. */
 #define REDIS_RDB_TYPE_HASH_ZIPMAP    9

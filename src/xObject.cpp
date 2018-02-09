@@ -5,7 +5,8 @@
 rObj * xObjects::createObject(int type, void *ptr)
 {
 	rObj * o = (rObj*)zmalloc(sizeof(rObj));
-	o->type = REDIS_ENCODING_RAW;
+	o->encoding = REDIS_ENCODING_RAW;
+	o->type = type;
 	o->ptr  = (char*)ptr;
 	return o;
 }
@@ -21,7 +22,6 @@ int xObjects::getLongLongFromObject(rObj *o, long long   *target)
 	}
 	else
 	{
-
 		if (sdsEncodedObject(o))
 		{
 			if (string2ll(o->ptr, sdslen(o->ptr), &value) == 0) return REDIS_ERR;
@@ -31,6 +31,7 @@ int xObjects::getLongLongFromObject(rObj *o, long long   *target)
 			LOG_WARN << "Unknown string encoding";
 		}
 	}
+	
 	if (target) *target = value;
 	return REDIS_OK;
 
@@ -70,8 +71,8 @@ int xObjects::getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target,
 		}
 		return REDIS_ERR;
 	}
-	*target = value;
 	
+	*target = value;
 	return REDIS_OK;
 }
 
@@ -317,7 +318,6 @@ void xObjects::destorySharedObjects()
 	freeStringObject(ZCARD);
 	
 
-
 	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
 	{
 		freeStringObject(integers[j]);
@@ -391,6 +391,7 @@ void xObjects::createSharedObjects()
 	space = createObject(REDIS_STRING,sdsnew(" "));
 	colon = createObject(REDIS_STRING,sdsnew(":"));
 	plus = createObject(REDIS_STRING,sdsnew("+"));
+	asking = createObject(REDIS_STRING,sdsnew("asking"));
 
 
 	messagebulk = createStringObject("$7\r\nmessage\r\n",13);
@@ -492,39 +493,32 @@ void xObjects::createSharedObjects()
 	ZREVRANGE = createStringObject("ZRANGE",9);
 	ZCARD = createStringObject("ZCARD",5);
 
+	
+	for (j = 0; j < REDIS_SHARED_INTEGERS; j++)
+	{
+		integers[j] = createObject(REDIS_STRING,(void*)(long)j);
+		integers[j]->encoding = REDIS_ENCODING_INT;
+	}
 
-    for (j = 0; j < REDIS_SHARED_INTEGERS; j++)
-    {
-        integers[j] = createObject(REDIS_STRING,(void*)(long)j);
-        integers[j]->encoding = REDIS_ENCODING_INT;
-    }
 
-
-    for (j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
-    {
+	for (j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
+	{
 		mbulkhdr[j] = createObject(REDIS_STRING,sdscatprintf(sdsempty(),"*%d\r\n",j));
 		bulkhdr[j] = createObject(REDIS_STRING,sdscatprintf(sdsempty(),"$%d\r\n",j));
-    }
-//
-	//minstring = createStringObject("minstring",9);
-    //maxstring = createStringObject("maxstring",9);
+	}
 
-
-    char buf[8];
+	char buf[8];
 	int len = ll2string(buf,sizeof(buf),redis->port);
 	rPort = createStringObject(buf,len);
 	rIp = createStringObject((char*)(redis->ip.c_str()),redis->ip.length());
 
 #define REGISTER_REDIS_COMMAND(msgId, func) \
-    msgId->calHash(); \
+    	msgId->calHash(); \
 	redis->handlerCommandMap[msgId] = std::bind(&xRedis::func, redis, std::placeholders::_1, std::placeholders::_2);
 	REGISTER_REDIS_COMMAND(set,setCommand);
 	REGISTER_REDIS_COMMAND(get,getCommand);
 	REGISTER_REDIS_COMMAND(flushdb,flushdbCommand);
 	REGISTER_REDIS_COMMAND(dbsize,dbsizeCommand);
-	REGISTER_REDIS_COMMAND(hset,hsetCommand);
-	REGISTER_REDIS_COMMAND(hget,hgetCommand);
-	REGISTER_REDIS_COMMAND(hgetall,hgetallCommand);
 	REGISTER_REDIS_COMMAND(ping,pingCommand);
 	REGISTER_REDIS_COMMAND(save,saveCommand);
 	REGISTER_REDIS_COMMAND(slaveof,slaveofCommand);
@@ -535,9 +529,7 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_COMMAND(info,infoCommand);
 	REGISTER_REDIS_COMMAND(echo,echoCommand);
 	REGISTER_REDIS_COMMAND(client,clientCommand);
-	REGISTER_REDIS_COMMAND(hkeys,hkeysCommand);
 	REGISTER_REDIS_COMMAND(del,delCommand);
-	REGISTER_REDIS_COMMAND(hlen,hlenCommand);
 	REGISTER_REDIS_COMMAND(keys,keysCommand);
 	REGISTER_REDIS_COMMAND(bgsave,bgsaveCommand);
 	REGISTER_REDIS_COMMAND(memory,memoryCommand);
@@ -545,24 +537,10 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_COMMAND(migrate,migrateCommand);
 	REGISTER_REDIS_COMMAND(debug,debugCommand);
 	REGISTER_REDIS_COMMAND(ttl,ttlCommand);
-	REGISTER_REDIS_COMMAND(lpush,lpushCommand);
-	REGISTER_REDIS_COMMAND(lpop,lpopCommand);
-	REGISTER_REDIS_COMMAND(lrange,lrangeCommand);
-	REGISTER_REDIS_COMMAND(rpush,rpushCommand);
-	REGISTER_REDIS_COMMAND(rpop,rpopCommand);
-	REGISTER_REDIS_COMMAND(llen,llenCommand);
-	REGISTER_REDIS_COMMAND(sadd,saddCommand);
-	REGISTER_REDIS_COMMAND(zadd,zaddCommand);
-	REGISTER_REDIS_COMMAND(zrange, zrangeCommand);
-	REGISTER_REDIS_COMMAND(zrevrange, zrevrangeCommand);
-	REGISTER_REDIS_COMMAND(zcard, zcardCommand);
 	REGISTER_REDIS_COMMAND(SET,setCommand);
 	REGISTER_REDIS_COMMAND(GET,getCommand);
 	REGISTER_REDIS_COMMAND(FLUSHDB,flushdbCommand);
 	REGISTER_REDIS_COMMAND(DBSIZE,dbsizeCommand);
-	REGISTER_REDIS_COMMAND(HSET,hsetCommand);
-	REGISTER_REDIS_COMMAND(HGET,hgetCommand);
-	REGISTER_REDIS_COMMAND(HGETALL,hgetallCommand);
 	REGISTER_REDIS_COMMAND(PING,pingCommand);
 	REGISTER_REDIS_COMMAND(SAVE,saveCommand);
 	REGISTER_REDIS_COMMAND(SLAVEOF,slaveofCommand);
@@ -573,9 +551,7 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_COMMAND(INFO,infoCommand);
 	REGISTER_REDIS_COMMAND(ECHO,echoCommand);
 	REGISTER_REDIS_COMMAND(CLIENT,clientCommand);
-	REGISTER_REDIS_COMMAND(HKEYS,hkeysCommand);
 	REGISTER_REDIS_COMMAND(DEL,delCommand);
-	REGISTER_REDIS_COMMAND(HLEN,hlenCommand);
 	REGISTER_REDIS_COMMAND(KEYS,keysCommand);
 	REGISTER_REDIS_COMMAND(BGSAVE,bgsaveCommand);
 	REGISTER_REDIS_COMMAND(MEMORY,memoryCommand);
@@ -583,22 +559,11 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_COMMAND(MIGRATE,migrateCommand);
 	REGISTER_REDIS_COMMAND(DEBUG,debugCommand);
 	REGISTER_REDIS_COMMAND(TTL,ttlCommand);
-	REGISTER_REDIS_COMMAND(LPUSH,lpushCommand);
-	REGISTER_REDIS_COMMAND(LPOP,lpopCommand);
-	REGISTER_REDIS_COMMAND(LRANGE,lrangeCommand);
-	REGISTER_REDIS_COMMAND(RPUSH,rpushCommand);
-	REGISTER_REDIS_COMMAND(RPOP,rpopCommand);
-	REGISTER_REDIS_COMMAND(LLEN,llenCommand);
-	REGISTER_REDIS_COMMAND(SADD,saddCommand);
-	REGISTER_REDIS_COMMAND(ZADD,zaddCommand);
-	REGISTER_REDIS_COMMAND(ZRANGE,zrangeCommand);
-	REGISTER_REDIS_COMMAND(ZREVRANGE,zrevrangeCommand);
-	REGISTER_REDIS_COMMAND(ZCARD, zcardCommand);
 
 
 #define REGISTER_REDIS_REPLY_COMMAND(msgId) \
-    msgId->calHash(); \
-    redis->replyCommandMap.insert(msgId);
+	msgId->calHash(); \
+	redis->replyCommandMap.insert(msgId);
 	REGISTER_REDIS_REPLY_COMMAND(addsync);
 	REGISTER_REDIS_REPLY_COMMAND(setslot);
 	REGISTER_REDIS_REPLY_COMMAND(node);
@@ -608,10 +573,9 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_REPLY_COMMAND(rIp);
 	REGISTER_REDIS_REPLY_COMMAND(rPort);
 
-
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
-    msgId->calHash(); \
-    redis->unorderedmapCommands.insert(msgId);
+	msgId->calHash(); \
+	redis->unorderedmapCommands.insert(msgId);
 	REGISTER_REDIS_CHECK_COMMAND(set);
 	REGISTER_REDIS_CHECK_COMMAND(hset);
 	REGISTER_REDIS_CHECK_COMMAND(lpush);
@@ -623,13 +587,11 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_CHECK_COMMAND(flushdb);
 
 #define REGISTER_REDIS_CLUSTER_CHECK_COMMAND(msgId) \
-    msgId->calHash(); \
-    redis->cluterMaps.insert(msgId);
+	msgId->calHash(); \
+	redis->cluterMaps.insert(msgId);
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(cluster);
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(migrate);
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(command);
-
-
 }
 
 
@@ -679,8 +641,6 @@ void xObjects::addReplyBulkLen(xBuffer & sendBuf,rObj *obj)
 	else
 	{
 	    long n = (long)obj->ptr;
-
-	    /* Compute how many bytes will take this integer as a radix 10 string */
 	    len = 1;
 	    if (n < 0)
 	    {

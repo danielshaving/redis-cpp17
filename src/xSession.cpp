@@ -123,7 +123,7 @@ int32_t xSession::processCommand()
 		}
 	}
 
-	if (redis->clusterEnabled )
+	if (redis->clusterEnabled)
 	{
 		if(redis->getClusterMap(command))
 		{
@@ -137,7 +137,7 @@ int32_t xSession::processCommand()
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
 		if(redis->clusterRepliMigratEnabled)
 		{
-			auto &map  = redis->clus.getMigrating();
+			auto &map = redis->clus.getMigrating();
 			for(auto it = map.begin(); it != map.end(); ++it)
 			{
 				auto iter = it->second.find(hashslot);
@@ -151,7 +151,7 @@ int32_t xSession::processCommand()
 
 		if(redis->clusterRepliImportEnabeld)
 		{
-			auto &map  = redis->clus.getImporting();
+			auto &map = redis->clus.getImporting();
 			for(auto it = map.begin(); it != map.end(); ++it)
 			{
 				auto iter = it->second.find(hashslot);
@@ -182,7 +182,6 @@ int32_t xSession::processCommand()
 				clearObj();
 				return REDIS_ERR;
 			}
-	
 		}
 	}
 

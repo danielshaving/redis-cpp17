@@ -45,15 +45,9 @@ public:
 	bool delCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool getCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-	bool hsetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-
-	bool hgetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-	bool hgetallCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-	bool hlenCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool slaveofCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool syncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool psyncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-
 	bool commandCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool clusterCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool authCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
@@ -61,33 +55,17 @@ public:
 	bool infoCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool clientCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool echoCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-	bool hkeysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool keysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-
 	bool bgsaveCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool memoryCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool sentinelCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
 	bool migrateCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
 	bool ttlCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-	bool lpushCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-	bool lpopCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-	bool lrangeCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-	bool rpushCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-	bool rpopCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-	bool llenCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-	bool scardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-	bool saddCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-
-	bool zaddCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-	bool zrangeCommand(const std::deque<rObj*> &obj,const xSeesionPtr &session);
-	bool zcardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-	bool zrevrangeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
-	bool zrangeGenericCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session,int32_t reverse);
-
+	
 	int32_t rdbSaveBackground(const xSeesionPtr &session, bool enabled);
 	bool bgsave(const xSeesionPtr &session, bool enabled = false);
 	bool save(const xSeesionPtr &session);
-	int32_t removeCommand(rObj * obj,int32_t &count);
+	bool removeCommand(rObj * obj);
 	bool clearClusterMigradeCommand(void * data);
 	void forkClear();
 	void clearCommand();
@@ -109,53 +87,23 @@ public:
 	std::unordered_map<int32_t,xSeesionPtr> sessions;
 	std::unordered_set<rObj*,Hash,Equal> cluterMaps;
 	
-	typedef std::unordered_map<rObj*,double,Hash,Equal> SortedDouble;
-	typedef std::multimap<double,rObj*> SortedMap;
-	typedef struct sort_set { SortedDouble sortDouble; SortedMap sortMap; };
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
-	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal> ,Hash,Equal> HsetMap;
-	typedef std::unordered_map<rObj*,std::deque<rObj*>, Hash, Equal> ListMap;
-	typedef std::unordered_map<rObj*,sort_set,Hash,Equal> SortedSet;
-	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> Set;
+	typedef std::unordered_set<rObj*,Hash,Equal> Redis;
 
-
-	struct SetMapLock
+	const static int32_t kShards = 4096;
+	struct RedisMapLock
 	{
+		RedisMapLock()
+		{
+			redis.reserve(kShards );
+			setMap.reserve(kShards);
+		}
+		Redis redis;
 		SetMap setMap;
 		mutable std::mutex mtx;
 	};
 
-	struct HsetMapLock
-	{
-		HsetMap hsetMap;
-		mutable std::mutex mtx;
-	};
-
-	struct ListMapLock
-	{
-		ListMap listMap;
-		mutable std::mutex mtx;
-	};
-
-	struct SetLock
-	{
-		Set set;
-		mutable std::mutex mtx;
-	};
-
-	struct SortSet
-	{
-		SortedSet set;
-		mutable std::mutex mtx;
-	};
-
-	const static int32_t kShards = 4096;
-
-	std::array<SetMapLock, kShards>	setMapShards;
-	std::array<HsetMapLock, kShards>hsetMapShards;
-	std::array<ListMapLock, kShards>	listMapShards;
-	std::array<SetLock, kShards>	setShards;
-	std::array<SortSet, kShards>	sortShards;
+	std::array<RedisMapLock,kShards> redisShards;
 
 	xEventLoop loop;
 	xTcpServer server;
