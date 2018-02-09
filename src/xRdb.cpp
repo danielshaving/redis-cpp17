@@ -370,14 +370,14 @@ int xRdb::rdbSaveExpre(xRio *rdb)
 		redis->expireMutex.lock();
 	}
 
-	for (auto it = redis->expireTimers.begin(); it != redis->expireTimers.end(); ++it)
+	for (auto &it : redis->expireTimers)
 	{
-		if (rdbSaveKey(rdb, it->first, 0) == -1)
+		if (rdbSaveKey(rdb, it.first, 0) == -1)
 		{
 			return REDIS_ERR;
 		}
 
-		if (rdbSaveMillisecondTime(rdb, it->second->getExpiration().getMicroSecondsSinceEpoch()) == -1)
+		if (rdbSaveMillisecondTime(rdb, it.second->getExpiration().getMicroSecondsSinceEpoch()) == -1)
 		{
 			return REDIS_ERR;
 		}
@@ -394,21 +394,21 @@ int xRdb::rdbSaveExpre(xRio *rdb)
 
 int xRdb::rdbSaveStruct(xRio *rdb)
 {
-	for (auto it = redis->redisShards.begin(); it != redis->redisShards.end(); ++it)
+	for (auto &it : redis->redisShards)
 	{
-		auto &map = (*it).redis;
-		auto &mu = (*it).mtx;
-		auto &setMap = (*it).setMap;
+		auto &map = it.redis;
+		auto &mu = it.mtx;
+		auto &setMap = it.setMap;
 		if(blockEnabled)
 		{
 			mu.lock();
 		}
 	
-		for (auto iter = map.begin(); iter != map.end(); ++iter)
+		for (auto &iter : map)
 		{
-			if((*iter)->type == OBJ_STRING)
+			if(iter->type == OBJ_STRING)
 			{
-				auto iterr = setMap.find((*iter));
+				auto iterr = setMap.find(iter);
 				#ifdef __DEBUG__
 				assert(iterr != setMap.end());
 				#endif
@@ -418,19 +418,19 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 					return REDIS_ERR;
 				}
 			}
-			else if((*iter)->type == OBJ_SET)
+			else if(iter->type == OBJ_SET)
 			{
 
 			}
-			else if((*iter)->type == OBJ_LIST)
+			else if(iter->type == OBJ_LIST)
 			{
 
 			}
-			else if((*iter)->type == OBJ_HASH)
+			else if(iter->type == OBJ_HASH)
 			{
 
 			}
-			else if((*iter)->type == OBJ_ZSET)
+			else if(iter->type == OBJ_ZSET)
 			{
 
 			}

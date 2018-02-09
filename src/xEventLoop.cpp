@@ -194,9 +194,9 @@ void xEventLoop::run()
 		activeChannels.clear();
 		epoller->epollWait(&activeChannels);
 		eventHandling = true;
-		for (auto it = activeChannels.begin();it != activeChannels.end(); ++it)
+		for (auto &it : activeChannels)
 		{
-			currentActiveChannel = *it;
+			currentActiveChannel = it;
 			currentActiveChannel->handleEvent();
 		}
 

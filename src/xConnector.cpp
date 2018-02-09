@@ -73,35 +73,36 @@ void xConnector::connecting(int sockfd)
 	}
 	else
 	{
-		//TRACE("connect error\n");
+		LOG_ERROR<<"connect error";
 	}
 }
 
 
 void xConnector::connect(const char *ip, int16_t port)
 {
-  int sockfd = socket.createSocket();
-  int ret = socket.connect(sockfd, ip,port);
-  int savedErrno = (ret == 0) ? 0 : errno;
-  switch (savedErrno)
-  {
-    case 0:
-    case EINPROGRESS:
-    case EINTR:
-    case EISCONN:
-	socket.setSocketNonBlock(sockfd);
-	setState(kConnecting);
-	connecting(sockfd);
-	socket.setkeepAlive(sockfd,3);
-      break;
-    default:
-      LOG_WARN<<strerror(savedErrno);
-      ::close(sockfd);
-      setState(kDisconnected);
-      if(errorConnectionCallback)
-      {
-    	 errorConnectionCallback();
-      }
-      break;
-  }
+	int sockfd = socket.createSocket();
+	int ret = socket.connect(sockfd, ip,port);
+	int savedErrno = (ret == 0) ? 0 : errno;
+	switch (savedErrno)
+	{
+		case 0:
+		case EINPROGRESS:
+		case EINTR:
+		case EISCONN:
+			socket.setSocketNonBlock(sockfd);
+			setState(kConnecting);
+			connecting(sockfd);
+			socket.setkeepAlive(sockfd,3);
+			break;
+		default:
+			LOG_WARN<<strerror(savedErrno);
+			::close(sockfd);
+			setState(kDisconnected);
+
+			if(errorConnectionCallback)
+			{
+				errorConnectionCallback();
+			}
+			break;
+	}
 }

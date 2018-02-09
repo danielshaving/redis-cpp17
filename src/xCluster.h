@@ -46,7 +46,7 @@ public:
 	void eraseClusterNode(const std::string &ip,int16_t port);
 	void eraseImportSlot(int32_t slot);
 	void eraseClusterNode(int32_t slot);
-	void getKeyInSlot(int32_t slot, rObj **keys, int32_t count);
+	void getKeyInSlot(int32_t slot, std::vector<rObj*> &keys , int32_t count);
 
 	xClusterNode  *checkClusterSlot(int32_t slot);
 	sds showClusterNodes();

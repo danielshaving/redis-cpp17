@@ -70,9 +70,9 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 
     if(sendPubSub.readableBytes() > 0 )
     {
-        for(auto it = pubSubTcpconn.begin(); it != pubSubTcpconn.end(); ++it)
+        for(auto &it : pubSubTcpconn)
         {
-            (*it)->send(&sendPubSub);
+            it->send(&sendPubSub);
         }
 
         pubSubTcpconn.clear();
@@ -82,11 +82,11 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
     if(redis->repliEnabled)
     {
         std::unique_lock <std::mutex> lck(redis->slaveMutex);
-        for (auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); ++it)
+        for (auto &it : redis->salvetcpconnMaps)
         {
             if (sendSlaveBuf.readableBytes() > 0)
             {
-                it->second->send(&sendSlaveBuf);
+                it.second->send(&sendSlaveBuf);
             }
         }
 
@@ -138,10 +138,10 @@ int32_t xSession::processCommand()
 		if(redis->clusterRepliMigratEnabled)
 		{
 			auto &map = redis->clus.getMigrating();
-			for(auto it = map.begin(); it != map.end(); ++it)
+			for(auto &it : map)
 			{
-				auto iter = it->second.find(hashslot);
-				if(iter != it->second.end())
+				auto iter = it.second.find(hashslot);
+				if(iter != it.second.end())
 				{
 					redis->structureRedisProtocol(redis->clusterMigratCached,robjs);
 					goto jump;
@@ -152,10 +152,10 @@ int32_t xSession::processCommand()
 		if(redis->clusterRepliImportEnabeld)
 		{
 			auto &map = redis->clus.getImporting();
-			for(auto it = map.begin(); it != map.end(); ++it)
+			for(auto &it : map)
 			{
-				auto iter = it->second.find(hashslot);
-				if(iter !=  it->second.end())
+				auto iter = it.second.find(hashslot);
+				if(iter !=  it.second.end())
 				{
 					replyBuffer = true;
 					goto jump;
@@ -257,9 +257,9 @@ void xSession::resetVlaue()
 
 void xSession::clearObj()
 {
-	for(auto it = robjs.begin(); it != robjs.end(); ++it)
+	for(auto &it : robjs)
 	{
-		zfree(*it);
+		zfree(it);
 	}	
 }
 

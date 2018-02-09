@@ -69,11 +69,11 @@ xRedisAsyncContext::xRedisAsyncContext(xBuffer & recvBuff,xTcpconnectionPtr conn
 
 xRedisAsyncContext::~xRedisAsyncContext()
 {
-	for(auto it = asynCb.begin(); it != asynCb.end(); ++it)
+	for(auto &it : asynCb)
 	{
-		if((*it).data)
+		if(it.data)
 		{
-			zfree((*it).data);
+			zfree(it.data);
 		}
 
 	}
