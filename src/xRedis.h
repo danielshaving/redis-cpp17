@@ -45,6 +45,9 @@ public:
 	bool delCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool getCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool hsetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool hgetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool hgetallCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool slaveofCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool syncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool psyncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
@@ -67,7 +70,7 @@ public:
 	bool save(const xSeesionPtr &session);
 	bool removeCommand(rObj * obj);
 	bool clearClusterMigradeCommand(void * data);
-	void forkClear();
+	void clearFork();
 	void clearCommand();
 	void clear();
 	void clearRepliState(int32_t sockfd);
@@ -88,6 +91,7 @@ public:
 	std::unordered_set<rObj*,Hash,Equal> cluterMaps;
 	
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
+	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal>,Hash,Equal> HashMap;
 	typedef std::unordered_set<rObj*,Hash,Equal> Redis;
 
 	const static int32_t kShards = 4096;
@@ -97,9 +101,12 @@ public:
 		{
 			redis.reserve(kShards );
 			setMap.reserve(kShards);
+			hashMap.reserve(kShards);
 		}
+		
 		Redis redis;
 		SetMap setMap;
+		HashMap hashMap;
 		mutable std::mutex mtx;
 	};
 
@@ -154,7 +161,7 @@ public:
 	
 	std::string	ip;
 	std::string	password;
-	std::string  masterHost;
+	std::string   	masterHost;
 	std::string	ipPort;
 
 	std::string master;

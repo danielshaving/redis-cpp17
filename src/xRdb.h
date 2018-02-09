@@ -90,6 +90,7 @@ public:
 	rObj *rdbLoadLzfStringObject(xRio *rdb);
 	long long rdbLoadMillisecondTime(xRio *rdb);
 	int rdbLoadString(xRio *rdb,int type);
+	int rdbLoadHash(xRio *rdb,int type);
 	int rdbLoadExpire(xRio *rdb,int type);
 	uint32_t rdbLoadLen(xRio *rdb, int *isencoded);
 	int rdbLoad(char *filename);

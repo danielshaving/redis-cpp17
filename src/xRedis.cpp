@@ -162,9 +162,6 @@ void xRedis::handleSalveRepliTimeOut(const std::any & context)
 	LOG_INFO<<"sync connect repli  timeout ";
 }
 
-
-
-
 void xRedis::clearDeques(std::deque<rObj*> & robj)
 {
 	for (auto &it : robj)
@@ -178,13 +175,10 @@ void xRedis::clearDeques(std::deque<rObj*> & robj)
 	}
 }
 
-
-
 void xRedis::clearClusterState(int32_t sockfd)
 {
 	
 }
-
 
 void xRedis::clearRepliState(int32_t sockfd)
 {
@@ -209,10 +203,9 @@ void xRedis::clearRepliState(int32_t sockfd)
 			loop.cancelAfter(iter->second);
 			repliTimers.erase(iter);
 		}
-
 	}
-
 }
+
 void xRedis::connCallBack(const xTcpconnectionPtr& conn)
 {
 	if(conn->connected())
@@ -255,7 +248,6 @@ void xRedis::run()
 	loop.run();
 }
 
-
 void xRedis::loadDataFromDisk()
 {
 	char rdb_filename[] = "dump.rdb";
@@ -272,9 +264,6 @@ void xRedis::loadDataFromDisk()
  	}
 
 }
-
-
-
 
 bool xRedis::sentinelCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session)
 {
@@ -1049,7 +1038,7 @@ bool  xRedis::save(const xSeesionPtr &session)
 
 
 
-void xRedis::forkClear()
+void xRedis::clearFork()
 {
      for(auto &it : sessions)
      {
@@ -1083,7 +1072,7 @@ int32_t xRedis::rdbSaveBackground(const xSeesionPtr &session, bool enabled)
 	pid_t childpid;
 	if ((childpid = fork()) == 0)
 	{
-	     forkClear();
+	       clearFork();
 		 int32_t retval;
 		 rdb.setBlockEnable(enabled);
 		 retval = rdb.rdbSave("dump.rdb");
@@ -1337,12 +1326,13 @@ bool xRedis::dbsizeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &ses
 	return true;
 }
 
-bool    xRedis::removeCommand(rObj * obj)
+bool	xRedis::removeCommand(rObj * obj)
 {
 	size_t index = obj->hash% kShards;
 	auto &mu = redisShards[index].mtx;
 	auto &map = redisShards[index].redis;
 	auto &setMap = redisShards[index].setMap;
+	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = map.find(obj);
@@ -1354,6 +1344,7 @@ bool    xRedis::removeCommand(rObj * obj)
 			#ifdef __DEBUG__
 				assert(iter != setMap.end());
 			#endif
+				std::unique_lock <std::mutex> lck(expireMutex);
 				auto iterr = expireTimers.find(obj);
 				if(iterr != expireTimers.end())
 				{
@@ -1364,6 +1355,21 @@ bool    xRedis::removeCommand(rObj * obj)
 				zfree(iter->first);
 				zfree(iter->second);
 				setMap.erase(iter);
+			}
+			else if ((*it)->type == OBJ_HASH)
+			{
+				auto iter = hashMap.find(obj);
+			#ifdef __DEBUG__
+				assert(iter != hashMap.end());
+			#endif
+				zfree(iter->first);
+				
+				for(auto &iterr : iter->second)
+				{
+					zfree(iterr.first);
+					zfree(iterr.second);
+				}
+				hashMap.erase(iter);				
 			}
 			return true;
 		}
@@ -1446,9 +1452,9 @@ void xRedis::clearCommand()
 		std::unique_lock <std::mutex> lck(expireMutex);
 		for(auto &it : expireTimers)
 		{
-#ifdef __DEBUG__
+		#ifdef __DEBUG__
 			assert(it.first->type == OBJ_EXPIRE);
-#endif
+		#endif
 			zfree(it.first);
 			loop.cancelAfter(it.second);
 			zfree(it.second);
@@ -1460,6 +1466,7 @@ void xRedis::clearCommand()
 		auto &mu = it.mtx;
 		auto &map = it.redis;
 		auto &setMap = it.setMap;
+		auto &hashMap = it.hashMap;
 		std::unique_lock <std::mutex> lck(mu);
 		for (auto &iter : map)
 		{
@@ -1475,7 +1482,7 @@ void xRedis::clearCommand()
 			}
 			else if(iter->type == OBJ_SET)
 			{
-				
+			
 			}
 			else if(iter->type == OBJ_LIST)
 			{
@@ -1483,7 +1490,18 @@ void xRedis::clearCommand()
 			}
 			else if(iter->type == OBJ_HASH)
 			{
-				
+				auto iterr = hashMap.find(iter);
+			#ifdef __DEBUG__
+				assert(iterr != hashMap.end());
+			#endif
+				zfree(iterr->first);
+			
+				for(auto &iterrr : iterr->second)
+				{
+					zfree(iterrr.first);
+					zfree(iterrr.second);
+				}
+				hashMap.erase(iterr);
 			}
 			else if(iter->type == OBJ_ZSET)
 			{
@@ -1564,6 +1582,156 @@ bool xRedis::quitCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 }
 
 
+bool xRedis::hgetallCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
+{
+	if(obj.size() != 1)
+	{
+		object.addReplyErrorFormat(session->sendBuf,"unknown  hgetall error");
+		return false;
+	}
+
+	size_t hash = obj[0]->hash;
+	size_t index = hash % kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &hashMap = redisShards[index].hashMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = map.find(obj[0]);
+		if(it == map.end())
+		{
+		#ifdef __DEBUG__
+			auto iter = hashMap.find(obj[0]);
+			assert(iter == hashMap.end());
+		#endif
+			object.addReply(session->sendBuf,object.emptymultibulk);
+		}
+		else
+		{
+			auto iter = hashMap.find(obj[0]);
+		#ifdef __DEBUG__
+			assert(iter != hashMap.end());
+		#endif
+			object.addReplyMultiBulkLen(session->sendBuf,iter->second.size() * 2);
+			for(auto &iterr : iter->second)
+			{
+				object.addReplyBulkCBuffer(session->sendBuf,iterr.first->ptr,sdslen(iterr.first->ptr));
+				object.addReplyBulkCBuffer(session->sendBuf,iterr.second->ptr,sdslen(iterr.second->ptr));
+			}
+		}
+	}
+	
+	return false;
+}
+
+
+bool xRedis::hgetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
+{
+	if(obj.size() != 2)
+	{
+		object.addReplyErrorFormat(session->sendBuf,"unknown  hget  param error");
+		return false;
+	}
+
+	size_t hash = obj[0]->hash;
+	size_t index = hash % kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &hashMap = redisShards[index].hashMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = map.find(obj[0]);
+		if(it == map.end())
+		{
+		#ifdef __DEBUG__
+			auto it = hashMap.find(obj[0]);
+			assert(it == hashMap.end());
+		#endif
+			object.addReply(session->sendBuf,object.nullbulk);
+		}
+		else
+		{
+			auto iter = hashMap.find(obj[0]);
+		#ifdef __DEBUG__
+			assert(iter != hashMap.end());
+		#endif
+			auto iterr = iter->second.find(obj[1]);
+			if(iterr == iter->second.end())
+			{
+				object.addReply(session->sendBuf,object.nullbulk);
+			}
+			else
+			{
+				object.addReplyBulk(session->sendBuf,iterr->second);
+			}
+		}
+	}
+
+	return false;
+}
+
+
+bool xRedis::hsetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
+{
+	if(obj.size() != 3)
+	{
+		object.addReplyErrorFormat(session->sendBuf,"unknown  hset error");
+		return false;
+	}
+
+	obj[0]->type = OBJ_HASH;
+	obj[1]->type = OBJ_HASH;
+	obj[2]->type = OBJ_HASH;
+	
+	bool update = false;
+	
+	size_t hash = obj[0]->hash;
+	size_t index = hash % kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &hashMap = redisShards[index].hashMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = map.find(obj[0]);
+		if(it == map.end())
+		{
+		#ifdef __DEBUG__
+			auto it = hashMap.find(obj[0]);
+			assert(it == hashMap.end());
+		#endif
+			std::unordered_map<rObj*,rObj*,Hash,Equal> rhash;
+			rhash.insert(std::make_pair(obj[1],obj[2]));
+			hashMap.insert(std::make_pair(obj[0],std::move(rhash)));
+		}
+		else
+		{
+			auto iter = hashMap.find(obj[0]);
+		#ifdef __DEBUG__
+			assert(iter != hashMap.end());
+		#endif
+			zfree(obj[0]);
+			auto iterr = iter->second.find(obj[1]);
+			if(iterr == iter->second.end())
+			{
+				iter->second.insert(std::make_pair(obj[1],obj[2]));
+			}
+			else
+			{
+				zfree(obj[1]);
+				zfree(iterr->second);
+				iterr->second = obj[2];
+				update = true;
+			}
+			
+		}
+	}
+
+	object.addReply(session->sendBuf,update ? object.czero : object.cone);
+	return true;
+}
+
+
+
 bool xRedis::setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
 {	
 	if(obj.size() <  2 || obj.size() > 8 )
@@ -1639,8 +1807,9 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessio
 	
 	obj[0]->type = OBJ_STRING;
 	obj[1]->type = OBJ_STRING;
+	
 	size_t hash= obj[0]->hash;
-	size_t index = hash  % kShards;
+	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
 	auto &map = redisShards[index].redis;
 	auto &setMap = redisShards[index].setMap;

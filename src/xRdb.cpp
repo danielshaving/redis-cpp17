@@ -399,6 +399,8 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 		auto &map = it.redis;
 		auto &mu = it.mtx;
 		auto &setMap = it.setMap;
+		auto &hashMap = it.hashMap;
+		
 		if(blockEnabled)
 		{
 			mu.lock();
@@ -420,7 +422,7 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 			}
 			else if(iter->type == OBJ_SET)
 			{
-
+			
 			}
 			else if(iter->type == OBJ_LIST)
 			{
@@ -428,7 +430,29 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 			}
 			else if(iter->type == OBJ_HASH)
 			{
+				auto iterr = hashMap.find(iter);
+			#ifdef __DEBUG__
+				assert(iterr != hashMap.end());
+			#endif
+				
+				if (rdbSaveKey(rdb,iterr->first,0) == -1)
+				{
+				 	return REDIS_ERR;
+				}
+				
+				if(rdbSaveLen(rdb,iterr->second.size()) == -1)
+				{
+					return REDIS_ERR;
+				}
 
+				for(auto &iterrr : iterr->second)
+				{
+					if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second,0) == -1)
+					{
+						return REDIS_ERR;
+					}
+				}
+				
 			}
 			else if(iter->type == OBJ_ZSET)
 			{
@@ -474,8 +498,77 @@ int xRdb::rdbLoadExpire(xRio *rdb,int type)
 		redis->removeCommand(key);
 		zfree(key);
 	}
+	
 	return REDIS_OK;
 }
+
+
+int xRdb::rdbLoadHash(xRio *rdb,int type)
+{
+	std::unordered_map<rObj*,rObj*,Hash,Equal> rhash;
+	rObj *key,*kkey,*val;
+	int len,rdbver;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr)
+	{
+		return REDIS_ERR;
+	}
+
+	key->calHash();
+	key->type = OBJ_HASH;
+	
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1)
+	{
+		return REDIS_ERR;
+	}
+
+	for(int i = 0 ; i < len; i ++)
+	{
+		if ((rdbver = rdbLoadType(rdb)) == -1)
+		{
+			return REDIS_ERR;
+		}
+		
+		if(rdbver != REDIS_RDB_TYPE_HASH)
+		{
+			return REDIS_ERR;
+		}
+
+		if ((kkey = rdbLoadStringObject(rdb)) == nullptr)
+		{
+			return REDIS_ERR;
+		}
+		
+		kkey->calHash();
+		kkey->type = OBJ_HASH;
+		
+		if ((val = rdbLoadObject(rdbver,rdb)) == nullptr)
+		{
+			return REDIS_ERR;
+		}
+		
+		val->calHash();
+		val->type = OBJ_HASH;
+
+		rhash.insert(std::make_pair(kkey,val));
+	}
+
+
+	size_t index  = key->hash% redis->kShards;
+	auto &mu = redis->redisShards[index].mtx;
+	auto &map = redis->redisShards[index].redis;
+	auto &hashMap = redis->redisShards[index].hashMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = hashMap.find(key);
+	#ifdef __DEBUG__
+		assert(it == hashMap.end());
+	#endif
+		hashMap.insert(std::make_pair(key,std::move(rhash)));
+	}
+	
+	return REDIS_OK;
+}
+
 
 int xRdb::rdbLoadString(xRio *rdb,int type)
 {
@@ -736,9 +829,19 @@ int xRdb::rdbLoad(char *filename)
 					LOG_WARN<<"rdbLoadExpire error";
 					return REDIS_ERR;
 				}
+				
 				break;
 			}
-
+			case REDIS_HASH:
+			{
+				if(rdbLoadHash(&rdb,type) != REDIS_OK)
+				{
+					LOG_WARN<<"rdbLoadHash error";
+					return REDIS_ERR;
+				}
+				
+				break;	
+			}
 			default:
 				break;
 		}

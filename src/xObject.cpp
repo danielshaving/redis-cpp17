@@ -317,7 +317,6 @@ void xObjects::destorySharedObjects()
 	freeStringObject(ZREVRANGE);
 	freeStringObject(ZCARD);
 	
-
 	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
 	{
 		freeStringObject(integers[j]);
@@ -332,7 +331,6 @@ void xObjects::destorySharedObjects()
 	zfree(rPort);
 
 }
-
 
 void xObjects::createSharedObjects()
 {
@@ -393,14 +391,12 @@ void xObjects::createSharedObjects()
 	plus = createObject(REDIS_STRING,sdsnew("+"));
 	asking = createObject(REDIS_STRING,sdsnew("asking"));
 
-
 	messagebulk = createStringObject("$7\r\nmessage\r\n",13);
 	pmessagebulk = createStringObject("$8\r\npmessage\r\n",14);
 	subscribebulk = createStringObject("$9\r\nsubscribe\r\n",15);
 	unsubscribebulk = createStringObject("$11\r\nunsubscribe\r\n",18);
 	psubscribebulk = createStringObject("$10\r\npsubscribe\r\n",17);
 	punsubscribebulk = createStringObject("$12\r\npunsubscribe\r\n",19);
-
 
 	del = createStringObject("del", 3);
 	rpop = createStringObject("rpop", 4);
@@ -594,7 +590,6 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(command);
 }
 
-
 rObj * xObjects::createStringObject(char *ptr, size_t len)
 {
 	return createEmbeddedStringObject(ptr,len);
@@ -628,8 +623,6 @@ rObj * xObjects::createEmbeddedStringObject(char *ptr, size_t len)
    	return o;
 }
 
-
-
 void xObjects::addReplyBulkLen(xBuffer & sendBuf,rObj *obj)
 {
 	size_t len;
@@ -660,14 +653,12 @@ void xObjects::addReplyBulkLen(xBuffer & sendBuf,rObj *obj)
 
 }
 
-
 void xObjects::addReplyBulk(xBuffer &sendBuf,rObj *obj)
 {
 	addReplyBulkLen(sendBuf,obj);
 	addReply(sendBuf,obj);
 	addReply(sendBuf,crlf);
 }
-
 
 void xObjects::addReplyLongLongWithPrefix(xBuffer &sendBuf,long long ll, char prefix)
 {
@@ -691,7 +682,6 @@ void xObjects::addReplyLongLongWithPrefix(xBuffer &sendBuf,long long ll, char pr
 	sendBuf.append(buf,len +3);
 
 }
-
 
 void xObjects::addReplyLongLong(xBuffer &sendBuf,size_t len)
 {
@@ -734,7 +724,6 @@ void xObjects::addReplyBulkSds(xBuffer &sendBuf, sds s)
 	addReply(sendBuf,crlf);
 }
 
-
 void xObjects::addReplyMultiBulkLen(xBuffer & sendBuf,long length)
 {
 	if (length < REDIS_SHARED_BULKHDR_LEN)
@@ -742,8 +731,6 @@ void xObjects::addReplyMultiBulkLen(xBuffer & sendBuf,long length)
     else
         addReplyLongLongWithPrefix(sendBuf,length,'*');
 }
-
-
 
 void xObjects::prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length)
 {
@@ -762,7 +749,6 @@ void xObjects::prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length)
 	}
 }
 
-
 void xObjects::addReplyBulkCString(xBuffer & sendBuf, const char *s)
 {
 	if (s == nullptr)
@@ -774,7 +760,6 @@ void xObjects::addReplyBulkCString(xBuffer & sendBuf, const char *s)
 		addReplyBulkCBuffer(sendBuf, s, strlen(s));
 	}
 }
-
 
 void xObjects::addReplyDouble(xBuffer & sendBuf, double d)
 {
@@ -808,14 +793,10 @@ void xObjects::addReplyErrorFormat(xBuffer & sendBuf,const char *fmt, ...)
 	sdsfree(s);
 }
 
-
-
 void xObjects::addReplyString(xBuffer & sendBuf,const char *s, size_t len)
 {
 	sendBuf.append(s,len);
 }
-
-
 
 void xObjects::addReplySds(xBuffer &sendBuf, sds s)
 {
