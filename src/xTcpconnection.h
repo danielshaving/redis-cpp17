@@ -15,8 +15,6 @@ public:
 
 	xEventLoop	 *getLoop();
 	int  getSockfd();
-
-
 	void setState(StateE s) { state  = s; }
 
 	void setConnectionCallback(const ConnectionCallback& cb)
@@ -54,7 +52,6 @@ public:
   	void send(const void* message, int len);
 	void send(xBuffer* message);
 	void send(const xStringPiece  &message);
-
 
 	bool disconnected() const { return state == kDisconnected; }
 	bool connected();

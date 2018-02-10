@@ -400,7 +400,7 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 		auto &mu = it.mtx;
 		auto &setMap = it.setMap;
 		auto &hashMap = it.hashMap;
-		
+		auto &listMap = it.listMap;
 		if(blockEnabled)
 		{
 			mu.lock();
@@ -411,9 +411,10 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 			if(iter->type == OBJ_STRING)
 			{
 				auto iterr = setMap.find(iter);
-				#ifdef __DEBUG__
+#ifdef __DEBUG__
 				assert(iterr != setMap.end());
-				#endif
+				assert(iterr->type != OBJ_STRING);
+#endif
 
 				if (rdbSaveKeyValuePair(rdb, iterr->first, iterr->second, 0) == -1)
 				{
@@ -426,14 +427,38 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 			}
 			else if(iter->type == OBJ_LIST)
 			{
+				auto iterr = listMap.find(iter);
+#ifdef __DEBUG__
+				assert(iterr != listMap.end());
+				assert(iterr->type != OBJ_LIST);
+#endif
+				
+				if (rdbSaveKey(rdb, iterr->first, 0) == -1)
+				{
+					return REDIS_ERR;
+				}
+
+				if (rdbSaveLen(rdb, iterr->second.size()) == -1)
+				{
+					return REDIS_ERR;
+				}
+
+				for (auto &iterrr : iterr->second)
+				{
+					if (rdbSaveValue(rdb, iterrr, 0) == -1)
+					{
+						return REDIS_ERR;
+					}
+				}
 
 			}
 			else if(iter->type == OBJ_HASH)
 			{
 				auto iterr = hashMap.find(iter);
-			#ifdef __DEBUG__
+#ifdef __DEBUG__
 				assert(iterr != hashMap.end());
-			#endif
+				assert(iterr->type != OBJ_HASH);
+#endif
 				
 				if (rdbSaveKey(rdb,iterr->first,0) == -1)
 				{
@@ -502,6 +527,67 @@ int xRdb::rdbLoadExpire(xRio *rdb,int type)
 	return REDIS_OK;
 }
 
+int xRdb::rdbLoadList(xRio *rdb, int type)
+{
+	std::deque<rObj*> list;
+	rObj *key;
+	int  rdbver;
+	int  len;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr)
+	{
+		return REDIS_ERR;
+	}
+
+	key->type = OBJ_LIST;
+	key->calHash();
+	
+	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
+	{
+		return	REDIS_ERR;
+	}
+
+	for (int i = 0; i < len; i++)
+	{
+		rObj *val;
+		if ((rdbver = rdbLoadType(rdb)) == -1)
+		{
+			return REDIS_ERR;
+		}
+
+		if (rdbver != REDIS_RDB_TYPE_STRING)
+		{
+			return REDIS_ERR;
+		}
+
+		if ((val = rdbLoadObject(rdbver, rdb)) == nullptr)
+		{
+			return REDIS_ERR;
+		}
+
+		val->type = OBJ_LIST;
+		val->calHash();
+		list.push_back(val);
+	}
+
+#ifdef __DEBUG__
+	assert(!list.empty());
+#endif 
+
+	size_t index = key->hash% redis->kShards;
+	auto &mu = redis->redisShards[index].mtx;
+	auto &map = redis->redisShards[index].redis;
+	auto &listMap = redis->redisShards[index].listMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = listMap.find(key);
+#ifdef __DEBUG__
+		assert(it == listMap.end());
+#endif
+		listMap.insert(std::make_pair(key, std::move(list)));
+	}
+
+	return REDIS_OK;
+}
 
 int xRdb::rdbLoadHash(xRio *rdb,int type)
 {
@@ -551,7 +637,9 @@ int xRdb::rdbLoadHash(xRio *rdb,int type)
 
 		rhash.insert(std::make_pair(kkey,val));
 	}
-
+#ifdef __DEBUG__
+	assert(!rhash.empty());
+#endif 
 
 	size_t index  = key->hash% redis->kShards;
 	auto &mu = redis->redisShards[index].mtx;
@@ -839,11 +927,25 @@ int xRdb::rdbLoad(char *filename)
 					LOG_WARN<<"rdbLoadHash error";
 					return REDIS_ERR;
 				}
-				
 				break;	
 			}
-			default:
+			case REDIS_LIST:
+			{
+				if (rdbLoadList(&rdb, type) != REDIS_OK)
+				{
+					LOG_WARN << "rdbLoadList error";
+					return REDIS_ERR;
+				}
 				break;
+			}
+			default:
+			{
+#ifdef __DEBUG__
+				assert(false);
+#endif
+				break;
+			}
+			
 		}
 	}
 

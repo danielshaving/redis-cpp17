@@ -18,10 +18,8 @@ context(context)
 	  connector->setConnectionErrorCallBack(std::bind(&xTcpClient::errorConnection,this));
 }
 
-
 namespace detail
 {
-
 	void removeConnection(xEventLoop* loop, const xTcpconnectionPtr& conn)
 	{
 	 	loop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
@@ -31,8 +29,8 @@ namespace detail
 	{
 
 	}
-
 }
+
 xTcpClient::~xTcpClient()
 {
 	  xTcpconnectionPtr conn;
@@ -60,7 +58,6 @@ xTcpClient::~xTcpClient()
 	  }
 }
 
-
 void xTcpClient::connect(const char *ip,int16_t port)
 {
 	 isconnect = true;
@@ -68,8 +65,6 @@ void xTcpClient::connect(const char *ip,int16_t port)
 	 this->port = port;
 	 connector->start(ip,port);
 }
-
-
 
 void xTcpClient::disconnect()
 {
@@ -83,21 +78,16 @@ void xTcpClient::disconnect()
 	}
 }
 
-
-
 void xTcpClient::stop()
 {
 	isconnect = false;
 	connector->stop();
 }
 
-
-
 void xTcpClient::errorConnection()
 {
 	connectionErrorCallBack(context);
 }
-
 
 void xTcpClient::newConnection(int32_t sockfd)
 {
@@ -113,7 +103,6 @@ void xTcpClient::newConnection(int32_t sockfd)
 	conn->connectEstablished();
 }
 
-
 void xTcpClient::removeConnection(const xTcpconnectionPtr& conn)
 {
 	loop->assertInLoopThread();
@@ -123,6 +112,5 @@ void xTcpClient::removeConnection(const xTcpconnectionPtr& conn)
 		assert(connection == conn);
 		connection.reset();
 	}
-
 	loop->queueInLoop(std::bind(&xTcpconnection::connectDestroyed, conn));
 }

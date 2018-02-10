@@ -43,11 +43,21 @@ public:
 	bool dbsizeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool quitCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool delCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+
 	bool setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool getCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+
 	bool hsetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool hgetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool hgetallCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+
+	bool lpushCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool lpopCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool lrangeCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool rpushCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool rpopCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+	bool llenCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
+
 	bool slaveofCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool syncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool psyncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
@@ -92,6 +102,7 @@ public:
 	
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> SetMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal>,Hash,Equal> HashMap;
+	typedef std::unordered_map<rObj*,std::deque<rObj*>, Hash, Equal> ListMap;
 	typedef std::unordered_set<rObj*,Hash,Equal> Redis;
 
 	const static int32_t kShards = 4096;
@@ -102,11 +113,13 @@ public:
 			redis.reserve(kShards );
 			setMap.reserve(kShards);
 			hashMap.reserve(kShards);
+			listMap.reserve(kShards);
 		}
 		
 		Redis redis;
 		SetMap setMap;
 		HashMap hashMap;
+		ListMap listMap;
 		mutable std::mutex mtx;
 	};
 

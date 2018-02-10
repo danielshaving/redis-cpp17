@@ -91,6 +91,7 @@ public:
 	long long rdbLoadMillisecondTime(xRio *rdb);
 	int rdbLoadString(xRio *rdb,int type);
 	int rdbLoadHash(xRio *rdb,int type);
+	int rdbLoadList(xRio *rdb,int type);
 	int rdbLoadExpire(xRio *rdb,int type);
 	uint32_t rdbLoadLen(xRio *rdb, int *isencoded);
 	int rdbLoad(char *filename);
