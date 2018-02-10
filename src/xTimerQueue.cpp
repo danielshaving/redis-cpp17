@@ -273,13 +273,12 @@ void  xTimerQueue::handleRead()
 #ifdef __linux__
 	readTimerfd(timerfd,now);
 #endif
-	std::vector<xTimer *> vectors;
 	while(pqueue.size() > 0 )
 	{
 		if(now.getMicroSecondsSinceEpoch() >= pqueue.head()->getWhen())
 		{
 			xTimer *timer = pqueue.pop();
-			assert(timer);
+			assert(timer != nullptr);
 			timer->run();
 			vectors.push_back(timer);
 		}
@@ -291,21 +290,23 @@ void  xTimerQueue::handleRead()
 	}
 	
 
-	for(auto it = vectors.begin(); it != vectors.end(); ++it)
+	for(auto &it : vectors)
 	{
-		if( (*it)->repeat)
+		if(it->repeat)
 		{
-			(*it)->restart(now);
+			it->restart(now);
 			resetTimerfd(timerfd, now);
-			pqueue.push(*it);
+			pqueue.push(it);
 		}
 		else
 		{
-			(*it)->~xTimer();
-			zfree(*it);
-			*it = nullptr;
+			it->~xTimer();
+			zfree(it);
+			it = nullptr;
 		}
 	}
+
+	vectors.clear();
 
 
 }

@@ -21,7 +21,7 @@ public:
 	void updateChannel(xChannel* channel);
 	void removeChannel(xChannel* channel);
 	void update(int32_t operation, xChannel* channel);
-	void  fillActiveChannels(int32_t numEvents, ChannelList* activeChannels) const;
+	void fillActiveChannels(int32_t numEvents, ChannelList* activeChannels) const;
 
  private:
 	ChannelMap channels;

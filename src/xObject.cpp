@@ -510,7 +510,7 @@ void xObjects::createSharedObjects()
 
 #define REGISTER_REDIS_COMMAND(msgId, func) \
     	msgId->calHash(); \
-	redis->handlerCommandMap[msgId] = std::bind(&xRedis::func, redis, std::placeholders::_1, std::placeholders::_2);
+	redis->handlerCommandMaps[msgId] = std::bind(&xRedis::func, redis, std::placeholders::_1, std::placeholders::_2);
 	REGISTER_REDIS_COMMAND(set,setCommand);
 	REGISTER_REDIS_COMMAND(get,getCommand);
 	REGISTER_REDIS_COMMAND(flushdb,flushdbCommand);
@@ -559,7 +559,7 @@ void xObjects::createSharedObjects()
 
 #define REGISTER_REDIS_REPLY_COMMAND(msgId) \
 	msgId->calHash(); \
-	redis->replyCommandMap.insert(msgId);
+	redis->replyCommandMaps.insert(msgId);
 	REGISTER_REDIS_REPLY_COMMAND(addsync);
 	REGISTER_REDIS_REPLY_COMMAND(setslot);
 	REGISTER_REDIS_REPLY_COMMAND(node);
@@ -571,7 +571,7 @@ void xObjects::createSharedObjects()
 
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
 	msgId->calHash(); \
-	redis->unorderedmapCommands.insert(msgId);
+	redis->replyCommandMaps.insert(msgId);
 	REGISTER_REDIS_CHECK_COMMAND(set);
 	REGISTER_REDIS_CHECK_COMMAND(hset);
 	REGISTER_REDIS_CHECK_COMMAND(lpush);

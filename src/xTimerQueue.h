@@ -40,6 +40,7 @@ public:
   	xTimer  *addTimer(double  when, const std::any &context, bool repeat, xTimerCallback&& cb);
   	static const int kMicroSecondsPerSecond = 1000 * 1000;
   	xPriorityQueue *getPriority(){ return &pqueue; }
+	
 private:
 	xEventLoop *loop;
 	xPriorityQueue pqueue;
@@ -47,5 +48,5 @@ private:
 #ifdef __linux__
 	xChannel timerfdChannel;
 #endif
-
+	std::vector<xTimer *> vectors;
 };

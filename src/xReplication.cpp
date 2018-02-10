@@ -119,7 +119,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 				{
                     std::shared_ptr<xSession> session(new xSession(redis, conn));
                     std::unique_lock <std::mutex> lck(redis->mtx);
-                    redis->sessions[conn->getSockfd()] = session;
+                    redis->sessionMaps[conn->getSockfd()] = session;
                 }
 		    	conn->send(redis->object.ok->ptr, sdslen(redis->object.ok->ptr));
 		    	LOG_INFO << "replication load rdb success";
@@ -166,7 +166,7 @@ void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 					{
 						std::shared_ptr<xSession> session(new xSession(redis, conn));
 						std::unique_lock <std::mutex> lck(redis->mtx);;
-						redis->sessions[conn->getSockfd()] = session;
+						redis->sessionMaps[conn->getSockfd()] = session;
 					}
 
 					LOG_INFO << "slaveof sync success";
@@ -203,7 +203,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn)
 		redis->slaveEnabled = false;
 		redis->repliEnabled = false;
 		std::unique_lock <std::mutex> lck(redis->mtx);
-		redis->sessions.erase(conn->getSockfd());
+		redis->sessionMaps.erase(conn->getSockfd());
 		LOG_INFO<<"connect  master disconnect";
 	}
 }

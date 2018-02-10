@@ -398,7 +398,7 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 	{
 		auto &map = it.redis;
 		auto &mu = it.mtx;
-		auto &setMap = it.setMap;
+		auto &stringMap = it.stringMap;
 		auto &hashMap = it.hashMap;
 		auto &listMap = it.listMap;
 		if(blockEnabled)
@@ -410,9 +410,9 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 		{
 			if(iter->type == OBJ_STRING)
 			{
-				auto iterr = setMap.find(iter);
+				auto iterr = stringMap.find(iter);
 #ifdef __DEBUG__
-				assert(iterr != setMap.end());
+				assert(iterr != stringMap.end());
 				assert(iterr->type != OBJ_STRING);
 #endif
 
@@ -676,7 +676,7 @@ int xRdb::rdbLoadString(xRio *rdb,int type)
 	size_t index  = key->hash% redis->kShards;
 	auto &mu = redis->redisShards[index].mtx;
 	auto &map = redis->redisShards[index].redis;
-	auto &setMap = redis->redisShards[index].setMap;
+	auto &stringMap = redis->redisShards[index].stringMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = map.find(key);
@@ -684,12 +684,12 @@ int xRdb::rdbLoadString(xRio *rdb,int type)
 		assert(it == map.end());
 #endif
 
-		auto iter = setMap.find(key);
+		auto iter = stringMap.find(key);
 #ifdef _DEBUG__
-		assert(iter == setMap.end());
+		assert(iter == stringMap.end());
 #endif
 		map.insert(key);
-		setMap.insert(std::make_pair(key,val));
+		stringMap.insert(std::make_pair(key,val));
 	}
 	return REDIS_OK;
 }

@@ -167,8 +167,8 @@ void xRedis::clearDeques(std::deque<rObj*> & robj)
 	for (auto &it : robj)
 	{
 	    it->calHash();
-		auto iter = replyCommandMap.find(it);
-		if (iter == replyCommandMap.end())
+		auto iter = replyCommandMaps.find(it);
+		if (iter == replyCommandMaps.end())
 		{
 			zfree(it);
 		}
@@ -214,7 +214,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn)
 		socket.getpeerName(conn->getSockfd(),&(conn->ip),conn->port);
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		std::unique_lock <std::mutex> lck(mtx);;
-		sessions[conn->getSockfd()] = session;
+		sessionMaps[conn->getSockfd()] = session;
 		//LOG_INFO<<"Client connect success";
 	}
 	else
@@ -229,7 +229,7 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn)
 	
 		{
 			std::unique_lock <std::mutex> lck(mtx);
-			sessions.erase(conn->getSockfd());
+			sessionMaps.erase(conn->getSockfd());
 		}
 
 		//LOG_INFO<<"Client disconnect";
@@ -369,7 +369,7 @@ bool xRedis::infoCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 	"local_ip:%s\r\n"
 	"local_port:%d\r\n"
 	"local_thread_count:%d\n",
-	sessions.size(),
+	sessionMaps.size(),
 	ip.c_str(),
 	port,
 	threadCount);
@@ -1040,12 +1040,12 @@ bool  xRedis::save(const xSeesionPtr &session)
 
 void xRedis::clearFork()
 {
-     for(auto &it : sessions)
+     for(auto &it : sessionMaps)
      {
          it.second->conn->forceClose();
      }
 
-     sessions.clear();
+     sessionMaps.clear();
 
      for (auto &it : salvetcpconnMaps)
      {
@@ -1072,7 +1072,7 @@ int32_t xRedis::rdbSaveBackground(const xSeesionPtr &session, bool enabled)
 	pid_t childpid;
 	if ((childpid = fork()) == 0)
 	{
-	       clearFork();
+	     clearFork();
 		 int32_t retval;
 		 rdb.setBlockEnable(enabled);
 		 retval = rdb.rdbSave("dump.rdb");
@@ -1645,7 +1645,7 @@ bool	xRedis::removeCommand(rObj * obj)
 	size_t index = obj->hash% kShards;
 	auto &mu = redisShards[index].mtx;
 	auto &map = redisShards[index].redis;
-	auto &setMap = redisShards[index].setMap;
+	auto &stringMap = redisShards[index].stringMap;
 	auto &hashMap = redisShards[index].hashMap;
 	auto &listMap = redisShards[index].listMap;
 	{
@@ -1655,9 +1655,9 @@ bool	xRedis::removeCommand(rObj * obj)
 		{
 			if((*it)->type == OBJ_STRING)
 			{
-				auto iter = setMap.find(obj);
+				auto iter = stringMap.find(obj);
 #ifdef __DEBUG__
-				assert(iter != setMap.end());
+				assert(iter != stringMap.end());
 				assert(iter->type != OBJ_STRING);
 #endif
 				std::unique_lock <std::mutex> lck(expireMutex);
@@ -1670,7 +1670,7 @@ bool	xRedis::removeCommand(rObj * obj)
 				}
 				zfree(iter->first);
 				zfree(iter->second);
-				setMap.erase(iter);
+				stringMap.erase(iter);
 			}
 			else if ((*it)->type == OBJ_HASH)
 			{
@@ -1804,7 +1804,7 @@ void xRedis::clearCommand()
 	{
 		auto &mu = it.mtx;
 		auto &map = it.redis;
-		auto &setMap = it.setMap;
+		auto &stringMap = it.stringMap;
 		auto &hashMap = it.hashMap;
 		auto &listMap = it.listMap;
 		std::unique_lock <std::mutex> lck(mu);
@@ -1812,14 +1812,14 @@ void xRedis::clearCommand()
 		{
 			if(iter->type == OBJ_STRING)
 			{
-				auto iterr = setMap.find(iter);
+				auto iterr = stringMap.find(iter);
 #ifdef __DEBUG__
-				assert(iterr != setMap.end());
+				assert(iterr != stringMap.end());
 				assert(iterr->type != OBJ_STRING);
 #endif
 				zfree(iterr->first);
 				zfree(iterr->second);
-				setMap.erase(iterr);
+				stringMap.erase(iterr);
 			}
 			else if(iter->type == OBJ_SET)
 			{
@@ -1887,15 +1887,15 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 		{
 			auto &mu =  it.mtx;
 			auto &map = it.redis;
-			auto &setMap = it.setMap;
+			auto &stringMap = it.stringMap;
 			std::unique_lock <std::mutex> lck(mu);
 			for(auto &iter : map)
 			{
 				if(iter->type == OBJ_STRING)
 				{
-					auto iterr = setMap.find(iter);
+					auto iterr = stringMap.find(iter);
 				#ifdef __DEBUG__
-					assert(iterr != setMap.end());
+					assert(iterr != stringMap.end());
 				#endif
 
 					if (allkeys || stringmatchlen(pattern,plen,iterr->first->ptr,sdslen(iterr->first->ptr),0))
@@ -2165,7 +2165,7 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessio
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
 	auto &map = redisShards[index].redis;
-	auto &setMap = redisShards[index].setMap;
+	auto &stringMap = redisShards[index].stringMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = map.find(obj[0]);
@@ -2178,12 +2178,12 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessio
 			}
 
 		#ifdef __DEBUG__
-			auto iter = setMap.find(obj[0]);
-			assert(iter == setMap.end());
+			auto iter = stringMap.find(obj[0]);
+			assert(iter == stringMap.end());
 		#endif
 
 			map.insert(obj[0]);
-			setMap.insert(std::make_pair(obj[0],obj[1]));
+			stringMap.insert(std::make_pair(obj[0],obj[1]));
 			
 			if (expire)
 			{
@@ -2203,9 +2203,9 @@ bool xRedis::setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessio
 				ex = object.createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
 			}
 
-			auto iter = setMap.find(obj[0]);
+			auto iter = stringMap.find(obj[0]);
 		#ifdef __DEBUG__
-			assert(iter != setMap.end());
+			assert(iter != stringMap.end());
 			assert(ietr->type != OBJ_STRING);
 		#endif
 			zfree(obj[0]);
@@ -2254,11 +2254,11 @@ bool xRedis::getCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessio
 	int32_t index = hash  % kShards;
 	auto &map = redisShards[index].redis;
 	auto &mu = redisShards[index].mtx;
-	auto &setMap = redisShards[index].setMap;
+	auto &stringMap = redisShards[index].stringMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
-		auto it = setMap.find(obj[0]);
-		if(it == setMap.end())
+		auto it = stringMap.find(obj[0]);
+		if(it == stringMap.end())
 		{
 			object.addReply(session->sendBuf,object.nullbulk);
 			return false;

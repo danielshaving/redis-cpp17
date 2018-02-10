@@ -70,7 +70,7 @@ void AppendFile::append(const char* logline, const size_t len)
       int err = ferror(fp);
       if (err)
       {
-        //fprintf(stderr, "AppendFile::append() failed %s\n", strerror_tl(err));
+      	LOG_ERROR<<"AppendFile::append() failed "<< strerror(err);
       }
       break;
     }

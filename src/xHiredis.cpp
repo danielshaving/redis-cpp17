@@ -13,7 +13,7 @@ xRedisReader::xRedisReader()
 	pos = 0;
 	err = 0;
 	errstr[0] = '\0';
-	ridx 	= -1;
+	ridx = -1;
 	buf = &buffer;
 }
 
@@ -37,7 +37,7 @@ xRedisContext::~xRedisContext()
 
 void xRedisContext::clear()
 {
-	flags	&= ~REDIS_BLOCK;
+	flags &= ~REDIS_BLOCK;
 	err = 0;
 	errstr[0] = '\0';
 	fd = 0;
