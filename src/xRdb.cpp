@@ -392,8 +392,18 @@ int xRdb::rdbSaveExpre(xRio *rdb)
 }
 
 
+
+int xRdb::rdbSaveBinaryDoubleValue(xRio*rdb, double val)
+{
+	 memrev64ifbe(&val);
+	 return rdbWriteRaw(rdb,&val,sizeof(val));
+}
+
+
+
 int xRdb::rdbSaveStruct(xRio *rdb)
 {
+	size_t n = 0;
 	for (auto &it : redis->redisShards)
 	{
 		auto &map = it.redis;
@@ -401,6 +411,9 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 		auto &stringMap = it.stringMap;
 		auto &hashMap = it.hashMap;
 		auto &listMap = it.listMap;
+		auto &zsetMap = it.zsetMap;
+		auto &setMap =it.setMap;
+		
 		if(blockEnabled)
 		{
 			mu.lock();
@@ -413,7 +426,7 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 				auto iterr = stringMap.find(iter);
 #ifdef __DEBUG__
 				assert(iterr != stringMap.end());
-				assert(iterr->type != OBJ_STRING);
+				assert(iterr->first->type == OBJ_STRING);
 #endif
 
 				if (rdbSaveKeyValuePair(rdb, iterr->first, iterr->second, 0) == -1)
@@ -430,7 +443,7 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 				auto iterr = listMap.find(iter);
 #ifdef __DEBUG__
 				assert(iterr != listMap.end());
-				assert(iterr->type != OBJ_LIST);
+				assert(iterr->first->type == OBJ_LIST);
 #endif
 				
 				if (rdbSaveKey(rdb, iterr->first, 0) == -1)
@@ -457,7 +470,7 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 				auto iterr = hashMap.find(iter);
 #ifdef __DEBUG__
 				assert(iterr != hashMap.end());
-				assert(iterr->type != OBJ_HASH);
+				assert(iterr->first->type == OBJ_HASH);
 #endif
 				
 				if (rdbSaveKey(rdb,iterr->first,0) == -1)
@@ -481,7 +494,49 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 			}
 			else if(iter->type == OBJ_ZSET)
 			{
+				auto iterr = zsetMap.find(iter);
+#ifdef __DEBUG__
+				assert(iterr != zsetMap.end());
+				assert(iterr->first->type == OBJ_ZSET);
+				assert(iterr->second.keyMap.size() == iterr->second.sortMap.size());
+#endif
+				
+				if (rdbSaveKey(rdb,iterr->first,0) == -1)
+				{
+				 	return REDIS_ERR;
+				}
+				
+				if(rdbSaveLen(rdb,iterr->second.keyMap.size()) == -1)
+				{
+					return REDIS_ERR;
+				}
 
+				for(auto &iterrr : iterr->second.keyMap)
+				{
+					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1)
+					{
+						return  REDIS_ERR;
+					}
+
+					if (rdbSaveValue(rdb, iterrr.first, 0) == -1)
+					{
+						return REDIS_ERR;
+					}
+					
+				}
+						
+
+			}
+			else if(iter->type == OBJ_SET)
+			{
+			
+			}
+			else
+			{
+#ifdef __DEBUG__
+				LOG_ERROR<<"unkown key type "<<iter->type;
+				assert(false);
+#endif
 			}
 		}
 		
@@ -524,6 +579,13 @@ int xRdb::rdbLoadExpire(xRio *rdb,int type)
 		zfree(key);
 	}
 	
+	return REDIS_OK;
+}
+
+
+
+int xRdb::rdbLoadZset(xRio *rdb,int type)
+{
 	return REDIS_OK;
 }
 
@@ -1176,12 +1238,45 @@ int xRdb::rdbSaveObject(xRio *rdb, rObj *o)
 			return -1;
 		}
 		nwritten += n;
-    } 
-    else if (o->type == OBJ_LIST)
-    {
-    	
-    }
-    
+	} 
+	else if (o->type == OBJ_LIST)
+	{
+		if ((n = rdbSaveStringObject(rdb,o)) == -1)
+		{
+			return -1;
+		}
+		nwritten += n;
+	}
+	else if(o->type == OBJ_ZSET)
+	{
+		if ((n = rdbSaveStringObject(rdb,o)) == -1)
+		{
+			return -1;
+		}
+		nwritten += n;
+	}
+	else if(o->type == OBJ_HASH)
+	{
+		if ((n = rdbSaveStringObject(rdb,o)) == -1)
+		{
+			return -1;
+		}
+		nwritten += n;
+	}
+	else if(o->type == OBJ_SET)
+	{
+		if ((n = rdbSaveStringObject(rdb,o)) == -1)
+		{
+			return -1;
+		}
+		nwritten += n;
+	}
+	else
+	{
+		LOG_ERROR<<"unknown type "<<o->type;
+		return -1;
+	}
+
     return nwritten;
 }
 
@@ -1189,17 +1284,18 @@ int xRdb::rdbSaveObject(xRio *rdb, rObj *o)
 
 int xRdb::rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long expireTime)
 {
-    if (rdbSaveObjectType(rdb,key) == -1) return -1;
-    if (rdbSaveStringObject(rdb,key) == -1) return -1;
-    if (rdbSaveObject(rdb,val) == -1) return -1;
+	if (rdbSaveObjectType(rdb,key) == -1) return -1;
+	if (rdbSaveStringObject(rdb,key) == -1) return -1;
+	if (rdbSaveObject(rdb,val) == -1) return -1;
+	
 	return 1;
 }
 
 
 int xRdb::rdbSaveValue(xRio *rdb, rObj *value,long long now)
 {
-    if (rdbSaveObjectType(rdb,value) == -1) return -1;
-    if (rdbSaveStringObject(rdb,value) == -1) return -1;
+	if (rdbSaveObjectType(rdb,value) == -1) return -1;
+	if (rdbSaveStringObject(rdb,value) == -1) return -1;
 
 	return 1;
 }
@@ -1215,8 +1311,9 @@ int xRdb::rdbSaveMillisecondTime(xRio *rdb, long long t)
 
 int xRdb::rdbSaveKey(xRio *rdb, rObj *key,long long now)
 {
-    if (rdbSaveObjectType(rdb,key) == -1) return -1;
-    if (rdbSaveStringObject(rdb,key) == -1) return -1;
+	if (rdbSaveObjectType(rdb,key) == -1) return -1;
+	if (rdbSaveStringObject(rdb,key) == -1) return -1;
+	
 	return 1;
 }
 
@@ -1224,12 +1321,12 @@ int xRdb::rdbSaveKey(xRio *rdb, rObj *key,long long now)
 
 int xRdb::rdbWriteRaw(xRio *rdb, void *p, size_t len)
 {
-   if (rdb && rioWrite(rdb,p,len) == 0)
-   { 
-   	 return -1;
-   }
-	
-   return len;
+	if (rdb && rioWrite(rdb,p,len) == 0)
+	{ 
+		 return -1;
+	}
+
+	return len;
 }
 
 

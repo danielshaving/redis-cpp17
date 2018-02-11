@@ -513,6 +513,13 @@ void xObjects::createSharedObjects()
 	redis->handlerCommandMaps[msgId] = std::bind(&xRedis::func, redis, std::placeholders::_1, std::placeholders::_2);
 	REGISTER_REDIS_COMMAND(set,setCommand);
 	REGISTER_REDIS_COMMAND(get,getCommand);
+	REGISTER_REDIS_COMMAND(hset,hsetCommand);
+	REGISTER_REDIS_COMMAND(hget,hgetCommand);
+	REGISTER_REDIS_COMMAND(hgetall,hgetallCommand);
+	REGISTER_REDIS_COMMAND(lpush,lpushCommand);
+	REGISTER_REDIS_COMMAND(rpush,rpushCommand);
+	REGISTER_REDIS_COMMAND(lpop,lpopCommand);
+	REGISTER_REDIS_COMMAND(rpop,rpopCommand);
 	REGISTER_REDIS_COMMAND(flushdb,flushdbCommand);
 	REGISTER_REDIS_COMMAND(dbsize,dbsizeCommand);
 	REGISTER_REDIS_COMMAND(ping,pingCommand);
@@ -555,7 +562,6 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_COMMAND(MIGRATE,migrateCommand);
 	REGISTER_REDIS_COMMAND(DEBUG,debugCommand);
 	REGISTER_REDIS_COMMAND(TTL,ttlCommand);
-
 
 #define REGISTER_REDIS_REPLY_COMMAND(msgId) \
 	msgId->calHash(); \

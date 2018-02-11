@@ -67,6 +67,7 @@ public:
 	FILE * createFile();
 	int  closeFile(FILE * fp);
 
+	int rdbSaveBinaryDoubleValue(xRio*rdb, double val);
 	int rdbSaveMillisecondTime(xRio *rdb, long long t);
 	int rdbSaveType(xRio *rdb, unsigned char type);
 	int rdbSaveLen(xRio *rdb, uint32_t len);
@@ -92,6 +93,7 @@ public:
 	int rdbLoadString(xRio *rdb,int type);
 	int rdbLoadHash(xRio *rdb,int type);
 	int rdbLoadList(xRio *rdb,int type);
+	int rdbLoadZset(xRio *rdb,int type);
 	int rdbLoadExpire(xRio *rdb,int type);
 	uint32_t rdbLoadLen(xRio *rdb, int *isencoded);
 	int rdbLoad(char *filename);

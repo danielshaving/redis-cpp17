@@ -47,9 +47,16 @@ public:
 	bool setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool getCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 
+	bool hlenCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool hsetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool hgetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool hgetallCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	
+	bool zaddCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool zrangeCommand(const std::deque<rObj*> &obj,const xSeesionPtr &session);
+	bool zcardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool zrevrangeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool zrangeGenericCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session,int reverse);
 
 	bool lpushCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
 	bool lpopCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
@@ -74,7 +81,7 @@ public:
 	bool sentinelCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
 	bool migrateCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
 	bool ttlCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-	
+		
 	int32_t rdbSaveBackground(const xSeesionPtr &session, bool enabled);
 	bool bgsave(const xSeesionPtr &session, bool enabled = false);
 	bool save(const xSeesionPtr &session);
@@ -92,14 +99,7 @@ public:
 	auto  & getHandlerCommandMap() { return handlerCommandMaps; }
 
 public:
-	typedef std::function<bool(const std::deque<rObj*> &,xSeesionPtr)> CommandFunc;
-	std::unordered_set<rObj*,Hash,Equal>        unorderedmapCommands;
-	std::unordered_set<rObj*,Hash,Equal>        stopRepliMaps;
-	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommandMaps;
-	std::unordered_set<rObj*,Hash, Equal> replyCommandMaps;
-	std::unordered_map<int32_t,xSeesionPtr> sessionMaps;
-	std::unordered_set<rObj*,Hash,Equal> cluterMaps;
-	
+	typedef std::function<bool(const std::deque<rObj*> &,xSeesionPtr)> CommandFunc;	
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> StringMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal>,Hash,Equal> HashMap;
 	typedef std::unordered_map<rObj*,std::deque<rObj*>, Hash, Equal> ListMap;
@@ -107,12 +107,19 @@ public:
 	typedef std::multimap<double,rObj*> SortMap;
 	typedef struct SortSet
 	{
-		KeyMap sortDouble; 
+		KeyMap keyMap; 
 		SortMap sortMap;
 	};
 	typedef std::unordered_map<rObj*,SortSet,Hash,Equal> ZsetMap;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> SetMap;
-	typedef std::unordered_set<rObj*,Hash,Equal> Redis;
+	typedef std::unordered_set<rObj*,Hash,Equal> RedisMap;
+
+	std::unordered_set<rObj*,Hash,Equal> unorderedmapCommands;
+	std::unordered_set<rObj*,Hash,Equal> stopRepliMaps;
+	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommandMaps;
+	std::unordered_set<rObj*,Hash, Equal> replyCommandMaps;
+	std::unordered_map<int32_t,xSeesionPtr> sessionMaps;
+	std::unordered_set<rObj*,Hash,Equal> cluterMaps;
 	
 
 	const static int32_t kShards = 4096;
@@ -125,13 +132,15 @@ public:
 			hashMap.reserve(kShards);
 			listMap.reserve(kShards);
 			zsetMap.reserve(kShards);
+			setMap.reserve(kShards);
 		}
 		
-		Redis redis;
+		RedisMap redis;
 		StringMap stringMap;
 		HashMap hashMap;
 		ListMap listMap;
 		ZsetMap zsetMap;
+		SetMap setMap;
 		mutable std::mutex mtx;
 	};
 
@@ -139,7 +148,7 @@ public:
 
 	xEventLoop loop;
 	xTcpServer server;
-
+	
 	std::mutex mtx;
 	std::mutex slaveMutex;
 	std::mutex expireMutex;
