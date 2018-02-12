@@ -522,13 +522,34 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 					{
 						return REDIS_ERR;
 					}
-					
 				}
 						
 			}
 			else if(iter->type == OBJ_SET)
 			{
-			
+				auto iterr = setMap.find(iter);
+#ifdef __DEBUG__
+				assert(iterr != setMap.end());
+				assert(iterr->first->type == OBJ_SET);
+#endif	
+				if (rdbSaveKey(rdb,iterr->first,0) == -1)
+				{
+				 	return REDIS_ERR;
+				}
+				
+				if(rdbSaveLen(rdb,iterr->second.size()) == -1)
+				{
+					return REDIS_ERR;
+				}
+
+				for(auto &iterrr : iterr->second)
+				{
+					if (rdbSaveValue(rdb, iterrr, 0) == -1)
+					{
+						return REDIS_ERR;
+					}
+				}
+				
 			}
 			else
 			{
@@ -581,6 +602,64 @@ int xRdb::rdbLoadExpire(xRio *rdb,int type)
 	return REDIS_OK;
 }
 
+int xRdb::rdbLoadSet(xRio *rdb,int type)
+{
+	std::unordered_set<rObj*,Hash,Equal> set;
+	rObj *key;
+	int  len;
+
+	if ((key = rdbLoadStringObject(rdb)) == nullptr)
+	{
+		return REDIS_ERR;
+	}
+
+	key->type = OBJ_ZSET;
+	key->calHash();
+
+	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
+	{
+		return REDIS_ERR;
+	}
+
+	set.reserve(len);
+	
+	for (int i = 0; i < len; i++)
+	{
+		rObj *val;
+		if ((val = rdbLoadObject(type, rdb)) == nullptr)
+		{
+			return REDIS_ERR;
+		}
+
+		val->type = OBJ_ZSET;
+		val->calHash();
+		
+#ifdef __DEBUG__
+		auto it = set.find(val);
+		assert(it != set.end());
+#endif
+		set.insert(val);
+	}
+
+#ifdef __DEBUG__
+	assert(!set.empty());
+#endif
+
+	size_t index = key->hash % redis->kShards;
+	auto &mu = redis->redisShards[index].mtx;
+	auto &map = redis->redisShards[index].redis;
+	auto &setMap = redis->redisShards[index].setMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = setMap.find(key);
+#ifdef __DEBUG__
+		assert(it == setMap.end());
+#endif
+		setMap.insert(std::make_pair(key,std::move(set)));
+	}
+
+	return REDIS_OK;
+}
 
 
 int xRdb::rdbLoadZset(xRio *rdb,int type)
@@ -622,6 +701,7 @@ int xRdb::rdbLoadZset(xRio *rdb,int type)
 		sortSet.sortMap.insert(std::make_pair(socre,val));
 		sortSet.keyMap.insert(std::make_pair(val,socre));
 	}
+	
 #ifdef __DEBUG__
 	assert(!sortSet.sortMap.empty());
 	assert(!sortSet.keyMap.empty());
@@ -1337,7 +1417,6 @@ int xRdb::rdbSaveObjectType(xRio *rdb, rObj *o)
 	return  -1;
 }	
 
-
 int xRdb::rdbSaveObject(xRio *rdb, rObj *o)
 {
 	int n, nwritten = 0;
@@ -1391,8 +1470,6 @@ int xRdb::rdbSaveObject(xRio *rdb, rObj *o)
     return nwritten;
 }
 
-	
-
 int xRdb::rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long expireTime)
 {
 	if (rdbSaveObjectType(rdb,key) == -1) return -1;
@@ -1402,7 +1479,6 @@ int xRdb::rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long expireT
 	return 1;
 }
 
-
 int xRdb::rdbSaveValue(xRio *rdb, rObj *value,long long now)
 {
 	if (rdbSaveObjectType(rdb,value) == -1) return -1;
@@ -1410,9 +1486,6 @@ int xRdb::rdbSaveValue(xRio *rdb, rObj *value,long long now)
 
 	return 1;
 }
-
-
-
 
 int xRdb::rdbSaveMillisecondTime(xRio *rdb, long long t)
 {
@@ -1506,9 +1579,11 @@ int xRdb::rdbSave(char *filename)
 	}
 
 	return REDIS_OK;
+	
 werr:
 	 LOG_WARN<<"Write error saving DB on disk:" <<strerror(errno);
 	 fclose(fp);
 	 unlink(tmpfile);
 	 return REDIS_ERR;
+	 
 }

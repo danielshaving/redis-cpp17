@@ -47,6 +47,7 @@ public:
 	bool setCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool getCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 
+	bool hkeysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool hlenCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool hsetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool hgetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
@@ -64,7 +65,10 @@ public:
 	bool rpushCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
 	bool rpopCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
 	bool llenCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-
+	
+	bool scardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool saddCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	
 	bool slaveofCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool syncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool psyncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
@@ -173,9 +177,9 @@ public:
 	std::condition_variable  expireCondition;
 	std::condition_variable  forkCondition;
 
-	xBuffer	 slaveCached;
-	xBuffer	 clusterMigratCached;
-	xBuffer	 clusterImportCached;
+	xBuffer slaveCached;
+	xBuffer clusterMigratCached;
+	xBuffer clusterImportCached;
 	
 	xObjects object;
 	xReplication repli;

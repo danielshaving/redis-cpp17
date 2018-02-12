@@ -1681,7 +1681,7 @@ bool xRedis::dbsizeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &ses
 	return true;
 }
 
-bool	xRedis::removeCommand(rObj * obj)
+bool xRedis::removeCommand(rObj * obj)
 {
 	size_t index = obj->hash% kShards;
 	auto &mu = redisShards[index].mtx;
@@ -1690,6 +1690,7 @@ bool	xRedis::removeCommand(rObj * obj)
 	auto &hashMap = redisShards[index].hashMap;
 	auto &listMap = redisShards[index].listMap;
 	auto &zsetMap = redisShards[index].zsetMap;
+	auto &setMap = redisShards[index].setMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = map.find(obj);
@@ -1710,6 +1711,7 @@ bool	xRedis::removeCommand(rObj * obj)
 					loop.cancelAfter(iterr->second);
 					expireTimers.erase(iterr);
 				}
+				
 				zfree(iter->first);
 				zfree(iter->second);
 				stringMap.erase(iter);
@@ -1728,6 +1730,7 @@ bool	xRedis::removeCommand(rObj * obj)
 					zfree(iterr.first);
 					zfree(iterr.second);
 				}
+				
 				hashMap.erase(iter);				
 			}
 			else if ((*it)->type == OBJ_LIST)
@@ -1743,6 +1746,7 @@ bool	xRedis::removeCommand(rObj * obj)
 				{
 					zfree(iterr);
 				}
+				
 				listMap.erase(iter);
 			}
 			else if((*it)->type == OBJ_ZSET)
@@ -1762,6 +1766,22 @@ bool	xRedis::removeCommand(rObj * obj)
 				
 				zsetMap.erase(iter);
 			}
+			else if((*it)->type == OBJ_SET)
+			{
+				auto iter = setMap.find(obj);
+#ifdef __DEBUG__
+				assert(iter != setMap.end());
+				assert(iter->first->type == OBJ_SET);
+#endif
+				zfree(iter->first);
+
+				for (auto &iterr : iter->second)
+				{
+					zfree(iterr);
+				}
+				
+				setMap.erase(iter);
+			}
 			else
 			{
 #ifdef __DEBUG__
@@ -1777,7 +1797,6 @@ bool	xRedis::removeCommand(rObj * obj)
 
 	return false;
 }
-
 
 bool xRedis::delCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
 {
@@ -1801,7 +1820,6 @@ bool xRedis::delCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessio
 	return false;
 }
 
-
 bool xRedis::pingCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
 {
 	if(obj.size() > 0)
@@ -1814,9 +1832,8 @@ bool xRedis::pingCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 	return false;
 }
 
-
- bool xRedis::debugCommand(const std::deque <rObj*> & obj, const xSeesionPtr &session)
- {
+bool xRedis::debugCommand(const std::deque <rObj*> & obj, const xSeesionPtr &session)
+{
 	if (obj.size() == 1)
 	{
 		object.addReplyError(session->sendBuf,"You must specify a subcommand for DEBUG. Try DEBUG HELP for info.");
@@ -1838,7 +1855,7 @@ bool xRedis::pingCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 	
 	object.addReply(session->sendBuf,object.err);
       return false;
- }
+}
 
 
 void xRedis::clear()
@@ -1869,6 +1886,8 @@ void xRedis::clearCommand()
 		auto &hashMap = it.hashMap;
 		auto &listMap = it.listMap;
 		auto &zsetMap = it.zsetMap;
+		auto &setMap = it.setMap;
+		
 		std::unique_lock <std::mutex> lck(mu);
 		for (auto &iter : map)
 		{
@@ -1883,10 +1902,6 @@ void xRedis::clearCommand()
 				zfree(iterr->second);
 				stringMap.erase(iterr);
 			}
-			else if(iter->type == OBJ_SET)
-			{
-			
-			}
 			else if(iter->type == OBJ_LIST)
 			{
 				auto iterr = listMap.find(iter);
@@ -1899,6 +1914,7 @@ void xRedis::clearCommand()
 				{
 					zfree(iterrr);
 				}
+
 				listMap.erase(iterr);
 			}
 			else if(iter->type == OBJ_HASH)
@@ -1915,6 +1931,7 @@ void xRedis::clearCommand()
 					zfree(iterrr.first);
 					zfree(iterrr.second);
 				}
+				
 				hashMap.erase(iterr);
 			}
 			else if(iter->type == OBJ_ZSET)
@@ -1931,6 +1948,23 @@ void xRedis::clearCommand()
 				{
 					zfree(iterrr.first);
 				}
+				zsetMap.erase(iterr);
+			
+			}
+			else if(iter->type == OBJ_SET)
+			{
+				auto iterr = setMap.find(iter);
+#ifdef __DEBUG__
+				assert(iterr != setMap.end());
+				assert(iterr->first->type == OBJ_SET);
+#endif	
+				zfree(iterr->first);
+				for(auto &iterrr : iterr->second)
+				{
+					zfree(iterrr);
+				}
+				setMap.erase(iterr);
+				
 			}
 			else
 			{
@@ -2230,6 +2264,122 @@ bool xRedis::zrevrangeCommand(const std::deque <rObj*> & obj,const xSeesionPtr &
 	return zrangeGenericCommand(obj,session,1);
 }
 
+bool xRedis::scardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
+{
+	if(obj.size() != 1 )
+	{
+		object.addReplyErrorFormat(session->sendBuf,"unknown  scard error");
+		return false;
+	}
+
+	size_t len = 0;
+	size_t hash = obj[0]->hash;
+	size_t index = hash % kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &setMap = redisShards[index].setMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = map.find(obj[0]);
+		if(it != map.end())
+		{
+			if((*it)->type != OBJ_SET)
+			{
+				object.addReplyErrorFormat(session->sendBuf,"WRONGTYPE Operation against a key holding the wrong kind of value");
+				return false;
+			}
+
+			auto iter = setMap.find(obj[0]);
+#ifdef __DEBUG__
+			assert(iter != setMap.end());
+			assert(iter->first->type == (*it)->type);
+#endif
+			len = iter->second.size();
+		}
+		object.addReplyLongLong(session->sendBuf,len);
+	}
+	return false;
+}
+
+bool xRedis::saddCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
+{
+	if(obj.size() < 2)
+	{
+		object.addReplyErrorFormat(session->sendBuf,"unknown  sadd error");
+		return false;
+	}
+
+	obj[0]->type = OBJ_SET;
+	
+	size_t len = 0;
+	size_t hash = obj[0]->hash;
+	size_t index = hash % kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &setMap = redisShards[index].setMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = map.find(obj[0]);
+		if(it == map.end())
+		{
+			auto iter = setMap.find(obj[0]);
+#ifdef __DEBUG__
+			if(iter == setMap.end());
+#endif
+			
+			std::unordered_set<rObj*,Hash,Equal> set;
+			set.reserve(obj.size());
+			for(int i = 1; i < obj.size(); i ++)
+			{
+				obj[i]->type = OBJ_SET;
+				auto iterr = set.find(obj[i]);
+				if(iterr == set.end())
+				{
+					set.insert(obj[i]);
+					len++;
+				}
+				else
+				{
+					zfree(obj[i]);
+				}
+				setMap.insert(std::make_pair(obj[0],std::move(set)));
+			}
+		}
+		else
+		{
+			if((*it)->type != OBJ_SET)
+			{
+				object.addReplyErrorFormat(session->sendBuf,"WRONGTYPE Operation against a key holding the wrong kind of value");
+				return false;
+			}
+
+			zfree(obj[0]);
+			auto iter = setMap.find(obj[0]);
+#ifdef __DEBUG__
+			assert(iter != setMap.end());
+			assert(iter->first->type == (*it)->type);
+#endif
+			for(int i = 1; i < obj.size(); i++)
+			{
+				obj[i]->type = OBJ_SET;
+				auto iterr = iter->second.find(obj[i]);
+				if(iterr == iter->second.end())
+				{
+					iter->second.insert(obj[i]);
+					len++;
+				}
+				else
+				{
+					zfree(obj[i]);
+				}
+			}
+		}
+	}
+		
+	object.addReplyLongLong(session->sendBuf,len);
+	return true;
+}	
+
 bool xRedis::zrangeGenericCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session,int reverse)
 {
 	if (obj.size()  != 4)
@@ -2469,6 +2619,57 @@ bool xRedis::hgetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 
 
 
+bool xRedis::hkeysCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
+{
+	if(obj.size() != 1)
+	{
+		object.addReplyErrorFormat(session->sendBuf,"unknown  hkeys error");
+		return false;
+	}
+
+	size_t hash = obj[0]->hash;
+	size_t index = hash % kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &hashMap = redisShards[index].hashMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = map.find(obj[0]);
+		if(it == map.end())
+		{
+#ifdef __DEBUG__
+			auto iter = hashMap.find(obj[0]);
+			assert(iter == hashMap.end());
+#endif
+			object.addReply(session->sendBuf,object.emptymultibulk);
+			return false;
+		}
+		else
+		{
+			if((*it)->type != OBJ_HASH)
+			{
+				object.addReplyErrorFormat(session->sendBuf,"WRONGTYPE Operation against a key holding the wrong kind of value");
+				return false;
+			}
+			
+			auto iter = hashMap.find(obj[0]);
+#ifdef __DEBUG__
+			assert(iter != hashMap.end());
+			assert(iter->first->type == (*it)->type);
+#endif		
+			object.addReplyMultiBulkLen(session->sendBuf,iter->second.size());
+
+			for(auto &iterr : iter->second)
+			{
+				object.addReplyBulkCBuffer(session->sendBuf,iterr.first->ptr,sdslen(iterr.first->ptr));
+			}
+					
+		}
+	}	
+	
+	return false;
+}
+
 bool xRedis::hlenCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
 {
 	if(obj.size() != 1)
@@ -2500,6 +2701,7 @@ bool xRedis::hlenCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 				object.addReplyErrorFormat(session->sendBuf,"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return false;
 			}
+			
 			auto iter = hashMap.find(obj[0]);
 #ifdef __DEBUG__
 			assert(iter != hashMap.end());
@@ -2575,7 +2777,6 @@ bool xRedis::hsetCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 				iterr->second = obj[2];
 				update = true;
 			}
-			
 		}
 	}
 

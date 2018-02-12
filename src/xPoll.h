@@ -10,17 +10,17 @@ class xPoll:noncopyable
 {
 public:
 	typedef std::vector<struct pollfd> EventList;
-	typedef std::vector<xChannel*>          ChannelList;
+	typedef std::vector<xChannel*> ChannelList;
 	typedef std::unordered_map<int, xChannel*> 	ChannelMap;
 
 	xPoll(xEventLoop * loop);
 	~xPoll();
 
-	void	epollWait(ChannelList* activeChannels,int msTime = 10);
-	bool	hasChannel(xChannel* channel);
-	void	updateChannel(xChannel* channel);
-	void	removeChannel(xChannel* channel);
-	void 	fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
+	void epollWait(ChannelList* activeChannels,int msTime = 10);
+	bool hasChannel(xChannel* channel);
+	void updateChannel(xChannel* channel);
+	void emoveChannel(xChannel* channel);
+	void fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
 
  private:
 	ChannelMap channels;
