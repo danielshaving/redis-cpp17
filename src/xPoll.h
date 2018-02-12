@@ -19,12 +19,12 @@ public:
 	void epollWait(ChannelList* activeChannels,int msTime = 10);
 	bool hasChannel(xChannel* channel);
 	void updateChannel(xChannel* channel);
-	void emoveChannel(xChannel* channel);
+	void removeChannel(xChannel* channel);
 	void fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
 
  private:
 	ChannelMap channels;
-	EventList 	events;
+	EventList events;
 	xEventLoop  *loop;
 };
 
