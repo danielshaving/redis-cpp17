@@ -96,7 +96,7 @@ public:
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 	bool getClusterMap(rObj * command);
-	auto  & getHandlerCommandMap() { return handlerCommandMaps; }
+	auto &getHandlerCommandMap() { return handlerCommandMaps; }
 
 public:
 	typedef std::function<bool(const std::deque<rObj*> &,xSeesionPtr)> CommandFunc;	
@@ -117,7 +117,7 @@ public:
 	std::unordered_set<rObj*,Hash,Equal> unorderedmapCommands;
 	std::unordered_set<rObj*,Hash,Equal> stopRepliMaps;
 	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommandMaps;
-	std::unordered_set<rObj*,Hash, Equal> replyCommandMaps;
+	std::unordered_set<rObj*,Hash,Equal> replyCommandMaps;
 	std::unordered_map<int32_t,xSeesionPtr> sessionMaps;
 	std::unordered_set<rObj*,Hash,Equal> cluterMaps;
 	
@@ -127,7 +127,7 @@ public:
 	{
 		RedisMapLock()
 		{
-			redis.reserve(kShards );
+			redis.reserve(kShards);
 			stringMap.reserve(kShards);
 			hashMap.reserve(kShards);
 			listMap.reserve(kShards);
@@ -188,10 +188,10 @@ public:
 	std::unique_ptr<std::thread> sentiThreads;
 	std::unique_ptr<std::thread> clusterThreads;
 
-	std::unordered_map<int32_t,xTcpconnectionPtr>     salvetcpconnMaps;
-	std::unordered_map<int32_t,xTcpconnectionPtr>     clustertcpconnMaps;
+	std::unordered_map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
+	std::unordered_map<int32_t,xTcpconnectionPtr> clustertcpconnMaps;
 	std::unordered_map<int32_t,xTimer*> repliTimers;
-	std::unordered_map<rObj*,xTimer*,Hash,Equal>     expireTimers;
+	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
 	
 	std::string ip;
 	std::string password;
@@ -204,6 +204,7 @@ public:
 	int16_t threadCount;
 	int32_t masterPort;
 	int32_t masterfd;
+
 };
 
 

@@ -525,7 +525,6 @@ int xRdb::rdbSaveStruct(xRio *rdb)
 					
 				}
 						
-
 			}
 			else if(iter->type == OBJ_SET)
 			{
@@ -586,6 +585,66 @@ int xRdb::rdbLoadExpire(xRio *rdb,int type)
 
 int xRdb::rdbLoadZset(xRio *rdb,int type)
 {
+	xRedis::SortSet sortSet;
+	
+	rObj *key;
+	int  rdbver;
+	int  len;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr)
+	{
+		return REDIS_ERR;
+	}
+
+	key->type = OBJ_ZSET;
+	key->calHash();
+
+	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
+	{
+		return REDIS_ERR;
+	}
+
+	for (int i = 0; i < len; i++)
+	{
+		rObj *val;
+		double socre;
+		if(rdbLoadBinaryDoubleValue(rdb,&socre) == -1)
+		{
+			return REDIS_ERR;
+		}
+		
+		if ((val = rdbLoadObject(type, rdb)) == nullptr)
+		{
+			return REDIS_ERR;
+		}
+
+		val->type = OBJ_ZSET;
+		val->calHash();
+		sortSet.sortMap.insert(std::make_pair(socre,val));
+		sortSet.keyMap.insert(std::make_pair(val,socre));
+	}
+#ifdef __DEBUG__
+	assert(!sortSet.sortMap.empty());
+	assert(!sortSet.keyMap.empty());
+#endif 
+
+	size_t index = key->hash % redis->kShards;
+	auto &mu = redis->redisShards[index].mtx;
+	auto &map = redis->redisShards[index].redis;
+	auto &zsetMap = redis->redisShards[index].zsetMap;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = zsetMap.find(key);
+#ifdef __DEBUG__
+		assert(it == zsetMap.end());
+#endif
+		auto iter = map.find(key);
+#ifdef __DEBUG__
+		assert(iter == map.end());
+#endif
+		zsetMap.insert(std::make_pair(key,std::move(sortSet)));
+		map.insert(key);
+	}
+		
 	return REDIS_OK;
 }
 
@@ -605,7 +664,7 @@ int xRdb::rdbLoadList(xRio *rdb, int type)
 	
 	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
 	{
-		return	REDIS_ERR;
+		return REDIS_ERR;
 	}
 
 	for (int i = 0; i < len; i++)
@@ -645,6 +704,11 @@ int xRdb::rdbLoadList(xRio *rdb, int type)
 #ifdef __DEBUG__
 		assert(it == listMap.end());
 #endif
+		auto iter = map.find(key);
+#ifdef __DEBUG__
+		assert(iter == map.end());
+#endif
+		map.insert(key);
 		listMap.insert(std::make_pair(key, std::move(list)));
 	}
 
@@ -709,11 +773,18 @@ int xRdb::rdbLoadHash(xRio *rdb,int type)
 	auto &hashMap = redis->redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
+	
 		auto it = hashMap.find(key);
-	#ifdef __DEBUG__
+#ifdef __DEBUG__
 		assert(it == hashMap.end());
-	#endif
+#endif
+
+		auto iter = map.find(key);
+#ifdef __DEBUG__
+		if(iter == map.end());
+#endif
 		hashMap.insert(std::make_pair(key,std::move(rhash)));
+		map.insert(key);
 	}
 	
 	return REDIS_OK;
@@ -1147,6 +1218,11 @@ size_t xRdb::rdbSaveRawString(xRio *rdb, const  char *s, size_t len)
 	
 }
 
+int xRdb::rdbLoadBinaryDoubleValue(xRio *rdb,double *val)
+{
+	if (rioRead(rdb,val,sizeof(*val)) == 0)  return -1;
+   	 memrev64ifbe(val);
+}
 
 long long xRdb::rdbLoadMillisecondTime(xRio *rdb)
 {
@@ -1162,6 +1238,41 @@ rObj * xRdb::rdbLoadObject(int rdbtype, xRio *rdb)
 	size_t len;
 	unsigned int i;
 	if(rdbtype == REDIS_RDB_TYPE_STRING)
+	{
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
+		{
+			return nullptr;
+		}
+	}
+	else if(rdbtype == REDIS_RDB_TYPE_LIST)
+	{
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
+		{
+			return nullptr;
+		}
+	}
+	else if(rdbtype == REDIS_RDB_TYPE_SET)
+	{
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
+		{
+			return nullptr;
+		}
+	}
+	else if(rdbtype == REDIS_RDB_TYPE_ZSET)
+	{
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
+		{
+			return nullptr;
+		}
+	}
+	else if(rdbtype == REDIS_RDB_TYPE_HASH)
+	{
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
+		{
+			return nullptr;
+		}
+	}
+	else if(rdbtype == REDIS_RDB_TYPE_EXPIRE)
 	{
 		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
 		{

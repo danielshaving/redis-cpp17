@@ -90,6 +90,7 @@ public:
 	rObj *rdbLoadEncodedStringObject(xRio *rdb);
 	rObj *rdbLoadLzfStringObject(xRio *rdb);
 	long long rdbLoadMillisecondTime(xRio *rdb);
+	int rdbLoadBinaryDoubleValue(xRio *rdb,double *val);
 	int rdbLoadString(xRio *rdb,int type);
 	int rdbLoadHash(xRio *rdb,int type);
 	int rdbLoadList(xRio *rdb,int type);
