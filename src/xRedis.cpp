@@ -602,6 +602,30 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 		clus.connSetCluster(obj[1]->ptr, port);
 		return false;
 	}
+	else if(!strcasecmp(obj[0]->ptr, "info") && obj.size() == 1)
+	{
+		return false;
+	}
+	else if(!strcasecmp(obj[0]->ptr, "flushslots") && obj.size() == 1)
+	{
+		return false;
+	}
+	else if(!strcasecmp(obj[0]->ptr, "saveconfig") && obj.size() == 1)
+	{
+		return false;
+	}
+	else if(!strcasecmp(obj[0]->ptr, "countkeysinslot") && obj.size() == 2)
+	{
+		return false;
+	}
+	else if(!strcasecmp(obj[0]->ptr, "forget") && obj.size() == 2)
+	{
+		return false;
+	}
+	else if(!strcasecmp(obj[0]->ptr, "slaves") && obj.size() == 2)
+	{
+		return false;
+	}
 	else if (!strcasecmp(obj[0]->ptr, "nodes") && obj.size() == 1)
 	{
 		rObj *o = object.createObject(OBJ_STRING, clus.showClusterNodes());
@@ -713,7 +737,6 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSeesionPtr &s
 			object.addReply(session->sendBuf, object.ok);
 			LOG_INFO<<"cluster async replication success "<<imipPort;
 			return false;
-
 		}
 
 		int32_t slot;
@@ -967,7 +990,6 @@ void xRedis::structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs
 	}
 }
 
-
 bool xRedis::getClusterMap(rObj * command)
 {
 	auto it = cluterMaps.find(command);
@@ -977,7 +999,6 @@ bool xRedis::getClusterMap(rObj * command)
 	}
 	return true;
 }
-
 
 bool xRedis::bgsave(const xSeesionPtr &session,bool enabled)
 {
@@ -990,7 +1011,6 @@ bool xRedis::bgsave(const xSeesionPtr &session,bool enabled)
 		}
 		return false;
 	}
-
 
 	if(rdbSaveBackground(session, enabled) == REDIS_OK)
 	{
@@ -1007,7 +1027,6 @@ bool xRedis::bgsave(const xSeesionPtr &session,bool enabled)
 		}
 		return false;
 	}
-
 	return true;
 }
 
@@ -1032,11 +1051,8 @@ bool  xRedis::save(const xSeesionPtr &session)
 			return false;
 		}
 	}
-
 	return true;
 }
-
-
 
 void xRedis::clearFork()
 {
@@ -1060,6 +1076,22 @@ void xRedis::clearFork()
      }
 
      clustertcpconnMaps.clear();
+}
+
+void xRedis::createDumpPayload(xRio *payload, rObj *o)
+{
+	unsigned char buf[2];
+	uint64_t crc;
+	rdb.rioInitWithBuffer(payload,sdsempty());
+	rdb.rdbSaveObjectType(payload,o);
+	rdb.rdbSaveObject(payload,o);
+	buf[0] = REDIS_RDB_VERSION & 0xff;
+	buf[1] = (REDIS_RDB_VERSION >> 8) & 0xff;
+	payload->io.buffer.ptr = sdscatlen(payload->io.buffer.ptr,buf,2);
+	crc = crc64(0,(unsigned char*)payload->io.buffer.ptr,
+	        sdslen(payload->io.buffer.ptr));
+	memrev64ifbe(&crc);
+	payload->io.buffer.ptr = sdscatlen(payload->io.buffer.ptr,&crc,8);
 }
 
 int32_t xRedis::rdbSaveBackground(const xSeesionPtr &session, bool enabled)
@@ -1117,9 +1149,7 @@ bool xRedis::bgsaveCommand(const std::deque <rObj*> & obj,const xSeesionPtr &ses
 	}
 	
 	bgsave(session);
-
 	return true;
-	
 }
 
 bool xRedis::saveCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
@@ -1141,7 +1171,6 @@ bool xRedis::saveCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sessi
 
 	return true;
 }
-
 
 bool xRedis::slaveofCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
 {
@@ -1195,8 +1224,6 @@ bool xRedis::commandCommand(const std::deque <rObj*> & obj,const xSeesionPtr &se
 	object.addReply(session->sendBuf,object.ok);
 	return false;
 }
-
-
 
  void xRedis::handleForkTimeOut()
  {
@@ -2300,6 +2327,52 @@ bool xRedis::scardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &sess
 	}
 	return false;
 }
+
+bool xRedis::dumpCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
+{
+	if(obj.size() != 1)
+	{
+		object.addReplyErrorFormat(session->sendBuf,"unknown  dump error");
+		return false;
+	}
+
+	
+	return true;
+}
+
+bool xRedis::restoreCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
+{
+	return true;
+}
+
+bool xRedis::existsCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
+{
+	if(obj.size() > 0)
+	{
+		object.addReplyErrorFormat(session->sendBuf,"unknown  exists error");
+		return false;
+	}
+
+	size_t hash = obj[0]->hash;
+	size_t index = hash % kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = map.find(obj[0]);
+		if(it == map.end())
+		{
+			object.addReplyLongLong(session->sendBuf,0);
+		}
+		else
+		{
+			object.addReplyLongLong(session->sendBuf,1);
+		}
+	}
+	
+	return true;
+}
+
 
 bool xRedis::saddCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session)
 {

@@ -25,7 +25,7 @@ public:
 	xCluster(xRedis * redis);
 	~xCluster();
 
-      void clear();
+    void clear();
 	bool connSetCluster(const char *ip, int16_t port);
 	void connectCluster();
 	void connErrorCallBack();

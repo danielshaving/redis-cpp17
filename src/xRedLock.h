@@ -35,13 +35,13 @@ private:
 	static int32_t defaultRetryDelay;
 	static float clockDriftFactor;
 
-	sds 	unlockScript;
-	int32_t 	retryCount;
-	int32_t 	retryDelay;
-	int32_t	quoRum;
-	int32_t	fd;
-	xLock	continueLock;
-	sds	continueLockScript;
+	sds unlockScript;
+	int32_t retryCount;
+	int32_t retryDelay;
+	int32_t quoRum;
+	int32_t fd;
+	xLock continueLock;
+	sds continueLockScript;
 
 	struct timeval timeout = { 1, 500000 }; 
 	std::vector<xRedisContextPtr> disconnectServers;

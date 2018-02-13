@@ -124,11 +124,22 @@ int xRdb::rioFileFlush(xRio *r)
 	return (fflush(r->io.file.fp) == 0) ? 1:0;
 }
 
-
 void xRdb::rioGenericUpdateChecksum(xRio *r, const void *buf, size_t len)
 {
 	r->cksum = crc64(r->cksum,(const unsigned char*)buf,len);
 }
+
+void xRdb::rioInitWithBuffer(xRio *r, sds s)
+{
+	r->readFuc = std::bind(&xRdb::rioFileRead,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
+	r->writeFuc = std::bind(&xRdb::rioFileWrite,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
+	r->tellFuc = std::bind(&xRdb::rioFileTell,this,std::placeholders::_1);
+	r->flushFuc = std::bind(&xRdb::rioFileFlush,this,std::placeholders::_1);
+	r->updateFuc = std::bind(&xRdb::rioGenericUpdateChecksum,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
+	r->io.buffer.ptr = s;
+	r->io.buffer.pos = 0;
+}
+
 
 void xRdb::rioInitWithFile(xRio *r, FILE *fp)
 {

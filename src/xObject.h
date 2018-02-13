@@ -7,6 +7,10 @@
 #include "xLog.h"
 #include "xUtil.h"
 
+#define LRU_BITS 24
+#define LRU_CLOCK_MAX ((1<<LRU_BITS)-1) /* Max value of obj->lru */
+#define LRU_CLOCK_RESOLUTION 1000 /* LRU clock resolution in ms */
+
 
 typedef struct redisObject
 {		
@@ -31,7 +35,9 @@ typedef struct redisObject
 			return false;
 		}
 	}
-	
+
+	unsigned lru:LRU_BITS;    
+   	int refcount;					
 	unsigned type;
 	unsigned encoding;
 	size_t hash;
@@ -67,7 +73,11 @@ public:
 
 	void createSharedObjects();
 	void destorySharedObjects();
-	void freeStringObject(rObj *o) ;
+	void freeStringObject(rObj *o);
+	void freeListObject(rObj *o);
+	void freeSetObject(rObj *o);
+	void freeHashObject(rObj *o);
+	void freeZsetObject(rObj *o);
 	void decrRefCount(rObj *o) ;
 
 	void addReplyBulkSds(xBuffer &sendBuf, sds s);

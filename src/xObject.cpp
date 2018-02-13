@@ -154,6 +154,7 @@ int xObjects::getDoubleFromObject(const rObj *o, double *target)
     return REDIS_OK;
 }
 
+
 void xObjects::freeStringObject(rObj *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW)
@@ -162,13 +163,52 @@ void xObjects::freeStringObject(rObj *o)
     }
 }
 
+void xObjects::freeListObject(rObj *o)
+{
+    if (o->encoding == OBJ_ENCODING_RAW)
+    {
+        sdsfree((sds)o->ptr);
+    }
+}
+
+void xObjects::freeHashObject(rObj *o)
+{
+    if (o->encoding == OBJ_ENCODING_RAW)
+    {
+        sdsfree((sds)o->ptr);
+    }
+}
+
+void xObjects::freeSetObject(rObj *o)
+{
+    if (o->encoding == OBJ_ENCODING_RAW)
+    {
+        sdsfree((sds)o->ptr);
+    }
+}
+
+
+void xObjects::freeZsetObject(rObj *o)
+{
+    if (o->encoding == OBJ_ENCODING_RAW)
+    {
+        sdsfree((sds)o->ptr);
+    }
+}
+
+
 
 void xObjects::decrRefCount(rObj *o)
 {
 	switch(o->type)
 	{
-		case OBJ_STRING: freeStringObject(o); break;
-		default: LOG_WARN<<"Unknown object type"; break;
+        case OBJ_STRING: freeStringObject(o); break;
+        case OBJ_LIST: freeListObject(o); break;
+        case OBJ_SET: freeSetObject(o); break;
+        case OBJ_ZSET: freeZsetObject(o); break;
+        case OBJ_HASH: freeHashObject(o); break;
+        default: LOG_ERROR<<"Unknown object type"; break;
+        
 	}
 	zfree(o);
 }
@@ -528,6 +568,9 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_COMMAND(zrange,zrangeCommand);
 	REGISTER_REDIS_COMMAND(zcard,zcardCommand);
 	REGISTER_REDIS_COMMAND(zrevrange,zrevrangeCommand);
+	REGISTER_REDIS_COMMAND(scard,scardCommand);
+	REGISTER_REDIS_COMMAND(sadd,saddCommand);
+
 	REGISTER_REDIS_COMMAND(flushdb,flushdbCommand);
 	REGISTER_REDIS_COMMAND(dbsize,dbsizeCommand);
 	REGISTER_REDIS_COMMAND(ping,pingCommand);
@@ -565,6 +608,9 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_COMMAND(ZRANGE,zrangeCommand);
 	REGISTER_REDIS_COMMAND(ZCARD,zcardCommand);
 	REGISTER_REDIS_COMMAND(ZREVRANGE,zrevrangeCommand);
+	REGISTER_REDIS_COMMAND(SCARD,scardCommand);
+	REGISTER_REDIS_COMMAND(SADD,saddCommand);
+
 	REGISTER_REDIS_COMMAND(FLUSHDB,flushdbCommand);
 	REGISTER_REDIS_COMMAND(DBSIZE,dbsizeCommand);
 	REGISTER_REDIS_COMMAND(PING,pingCommand);

@@ -491,6 +491,11 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys ,int32_t c
 		auto &mu = it.mtx;
 		auto &map = it.redis;
 		auto &stringMap = it.stringMap;
+		auto &hashMap = it.hashMap;
+		auto &zsetMap = it.zsetMap;
+		auto &setMap = it.setMap;
+		auto &listMap = it.listMap;
+
 		std::unique_lock <std::mutex> lck(mu);
 		for (auto &iter : map)
 		{
@@ -499,6 +504,7 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys ,int32_t c
 				auto iterr = stringMap.find(iter);
 			#ifdef __DEBUG__
 				assert(iterr != stringMap.end());
+				assert(iterr->first->type == iter->type);
 			#endif
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
@@ -509,6 +515,82 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys ,int32_t c
 						return ;
 					}
 				}
+			}
+			else if(iter->type == OBJ_HASH)
+			{
+				auto iterr = hashMap.find(iter);
+			#ifdef __DEBUG__
+				assert(iterr != hashMap.end());
+				assert(iterr->first->type == iter->type);
+			#endif
+				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
+				if(slot == hashslot)
+				{
+					keys.push_back(redis->object.createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					if(--count == 0)
+					{
+						return ;
+					}
+				}
+
+			}
+			else if(iter->type == OBJ_LIST)
+			{
+				auto iterr = listMap.find(iter);
+			#ifdef __DEBUG__
+				assert(iterr != listMap.end());
+				assert(iterr->first->type == iter->type);
+			#endif
+				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
+				if(slot == hashslot)
+				{
+					keys.push_back(redis->object.createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					if(--count == 0)
+					{
+						return ;
+					}
+				}
+			}
+			else if(iter->type == OBJ_ZSET)
+			{
+				auto iterr = zsetMap.find(iter);
+			#ifdef __DEBUG__
+				assert(iterr != zsetMap.end());
+				assert(iterr->first->type == iter->type);
+			#endif
+				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
+				if(slot == hashslot)
+				{
+					keys.push_back(redis->object.createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					if(--count == 0)
+					{
+						return ;
+					}
+				}
+			}
+			else if(iter->type == OBJ_SET)
+			{
+				auto iterr = setMap.find(iter);
+			#ifdef __DEBUG__
+				assert(iterr != setMap.end());
+				assert(iterr->first->type == iter->type);
+			#endif
+				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
+				if(slot == hashslot)
+				{
+					keys.push_back(redis->object.createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					if(--count == 0)
+					{
+						return ;
+					}
+				}
+			}
+			else
+			{
+				LOG_ERROR<<"unknown type error "<<iter->type;
+			#ifdef __DEBUG__
+				assert(false);
+			#endif
 			}
 		}
 	}

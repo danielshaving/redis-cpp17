@@ -64,6 +64,7 @@ class xRedisReader : noncopyable
 public:
 	xRedisReader();
 	xRedisReader(xBuffer & recvBuff);
+	
 	int32_t redisReaderGetReply(void * *reply);
 	void redisReaderSetError(int32_t type, const char *str);
 	void redisReaderSetErrorProtocolByte(char byte);

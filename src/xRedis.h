@@ -69,6 +69,9 @@ public:
 	bool scardCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool saddCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	
+	bool existsCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool dumpCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
+	bool restoreCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool slaveofCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool syncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
 	bool psyncCommand(const std::deque <rObj*> & obj,const xSeesionPtr &session);
@@ -85,7 +88,8 @@ public:
 	bool sentinelCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
 	bool migrateCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
 	bool ttlCommand(const std::deque<rObj*> & obj, const xSeesionPtr &session);
-		
+
+	void createDumpPayload(xRio *payload, rObj *o);
 	int32_t rdbSaveBackground(const xSeesionPtr &session, bool enabled);
 	bool bgsave(const xSeesionPtr &session, bool enabled = false);
 	bool save(const xSeesionPtr &session);

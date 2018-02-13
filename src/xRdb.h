@@ -63,7 +63,9 @@ public:
 	size_t rioFileWrite(xRio *r, const void *buf, size_t len);
 	inline off_t rioFileTell(xRio *r);
 	int rioFileFlush(xRio *r);
+	
 	void rioInitWithFile(xRio *r, FILE *fp);
+	void rioInitWithBuffer(xRio *r, sds s);
 	FILE * createFile();
 	int  closeFile(FILE * fp);
 
