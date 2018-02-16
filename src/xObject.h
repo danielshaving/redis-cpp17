@@ -60,7 +60,6 @@ struct Equal
 		 return ((sdslen(x->ptr) == sdslen(y->ptr)) &&
             (memcmp(x->ptr, y->ptr, sdslen(y->ptr))== 0));
 	}
-
 };
 
 

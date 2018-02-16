@@ -67,6 +67,8 @@ public:
 	const std::any& getContext() const { return context; }
 	void setContext(const std::any& context) { this->context = context; }
 
+	xBuffer *outputBuffer() { return &sendBuff; }
+
 public:
 	xEventLoop  *loop;
 	int sockfd;

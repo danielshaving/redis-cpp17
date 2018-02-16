@@ -36,11 +36,11 @@ public:
 	void cretateClusterNode(int32_t slot,const std::string &ip,int16_t port,const std::string &name);
 
 	void structureProtocolSetCluster(std::string host, int16_t port, xBuffer &sendBuf, const xTcpconnectionPtr &conn);
-	int32_t getSlotOrReply(const xSeesionPtr &session,rObj *o );
+	int32_t getSlotOrReply(const xSessionPtr &session,rObj *o );
 	uint32_t keyHashSlot(char *key, int32_t keylen);
 	void syncClusterSlot();
-	void clusterRedirectClient(const xSeesionPtr &session, xClusterNode * node,int32_t hashSlot,int32_t errCode);
-	bool replicationToNode(const xSeesionPtr &session,const std::string &ip,int16_t port);
+	void clusterRedirectClient(const xSessionPtr &session, xClusterNode * node,int32_t hashSlot,int32_t errCode);
+	bool replicationToNode(const xSessionPtr &session,const std::string &ip,int16_t port);
 	void delClusterImport(std::deque<rObj*> &robj);
 	
 	void eraseClusterNode(const std::string &ip,int16_t port);

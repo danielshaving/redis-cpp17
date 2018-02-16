@@ -1,5 +1,9 @@
 #include "xSession.h"
 #include "xRedis.h"
+#include "xMemcached.h"
+
+const int kLongestKeySize = 250;
+std::string xSession::kLongestKey(kLongestKeySize, 'x');
 
 xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
 :reqtype(0),
@@ -17,12 +21,30 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
 	conn->setMessageCallback(std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
 }
 
-xSession::~xSession()
+xSession::xSession(xMemcachedServer *memcahed,const xTcpconnectionPtr & conn)
+:memcached(memcached),
+conn(conn),
+state(kNewCommand),
+protocol(kAscii),
+noreply(false),
+policy(xItem::kInvalid),
+bytesToDiscard(0),
+needle(xItem::makeItem(kLongestKey, 0, 0, 2, 0)),
+bytesRead(0),
+requestsProcessed(0)
 {
-	zfree(command);
+	 conn->setMessageCallback(std::bind(&xSession::onMessage, this, std::placeholders::_1,std::placeholders::_2));
 }
 
-void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
+xSession::~xSession()
+{
+	if(sdslen(command->ptr))
+	{
+		zfree(command);
+	}
+}
+
+void xSession::readCallBack(const xTcpconnectionPtr &conn, xBuffer *recvBuf)
 {
 	while(recvBuf->readableBytes() > 0 )
 	{
@@ -96,7 +118,7 @@ void xSession::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 
 
 
-bool xSession::checkCommand(rObj*  robjs)
+bool xSession::checkCommand(rObj *robjs)
 {
 	auto it = redis->unorderedmapCommands.find(robjs);
 	if(it == redis->unorderedmapCommands.end())
@@ -486,6 +508,404 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 
 	return REDIS_ERR;
 }
+
+
+struct xSession::Reader
+{
+	Reader(auto  &beg, auto end)
+	  : first(beg),
+	    last(end)
+	{
+
+	}
+
+	template<typename T>
+	bool read(T* val)
+	{
+		if (first == last) return false;
+		char* end = nullptr;
+		uint64_t x = strtoull((*first).data(), &end, 10);
+		if (end == (*first).end())
+		{
+			*val = static_cast<T>(x);
+			++first;
+			return true;
+		}
+
+		return false;
+	}
+
+ private:
+ 	std::vector<xStringPiece>::iterator  first;
+	std::vector<xStringPiece>::iterator  last;
+};
+
+
+void xSession::receiveValue(xBuffer *buf)
+{
+	assert(currItem.get());
+	assert(state == kReceiveValue);
+
+	const size_t avail = std::min(buf->readableBytes(), currItem->neededBytes());
+	assert(currItem.unique());
+	currItem->append(buf->peek(), avail);
+	buf->retrieve(avail);
+	if (currItem->neededBytes() == 0)
+	{
+		if (currItem->endsWithCRLF())
+		{
+			bool exists = false;
+			if (memcached->storeItem(currItem, policy, &exists))
+			{
+				reply("STORED\r\n");
+			}
+			else
+			{
+				if (policy == xItem::kCas)
+				{
+					if (exists)
+					{
+						reply("EXISTS\r\n");
+					}
+					else
+					{
+					   	 reply("NOT_FOUND\r\n");
+					}
+				}
+				else
+				{
+				        reply("NOT_STORED\r\n");
+				}
+			}
+		}
+		else
+		{
+			reply("CLIENT_ERROR bad data chunk\r\n");
+		}
+
+		resetRequest();
+		state = kNewCommand;
+  	}
+}
+
+void xSession::discardValue(xBuffer *buf)
+{
+	assert(!currItem);
+	assert(state == kDiscardValue);
+	if (buf->readableBytes() < bytesToDiscard)
+	{
+		bytesToDiscard -= buf->readableBytes();
+		buf->retrieveAll();
+	}
+	else
+	{
+		buf->retrieve(bytesToDiscard);
+		bytesToDiscard= 0;
+		resetRequest();
+		state = kNewCommand;
+	}
+}
+
+
+
+bool xSession::processRequest(xStringPiece request)
+{
+	std::string command;
+	assert(command.empty());
+	assert(!noreply);
+	assert(policy == xItem::kInvalid);
+	assert(!currItem);
+	assert(bytesToDiscard == 0);
+	++requestsProcessed;
+
+	if (request.size() >= 8)
+	{
+		xStringPiece end(request.end() - 8, 8);
+		if (end == " noreply")
+		{
+			noreply = true;
+			request.removeSuffix(8);
+		}
+	}
+
+	std::vector<xStringPiece> tokenizers;
+	const char *next = request.begin();
+	const char *end = request.end();
+
+	for(;;)
+	{
+		while (next != end && *next == ' ')
+		++next;
+		if (next == end)
+		{
+			break;
+		}
+
+		xStringPiece tok;
+		const char * start = next;
+		const char* sp = static_cast<const char*>(memchr(start, ' ', end - start));
+		if (sp)
+		{
+			tok.set(start, static_cast<int>(sp - start));
+			next = sp;
+		}
+		else
+		{
+			tok.set(start, static_cast<int>(end - next));
+			next = end;
+		}
+		tokenizers.push_back(std::move(tok));
+	}
+
+	auto beg = tokenizers.begin();
+	if (beg == tokenizers.end())
+	{
+		reply("ERROR\r\n");
+		return true;
+	}
+
+	(*beg).copyToString(&command);
+	++beg;
+	if (command == "set" || command == "add" || command == "replace"
+	  || command == "append" || command == "prepend" || command == "cas")
+	{
+
+		return doUpdate(command,beg, tokenizers.end());
+	}
+	else if (command == "get" || command == "gets")
+	{
+		bool cas = command == "gets";
+		while (beg != tokenizers.end())
+		{
+			xStringPiece key = *beg;
+			bool good = key.size() <= kLongestKeySize;
+			if (!good)
+			{
+				reply("CLIENT_ERROR bad command line format\r\n");
+				return true;
+			}
+
+			needle->resetKey(key);
+			xConstItemPtr item = memcached->getItem(needle);
+			++beg;
+			if (item)
+			{
+				item->output(&sendBuf, cas);
+			}
+		}
+		sendBuf.append("END\r\n");
+
+		if (conn->outputBuffer()->writableBytes() > 65536 + sendBuf.readableBytes())
+		{
+			LOG_DEBUG << "shrink output buffer from " << conn->outputBuffer()->internalCapacity();
+			conn->outputBuffer()->shrink(65536 + sendBuf.readableBytes());
+		}
+
+		conn->send(&sendBuf);
+	}
+	else if (command == "delete")
+	{
+		doDelete(command,beg, tokenizers.end());
+	}
+	else if (command == "version")
+	{
+		reply("VERSION 0.01 memcached \r\n");
+	}
+	else if (command == "quit")
+	{
+		conn->shutdown();
+	}
+	else if (command == "shutdown")
+	{
+		conn->shutdown();
+		memcached->stop();
+	}
+	else
+	{
+		reply("ERROR\r\n");
+		LOG_INFO << "Unknown command: " << command;
+	}
+ 	return true;
+}
+
+void xSession::resetRequest()
+{
+	noreply = false;
+	policy = xItem::kInvalid;
+	currItem.reset();
+	bytesToDiscard = 0;
+}
+
+void xSession::reply(xStringPiece msg)
+{
+	if (!noreply)
+	{
+		conn->send(msg.data(), msg.size());
+	}
+}
+
+bool xSession::doUpdate(const std::string &command,auto &beg, auto end)
+{
+	if (command == "set")
+		policy = xItem::kSet;
+	else if (command == "add")
+		policy = xItem::kAdd;
+	else if (command == "replace")
+		policy = xItem::kReplace;
+	else if (command == "append")
+		policy = xItem::kAppend;
+	else if (command == "prepend")
+		policy = xItem::kPrepend;
+	else if (command == "cas")
+		policy = xItem::kCas;
+	else
+	assert(false);
+
+	xStringPiece key = (*beg);
+	++beg;
+	bool good = key.size() <= kLongestKeySize;
+
+	uint32_t flags = 0;
+	time_t exptime = 1;
+	int bytes = -1;
+	uint64_t cas = 0;
+
+	Reader r(beg, end);
+	good = good && r.read(&flags) && r.read(&exptime) && r.read(&bytes);
+
+	int relExptime = static_cast<int>(exptime);
+	if (exptime > 60*60*24*30)
+	{
+		relExptime = static_cast<int>(exptime - memcached->getStartTime());
+		if (relExptime < 1)
+		{
+			relExptime = 1;
+		}
+	}
+	else
+	{
+
+		// relExptime = exptime + currentTime;
+	}
+
+	if (good && policy == xItem::kCas)
+	{
+		good = r.read(&cas);
+	}
+
+	if (!good)
+	{
+		reply("CLIENT_ERROR bad command line format\r\n");
+		return true;
+	}
+
+	if (bytes > 1024*1024)
+	{
+		reply("SERVER_ERROR object too large for cache\r\n");
+		needle->resetKey(key);
+		memcached->deleteItem(needle);
+		bytesToDiscard = bytes + 2;
+		state = kDiscardValue;
+		return false;
+	}
+	else
+	{
+		currItem = xItem::makeItem(key, flags, relExptime, bytes + 2, cas);
+		state = kReceiveValue;
+		return false;
+	}
+}
+
+void xSession::doDelete(const std::string &command,auto  &beg, auto end)
+{
+	assert(command == "delete");
+	xStringPiece key = *beg;
+	bool good = key.size() <= kLongestKeySize;
+	++beg;
+	if (!good)
+	{
+		reply("CLIENT_ERROR bad command line format\r\n");
+	}
+	else if (beg != end && *beg != "0") // issue 108, old protocol
+	{
+		reply("CLIENT_ERROR bad command line format.  Usage: delete <key> [noreply]\r\n");
+	}
+	else
+	{
+		needle->resetKey(key);
+		if (memcached->deleteItem(needle))
+		{
+			reply("DELETED\r\n");
+		}
+		else
+		{
+			reply("NOT_FOUND\r\n");
+		}
+	}
+}
+
+static bool isBinaryProtocol(uint8_t firstByte)
+{
+	return firstByte == 0x80;
+}
+
+void xSession::onMessage(const xTcpconnectionPtr &conn,xBuffer *buf)
+{
+	const size_t initialReadable = buf->readableBytes();
+
+	while (buf->readableBytes() > 0)
+	{
+		if (state == kNewCommand)
+		{
+			if (protocol == kAuto)
+			{
+				assert(bytesRead == 0);
+				protocol = isBinaryProtocol(buf->peek()[0]) ? kBinary : kAscii;
+			}
+
+			assert(protocol == kAscii || protocol == kBinary);
+			if (protocol == kBinary)
+			{
+				// FIXME
+			}
+			else  // ASCII protocol
+			{
+				const char* crlf = buf->findCRLF();
+				if (crlf)
+				{
+					int len = static_cast<int>(crlf - buf->peek());
+					xStringPiece request(buf->peek(), len);
+					if (processRequest(request))
+					{
+						resetRequest();
+					}
+					buf->retrieveUntil(crlf + 2);
+				}
+				else
+				{
+					if (buf->readableBytes() > 1024)
+					{
+						conn->shutdown();
+					}
+					break;
+				}
+			}
+		}
+		else if (state == kReceiveValue)
+		{
+			receiveValue(buf);
+		}
+		else if (state == kDiscardValue)
+		{
+			discardValue(buf);
+		}
+		else
+		{
+			assert(false);
+		}
+	}
+}
+
 
 
 

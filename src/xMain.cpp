@@ -56,6 +56,8 @@ int main(int argc, char* argv[])
 		LOG_INFO<<"thread:"<<threadCount;
 		LOG_INFO<<"cluster:"<<clusterEnbaled;
 		redis.run();
+
+		//
 	}
 	else if (argc == 1)
 	{
