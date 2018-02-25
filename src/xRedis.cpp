@@ -239,13 +239,6 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn)
 	}
 }
 
-
-bool xRedis::deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf)
-{
- 	return true;
-}
-
-
 void xRedis::run()
 {
 	loop.run();
@@ -1059,43 +1052,28 @@ bool  xRedis::save(const xSessionPtr &session)
 
 void xRedis::clearFork()
 {
-     for(auto &it : sessionMaps)
-     {
-         it.second->conn->forceClose();
-     }
+	for(auto &it : sessionMaps)
+	{
+		it.second->conn->forceClose();
+	}
 
-     sessionMaps.clear();
+	sessionMaps.clear();
 
-     for (auto &it : salvetcpconnMaps)
-     {
-         it.second->forceClose();
-     }
+	for (auto &it : salvetcpconnMaps)
+	{
+		it.second->forceClose();
+	}
 
-     salvetcpconnMaps.clear();
+	salvetcpconnMaps.clear();
 
-     for (auto &it : clustertcpconnMaps)
-     {
-         it.second->forceClose();
-     }
+	for (auto &it : clustertcpconnMaps)
+	{
+		it.second->forceClose();
+	}
 
-     clustertcpconnMaps.clear();
+	clustertcpconnMaps.clear();
 }
 
-void xRedis::createDumpPayload(xRio *payload, rObj *o)
-{
-	unsigned char buf[2];
-	uint64_t crc;
-	rdb.rioInitWithBuffer(payload,sdsempty());
-	rdb.rdbSaveObjectType(payload,o);
-	rdb.rdbSaveObject(payload,o);
-	buf[0] = REDIS_RDB_VERSION & 0xff;
-	buf[1] = (REDIS_RDB_VERSION >> 8) & 0xff;
-	payload->io.buffer.ptr = sdscatlen(payload->io.buffer.ptr,buf,2);
-	crc = crc64(0,(unsigned char*)payload->io.buffer.ptr,
-	        sdslen(payload->io.buffer.ptr));
-	memrev64ifbe(&crc);
-	payload->io.buffer.ptr = sdscatlen(payload->io.buffer.ptr,&crc,8);
-}
 
 int32_t xRedis::rdbSaveBackground(const xSessionPtr &session, bool enabled)
 {
@@ -2331,6 +2309,7 @@ bool xRedis::scardCommand(const std::deque <rObj*> & obj,const xSessionPtr &sess
 	return false;
 }
 
+
 bool xRedis::dumpCommand(const std::deque <rObj*> & obj,const xSessionPtr &session)
 {
 	if(obj.size() != 1)
@@ -2339,15 +2318,25 @@ bool xRedis::dumpCommand(const std::deque <rObj*> & obj,const xSessionPtr &sessi
 		return false;
 	}
 
-    rObj *o, *dumpobj;
+	rObj *o, *dumpobj;
+	xRio payload;
+	unsigned char buf[2];
+	uint64_t crc;
+	rdb.rioInitWithBuffer(&payload,sdsempty());
+	buf[0] = REDIS_RDB_VERSION & 0xff;
+	buf[1] = (REDIS_RDB_VERSION >> 8) & 0xff;
+	rdb.createDumpPayload(&payload,obj[0]);
+	payload.io.buffer.ptr = sdscatlen(payload.io.buffer.ptr,buf,2);
+	crc = crc64(0,(unsigned char*)payload.io.buffer.ptr,
+	        sdslen(payload.io.buffer.ptr));
+	memrev64ifbe(&crc);
+	payload.io.buffer.ptr = sdscatlen(payload.io.buffer.ptr,&crc,8);
+	
+	dumpobj = object.createObject(OBJ_STRING,payload.io.buffer.ptr);
+	object.addReplyBulk(session->sendBuf,dumpobj);
+	object.decrRefCount(dumpobj);
 
-    xRio payload;
-    createDumpPayload(&payload,o);
-    dumpobj = object.createObject(OBJ_STRING,payload.io.buffer.ptr);
-    object.addReplyBulk(session->sendBuf,dumpobj);
-    object.decrRefCount(dumpobj);
-
-	return true;
+	return false;
 }
 
 bool xRedis::restoreCommand(const std::deque <rObj*> & obj,const xSessionPtr &session)
@@ -2407,7 +2396,7 @@ bool xRedis::saddCommand(const std::deque <rObj*> & obj,const xSessionPtr &sessi
 		{
 			auto iter = setMap.find(obj[0]);
 #ifdef __DEBUG__
-			if(iter == setMap.end());
+			assert(iter == setMap.end());
 #endif
 			
 			std::unordered_set<rObj*,Hash,Equal> set;

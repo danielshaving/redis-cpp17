@@ -364,6 +364,7 @@
 #define CLUSTER_SYNCED 2
 
 #define sdsEncodedObject(objptr) (objptr->encoding == REDIS_ENCODING_RAW || objptr->encoding == REDIS_ENCODING_EMBSTR)
+#define UNUSED(V) ((void) V)
 
 class noncopyable
 {

@@ -42,26 +42,20 @@ int main(int argc, char* argv[])
 
 	if(argc == 5)
 	{
-		const char* ip;
-		uint16_t port;
-		int16_t threadCount;
-		bool clusterEnbaled;
-		ip = argv[1];
-		port = static_cast<uint16_t>(atoi(argv[2]));
-		threadCount = atoi(argv[3]);
-		clusterEnbaled =  atoi(argv[4]);
+		const char* ip = argv[1];
+		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
+		int16_t threadCount = atoi(argv[3]);
+		bool clusterEnbaled =  atoi(argv[4]);
 		xRedis redis(ip,port,threadCount,clusterEnbaled);
 		LOG_INFO<<"ip:"<<ip;
 		LOG_INFO<<"port:"<<port;
 		LOG_INFO<<"thread:"<<threadCount;
 		LOG_INFO<<"cluster:"<<clusterEnbaled;
 		redis.run();
-
-		//
 	}
 	else if (argc == 1)
 	{
-		xRedis redis("127.0.0.1", 6379, 0);
+		xRedis redis("0.0.0.0", 6379, 0);
 		redis.run();
 	}
 	else

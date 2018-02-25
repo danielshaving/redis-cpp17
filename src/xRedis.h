@@ -31,7 +31,6 @@ public:
 
 	void run();
 	void connCallBack(const xTcpconnectionPtr& conn);
-	bool deCodePacket(const xTcpconnectionPtr& conn,xBuffer *recvBuf);
 	void replyCheck();
 	void loadDataFromDisk();
 	void flush();
@@ -89,7 +88,6 @@ public:
 	bool migrateCommand(const std::deque<rObj*> & obj, const xSessionPtr &session);
 	bool ttlCommand(const std::deque<rObj*> & obj, const xSessionPtr &session);
 
-	void createDumpPayload(xRio *payload, rObj *o);
 	int32_t rdbSaveBackground(const xSessionPtr &session, bool enabled);
 	bool bgsave(const xSessionPtr &session, bool enabled = false);
 	bool save(const xSessionPtr &session);

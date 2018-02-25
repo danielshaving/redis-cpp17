@@ -63,12 +63,17 @@ public:
 	size_t rioFileWrite(xRio *r, const void *buf, size_t len);
 	inline off_t rioFileTell(xRio *r);
 	int32_t rioFileFlush(xRio *r);
-	
+
+	size_t rioBufferWrite(xRio *r, const void *buf, size_t len) ;
+	size_t rioBufferRead(xRio *r, void *buf, size_t len) ;
+	off_t rioBufferTell(xRio *r);
+	int rioBufferFlush(xRio *r);
+
 	void rioInitWithFile(xRio *r, FILE *fp);
 	void rioInitWithBuffer(xRio *r, sds s);
 	FILE * createFile();
 	int32_t  closeFile(FILE * fp);
-
+	
 	int32_t rdbSaveBinaryDoubleValue(xRio*rdb, double val);
 	int32_t rdbSaveMillisecondTime(xRio *rdb, long long t);
 	int32_t rdbSaveType(xRio *rdb, unsigned char type);
@@ -77,7 +82,7 @@ public:
 	int32_t rdbSaveRio(xRio *rdb, int32_t *error);
 	int32_t rdbSaveObject(xRio *rdb, rObj *o);
 	int32_t rdbSaveStringObject(xRio *rdb, rObj *obj);
-	int32_t rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long expireTime);
+	int32_t rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val);
 	size_t rdbSaveRawString(xRio *rdb, const char *s, size_t len);
 	int32_t rdbSaveLzfStringObject(xRio *rdb, unsigned char *s, size_t len);
 	int32_t rdbSaveValue(xRio *rdb, rObj *value,long long now);
@@ -114,7 +119,7 @@ public:
 	int32_t rdbSyncWrite(const char *buf,FILE * fp,size_t len);
 	int32_t rdbSyncClose(char * fileName,FILE * fp);
 	void setBlockEnable(bool enabled) { blockEnabled = enabled; }
-
+	int  createDumpPayload(xRio *rdb,rObj *obj);
 public:
 	xRedis * redis;
 	bool blockEnabled;

@@ -1,7 +1,5 @@
 #include "xRdb.h"
-#include "xObject.h"
 #include "xRedis.h"
-
 
 xRio::xRio()
 {
@@ -19,6 +17,39 @@ xRdb::xRdb(xRedis * redis)
 {
 
 }
+
+/* Returns 1 or 0 for success/failure. */
+size_t xRdb::rioBufferWrite(xRio *r, const void *buf, size_t len) 
+{
+    r->io.buffer.ptr = sdscatlen(r->io.buffer.ptr,(char*)buf,len);
+    r->io.buffer.pos += len;
+    return 1;
+}
+
+/* Returns 1 or 0 for success/failure. */
+size_t xRdb::rioBufferRead(xRio *r, void *buf, size_t len) 
+{
+    if (sdslen(r->io.buffer.ptr)-r->io.buffer.pos < len)
+        return 0; /* not enough buffer to return len bytes. */
+    memcpy(buf,r->io.buffer.ptr+r->io.buffer.pos,len);
+    r->io.buffer.pos += len;
+    return 1;
+}
+
+/* Returns read/write position in buffer. */
+off_t xRdb::rioBufferTell(xRio *r) 
+{
+    return r->io.buffer.pos;
+}
+
+/* Flushes any buffer to target device if applicable. Returns 1 on success
+ * and 0 on failures. */
+int xRdb::rioBufferFlush(xRio *r)
+{
+    UNUSED(r);
+    return 1; /* Nothing to do, our write just appends to the buffer. */
+}
+
 
 off_t xRdb::rioTell(xRio *r)
 {
@@ -131,11 +162,10 @@ void xRdb::rioGenericUpdateChecksum(xRio *r, const void *buf, size_t len)
 
 void xRdb::rioInitWithBuffer(xRio *r, sds s)
 {
-	r->readFuc = std::bind(&xRdb::rioFileRead,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
-	r->writeFuc = std::bind(&xRdb::rioFileWrite,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
-	r->tellFuc = std::bind(&xRdb::rioFileTell,this,std::placeholders::_1);
-	r->flushFuc = std::bind(&xRdb::rioFileFlush,this,std::placeholders::_1);
-	r->updateFuc = std::bind(&xRdb::rioGenericUpdateChecksum,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
+	r->readFuc = std::bind(&xRdb::rioBufferRead,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
+	r->writeFuc = std::bind(&xRdb::rioBufferWrite,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
+	r->tellFuc = std::bind(&xRdb::rioBufferTell,this,std::placeholders::_1);
+	r->flushFuc = std::bind(&xRdb::rioBufferFlush,this,std::placeholders::_1);
 	r->io.buffer.ptr = s;
 	r->io.buffer.pos = 0;
 }
@@ -426,14 +456,10 @@ int32_t xRdb::rdbSaveStruct(xRio *rdb)
 				assert(iterr->first->type == OBJ_STRING);
 #endif
 
-				if (rdbSaveKeyValuePair(rdb, iterr->first, iterr->second, 0) == -1)
+				if (rdbSaveKeyValuePair(rdb, iterr->first, iterr->second) == -1)
 				{
 					return REDIS_ERR;
 				}
-			}
-			else if(iter->type == OBJ_SET)
-			{
-			
 			}
 			else if(iter->type == OBJ_LIST)
 			{
@@ -469,7 +495,7 @@ int32_t xRdb::rdbSaveStruct(xRio *rdb)
 				assert(iterr != hashMap.end());
 				assert(iterr->first->type == OBJ_HASH);
 #endif
-				
+
 				if (rdbSaveKey(rdb,iterr->first,0) == -1)
 				{
 				 	return REDIS_ERR;
@@ -482,12 +508,11 @@ int32_t xRdb::rdbSaveStruct(xRio *rdb)
 
 				for(auto &iterrr : iterr->second)
 				{
-					if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second,0) == -1)
+					if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second) == -1)
 					{
 						return REDIS_ERR;
 					}
 				}
-				
 			}
 			else if(iter->type == OBJ_ZSET)
 			{
@@ -1002,6 +1027,156 @@ int32_t xRdb::rdbSyncWrite(const char *buf,FILE * fp,size_t len)
 	}
 }
 
+
+int  xRdb::createDumpPayload(xRio *rdb,rObj *obj)
+{
+	size_t index = obj->hash% redis->kShards;
+	auto &mu = redis->redisShards[index].mtx;
+	auto &map = redis->redisShards[index].redis;
+	auto &stringMap = redis->redisShards[index].stringMap;
+	auto &hashMap = redis->redisShards[index].hashMap;
+	auto &listMap = redis->redisShards[index].listMap;
+	auto &zsetMap = redis->redisShards[index].zsetMap;
+	auto &setMap = redis->redisShards[index].setMap;
+	
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto iter = map.find(obj);
+		if(iter != map.end())
+		{
+			if((*iter)->type == OBJ_STRING)
+			{
+				auto iterr = stringMap.find(obj);
+#ifdef __DEBUG__
+				assert(iterr != stringMap.end());
+				assert(iterr->first->type == OBJ_STRING);
+#endif
+
+				if (rdbSaveKeyValuePair(rdb, iterr->first, iterr->second) == -1)
+				{
+					return REDIS_ERR;
+				}
+				else if((*iter)->type == OBJ_LIST)
+				{
+					auto iterr = listMap.find(obj);
+#ifdef __DEBUG__
+					assert(iterr != listMap.end());
+					assert(iterr->first->type == OBJ_LIST);
+#endif
+			
+					if (rdbSaveKey(rdb, iterr->first, 0) == -1)
+					{
+						return REDIS_ERR;
+					}
+
+					if (rdbSaveLen(rdb, iterr->second.size()) == -1)
+					{
+						return REDIS_ERR;
+					}
+
+					for (auto &iterrr : iterr->second)
+					{
+						if (rdbSaveValue(rdb, iterrr, 0) == -1)
+						{
+							return REDIS_ERR;
+						}
+					}
+			}
+				else if((*iter)->type == OBJ_HASH)
+				{
+					auto iterr = hashMap.find(obj);
+#ifdef __DEBUG__
+					assert(iterr != hashMap.end());
+					assert(iterr->first->type == OBJ_HASH);
+#endif
+
+					if (rdbSaveKey(rdb,iterr->first,0) == -1)
+					{
+						return REDIS_ERR;
+					}
+
+					if(rdbSaveLen(rdb,iterr->second.size()) == -1)
+					{
+						return REDIS_ERR;
+					}
+
+					for(auto &iterrr : iterr->second)
+					{
+						if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second) == -1)
+						{
+							return REDIS_ERR;
+						}
+					}
+				}
+				else if((*iter)->type == OBJ_ZSET)
+				{
+					auto iterr = zsetMap.find(obj);
+#ifdef __DEBUG__
+					assert(iterr != zsetMap.end());
+					assert(iterr->first->type == OBJ_ZSET);
+					assert(iterr->second.keyMap.size() == iterr->second.sortMap.size());
+#endif
+			
+					if (rdbSaveKey(rdb,iterr->first,0) == -1)
+					{
+						return REDIS_ERR;
+					}
+
+					if(rdbSaveLen(rdb,iterr->second.keyMap.size()) == -1)
+					{
+						return REDIS_ERR;
+					}
+
+					for(auto &iterrr : iterr->second.keyMap)
+					{
+						if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1)
+						{
+							return  REDIS_ERR;
+						}
+
+						if (rdbSaveValue(rdb, iterrr.first, 0) == -1)
+						{
+							return REDIS_ERR;
+						}
+					}
+				}
+				else if((*iter)->type == OBJ_SET)
+				{
+					auto iterr = setMap.find(obj);
+#ifdef __DEBUG__
+					assert(iterr != setMap.end());
+					assert(iterr->first->type == OBJ_SET);
+#endif	
+					if (rdbSaveKey(rdb,iterr->first,0) == -1)
+					{
+						return REDIS_ERR;
+					}
+
+					if(rdbSaveLen(rdb,iterr->second.size()) == -1)
+					{
+						return REDIS_ERR;
+					}
+
+					for(auto &iterrr : iterr->second)
+					{
+						if (rdbSaveValue(rdb, iterrr, 0) == -1)
+						{
+							return REDIS_ERR;
+						}
+					}
+				}
+				else
+				{
+					LOG_ERROR<<"unkown key type "<<(*iter)->type;
+					assert(false);
+				}
+			}
+		}
+	}
+	return REDIS_OK;
+}
+
+
 int32_t  xRdb::rdbSyncClose(char * fileName,FILE * fp)
 {
 	if (fflush(fp) == EOF) return REDIS_ERR;
@@ -1454,7 +1629,7 @@ int32_t xRdb::rdbSaveObject(xRio *rdb, rObj *o)
     return nwritten;
 }
 
-int32_t xRdb::rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val, long long expireTime)
+int32_t xRdb::rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val)
 {
 	if (rdbSaveObjectType(rdb,key) == -1) return -1;
 	if (rdbSaveStringObject(rdb,key) == -1) return -1;
