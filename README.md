@@ -4,7 +4,6 @@ fragment time(minute) single core absolute fair environment  less than 100k set 
 
 cd xredis/src/    
 make ./redis-server
-xredis is a compatible redis protocol with multithreaded client server
 
 detailed test method reference redis benchmark  
 https://redis.io/topics/benchmarks 
