@@ -85,8 +85,8 @@ public:
 	int32_t rdbSaveKeyValuePair(xRio *rdb, rObj *key, rObj *val);
 	size_t rdbSaveRawString(xRio *rdb, const char *s, size_t len);
 	int32_t rdbSaveLzfStringObject(xRio *rdb, unsigned char *s, size_t len);
-	int32_t rdbSaveValue(xRio *rdb, rObj *value,long long now);
-	int32_t rdbSaveKey(xRio *rdb, rObj *value,long long now);
+	int32_t rdbSaveValue(xRio *rdb, rObj *value);
+	int32_t rdbSaveKey(xRio *rdb, rObj *value);
 	int32_t rdbSaveStruct(xRio *rdb);
 	int32_t rdbSaveExpre(xRio *rdb);
 	int32_t rdbSaveObjectType(xRio *rdb, rObj *o);
@@ -98,6 +98,14 @@ public:
 	rObj *rdbLoadLzfStringObject(xRio *rdb);
 	long long rdbLoadMillisecondTime(xRio *rdb);
 	int32_t rdbLoadBinaryDoubleValue(xRio *rdb,double *val);
+
+	int32_t rdbRestoreString(rObj * key,xRio *rdb,int32_t type);
+	int32_t rdbRestoreHash(rObj * key,xRio *rdb,int32_t type);
+	int32_t rdbRestoreList(rObj * key,xRio *rdb,int32_t type);
+	int32_t rdbRestoreZset(rObj * key,xRio *rdb,int32_t type);
+	int32_t rdbRestoreSet(rObj * key,xRio *rdb,int32_t type);
+	int32_t rdbRestoreExpire(rObj * key,xRio *rdb,int32_t type);
+	
 	int32_t rdbLoadString(xRio *rdb,int32_t type);
 	int32_t rdbLoadHash(xRio *rdb,int32_t type);
 	int32_t rdbLoadList(xRio *rdb,int32_t type);
@@ -105,6 +113,7 @@ public:
 	int32_t rdbLoadSet(xRio *rdb,int32_t type);
 	int32_t rdbLoadExpire(xRio *rdb,int32_t type);
 	uint32_t rdbLoadLen(xRio *rdb, int32_t *isencoded);
+	
 	int32_t rdbLoad(char *filename);
 	bool  rdbReplication(char *filename,const xTcpconnectionPtr &conn);
 	rObj *rdbLoadObject(int32_t type, xRio *rdb);
@@ -120,6 +129,8 @@ public:
 	int32_t rdbSyncClose(char * fileName,FILE * fp);
 	void setBlockEnable(bool enabled) { blockEnabled = enabled; }
 	int  createDumpPayload(xRio *rdb,rObj *obj);
+	int  verifyDumpPayload(xRio *rdb,rObj *obj);
+	
 public:
 	xRedis * redis;
 	bool blockEnabled;

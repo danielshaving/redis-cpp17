@@ -133,12 +133,12 @@ public:
 	{
 		RedisMapLock()
 		{
-			redis.reserve(kShards);
-			stringMap.reserve(kShards);
-			hashMap.reserve(kShards);
-			listMap.reserve(kShards);
-			zsetMap.reserve(kShards);
-			setMap.reserve(kShards);
+			// redis.reserve(kShards);
+			// stringMap.reserve(kShards);
+			// hashMap.reserve(kShards);
+			// listMap.reserve(kShards);
+			// zsetMap.reserve(kShards);
+			// setMap.reserve(kShards);
 		}
 		
 		RedisMap redis;

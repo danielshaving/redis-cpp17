@@ -311,6 +311,8 @@ void xObjects::destorySharedObjects()
 	freeStringObject(zadd);
 	freeStringObject(zrevrange);
 	freeStringObject(zcard);
+	freeStringObject(dump);
+	freeStringObject(restore);
 	
 	freeStringObject(PING);
 	freeStringObject(DEL);
@@ -356,6 +358,8 @@ void xObjects::destorySharedObjects()
 	freeStringObject(ZADD);
 	freeStringObject(ZREVRANGE);
 	freeStringObject(ZCARD);
+	freeStringObject(DUMP);
+	freeStringObject(RESTORE);
 	
 	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
 	{
@@ -482,7 +486,9 @@ void xObjects::createSharedObjects()
 	zrange = createStringObject("zrange",6);
 	zrevrange = createStringObject("zrevrange",9);
 	zcard = createStringObject("zcard",5);
-
+	dump = createStringObject("dump",4);
+	restore =  createStringObject("restore",7);
+	
 	PING =  createStringObject("PING", 4);
 	DEL = createStringObject("DEL", 3);
 	RPOP = createStringObject("RPOP", 4);
@@ -528,7 +534,10 @@ void xObjects::createSharedObjects()
 	ZRANGE = createStringObject("ZRANGE",6);
 	ZREVRANGE = createStringObject("ZRANGE",9);
 	ZCARD = createStringObject("ZCARD",5);
+	DUMP = createStringObject("DUMP",4);
+	RESTORE =  createStringObject("RESTORE",7);
 
+	
 	
 	for (j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{
@@ -570,6 +579,8 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_COMMAND(zrevrange,zrevrangeCommand);
 	REGISTER_REDIS_COMMAND(scard,scardCommand);
 	REGISTER_REDIS_COMMAND(sadd,saddCommand);
+	REGISTER_REDIS_COMMAND(dump,dumpCommand);
+	REGISTER_REDIS_COMMAND(restore,restoreCommand);
 
 	REGISTER_REDIS_COMMAND(flushdb,flushdbCommand);
 	REGISTER_REDIS_COMMAND(dbsize,dbsizeCommand);
@@ -610,7 +621,8 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_COMMAND(ZREVRANGE,zrevrangeCommand);
 	REGISTER_REDIS_COMMAND(SCARD,scardCommand);
 	REGISTER_REDIS_COMMAND(SADD,saddCommand);
-
+	REGISTER_REDIS_COMMAND(DUMP,dumpCommand);
+	REGISTER_REDIS_COMMAND(RESTORE,restoreCommand);
 	REGISTER_REDIS_COMMAND(FLUSHDB,flushdbCommand);
 	REGISTER_REDIS_COMMAND(DBSIZE,dbsizeCommand);
 	REGISTER_REDIS_COMMAND(PING,pingCommand);
@@ -680,7 +692,7 @@ rObj * xObjects::createEmbeddedStringObject(char *ptr, size_t len)
 	rObj *o = (rObj*)zmalloc(sizeof(rObj)+sizeof(struct sdshdr)+len+1);
 	struct sdshdr *sh = (sdshdr*)(o+1);
 
-	o->type = REDIS_STRING;
+	o->type = REDIS_NULL;
 	o->encoding = REDIS_ENCODING_EMBSTR;
 	o->ptr = (char*)(sh+1);
 	o->hash = 0;

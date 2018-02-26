@@ -1691,9 +1691,10 @@ bool xRedis::dbsizeCommand(const std::deque <rObj*> & obj,const xSessionPtr &ses
 
 bool xRedis::removeCommand(rObj * obj)
 {
-	size_t index = obj->hash% kShards;
-	auto &mu = redisShards[index].mtx;
+	size_t hash = obj->hash;
+	int32_t index = hash  % kShards;
 	auto &map = redisShards[index].redis;
+	auto &mu = redisShards[index].mtx;
 	auto &stringMap = redisShards[index].stringMap;
 	auto &hashMap = redisShards[index].hashMap;
 	auto &listMap = redisShards[index].listMap;
@@ -2003,6 +2004,10 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,const xSessionPtr &sessi
 			auto &mu =  it.mtx;
 			auto &map = it.redis;
 			auto &stringMap = it.stringMap;
+			auto &hashMap = it.hashMap;
+			auto &listMap = it.listMap;
+			auto &zsetMap = it.zsetMap;
+			auto &setMap = it.setMap;
 			std::unique_lock <std::mutex> lck(mu);
 			for(auto &iter : map)
 			{
@@ -2013,11 +2018,48 @@ bool xRedis::keysCommand(const std::deque <rObj*> & obj,const xSessionPtr &sessi
 					assert(iterr != stringMap.end());
 				#endif
 
-					if (allkeys || stringmatchlen(pattern,plen,iterr->first->ptr,sdslen(iterr->first->ptr),0))
-					{
-						object.addReplyBulkCBuffer(session->sendBuf,iterr->first->ptr,sdslen(iterr->first->ptr));
-						numkeys++;
-					}
+				}
+				else if(iter->type == OBJ_LIST)
+				{
+					auto iterr = listMap.find(iter);
+				#ifdef __DEBUG__
+					assert(iterr != listMap.end());
+				#endif
+
+				}
+				else if(iter->type == OBJ_SET)
+				{
+					auto iterr = setMap.find(iter);
+				#ifdef __DEBUG__
+					assert(iterr != setMap.end());
+				#endif
+
+				}
+				else if(iter->type == OBJ_ZSET)
+				{
+					auto iterr = zsetMap.find(iter);
+				#ifdef __DEBUG__
+					assert(iterr != zsetMap.end());
+				#endif
+
+				}
+				else if(iter->type == OBJ_HASH)
+				{
+					auto iterr = hashMap.find(iter);
+				#ifdef __DEBUG__
+					assert(iterr != hashMap.end());
+				#endif
+
+				}
+				else
+				{
+					assert(false);
+				}
+				
+				if (allkeys || stringmatchlen(pattern,plen,iter->ptr,sdslen(iter->ptr),0))
+				{
+					object.addReplyBulkCBuffer(session->sendBuf,iter->ptr,sdslen(iter->ptr));
+					numkeys++;
 				}
 			}
 		}
@@ -2325,10 +2367,14 @@ bool xRedis::dumpCommand(const std::deque <rObj*> & obj,const xSessionPtr &sessi
 	rdb.rioInitWithBuffer(&payload,sdsempty());
 	buf[0] = REDIS_RDB_VERSION & 0xff;
 	buf[1] = (REDIS_RDB_VERSION >> 8) & 0xff;
-	rdb.createDumpPayload(&payload,obj[0]);
+	if(rdb.createDumpPayload(&payload,obj[0]) == REDIS_ERR)
+	{
+		LOG_ERROR<<"RDB dump error";
+		return false;
+	}
+
 	payload.io.buffer.ptr = sdscatlen(payload.io.buffer.ptr,buf,2);
-	crc = crc64(0,(unsigned char*)payload.io.buffer.ptr,
-	        sdslen(payload.io.buffer.ptr));
+	crc = crc64(0,(unsigned char*)payload.io.buffer.ptr,sdslen(payload.io.buffer.ptr));
 	memrev64ifbe(&crc);
 	payload.io.buffer.ptr = sdscatlen(payload.io.buffer.ptr,&crc,8);
 	
@@ -2341,7 +2387,102 @@ bool xRedis::dumpCommand(const std::deque <rObj*> & obj,const xSessionPtr &sessi
 
 bool xRedis::restoreCommand(const std::deque <rObj*> & obj,const xSessionPtr &session)
 {
+	if(obj.size() < 3 || obj.size()  > 4 )
+	{
+		object.addReplyErrorFormat(session->sendBuf,"unknown  retore  error");
+		return false;
+	}
+
+	long long ttl;
+	int type, replace = 0;
+
+	for(int i  = 3; i < obj.size(); i++)
+	{
+		if (!strcasecmp(obj[i]->ptr,"replace")) 
+		{
+			replace = 1;
+		}
+		else
+		{
+			object.addReply(session->sendBuf,object.syntaxerr);
+        	      return false;
+		}
+	}
+
+	size_t hash = obj[0]->hash;
+	size_t index = hash % kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	{
+		std::unique_lock <std::mutex> lck(mu);
+		auto it = map.find(obj[0]);
+		if(it == map.end() && !replace)
+		{
+			object.addReply(session->sendBuf,object.busykeyerr);
+			return false;
+		}
+	}
+
+	if (object.getLongLongFromObjectOrReply(session->sendBuf,obj[1],&ttl,nullptr) != REDIS_OK) 
+	{
+		return false;
+	} 
+	else if (ttl < 0) 
+	{
+		object.addReplyError(session->sendBuf,"Invalid TTL value, must be >= 0");
+		return false;
+	}
+
+
+	if(replace)
+	{
+		removeCommand(obj[0]);
+	}
+
+	xRio payload;
+	size_t len = sdslen(obj[2]->ptr);
+	unsigned char *p = (unsigned char *)obj[2]->ptr;
+	unsigned char *footer;
+	uint16_t rdbver;
+	uint64_t crc;
+
+	if (len < 10) 
+	{
+		goto err;
+	}
+	
+	footer = p+(len-10);
+	rdbver = (footer[1] << 8) | footer[0];
+	if (rdbver > REDIS_RDB_VERSION) 
+	{
+		goto err;
+	}
+	crc = crc64(0,p,len-8);
+	memrev64ifbe(&crc);
+	if(memcmp(&crc,footer+2,8) != 0)
+	{
+		goto err;
+	}
+
+	rdb.rioInitWithBuffer(&payload,obj[2]->ptr);
+	if(rdb.verifyDumpPayload(&payload,obj[0]) == REDIS_ERR)
+	{
+		object.addReplyError(session->sendBuf,"Bad data format");
+		return false;
+	}
+	
+	object.addReply(session->sendBuf,object.ok);
+
+	for(int i =1 ; i < obj.size(); i++)
+	{
+		zfree(obj[i]);
+	}
 	return true;
+	
+err:
+	LOG_ERROR<<"DUMP payload version or checksum are wrong";
+	return false;
+
 }
 
 bool xRedis::existsCommand(const std::deque <rObj*> & obj,const xSessionPtr &session)
@@ -2368,7 +2509,6 @@ bool xRedis::existsCommand(const std::deque <rObj*> & obj,const xSessionPtr &ses
 			object.addReplyLongLong(session->sendBuf,1);
 		}
 	}
-	
 	return true;
 }
 

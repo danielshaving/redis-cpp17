@@ -41,7 +41,7 @@ typedef struct redisObject
 	unsigned type;
 	unsigned encoding;
 	size_t hash;
-	char *ptr;
+	char  *ptr;
 } rObj;
 
 
@@ -123,13 +123,13 @@ public:
 	*hset,*hget,*hgetall,*save,*slaveof,*command,*config,*auth,
 	*info,*echo,*client,*hkeys,*hlen,*keys,*bgsave,*memory,*cluster,*migrate,*debug,
 	*ttl,*lrange,*llen,*sadd,*scard,*psync,*addsync,*setslot,*node,*connect,*delsync,
-	*zadd,*zrange,*zrevrange,*zcard,
+	*zadd,*zrange,*zrevrange,*zcard,*dump,*restore,
 	*PING,*DEL, *RPOP, *LPOP,
 	*LPUSH, *RPUSH,*SYNC,*SET,*GET,*FLUSHDB,*DBSIZE,*ASKING,
 	*HSET,*HGET,*HGETALL,*SAVE,*SLAVEOF,*COMMAND,*CONFIG,*AUTH,
 	*INFO,*ECHO,*CLIENT,*HKEYS,*HLEN,*KEYS,*BGSAVE,*MEMORY,*CLUSTER,*MIGRATE,*DEBUG,
 	*TTL,*LRANGE,*LLEN,*SADD,*SCARD,*PSYNC,*ADDSYNC,*SETSLOT,*NODE,*CONNECT,*DELSYNC,
-	*ZADD,*ZRANGE,*ZREVRANGE,*ZCARD,
+	*ZADD,*ZRANGE,*ZREVRANGE,*ZCARD,*DUMP,*RESTORE,
 	*integers[REDIS_SHARED_INTEGERS],
 	*mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
 	*bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
