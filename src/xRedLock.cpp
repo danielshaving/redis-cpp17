@@ -76,7 +76,7 @@ sds	 xRedLock::getUniqueLockId()
 
 
 
-int32_t  xRedLock::lockInstance(const xRedisContextPtr &c,const char * resource,const  char *val,const int32_t ttl)
+int32_t  xRedLock::lockInstance(const RedisContextPtr &c,const char * resource,const  char *val,const int32_t ttl)
 {
 
 	redisReply *reply;
@@ -105,7 +105,7 @@ int32_t  xRedLock::lockInstance(const xRedisContextPtr &c,const char * resource,
 }
 
 
-redisReply * xRedLock::commandArgv(const xRedisContextPtr &c, int32_t argc, char **inargv)
+redisReply * xRedLock::commandArgv(const RedisContextPtr &c, int32_t argc, char **inargv)
 {
 	char **argv = convertToSds(argc, inargv);
 	size_t *argvlen;
@@ -127,7 +127,7 @@ redisReply * xRedLock::commandArgv(const xRedisContextPtr &c, int32_t argc, char
 	return reply;
 }
 
-void  xRedLock::unlockInstance(const xRedisContextPtr &c,const char * resource,const  char *val)
+void  xRedLock::unlockInstance(const RedisContextPtr &c,const char * resource,const  char *val)
 {
 	int32_t argc = 5;
 	char *unlockScriptArgv[] = {(char*)"EVAL",
@@ -146,11 +146,11 @@ void  xRedLock::unlockInstance(const xRedisContextPtr &c,const char * resource,c
 
 bool xRedLock::unlock(const xLock &lock)
 {
-	for(auto it = syncServerMaps.begin(); it != syncServerMaps.end(); ++it)
+	for (auto &it : syncServers)
 	{
-		unlockInstance(it->second,lock.resource,lock.val);
+		unlockInstance(it.second, lock.resource, lock.val);
 	}
-
+	
 	return true;
 }
 
@@ -173,7 +173,7 @@ bool xRedLock::lock(const char *resource, const int32_t ttl, xLock &lock)
 	{
 		int32_t startTime = (int32_t)time(nullptr) * 1000;
 
-		for(auto it = syncServerMaps.begin(); it != syncServerMaps.end();)
+		for(auto it = syncServers.begin(); it != syncServers.end();)
 		{
 			int32_t r = lockInstance(it->second,resource,val,ttl);
 			if(r == 1)
@@ -200,7 +200,7 @@ bool xRedLock::lock(const char *resource, const int32_t ttl, xLock &lock)
 				else
 				{
 					LOG_INFO<<"reconnect redis success..................";
-					syncServerMaps.erase(it++);
+					syncServers.erase(it++);
 					disconnectServers.push_back(c);
 				}
 			}
@@ -219,7 +219,7 @@ bool xRedLock::lock(const char *resource, const int32_t ttl, xLock &lock)
 			lock.validityTime = validityTime;
 			for(auto it = disconnectServers.begin(); it  !=disconnectServers.end(); ++it)
 			{
-				syncServerMaps.insert(std::make_pair((*it)->fd,*it));
+				syncServers.insert(std::make_pair((*it)->fd,*it));
 			}
 
 			disconnectServers.clear();
@@ -243,7 +243,7 @@ bool xRedLock::lock(const char *resource, const int32_t ttl, xLock &lock)
 
 void  xRedLock::syncAddServerUrl(const char *ip,const int16_t port)
 {
-	xRedisContextPtr c;
+	RedisContextPtr c;
 	redisReply *reply;
 	c = redisConnectWithTimeout(ip, port, timeout);
 	if (c == nullptr || c->err)
@@ -259,8 +259,8 @@ void  xRedLock::syncAddServerUrl(const char *ip,const int16_t port)
 		exit(1);
 	}
 
-	syncServerMaps.insert(std::make_pair(c->fd,c));
-	quoRum = syncServerMaps.size()/ 2 + 1;
+	syncServers.insert(std::make_pair(c->fd,c));
+	quoRum = syncServers.size()/ 2 + 1;
 }
 
 

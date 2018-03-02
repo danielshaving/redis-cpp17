@@ -15,8 +15,8 @@ public:
 	void newConnection(int32_t sockfd);
 	void start();
 
-	void removeConnection(const xTcpconnectionPtr& conn);
-	void removeConnectionInLoop(const xTcpconnectionPtr& conn);
+	void removeConnection(const TcpConnectionPtr& conn);
+	void removeConnectionInLoop(const TcpConnectionPtr& conn);
 	void setThreadInitCallback(const ThreadInitCallback& cb){ threadInitCallback= cb; }
 	void setConnectionCallback(const ConnectionCallback& cb){ connectionCallback = cb; }
 	void setMessageCallback(const MessageCallback& cb){ messageCallback = cb; }
@@ -39,7 +39,7 @@ private:
 	WriteCompleteCallback writeCompleteCallback;
 	ThreadInitCallback threadInitCallback;
 
-	typedef std::unordered_map<int, xTcpconnectionPtr> ConnectionMap;
+	typedef std::unordered_map<int32_t, TcpConnectionPtr> ConnectionMap;
 	ConnectionMap connections;
 	std::any context;
 

@@ -26,12 +26,13 @@ public:
 	const std::any& getContext() const { return context; }
 	void setContext(const std::any& context) { this->context = context; }
 
-public:
+	TcpConnectionPtr getConnection() { return connection; }
+private:
 	void errorConnection();
 	void newConnection(int32_t sockfd);
-	void removeConnection(const xTcpconnectionPtr& conn);
+	void removeConnection(const TcpConnectionPtr& conn);
 
-	xConnectorPtr connector;
+	ConnectorPtr connector;
 	xEventLoop *loop;
 
 	std::string ip;
@@ -44,7 +45,7 @@ public:
 	MessageCallback messageCallback;
 	WriteCompleteCallback writeCompleteCallback;
 
-	xTcpconnectionPtr connection;
+	TcpConnectionPtr connection;
 	std::any context;
 
 

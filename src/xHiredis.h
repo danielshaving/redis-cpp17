@@ -1,6 +1,6 @@
 #pragma once
 #include "xSds.h"
-#include "xTcpconnection.h"
+#include "xTcpConnection.h"
 #include "xObject.h"
 #include "xTcpClient.h"
 #include "xSocket.h"
@@ -19,7 +19,7 @@ typedef struct redisReply :noncopyable
 } redisReply;
 
 
-typedef void (redisCallbackFn)(const xRedisAsyncContextPtr &ac, redisReply*, const std::any& );
+typedef void (redisCallbackFn)(const RedisAsyncContextPtr &ac, redisReply*, const std::any& );
 
 typedef struct redisReadTask:noncopyable
 {
@@ -148,7 +148,7 @@ public:
 	int32_t fd;
 	int8_t flags;
 	int16_t port;
-	xRedisReaderPtr reader;
+	RedisReaderPtr reader;
 	xBuffer sender;
 };
 
@@ -156,7 +156,7 @@ public:
 class xRedisAsyncContext : noncopyable
 {
 public:
-	xRedisAsyncContext(xBuffer & recvBuff,xTcpconnectionPtr conn,int32_t sockfd);
+	xRedisAsyncContext(xBuffer & recvBuff,TcpConnectionPtr conn,int32_t sockfd);
 	~xRedisAsyncContext();
 
 	int32_t __redisAsyncCommand(redisCallbackFn *fn, const std::any& privdata, char *cmd, size_t len);
@@ -167,8 +167,8 @@ public:
 	int32_t err;
 	char *errstr;
 	void *data;
-	xRedisContextPtr c;
-	xTcpconnectionPtr conn;
+	RedisContextPtr c;
+	TcpConnectionPtr conn;
 	RedisAsyncCallbackList asynCb;
 	std::mutex mtx;
 
@@ -186,25 +186,25 @@ public:
 	xHiredis(xEventLoop *loop);
 	xHiredis(xEventLoop *loop,bool clusterMode);
 
-	void clusterAskConnCallBack(const xTcpconnectionPtr& conn);
-	void clusterMoveConnCallBack(const xTcpconnectionPtr& conn);
+	void clusterAskConnCallBack(const TcpConnectionPtr& conn);
+	void clusterMoveConnCallBack(const TcpConnectionPtr& conn);
 	void clusterErrorConnCallBack(const std::any &context);
-	void redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
+	void redisReadCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf);
 	void eraseTcpMap(int32_t context);
 	void eraseRedisMap(int32_t sockfd);
-	void insertRedisMap(int32_t sockfd, xRedisAsyncContextPtr ac);
-	void insertTcpMap(int32_t data,xTcpClientPtr tc);
+	void insertRedisMap(int32_t sockfd, RedisAsyncContextPtr ac);
+	void insertTcpMap(int32_t data,TcpClientPtr tc);
 
 	xThreadPool & getPool() { return pool; }
 	void setCount() { count ++; }
 	int32_t getCount() { return count; }
 	std::mutex &getMutex() { return rtx; }
-	std::unordered_map<int32_t,xRedisAsyncContextPtr> &getRedisMap() { return redisMaps; }
-	std::unordered_map<int32_t,xTcpClientPtr> &getClientMap() { return tcpClientMaps; }
+	std::unordered_map<int32_t,RedisAsyncContextPtr> &getRedisMap() { return redisMaps; }
+	std::unordered_map<int32_t,TcpClientPtr> &getClientMap() { return tcpClientMaps; }
 
 private:
-	std::unordered_map<int32_t,xTcpClientPtr> tcpClientMaps;
-	std::unordered_map<int32_t,xRedisAsyncContextPtr> redisMaps;
+	std::unordered_map<int32_t,TcpClientPtr> tcpClientMaps;
+	std::unordered_map<int32_t,RedisAsyncContextPtr> redisMaps;
 	std::unordered_map<int32_t,redisAsyncCallback> clusterMaps;
 
 	xThreadPool pool;
@@ -217,6 +217,6 @@ int32_t redisFormatCommand(char **target, const char *format, ...);
 int32_t redisFormatCommandArgv(char * *target, int32_t argc, const char * *argv, const size_t * argvlen);
 int32_t redisvFormatCommand(char * *target, const char * format, va_list ap);
 
-xRedisContextPtr redisConnectWithTimeout(const char *ip, int16_t port, const struct timeval tv);
-xRedisContextPtr redisConnect(const char *ip, int16_t port);
+RedisContextPtr redisConnectWithTimeout(const char *ip, int16_t port, const struct timeval tv);
+RedisContextPtr redisConnect(const char *ip, int16_t port);
 

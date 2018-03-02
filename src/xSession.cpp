@@ -5,7 +5,7 @@
 const int kLongestKeySize = 250;
 std::string xSession::kLongestKey(kLongestKeySize, 'x');
 
-xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
+xSession::xSession(xRedis *redis,const TcpConnectionPtr & conn)
 :reqtype(0),
  multibulklen(0),
  bulklen(-1),
@@ -21,7 +21,7 @@ xSession::xSession(xRedis *redis,const xTcpconnectionPtr & conn)
 	conn->setMessageCallback(std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
 }
 
-xSession::xSession(xMemcachedServer *memcahed,const xTcpconnectionPtr & conn)
+xSession::xSession(xMemcachedServer *memcahed,const TcpConnectionPtr & conn)
 :memcached(memcached),
 conn(conn),
 state(kNewCommand),
@@ -44,7 +44,7 @@ xSession::~xSession()
 	}
 }
 
-void xSession::readCallBack(const xTcpconnectionPtr &conn, xBuffer *recvBuf)
+void xSession::readCallBack(const TcpConnectionPtr &conn, xBuffer *recvBuf)
 {
 	while(recvBuf->readableBytes() > 0 )
 	{
@@ -684,7 +684,7 @@ bool xSession::processRequest(xStringPiece request)
 			}
 
 			needle->resetKey(key);
-			xConstItemPtr item = memcached->getItem(needle);
+			ConstItemPtr item = memcached->getItem(needle);
 			++beg;
 			if (item)
 			{
@@ -847,7 +847,7 @@ static bool isBinaryProtocol(uint8_t firstByte)
 	return firstByte == 0x80;
 }
 
-void xSession::onMessage(const xTcpconnectionPtr &conn,xBuffer *buf)
+void xSession::onMessage(const TcpConnectionPtr &conn,xBuffer *buf)
 {
 	const size_t initialReadable = buf->readableBytes();
 

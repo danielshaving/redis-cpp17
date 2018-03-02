@@ -1,6 +1,6 @@
 #pragma once
 #include "all.h"
-#include "xTcpconnection.h"
+#include "xTcpConnection.h"
 #include "xTcpServer.h"
 #include "xZmalloc.h"
 #include "xObject.h"
@@ -26,16 +26,16 @@ public:
 	void stop();
 	void run();
 
-	void onConnection(const xTcpconnectionPtr &conn);
+	void onConnection(const TcpConnectionPtr &conn);
 	time_t getStartTime() const { return startTime; }
 
-	bool storeItem(const xItemPtr &item, xItem::UpdatePolicy policy, bool *exists);
-	xConstItemPtr getItem(const xConstItemPtr &key) const;
-	bool deleteItem(const xConstItemPtr &key);
+	bool storeItem(const ItemPtr &item, xItem::UpdatePolicy policy, bool *exists);
+	ConstItemPtr getItem(const ConstItemPtr &key) const;
+	bool deleteItem(const ConstItemPtr &key);
 
 private:
 	xEventLoop *loop;
-	std::unordered_map<int32_t,xSessionPtr>  sessionMaps;
+	std::unordered_map<int32_t,SessionPtr>  sessions;
 	Options ops;
 
 	std::mutex mtx;
@@ -44,7 +44,7 @@ private:
 
 	struct xHash
 	{
-		size_t operator()(const xConstItemPtr &x) const
+		size_t operator()(const ConstItemPtr &x) const
 		{
 			return x->getHash();
 		}
@@ -52,13 +52,13 @@ private:
 
 	struct xEqual
 	{
-		bool operator()(const xConstItemPtr &x,const xConstItemPtr &y) const
+		bool operator()(const ConstItemPtr &x,const ConstItemPtr &y) const
 		{
 			return x->getKey() == y->getKey();
 		}
 	};
 
-	typedef std::unordered_set<xConstItemPtr,xHash,xEqual> ItemMap;
+	typedef std::unordered_set<ConstItemPtr,xHash,xEqual> ItemMap;
 
 	struct MapWithLock
 	{

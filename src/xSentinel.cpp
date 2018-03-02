@@ -17,13 +17,13 @@ xSentinel::~xSentinel()
 	
 }
 
-void xSentinel::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
+void xSentinel::readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
 {
 	
 }
 
 
-void xSentinel::connCallBack(const xTcpconnectionPtr& conn)
+void xSentinel::connCallBack(const TcpConnectionPtr& conn)
 {
 	if(conn->connected())
 	{
@@ -66,7 +66,6 @@ void xSentinel::reconnectTimer(const std::any &context)
 	LOG_INFO<<"Reconnect..........";
 	client->connect(ip.c_str(),port);
 }
-
 
 
 void xSentinel::connErrorCallBack()

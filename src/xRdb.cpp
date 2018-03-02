@@ -1234,7 +1234,7 @@ int32_t xRdb::rdbLoadString(xRio *rdb,int32_t type)
 	return REDIS_OK;
 }
 
-bool   xRdb::rdbReplication(char *filename,const xTcpconnectionPtr &conn)
+bool   xRdb::rdbReplication(char *filename,const TcpConnectionPtr &conn)
 {
 	xRio rdb;
 	FILE *fp ;

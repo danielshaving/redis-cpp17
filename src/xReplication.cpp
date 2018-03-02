@@ -48,7 +48,7 @@ void xReplication::disconnect()
 }
 
 
-void xReplication::syncWrite(const xTcpconnectionPtr& conn)
+void xReplication::syncWrite(const TcpConnectionPtr& conn)
 {
 	conn->send("sync\r\n",6);
 	fp = redis->rdb.createFile();
@@ -58,7 +58,7 @@ void xReplication::syncWrite(const xTcpconnectionPtr& conn)
 	}
 }
 
-void xReplication::syncWithMaster(const xTcpconnectionPtr& conn)
+void xReplication::syncWithMaster(const TcpConnectionPtr& conn)
 {
 	int32_t sockerr = 0;
    	socklen_t errlen = sizeof(sockerr);
@@ -75,7 +75,7 @@ void xReplication::syncWithMaster(const xTcpconnectionPtr& conn)
 	
 }
 
-void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
+void xReplication::readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
 {
 	while (recvBuf->readableBytes() >= 4)
 	{
@@ -136,7 +136,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 	
 }
 
-void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
+void xReplication::slaveCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
 {
 	while(recvBuf->readableBytes() >= sdslen(redis->object.ok->ptr))
 	{
@@ -177,7 +177,7 @@ void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 }
 
 
-void xReplication::connCallBack(const xTcpconnectionPtr& conn)
+void xReplication::connCallBack(const TcpConnectionPtr& conn)
 {
 	if(conn->connected())
 	{

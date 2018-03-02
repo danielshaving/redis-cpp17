@@ -16,14 +16,14 @@ public:
 	void replicationSetMaster(rObj * obj,int16_t port);
 
 	void connErrorCallBack();
-	void slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
-	void connCallBack(const xTcpconnectionPtr& conn);
+	void slaveCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf);
+	void readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf);
+	void connCallBack(const TcpConnectionPtr& conn);
 
 	void reconnectTimer(const std::any &context);
-	void syncWithMaster(const xTcpconnectionPtr& conn);
+	void syncWithMaster(const TcpConnectionPtr& conn);
 	void replicationCron();
-	void syncWrite(const xTcpconnectionPtr& conn);
+	void syncWrite(const TcpConnectionPtr& conn);
 	void disconnect();
 
 public:
@@ -42,7 +42,7 @@ public:
 	FILE * fp ;
 	int32_t salveLen;
 	int32_t salveReadLen;
-	xTcpconnectionPtr conn;
+	TcpConnectionPtr conn;
 	xTimer *timer;
 	std::atomic<bool>  slaveSyncEnabled;
 };

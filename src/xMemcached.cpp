@@ -30,7 +30,7 @@ void xMemcachedServer::stop()
 	 loop->runAfter(3.0, nullptr,false,std::bind(&xMemcachedServer::quit,this,std::placeholders::_1));
 }
 
-bool xMemcachedServer::storeItem(const xItemPtr & item, xItem::UpdatePolicy policy, bool *exists)
+bool xMemcachedServer::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy, bool *exists)
 {
 	assert(item->neededBytes() == 0);
 	std::mutex & mutex = shards[item->getHash() % kShards].mutex;
@@ -79,9 +79,9 @@ bool xMemcachedServer::storeItem(const xItemPtr & item, xItem::UpdatePolicy poli
 		{
 			if (*exists)
 			{
-				const xConstItemPtr& oldItem = *it;
+				const ConstItemPtr& oldItem = *it;
 				int newLen = static_cast<int>(item->valueLength() + oldItem->valueLength() - 2);
-				xItemPtr newItem(xItem::makeItem(item->getKey(),
+				ItemPtr newItem(xItem::makeItem(item->getKey(),
 				                   oldItem->getFlags(),
 				                   oldItem->getRelExptime(),
 				                   newLen,
@@ -127,16 +127,16 @@ bool xMemcachedServer::storeItem(const xItemPtr & item, xItem::UpdatePolicy poli
 	return true;
 }
 
-xConstItemPtr xMemcachedServer::getItem(const xConstItemPtr & key) const
+ConstItemPtr xMemcachedServer::getItem(const ConstItemPtr & key) const
 {
 	std::mutex & mutex  = shards[key->getHash() % kShards].mutex;
 	const ItemMap& items = shards[key->getHash() % kShards].items;
 	std::unique_lock <std::mutex> lck(mutex);
 	ItemMap::const_iterator it = items.find(key);
-	return it != items.end() ? *it : xConstItemPtr();
+	return it != items.end() ? *it : ConstItemPtr();
 }
 
-bool xMemcachedServer::deleteItem(const xConstItemPtr & key)
+bool xMemcachedServer::deleteItem(const ConstItemPtr & key)
 {
 	std::mutex & mutex= shards[key->getHash() % kShards].mutex;
 	ItemMap& items = shards[key->getHash() % kShards].items;
@@ -145,20 +145,20 @@ bool xMemcachedServer::deleteItem(const xConstItemPtr & key)
 }
 
 
-void xMemcachedServer::onConnection(const xTcpconnectionPtr & conn)
+void xMemcachedServer::onConnection(const TcpConnectionPtr & conn)
 {
 	if(conn->connected())
 	{
-		xSessionPtr session(new xSession(this,conn));
+		SessionPtr session(new xSession(this,conn));
 		std::unique_lock <std::mutex> lck(mtx);
-		assert(sessionMaps.find(conn->getSockfd()) == sessionMaps.end());
-		sessionMaps[conn->getSockfd()] = session;
+		assert(sessions.find(conn->getSockfd()) == sessions.end());
+		sessions[conn->getSockfd()] = session;
 	}
 	else
 	{
 		std::unique_lock <std::mutex> lck(mtx);
-		assert(sessionMaps.find(conn->getSockfd()) != sessionMaps.end());
-		sessionMaps.erase(conn->getSockfd());
+		assert(sessions.find(conn->getSockfd()) != sessions.end());
+		sessions.erase(conn->getSockfd());
 	}
 }
 

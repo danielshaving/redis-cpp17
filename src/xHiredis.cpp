@@ -57,7 +57,7 @@ void xRedisContext::setConnected()
 }
 
 
-xRedisAsyncContext::xRedisAsyncContext(xBuffer & recvBuff,xTcpconnectionPtr conn,int32_t sockfd)
+xRedisAsyncContext::xRedisAsyncContext(xBuffer & recvBuff,TcpConnectionPtr conn,int32_t sockfd)
 :c(new xRedisContext(recvBuff,sockfd)),
  conn(conn)
 {
@@ -1638,17 +1638,17 @@ int32_t xRedisContext::redisContextConnectTcp(const char *addr, int16_t port, co
 	return REDIS_OK;
 }
 
-xRedisContextPtr redisConnect(const char *ip, int16_t port)
+RedisContextPtr redisConnect(const char *ip, int16_t port)
 {
-	xRedisContextPtr c (new xRedisContext);
+	RedisContextPtr c (new xRedisContext);
 	c->setBlock();
 	c->redisContextConnectTcp(ip,port,nullptr);
 	return c;
 }
 
-xRedisContextPtr  redisConnectWithTimeout(const char *ip, int16_t port, const struct timeval tv)
+RedisContextPtr  redisConnectWithTimeout(const char *ip, int16_t port, const struct timeval tv)
 {
-	xRedisContextPtr c (new xRedisContext);
+	RedisContextPtr c (new xRedisContext);
 	c->setBlock();
 	c->redisContextConnectTcp(ip,port,&tv);
 	return c;	
@@ -1673,12 +1673,12 @@ count(0)
 }
 
 
-void xHiredis::clusterMoveConnCallBack(const xTcpconnectionPtr& conn)
+void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr& conn)
 {
 	int32_t *context = std::any_cast<int32_t>(conn->getContext());
 	if(conn->connected())
 	{
-		xRedisAsyncContextPtr ac (new xRedisAsyncContext(conn->recvBuff,conn,conn->getSockfd()));
+		RedisAsyncContextPtr ac (new xRedisAsyncContext(conn->recvBuff,conn,conn->getSockfd()));
 		insertRedisMap(conn->getSockfd(),ac);
 		redisAsyncCallback cb;
 
@@ -1705,12 +1705,12 @@ void xHiredis::clusterMoveConnCallBack(const xTcpconnectionPtr& conn)
 }
 
 
-void xHiredis::clusterAskConnCallBack(const xTcpconnectionPtr& conn)
+void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr& conn)
 {
 	int32_t *context = std::any_cast<int32_t>(conn->getContext());
 	if(conn->connected())
 	{
-		xRedisAsyncContextPtr ac (new xRedisAsyncContext(conn->recvBuff,conn,conn->getSockfd()));
+		RedisAsyncContextPtr ac (new xRedisAsyncContext(conn->recvBuff,conn,conn->getSockfd()));
 		insertRedisMap(conn->getSockfd(),ac);
 		conn->sendPipe("*1\r\n$6\r\nASKING\r\n");
 
@@ -1774,22 +1774,22 @@ void xHiredis::eraseRedisMap(int32_t sockfd)
 }
 
 
-void xHiredis::insertRedisMap(int32_t sockfd, xRedisAsyncContextPtr ac)
+void xHiredis::insertRedisMap(int32_t sockfd, RedisAsyncContextPtr ac)
 {
 	std::unique_lock<std::mutex> lk(rtx);
 	redisMaps.insert(std::make_pair(sockfd,ac));
 }
 
 
-void xHiredis::insertTcpMap(int32_t data,xTcpClientPtr tc)
+void xHiredis::insertTcpMap(int32_t data,TcpClientPtr tc)
 {
 	std::unique_lock<std::mutex> lk(rtx);
 	tcpClientMaps.insert(std::make_pair(data,tc));
 }
 
-void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
+void xHiredis::redisReadCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
 {
-	xRedisAsyncContextPtr redis;
+	RedisAsyncContextPtr redis;
 	{
 		std::unique_lock <std::mutex> lck(rtx);
 		auto it = redisMaps.find(conn->getSockfd());
@@ -1831,7 +1831,7 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 			}	
 		
 			setCount();
-			xTcpClientPtr client(new xTcpClient(pool.getNextLoop(),getCount()));
+			TcpClientPtr client(new xTcpClient(pool.getNextLoop(),getCount()));
 
 			{
 				std::unique_lock<std::mutex> lk(rtx);

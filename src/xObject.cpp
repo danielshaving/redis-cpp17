@@ -558,7 +558,7 @@ void xObjects::createSharedObjects()
 	rIp = createStringObject((char*)(redis->ip.c_str()),redis->ip.length());
 
 #define REGISTER_REDIS_COMMAND(msgId, func) \
-    	msgId->calHash(); \
+    msgId->calHash(); \
 	redis->handlerCommands[msgId] = std::bind(&xRedis::func, redis, std::placeholders::_1, std::placeholders::_2);
 	REGISTER_REDIS_COMMAND(set,setCommand);
 	REGISTER_REDIS_COMMAND(get,getCommand);

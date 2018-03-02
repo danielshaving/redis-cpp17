@@ -19,11 +19,7 @@ public:
 		kCas,
 	};
 
-	static xItemPtr makeItem(xStringPiece keyArg,
-							  uint32_t flagsArg,
-							  int exptimeArg,
-							  int valuelen,
-							  uint64_t casArg)
+	static ItemPtr makeItem(xStringPiece keyArg, uint32_t flagsArg,int exptimeArg,int valuelen,uint64_t casArg)
 	{
 		return std::make_shared<xItem>(keyArg, flagsArg, exptimeArg, valuelen, casArg);
 	}
@@ -54,9 +50,7 @@ public:
 
 	bool endsWithCRLF() const
 	{
-		return receivedBytes == totalLen()
-		&& data[totalLen()-2] == '\r'
-		&& data[totalLen()-1] == '\n';
+		return receivedBytes == totalLen()&& data[totalLen()-2] == '\r'&& data[totalLen()-1] == '\n';
 	}
 
 private:

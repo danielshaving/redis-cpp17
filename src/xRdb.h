@@ -115,7 +115,7 @@ public:
 	uint32_t rdbLoadLen(xRio *rdb, int32_t *isencoded);
 	
 	int32_t rdbLoad(char *filename);
-	bool  rdbReplication(char *filename,const xTcpconnectionPtr &conn);
+	bool  rdbReplication(char *filename,const TcpConnectionPtr &conn);
 	rObj *rdbLoadObject(int32_t type, xRio *rdb);
 	rObj *rdbLoadStringObject(xRio *rdb);
 

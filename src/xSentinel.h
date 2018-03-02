@@ -12,8 +12,8 @@ public:
 	~xSentinel();
 	void connectSentinel();
 	void connErrorCallBack();
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
-	void connCallBack(const xTcpconnectionPtr& conn);
+	void readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf);
+	void connCallBack(const TcpConnectionPtr& conn);
 	void reconnectTimer(const std::any & context);
 
 private:
@@ -27,5 +27,5 @@ private:
 	xBuffer sendBuf;
 	int connectCount;
 	xSocket socket;
-	xTcpconnectionPtr conn;
+	TcpConnectionPtr conn;
 };

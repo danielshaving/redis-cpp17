@@ -1,6 +1,6 @@
 #pragma once
 #include "all.h"
-#include "xTcpconnection.h"
+#include "xTcpConnection.h"
 #include "xObject.h"
 #include "xSds.h"
 #include "xUtil.h"
@@ -13,20 +13,20 @@ class xMemcachedServer;
 class xSession : noncopyable, public std::enable_shared_from_this<xSession>
 {
 public:
-	xSession(xRedis *redis,const xTcpconnectionPtr &conn);
-	xSession(xMemcachedServer *memcahed,const xTcpconnectionPtr &conn);
+	xSession(xRedis *redis,const TcpConnectionPtr &conn);
+	xSession(xMemcachedServer *memcahed,const TcpConnectionPtr &conn);
 	~xSession();
 
 	void resetVlaue();
 	void clearObj();
 	void reset();
-	void readCallBack(const xTcpconnectionPtr &conn, xBuffer *buf);
+	void readCallBack(const TcpConnectionPtr &conn,xBuffer *buf);
 	int32_t processMultibulkBuffer(xBuffer *recvBuf);
 	int32_t processInlineBuffer(xBuffer *recvBuf);
 	int32_t processCommand();
 	bool checkCommand(rObj *robjs);
 
-	void onMessage(const xTcpconnectionPtr  &conn,xBuffer *buf);
+	void onMessage(const TcpConnectionPtr &conn,xBuffer *buf);
 	void receiveValue(xBuffer *buf);
 	void discardValue(xBuffer *buf);
 	bool processRequest(xStringPiece request);
@@ -61,15 +61,15 @@ public:
 	xBuffer sendBuf;
 	xBuffer sendSlaveBuf;
 	xBuffer sendPubSub;
-	xTcpconnectionPtr 	conn;
+	TcpConnectionPtr conn;
 	std::deque<rObj*>  robjs;
-	std::vector<xTcpconnectionPtr> pubSubTcpconn;
+	std::vector<TcpConnectionPtr> pubSubTcpconn;
 	rObj * command;
 	State state;
 	Protocol protocol;
 	xItem::UpdatePolicy policy;
-	xItemPtr needle;
-	xItemPtr currItem;
+	ItemPtr needle;
+	ItemPtr currItem;
 	size_t bytesToDiscard;
 	size_t bytesRead;
 	size_t requestsProcessed;

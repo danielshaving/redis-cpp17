@@ -29,17 +29,17 @@ public:
 	bool connSetCluster(const char *ip, int16_t port);
 	void connectCluster();
 	void connErrorCallBack();
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
-	void connCallBack(const xTcpconnectionPtr& conn);
+	void readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf);
+	void connCallBack(const TcpConnectionPtr& conn);
 	void reconnectTimer(const std::any &context);
 	void cretateClusterNode(int32_t slot,const std::string &ip,int16_t port,const std::string &name);
 
-	void structureProtocolSetCluster(std::string host, int16_t port, xBuffer &sendBuf, const xTcpconnectionPtr &conn);
-	int32_t getSlotOrReply(const xSessionPtr &session,rObj *o );
+	void structureProtocolSetCluster(std::string host, int16_t port, xBuffer &sendBuf, const TcpConnectionPtr &conn);
+	int32_t getSlotOrReply(const SessionPtr &session,rObj *o );
 	uint32_t keyHashSlot(char *key, int32_t keylen);
 	void syncClusterSlot();
-	void clusterRedirectClient(const xSessionPtr &session, xClusterNode * node,int32_t hashSlot,int32_t errCode);
-	bool replicationToNode(const xSessionPtr &session,const std::string &ip,int16_t port);
+	void clusterRedirectClient(const SessionPtr &session, xClusterNode * node,int32_t hashSlot,int32_t errCode);
+	bool replicationToNode(const SessionPtr &session,const std::string &ip,int16_t port);
 	void delClusterImport(std::deque<rObj*> &robj);
 	
 	void eraseClusterNode(const std::string &ip,int16_t port);
@@ -70,7 +70,7 @@ private:
 	xSocket socket;
 	bool state;
 	bool isConnect;
-	std::vector<std::shared_ptr<xTcpClient>> tcpvectors;	
+	std::vector<TcpClientPtr> tcpvectors;	
 	std::map<int32_t, xClusterNode> clusterSlotNodes;
 	std::unordered_map<std::string, std::unordered_set<int32_t>> migratingSlosTos;
 	std::unordered_map<std::string, std::unordered_set<int32_t>> importingSlotsFrom;
