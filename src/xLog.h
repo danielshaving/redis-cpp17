@@ -42,18 +42,18 @@ private:
 
 class AppendFile : noncopyable
 {
- public:
-  explicit AppendFile(std::string  &filename);
-  ~AppendFile();
-  void append(const char* logline, const size_t len);
-  void flush();
-  size_t getWrittenBytes() const { return writtenBytes; }
+public:
+	explicit AppendFile(std::string  &filename);
+	~AppendFile();
+	void append(const char* logline, const size_t len);
+	void flush();
+	size_t getWrittenBytes() const { return writtenBytes; }
 
- private:
-  size_t write(const char* logline, size_t len);
-  FILE* fp;
-  char buffer[64*1024];
-  size_t writtenBytes;
+	private:
+	size_t write(const char* logline, size_t len);
+	FILE* fp;
+	char buffer[64*1024];
+	size_t writtenBytes;
 };
 
 
@@ -61,32 +61,32 @@ class xLogFile :noncopyable
 {
  public:
 	xLogFile(const std::string& basename,
-          size_t rollSize,
-          bool threadSafe = true,
-          int flushInterval = 3,
-          int checkEveryN = 1024);
-  ~xLogFile();
+	  size_t rollSize,
+	  bool threadSafe = true,
+	  int flushInterval = 3,
+	  int checkEveryN = 1024);
+	~xLogFile();
 
-  void append(const char* logline, int len);
-  void flush();
-  bool rollFile();
+	void append(const char* logline, int len);
+	void flush();
+	bool rollFile();
 
- private:
-  void append_unlocked(const char* logline, int len);
-  static std::string getLogFileName(const std::string& basename, time_t* now);
-  const std::string basename;
-  const size_t rollSize;
-  const int flushInterval;
-  const int checkEveryN;
+	private:
+	void append_unlocked(const char* logline, int len);
+	static std::string getLogFileName(const std::string& basename, time_t* now);
+	const std::string basename;
+	const size_t rollSize;
+	const int flushInterval;
+	const int checkEveryN;
 
-  int count;
-  mutable std::mutex mutex;
-  time_t startOfPeriod;
-  time_t lastRoll;
-  time_t lastFlush;
-  std::unique_ptr<AppendFile> file;
+	int count;
+	mutable std::mutex mutex;
+	time_t startOfPeriod;
+	time_t lastRoll;
+	time_t lastFlush;
+	std::unique_ptr<AppendFile> file;
 
-  const static int kRollPerSeconds = 60*60*24;
+	const static int kRollPerSeconds = 60*60*24;
 };
 
 

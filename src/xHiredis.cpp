@@ -1438,7 +1438,6 @@ int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc, const char **argv, 
 }
 
 
-
 int32_t xRedisContext::redisAppendCommandArgv(int32_t argc, const char * *argv, const size_t * argvlen)
 {
 	char * cmd;
@@ -1869,6 +1868,7 @@ void xHiredis::redisReadCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 				 {
 					 cb.cb.fn(redis,reply,cb.cb.privdata);
 				 }
+				 
 				freeReply(reply);
 		 }
 

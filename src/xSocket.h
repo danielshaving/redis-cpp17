@@ -1,12 +1,11 @@
 #pragma once
 #include "all.h"
 
-class xEventLoop;
 class xSocket : noncopyable
 {
 public:
 	xSocket();
-	xSocket(xEventLoop *loop,const std::string &ip, int16_t port);
+	xSocket(const std::string &ip, int16_t port);
 	~xSocket();
 
 	bool getpeerName(int32_t sockfd,std::string *ip, int16_t &port);
@@ -23,7 +22,6 @@ public:
 	int    setFlag(int fd, int flag);
 
 private:
-	xEventLoop	 *loop;
 	int  listenSocketFd;
 	int  onlineNumber;
 	bool protocol;

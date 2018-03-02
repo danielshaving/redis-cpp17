@@ -27,7 +27,6 @@ public:
 	bool checkCommand(rObj *robjs);
 
 	void onMessage(const xTcpconnectionPtr  &conn,xBuffer *buf);
-	void onWriteComplete(const xTcpconnectionPtr& conn);
 	void receiveValue(xBuffer *buf);
 	void discardValue(xBuffer *buf);
 	bool processRequest(xStringPiece request);
@@ -63,8 +62,8 @@ public:
 	xBuffer sendSlaveBuf;
 	xBuffer sendPubSub;
 	xTcpconnectionPtr 	conn;
-	std::vector<xTcpconnectionPtr> pubSubTcpconn;
 	std::deque<rObj*>  robjs;
+	std::vector<xTcpconnectionPtr> pubSubTcpconn;
 	rObj * command;
 	State state;
 	Protocol protocol;

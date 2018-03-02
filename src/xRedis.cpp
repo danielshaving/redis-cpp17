@@ -30,9 +30,10 @@ slavefd(-1)
 	server.setThreadNum(threadCount);
 	if(threadCount > 1)
 	{
-	    this->threadCount = threadCount;
+		this->threadCount = threadCount;
+		zmalloc_enable_thread_safeness();
 	}
-	
+
 	server.start();
 	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
 
@@ -51,7 +52,6 @@ xRedis::~xRedis()
 {
 	clear();
 	clearCommand();
-
 }
 
 bool xRedis::clearClusterMigradeCommand(void * data)
@@ -66,10 +66,10 @@ void xRedis::replyCheck()
 
 void xRedis::serverCron(const std::any &context)
 {
-    if(rdbChildPid != -1)
-    {
-        pid_t pid;
-        int32_t statloc;
+	if(rdbChildPid != -1)
+	{
+		pid_t pid;
+		int32_t statloc;
 
 		if ((pid = wait3(&statloc,WNOHANG,nullptr)) != 0)
 		{
@@ -86,50 +86,51 @@ void xRedis::serverCron(const std::any &context)
 					if(slavefd != -1)
 					{
 
-						std::unique_lock <std::mutex> lck(slaveMutex);
-						auto it = salvetcpconnMaps.find(slavefd);
-						if(it == salvetcpconnMaps.end())
+					std::unique_lock <std::mutex> lck(slaveMutex);
+					auto it = slaveConns.find(slavefd);
+					if(it == slaveConns.end())
+					{
+						LOG_WARN<<"master sync send failure";
+					}
+					else
+					{
+						if(!rdb.rdbReplication("dump.rdb",it->second))
 						{
+							it->second->forceClose();
 							LOG_WARN<<"master sync send failure";
 						}
 						else
 						{
-							if(!rdb.rdbReplication("dump.rdb",it->second))
-							{
-								it->second->forceClose();
-								LOG_WARN<<"master sync send failure";
-							}
-							else
-							{
-								LOG_INFO<<"master sync send success ";
-							}
+							LOG_INFO<<"master sync send success ";
 						}
-
-						slavefd = -1;
 					}
-				}
-				else if (!bysignal && exitcode != 0)
-				{
-					LOG_INFO<<"background saving error";
-				}
-				else
-				{
-					LOG_WARN<<"background saving terminated by signal "<< bysignal;
-					char tmpfile[256];
-					snprintf(tmpfile,256,"temp-%d.rdb", (int32_t) rdbChildPid);
-					unlink(tmpfile);
 
-					if (bysignal != SIGUSR1)
-					{
+					slavefd = -1;
+				}
+			}
+			else if (!bysignal && exitcode != 0)
+			{
+				LOG_INFO<<"background saving error";
+			}
+			else
+			{
+				LOG_WARN<<"background saving terminated by signal "<< bysignal;
+				char tmpfile[256];
+				snprintf(tmpfile,256,"temp-%d.rdb", (int32_t) rdbChildPid);
+				unlink(tmpfile);
 
-					}
-				 }
+				if (bysignal != SIGUSR1)
+				{
+
+				}
 			 }
-			 else
-			 {
-				 LOG_WARN<<"Warning, detected child with unmatched pid: "<<pid;
-			 }
-			 rdbChildPid = -1;
+		 }
+		 else
+		 {
+			 LOG_WARN<<"Warning, detected child with unmatched pid: "<<pid;
+		 }
+
+		 rdbChildPid = -1;
 		}
 	}
 }
@@ -149,8 +150,8 @@ void xRedis::handleSetExpire(const std::any & context)
 void xRedis::handleSalveRepliTimeOut(const std::any & context)
 {
 	std::unique_lock <std::mutex> lck(slaveMutex);
-	auto it = salvetcpconnMaps.find(std::any_cast<int32_t>(context));
-	if(it != salvetcpconnMaps.end())
+	auto it = slaveConns.find(std::any_cast<int32_t>(context));
+	if(it != slaveConns.end())
 	{
 		it->second->forceClose();
 	}
@@ -161,9 +162,9 @@ void xRedis::clearDeques(std::deque<rObj*> & robj)
 {
 	for (auto &it : robj)
 	{
-	    it->calHash();
-		auto iter = replyCommandMaps.find(it);
-		if (iter == replyCommandMaps.end())
+		it->calHash();
+		auto iter = replyCommands.find(it);
+		if (iter == replyCommands.end())
 		{
 			zfree(it);
 		}
@@ -179,12 +180,12 @@ void xRedis::clearRepliState(int32_t sockfd)
 {
 	{
 		std::unique_lock <std::mutex> lck(slaveMutex);
-		auto it = salvetcpconnMaps.find(sockfd);
-		if(it != salvetcpconnMaps.end())
+		auto it = slaveConns.find(sockfd);
+		if(it != slaveConns.end())
 		{
 			salveCount--;
-			salvetcpconnMaps.erase(sockfd);
-			if(salvetcpconnMaps.size() == 0)
+			slaveConns.erase(sockfd);
+			if(slaveConns.size() == 0)
 			{
 				repliEnabled = false;
 				xBuffer buffer;
@@ -210,10 +211,10 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn)
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		std::unique_lock <std::mutex> lck(mtx);
 #ifdef __DEBUG__
-		auto it = sessionMaps.find(conn->getSockfd());
-		assert(it == sessionMaps.end());
+		auto it = sessions.find(conn->getSockfd());
+		assert(it == sessions.end());
 #endif
-		sessionMaps[conn->getSockfd()] = session;
+		sessions[conn->getSockfd()] = session;
 		//LOG_INFO<<"Client connect success";
 	}
 	else
@@ -229,10 +230,10 @@ void xRedis::connCallBack(const xTcpconnectionPtr& conn)
 		{
 			std::unique_lock <std::mutex> lck(mtx);
 #ifdef __DEBUG__
-		auto it = sessionMaps.find(conn->getSockfd());
-		assert(it != sessionMaps.end());
+			auto it = sessions.find(conn->getSockfd());
+			assert(it != sessions.end());
 #endif
-		sessionMaps.erase(conn->getSockfd());
+			sessions.erase(conn->getSockfd());
 		}
 
 		//LOG_INFO<<"Client disconnect";
@@ -258,7 +259,37 @@ void xRedis::loadDataFromDisk()
 	{
        	LOG_WARN<<"fatal error loading the DB:  Exiting."<<strerror(errno);
  	}
+}
 
+
+bool xRedis::subscribeCommand(const std::deque <rObj*> & obj,const xSessionPtr &session)
+{
+	return true;
+}
+
+bool xRedis::unsubscribeCommand(const std::deque<rObj*> &obj,const xSessionPtr &session)
+{
+	return true;
+}
+
+bool xRedis::psubscribeCommand(const std::deque<rObj*> &obj,const xSessionPtr &session)
+{
+	return true;
+}
+
+bool xRedis::punsubscribeCommand(const std::deque<rObj*> &obj,const xSessionPtr &session)
+{
+	return true;
+}
+
+bool xRedis::publishCommand(const std::deque<rObj*> &obj,const xSessionPtr &session)
+{
+	return true;
+}
+
+bool xRedis::pubsubCommand(const std::deque<rObj*> &obj,const xSessionPtr &session)
+{
+	return true;
 }
 
 bool xRedis::sentinelCommand(const std::deque<rObj*> & obj, const xSessionPtr &session)
@@ -365,14 +396,14 @@ bool xRedis::infoCommand(const std::deque <rObj*> & obj,const xSessionPtr &sessi
 	"local_ip:%s\r\n"
 	"local_port:%d\r\n"
 	"local_thread_count:%d\n",
-	sessionMaps.size(),
+	sessions.size(),
 	ip.c_str(),
 	port,
 	threadCount);
 
 	{
 		std::unique_lock <std::mutex> lck(slaveMutex);
-		for(auto &it : salvetcpconnMaps )
+		for(auto &it : slaveConns )
 		{
 			info = sdscat(info,"\r\n");
 			info = sdscatprintf(info,
@@ -556,7 +587,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSessionPtr &s
 
 		{
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			for (auto &it : clustertcpconnMaps)
+			for (auto &it : clusterConns)
 			{
 				if (port == it.second->port && !memcmp(it.second->ip.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)))
 				{
@@ -586,7 +617,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSessionPtr &s
 
 		{
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			for (auto &it : clustertcpconnMaps)
+			for (auto &it : clusterConns)
 			{
 				if (port == it.second->port && !memcmp(it.second->ip.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)))
 				{
@@ -680,8 +711,8 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSessionPtr &s
 			std::string imipPort = obj[2]->ptr;
 			{
 				std::unique_lock <std::mutex> lck(clusterMutex);
-				clus.importingSlotsFrom.erase(imipPort);
-				if(clus.importingSlotsFrom.size() == 0)
+				clus.eraseImportingSlot(imipPort);
+				if(clus.getImportSlotSize() == 0)
 				{
 					clusterRepliImportEnabeld = false;
 				}
@@ -732,6 +763,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSessionPtr &s
 		
 			object.addReply(session->sendBuf, object.ok);
 			LOG_INFO<<"cluster async replication success "<<imipPort;
+			
 			return false;
 		}
 
@@ -746,7 +778,8 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSessionPtr &s
 		bool mark = false;
 		{
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			for (auto  &it : clus.clusterSlotNodes)
+			auto &clusterNode = clus.getClusterNode();
+			for (auto  &it : clusterNode)
 			{
 				if(slot == it.first && nodeName == it.second.name)
 				{
@@ -878,7 +911,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSessionPtr &s
 	else if (!strcasecmp(obj[0]->ptr, "delslots") &&  obj.size() == 2)
 	{		
 		std::unique_lock <std::mutex> lck(clusterMutex);
-		if (clustertcpconnMaps.size() == 0)
+		if (clusterConns.size() == 0)
 		{
 			object.addReplyErrorFormat(session->sendBuf, "execute cluster meet ip:port");
 			return false;
@@ -930,7 +963,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> & obj, const xSessionPtr &s
 			}
 
 			std::unique_lock <std::mutex> lck(clusterMutex);
-			if (clustertcpconnMaps.empty())
+			if (clusterConns.empty())
 			{
 				object.addReplyErrorFormat(session->sendBuf, "execute cluster meet ip:port");
 				return false;
@@ -988,8 +1021,8 @@ void xRedis::structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs
 
 bool xRedis::getClusterMap(rObj * command)
 {
-	auto it = cluterMaps.find(command);
-	if(it == cluterMaps.end())
+	auto it = cluterCommands.find(command);
+	if(it == cluterCommands.end())
 	{
 		return false;
 	}
@@ -1052,26 +1085,26 @@ bool  xRedis::save(const xSessionPtr &session)
 
 void xRedis::clearFork()
 {
-	for(auto &it : sessionMaps)
+	for(auto &it : sessions)
 	{
 		it.second->conn->forceClose();
 	}
 
-	sessionMaps.clear();
+	sessions.clear();
 
-	for (auto &it : salvetcpconnMaps)
+	for (auto &it : slaveConns)
 	{
 		it.second->forceClose();
 	}
 
-	salvetcpconnMaps.clear();
+	slaveConns.clear();
 
-	for (auto &it : clustertcpconnMaps)
+	for (auto &it : clusterConns)
 	{
 		it.second->forceClose();
 	}
 
-	clustertcpconnMaps.clear();
+	clusterConns.clear();
 }
 
 
@@ -1597,7 +1630,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,const xSessionPtr &sessi
 		timer = session->conn->getLoop()->runAfter(REPLI_TIME_OUT,(void *)&slavefd,
 				false,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->conn->getSockfd(),timer));
-		salvetcpconnMaps.insert(std::make_pair(session->conn->getSockfd(),session->conn));
+		slaveConns.insert(std::make_pair(session->conn->getSockfd(),session->conn));
 
 	}
 
@@ -1634,7 +1667,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> & obj,const xSessionPtr &sessi
 			std::unique_lock <std::mutex> lck(slaveMutex);
 			repliTimers.erase(session->conn->getSockfd());
 			session->conn->getLoop()->cancelAfter(timer);
-			salvetcpconnMaps.erase(session->conn->getSockfd());
+			slaveConns.erase(session->conn->getSockfd());
 		}
 		slavefd = -1;
 		session->conn->forceClose();
@@ -2448,39 +2481,47 @@ bool xRedis::restoreCommand(const std::deque <rObj*> & obj,const xSessionPtr &se
 
 	if (len < 10) 
 	{
-		goto err;
+		LOG_ERROR<<"DUMP payload version or checksum are wrong";
+		return false;
 	}
 	
 	footer = p+(len-10);
 	rdbver = (footer[1] << 8) | footer[0];
 	if (rdbver > REDIS_RDB_VERSION) 
 	{
-		goto err;
+		LOG_ERROR<<"DUMP payload version or checksum are wrong";
+		return false;
 	}
 	crc = crc64(0,p,len-8);
 	memrev64ifbe(&crc);
 	if(memcmp(&crc,footer+2,8) != 0)
 	{
-		goto err;
+		LOG_ERROR<<"DUMP payload version or checksum are wrong";
+		return false;
 	}
 
 	rdb.rioInitWithBuffer(&payload,obj[2]->ptr);
-	if(rdb.verifyDumpPayload(&payload,obj[0]) == REDIS_ERR)
+	rObj * key  = object.createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
+	if(rdb.verifyDumpPayload(&payload,key) == REDIS_ERR)
 	{
+		zfree(key);
 		object.addReplyError(session->sendBuf,"Bad data format");
 		return false;
 	}
+
+	if(ttl > 0)
+	{
+		rObj * ex = object.createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
+		std::unique_lock <std::mutex> lck(slaveMutex);
+		xTimer * timer = loop.runAfter(ttl / 1000,ex,false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
+		auto it = expireTimers.find(ex);
+#ifdef __DEBUG__
+		assert(it == expireTimers.end());
+#endif
+		expireTimers.insert(std::make_pair(ex,timer));	
+	}
 	
 	object.addReply(session->sendBuf,object.ok);
-
-	for(int i =1 ; i < obj.size(); i++)
-	{
-		zfree(obj[i]);
-	}
-	return true;
-	
-err:
-	LOG_ERROR<<"DUMP payload version or checksum are wrong";
 	return false;
 
 }
@@ -3237,7 +3278,6 @@ void xRedis::initConfig()
 {
 	master = "master";
 	slave = "slave";
-	zmalloc_enable_thread_safeness();
 	ipPort = this->ip + "::" + std::to_string(port);
 	object.createSharedObjects();
 }

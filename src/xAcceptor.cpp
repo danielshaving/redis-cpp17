@@ -3,7 +3,7 @@
 
  xAcceptor::xAcceptor(xEventLoop* loop,std::string ip, int16_t port)
  :loop(loop),
-  socket(loop,ip,port),
+  socket(ip,port),
   channel(loop,socket.getListenFd()),
   listenfd(socket.getListenFd()),
   listenning(false)
@@ -43,8 +43,6 @@
 		 LOG_SYSERR << "in xAcceptor::handleRead";
 	}
  }
-
-
 
  void xAcceptor::listen()
  {

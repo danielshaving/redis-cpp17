@@ -68,6 +68,13 @@ public:
 	bool scardCommand(const std::deque <rObj*> & obj,const xSessionPtr &session);
 	bool saddCommand(const std::deque <rObj*> & obj,const xSessionPtr &session);
 	
+	bool subscribeCommand(const std::deque <rObj*> & obj,const xSessionPtr &session);
+	bool unsubscribeCommand(const std::deque<rObj*> &obj,const xSessionPtr &session);
+	bool psubscribeCommand(const std::deque<rObj*> &obj,const xSessionPtr &session);
+	bool punsubscribeCommand(const std::deque<rObj*> &obj,const xSessionPtr &session);
+	bool publishCommand(const std::deque<rObj*> &obj,const xSessionPtr &session);
+	bool pubsubCommand(const std::deque<rObj*> &obj,const xSessionPtr &session);
+
 	bool existsCommand(const std::deque <rObj*> & obj,const xSessionPtr &session);
 	bool dumpCommand(const std::deque <rObj*> & obj,const xSessionPtr &session);
 	bool restoreCommand(const std::deque <rObj*> & obj,const xSessionPtr &session);
@@ -102,7 +109,7 @@ public:
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
 	bool getClusterMap(rObj * command);
-	auto &getHandlerCommandMap() { return handlerCommandMaps; }
+	auto &getHandlerCommandMap() { return handlerCommands; }
 
 public:
 	typedef std::function<bool(const std::deque<rObj*> &,xSessionPtr)> CommandFunc;
@@ -120,25 +127,34 @@ public:
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> SetMap;
 	typedef std::unordered_set<rObj*,Hash,Equal> RedisMap;
 
-	std::unordered_set<rObj*,Hash,Equal> unorderedmapCommands;
-	std::unordered_set<rObj*,Hash,Equal> stopRepliMaps;
-	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommandMaps;
-	std::unordered_set<rObj*,Hash,Equal> replyCommandMaps;
-	std::unordered_map<int32_t,xSessionPtr> sessionMaps;
-	std::unordered_set<rObj*,Hash,Equal> cluterMaps;
+	std::unordered_set<rObj*,Hash,Equal> commands;
+	std::unordered_set<rObj*,Hash,Equal> stopReplis;
+	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommands;
+	std::unordered_set<rObj*,Hash,Equal> replyCommands;
+	std::unordered_map<int32_t,xSessionPtr> sessions;
+	std::unordered_set<rObj*,Hash,Equal> cluterCommands;
 	
+	std::unique_ptr<std::thread> repliThreads;
+	std::unique_ptr<std::thread> sentiThreads;
+	std::unique_ptr<std::thread> clusterThreads;
 
+	std::unordered_map<int32_t,xTcpconnectionPtr> slaveConns;
+	std::unordered_map<int32_t,xTcpconnectionPtr> clusterConns;
+	std::unordered_map<int32_t,xTimer*> repliTimers;
+	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
+	std::unordered_map<rObj*, xTcpconnectionPtr,Hash,Equal> pubsubs;
+	
 	const static int32_t kShards = 4096;
 	struct RedisMapLock
 	{
 		RedisMapLock()
 		{
-			// redis.reserve(kShards);
-			// stringMap.reserve(kShards);
-			// hashMap.reserve(kShards);
-			// listMap.reserve(kShards);
-			// zsetMap.reserve(kShards);
-			// setMap.reserve(kShards);
+			 redis.reserve(kShards);
+			 stringMap.reserve(kShards);
+			 hashMap.reserve(kShards);
+			 listMap.reserve(kShards);
+			 zsetMap.reserve(kShards);
+			 setMap.reserve(kShards);
 		}
 		
 		RedisMap redis;
@@ -190,14 +206,6 @@ public:
 	xRdb rdb;
 	xSocket socket;
 	
-	std::unique_ptr<std::thread> repliThreads;
-	std::unique_ptr<std::thread> sentiThreads;
-	std::unique_ptr<std::thread> clusterThreads;
-
-	std::unordered_map<int32_t,xTcpconnectionPtr> salvetcpconnMaps;
-	std::unordered_map<int32_t,xTcpconnectionPtr> clustertcpconnMaps;
-	std::unordered_map<int32_t,xTimer*> repliTimers;
-	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
 	
 	std::string ip;
 	std::string password;

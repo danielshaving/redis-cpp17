@@ -32,7 +32,6 @@ public:
 	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf);
 	void connCallBack(const xTcpconnectionPtr& conn);
 	void reconnectTimer(const std::any &context);
-	bool getSlotSet(const std::string &ipPort);
 	void cretateClusterNode(int32_t slot,const std::string &ip,int16_t port,const std::string &name);
 
 	void structureProtocolSetCluster(std::string host, int16_t port, xBuffer &sendBuf, const xTcpconnectionPtr &conn);
@@ -44,7 +43,6 @@ public:
 	void delClusterImport(std::deque<rObj*> &robj);
 	
 	void eraseClusterNode(const std::string &ip,int16_t port);
-	void eraseImportSlot(int32_t slot);
 	void eraseClusterNode(int32_t slot);
 	void getKeyInSlot(int32_t slot, std::vector<rObj*> &keys , int32_t count);
 
@@ -55,13 +53,18 @@ public:
 
 	auto  & getMigrating() {  return migratingSlosTos; } 
 	auto  & getImporting() { return importingSlotsFrom; }
+	auto  & getClusterNode() { return clusterSlotNodes; }
+	
+	size_t getImportSlotSize() { return importingSlotsFrom.size(); }
+	size_t getMigratSlotSize() { return migratingSlosTos.size(); }
 	
 	void clearMigrating() { migratingSlosTos.clear(); }
 	void clearImporting() { importingSlotsFrom.clear(); }
 
-	void eraseMigratingNode(const std::string &name);
-	void eraseImportingNode(const std::string &name);
+	void eraseMigratingSlot(const std::string &name);
+	void eraseImportingSlot(const std::string &name);
 	
+private:
 	xEventLoop *loop;
 	xRedis *redis;
 	xSocket socket;
@@ -75,6 +78,7 @@ public:
 	std::mutex cmtex;
 	std::atomic<int32_t> replyCount;
 	std::deque<rObj*> deques;
-	xBuffer sendBuf;
 	std::unordered_set<int32_t>  uset;
+	xBuffer sendBuf;
+	
 };

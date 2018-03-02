@@ -102,8 +102,10 @@ typedef std::list<redisCallback> RedisCallbackList;
 typedef struct redisAsyncCallback
 {
 	redisAsyncCallback()
+	:data(nullptr),
+	 len(0)
 	{
-		data = nullptr;
+
 	}
 	char * data;
 	int32_t  len;

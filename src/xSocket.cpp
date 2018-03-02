@@ -3,8 +3,7 @@
 #include "xLog.h"
 
 
-xSocket::xSocket(xEventLoop *loop,const std::string &ip, int16_t port)
-:loop(loop)
+xSocket::xSocket(const std::string &ip, int16_t port)
 {
 	listenSocketFd = -1;
 	onlineNumber = 0;

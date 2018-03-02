@@ -84,44 +84,42 @@ void xSession::readCallBack(const xTcpconnectionPtr &conn, xBuffer *recvBuf)
 
 	}
 
-    if(sendBuf.readableBytes() > 0 )
-    {
-        conn->send(&sendBuf);
-        sendBuf.retrieveAll();
-    }
+	if(sendBuf.readableBytes() > 0 )
+	{
+		conn->send(&sendBuf);
+		sendBuf.retrieveAll();
+	}
 
-    if(sendPubSub.readableBytes() > 0 )
-    {
-        for(auto &it : pubSubTcpconn)
-        {
-            it->send(&sendPubSub);
-        }
+	if(sendPubSub.readableBytes() > 0 )
+	{
+		for(auto &it : pubSubTcpconn)
+		{
+			it->send(&sendPubSub);
+		}
 
-        pubSubTcpconn.clear();
-        sendPubSub.retrieveAll();
-    }
+		pubSubTcpconn.clear();
+		sendPubSub.retrieveAll();
+	}
 
-    if(redis->repliEnabled)
-    {
-        std::unique_lock <std::mutex> lck(redis->slaveMutex);
-        for (auto &it : redis->salvetcpconnMaps)
-        {
-            if (sendSlaveBuf.readableBytes() > 0)
-            {
-                it.second->send(&sendSlaveBuf);
-            }
-        }
+	if(redis->repliEnabled)
+	{
+		std::unique_lock <std::mutex> lck(redis->slaveMutex);
+		for (auto &it : redis->slaveConns)
+		{
+			if (sendSlaveBuf.readableBytes() > 0)
+			{
+			 	it.second->send(&sendSlaveBuf);
+			}
+		}
 
-        sendSlaveBuf.retrieveAll();
-    }
+		sendSlaveBuf.retrieveAll();
+	}
 }
-
-
 
 bool xSession::checkCommand(rObj *robjs)
 {
-	auto it = redis->unorderedmapCommands.find(robjs);
-	if(it == redis->unorderedmapCommands.end())
+	auto it = redis->commands.find(robjs);
+	if(it == redis->commands.end())
 	{
 		return false;
 	}
@@ -238,7 +236,7 @@ jump:
 
 				{
 					std::unique_lock <std::mutex> lck(redis->slaveMutex);
-					if(redis->salveCount < redis->salvetcpconnMaps.size())
+					if(redis->salveCount < redis->slaveConns.size())
 					{
 						redis->structureRedisProtocol(redis->slaveCached,robjs);
 					}

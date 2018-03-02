@@ -34,13 +34,10 @@ private:
 	xEventLoop* loop;
 	std::unique_ptr<xAcceptor> 	acceptor;
 	std::shared_ptr<xThreadPool> 	threadPool;
-
-
 	ConnectionCallback connectionCallback;
 	MessageCallback messageCallback;
 	WriteCompleteCallback writeCompleteCallback;
 	ThreadInitCallback threadInitCallback;
-
 
 	typedef std::unordered_map<int, xTcpconnectionPtr> ConnectionMap;
 	ConnectionMap connections;

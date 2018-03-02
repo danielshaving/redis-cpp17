@@ -119,7 +119,7 @@ void xReplication::readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf)
 				{
                     std::shared_ptr<xSession> session(new xSession(redis, conn));
                     std::unique_lock <std::mutex> lck(redis->mtx);
-                    redis->sessionMaps[conn->getSockfd()] = session;
+                    redis->sessions[conn->getSockfd()] = session;
                 }
 		    	conn->send(redis->object.ok->ptr, sdslen(redis->object.ok->ptr));
 		    	LOG_INFO << "replication load rdb success";
@@ -141,13 +141,13 @@ void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 	while(recvBuf->readableBytes() >= sdslen(redis->object.ok->ptr))
 	{
 		std::unique_lock <std::mutex> lck(redis->slaveMutex);
-		auto it = redis->salvetcpconnMaps.find(conn->getSockfd());
-		if (it != redis->salvetcpconnMaps.end())
+		auto it = redis->slaveConns.find(conn->getSockfd());
+		if (it != redis->slaveConns.end())
 		{
 			if (memcmp(recvBuf->peek(), redis->object.ok->ptr, sdslen(redis->object.ok->ptr)) == 0)
 			{
 				recvBuf->retrieve(sdslen(redis->object.ok->ptr));
-				if (++redis->salveCount >= redis->salvetcpconnMaps.size())
+				if (++redis->salveCount >= redis->slaveConns.size())
 				{
 					if (redis->slaveCached.readableBytes() > 0)
 					{
@@ -166,7 +166,7 @@ void xReplication::slaveCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf
 					{
 						std::shared_ptr<xSession> session(new xSession(redis, conn));
 						std::unique_lock <std::mutex> lck(redis->mtx);;
-						redis->sessionMaps[conn->getSockfd()] = session;
+						redis->sessions[conn->getSockfd()] = session;
 					}
 
 					LOG_INFO << "slaveof sync success";
@@ -203,7 +203,7 @@ void xReplication::connCallBack(const xTcpconnectionPtr& conn)
 		redis->slaveEnabled = false;
 		redis->repliEnabled = false;
 		std::unique_lock <std::mutex> lck(redis->mtx);
-		redis->sessionMaps.erase(conn->getSockfd());
+		redis->sessions.erase(conn->getSockfd());
 		LOG_INFO<<"connect  master disconnect";
 	}
 }
@@ -228,9 +228,9 @@ void xReplication::replicationSetMaster(rObj * obj,int16_t port)
 	if(redis->repliEnabled)
 	{
 		std::unique_lock <std::mutex> lck(redis->slaveMutex);
-		for(auto it = redis->salvetcpconnMaps.begin(); it != redis->salvetcpconnMaps.end(); ++it)
+		for (auto &it : redis->slaveConns)
 		{
-			it->second->forceClose();
+			it.second->forceClose();
 		}
 	}
 
