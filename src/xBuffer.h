@@ -8,7 +8,7 @@ public:
 	static const size_t kCheapPrepend = 8;
 	static const size_t kInitialSize = 1024 * 64;
 
-explicit xBuffer(size_t initialSize = kInitialSize)
+	explicit xBuffer(size_t initialSize = kInitialSize)
 	: buffer(kCheapPrepend + initialSize),
 	readerIndex(kCheapPrepend),
 	writerIndex(kCheapPrepend)

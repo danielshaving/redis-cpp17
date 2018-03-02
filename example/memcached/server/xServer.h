@@ -1,6 +1,6 @@
 #pragma once
 #include "all.h"
-#include "xTcpconnection.h"
+#include "xTcpConnection.h"
 #include "xTcpServer.h"
 #include "xZmalloc.h"
 #include "xObject.h"
@@ -86,7 +86,7 @@ class xMemcacheServer;
 class xConnect : noncopyable, public std::enable_shared_from_this<xConnect>
 {
 public:
-	xConnect(xMemcacheServer *owner,const xTcpconnectionPtr & conn)
+	xConnect(xMemcacheServer *owner,const TcpConnectionPtr & conn)
 	:owner(owner),
 	conn(conn),
 	state(kNewCommand),
@@ -102,9 +102,9 @@ public:
 	}
 	
 
-	void onMessage(const xTcpconnectionPtr  & conn,xBuffer *buf);
+	void onMessage(const TcpConnectionPtr  & conn,xBuffer *buf);
 
-	void onWriteComplete(const xTcpconnectionPtr& conn);
+	void onWriteComplete(const TcpConnectionPtr& conn);
 	void receiveValue(xBuffer* buf);
 	void discardValue(xBuffer* buf);
 
@@ -133,7 +133,7 @@ private:
 	  };
 
 	xMemcacheServer * owner;
-	xTcpconnectionPtr conn;
+	TcpConnectionPtr conn;
 	State state;
 	Protocol protocol;
 	std::string command;
@@ -185,7 +185,7 @@ public:
 	bool deleteItem(const ConstItemPtr & key);
 
 private:
-	void onConnection(const xTcpconnectionPtr & conn);
+	void onConnection(const TcpConnectionPtr & conn);
 
 	xEventLoop *loop;
 	std::unordered_map<int32_t,SessionPtr>  sessions;

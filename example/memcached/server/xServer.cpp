@@ -409,7 +409,7 @@ void xConnect::doDelete(std::vector<xStringPiece>::iterator &beg, std::vector<xS
 
 
 
-void xConnect::onMessage(const xTcpconnectionPtr & conn,xBuffer *buf,void * data)
+void xConnect::onMessage(const TcpConnectionPtr & conn,xBuffer *buf,void * data)
 {
 	const size_t initialReadable = buf->readableBytes();
 
@@ -619,7 +619,7 @@ bool xMemcacheServer::deleteItem(const ConstItemPtr & key)
 }
 
 
-void xMemcacheServer::onConnection(const xTcpconnectionPtr & conn)
+void xMemcacheServer::onConnection(const TcpConnectionPtr & conn)
 {
 	if(conn->connected())
 	{

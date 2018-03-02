@@ -3,7 +3,7 @@
 #include "xHttpResponse.h"
 #include "xHttpRequest.h"
 #include "xBuffer.h"
-#include "xTcpconnection.h"
+#include "xTcpConnection.h"
 
 xHttpServer::xHttpServer(xEventLoop *loop,const  char *ip,uint16_t port)
 :loop(loop),
@@ -36,7 +36,7 @@ void xHttpServer::start()
 	server.start();
 }
 
-void xHttpServer::onConnection(const xTcpconnectionPtr & conn)
+void xHttpServer::onConnection(const TcpConnectionPtr & conn)
 {
 	if(conn->connected())
 	{
@@ -51,7 +51,7 @@ void xHttpServer::onConnection(const xTcpconnectionPtr & conn)
 }
 
 
-void xHttpServer::onMessage(const xTcpconnectionPtr &conn,xBuffer *recvBuf)
+void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *recvBuf)
 {
 	xHttpContext * context = std::any_cast<xHttpContext>(conn->getContext());
 	if(!context->parseRequest(recvBuf))
@@ -72,7 +72,7 @@ void xHttpServer::onMessage(const xTcpconnectionPtr &conn,xBuffer *recvBuf)
 
 }
 
-void xHttpServer::onRequest(const xTcpconnectionPtr & conn ,const xHttpRequest & req)
+void xHttpServer::onRequest(const TcpConnectionPtr & conn ,const xHttpRequest & req)
 {
 	const std::string &connection =req.getHeader("Connection");
 	bool close = connection == "close" || (req.getVersion() == xHttpRequest::kHttp10 && connection != "Keep-Alive");

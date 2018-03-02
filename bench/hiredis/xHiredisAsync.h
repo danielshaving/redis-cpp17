@@ -13,7 +13,7 @@ class xHiredisAsync
 public:
 	xHiredisAsync(xEventLoop * loop,int threadCount,int sessionCount,const char *ip,int16_t port);
 	void redisErrorConnCallBack(const std::any &context);
-	void redisConnCallBack(const xTcpconnectionPtr& conn);
+	void redisConnCallBack(const TcpConnectionPtr& conn);
 	xHiredis *getHiredis() { return &hiredis; }
 	void serverCron(const std::any & context);
 

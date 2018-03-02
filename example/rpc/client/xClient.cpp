@@ -26,7 +26,7 @@ public:
 	}
 
 	private:
-	void onConnection(const xTcpconnectionPtr& conn)
+	void onConnection(const TcpConnectionPtr& conn)
 	{
 		if (conn->connected())
 		{

@@ -171,6 +171,12 @@ void xRedis::clearDeques(std::deque<rObj*> & robj)
 	}
 }
 
+
+void xRedis::clearPubSubState(int32_t sockfd)
+{
+
+}
+
 void xRedis::clearClusterState(int32_t sockfd)
 {
 	
@@ -270,25 +276,42 @@ bool xRedis::subscribeCommand(const std::deque <rObj*> & obj,const SessionPtr &s
 		return false;
 	}
 
-	int retval = 0;
-
+	bool  retval;
+	int sub = 0;
 	for (int i = 0; i < obj.size(); i++)
 	{
-		auto it = pubsubs.find(obj[i]);
-		if (it == pubsubs.end())
 		{
-			std::unordered_map<int32_t,TcpConnectionPtr> maps;
-			maps[session->conn->getSockfd()] = session->conn;
-			pubsubs[obj[i]] = std::move(maps);
+			std::unique_lock <std::mutex> lck(pubsubMutex);
+			auto it = pubsubs.find(obj[i]);
+			if (it == pubsubs.end())
+			{
+				std::unordered_map<int32_t, TcpConnectionPtr> maps;
+				maps[session->conn->getSockfd()] = session->conn;
+				pubsubs[obj[i]] = std::move(maps);
+				retval = true;
+				sub++;
+			}
+			else
+			{
+				retval = false;
+				auto iter = it->second.find(session->conn->getSockfd());
+				if (iter == it->second.end())
+				{
+					sub++;
+				}
+				it->second[session->conn->getSockfd()] = session->conn;
+			}
 		}
-		else
-		{
-			//it->second.push_back(session->conn);
-		}
+
 		object.addReply(session->sendBuf, object.mbulkhdr[3]);
 		object.addReply(session->sendBuf, object.subscribebulk);
 		object.addReplyBulk(session->sendBuf, obj[i]);
-		object.addReplyLongLong(session->sendBuf, pubsubs.size());
+		object.addReplyLongLong(session->sendBuf, sub);
+
+		if (!retval)
+		{
+			zfree(obj[i]);
+		}
 	}
 
 	return true;

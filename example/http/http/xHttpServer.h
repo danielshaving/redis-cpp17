@@ -21,9 +21,9 @@ public:
 
 	void setMessageCallback(HttpCallBack callback);
 	void start();
-	void onConnection(const xTcpconnectionPtr & conn);
-	void onMessage(const xTcpconnectionPtr &conn,xBuffer *recvBuf);
-	void onRequest(const xTcpconnectionPtr &conn,const xHttpRequest &req);
+	void onConnection(const TcpConnectionPtr & conn);
+	void onMessage(const TcpConnectionPtr &conn,xBuffer *recvBuf);
+	void onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req);
 
 private:
 	xEventLoop *loop;

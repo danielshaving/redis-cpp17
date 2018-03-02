@@ -7,7 +7,7 @@ static int tests = 0, fails = 0;
 #define test(_s) { printf("#%02d ", ++tests); printf(_s); }
 #define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
 
-void testCommand(xRedisContextPtr c)
+void testCommand(RedisContextPtr c)
 {
 	redisReply *reply;
 
@@ -192,7 +192,7 @@ void testReplyReader()
 void testBlockingConnectionTimeOuts()
 {
 
-	xRedisContextPtr c = redisConnect(ip,port);
+	RedisContextPtr c = redisConnect(ip,port);
 	redisReply *reply;
 	xSocket socket;
 	ssize_t s;
@@ -228,7 +228,7 @@ void testBlockingConnectionTimeOuts()
 
 void testBlockingConnection()
 {
-	xRedisContextPtr c;
+	RedisContextPtr c;
 	redisReply * reply;
 	xSocket socket;
 	c = redisConnect(ip,port);
@@ -305,7 +305,7 @@ void testBlockingConnection()
 }
 void testBlockingConecntionerros()
 {
-	xRedisContextPtr c;
+	RedisContextPtr c;
 	test("Returns error when host cannot be resolved: ");
 	c = redisConnect((char*)"text",port);
 	test_cond(c->err == REDIS_ERR_OTHER &&
@@ -325,7 +325,7 @@ void testBlockingConecntionerros()
 
 void testBlockIoerrors()
 {
-	xRedisContextPtr c;
+	RedisContextPtr c;
 	xSocket socket;
 	redisReply * reply;
 	void * _reply;
@@ -373,14 +373,14 @@ void testInvalidTimeOuterros()
 	test("Set error when an invalid timeout usec value is given to redisConnectWithTimeout: ");
 	{
 		struct timeval timeout = { 0, 10000001 }; 
-		xRedisContextPtr c = redisConnectWithTimeout(ip,port,timeout);
+		RedisContextPtr c = redisConnectWithTimeout(ip,port,timeout);
 		test_cond(c->err == REDIS_ERR_IO && strcmp(c->errstr, "Invalid timeout specified") == 0);
 	}
 	
 	test("Set error when an invalid timeout sec value is given to redisConnectWithTimeout: ");
 	{
 		struct timeval timeout = { (((LONG_MAX) - 999) / 1000) + 1, 0 }; 
-		xRedisContextPtr c = redisConnectWithTimeout(ip,port,timeout);
+		RedisContextPtr c = redisConnectWithTimeout(ip,port,timeout);
 		test_cond(c->err == REDIS_ERR_IO && strcmp(c->errstr, "Invalid timeout specified") == 0);
 	}
 	
@@ -388,7 +388,7 @@ void testInvalidTimeOuterros()
 
 void testAppendFormateedCommands()
 {
-	xRedisContextPtr c;
+	RedisContextPtr c;
 	redisReply * reply;
 	char *cmd;
 	int len;
@@ -404,7 +404,7 @@ void testAppendFormateedCommands()
 
 void testThroughPut()
 {
-	xRedisContextPtr c = redisConnect(ip,port);
+	RedisContextPtr c = redisConnect(ip,port);
 	redisReply ** replies;
 	int i,num;
 	int64_t t1,t2;

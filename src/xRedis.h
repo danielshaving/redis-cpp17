@@ -105,6 +105,7 @@ public:
 	void clear();
 	void clearRepliState(int32_t sockfd);
 	void clearClusterState(int32_t sockfd);
+	void clearPubSubState(int32_t sockfd);
 	void clearDeques(std::deque<rObj*> & robj);
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &  sendBuf, std::deque<rObj*> &robjs);
@@ -177,6 +178,7 @@ public:
 	std::mutex sentinelMutex;
 	std::mutex clusterMutex;
 	std::mutex forkMutex;
+	std::mutex pubsubMutex;
 
 	std::atomic<bool> clusterEnabled;
 	std::atomic<bool> slaveEnabled;

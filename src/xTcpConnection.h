@@ -70,12 +70,12 @@ public:
 	xBuffer *outputBuffer() { return &sendBuff; }
 
 public:
-	xEventLoop  *loop;
+	xEventLoop *loop;
 	int sockfd;
 	xBuffer recvBuff;
 	xBuffer sendBuff;
-	ConnectionCallback    connectionCallback;
-	MessageCallback 	  messageCallback;
+	ConnectionCallback connectionCallback;
+	MessageCallback messageCallback;
 	WriteCompleteCallback writeCompleteCallback;
 	HighWaterMarkCallback highWaterMarkCallback;
 	CloseCallback closeCallback;

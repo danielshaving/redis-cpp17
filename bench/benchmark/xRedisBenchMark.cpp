@@ -37,7 +37,7 @@ public:
 		condition.notify_one();
 	}
 
-	void connCallBack(const xTcpconnectionPtr& conn)
+	void connCallBack(const TcpConnectionPtr& conn)
 	{
 		if(conn->connected())
 		{
@@ -53,7 +53,7 @@ public:
 		}
 	}
 
-	void readCallBack(const xTcpconnectionPtr& conn,xBuffer * buffer)
+	void readCallBack(const TcpConnectionPtr& conn,xBuffer * buffer)
 	{
 		if(operation == kSet)
 		{
@@ -138,7 +138,7 @@ public:
 	}
 
 	xTcpClient client;
-	xTcpconnectionPtr conn;
+	TcpConnectionPtr conn;
 	Operation operation;
 
 	int ack;

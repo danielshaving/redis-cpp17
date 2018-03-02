@@ -34,11 +34,11 @@ void xHiredisAsync::redisErrorConnCallBack(const std::any &context)
 }
 
 
-void xHiredisAsync::redisConnCallBack(const xTcpconnectionPtr& conn)
+void xHiredisAsync::redisConnCallBack(const TcpConnectionPtr& conn)
 {
 	if(conn->connected())
 	{
-		xRedisAsyncContextPtr ac (new xRedisAsyncContext());
+		RedisAsyncContextPtr ac (new xRedisAsyncContext());
 		ac->c->reader->buf = &(conn->recvBuff);
 		ac->conn = conn;
 		ac->c->fd = conn->getSockfd();
@@ -58,7 +58,7 @@ void xHiredisAsync::redisConnCallBack(const xTcpconnectionPtr& conn)
 }
 
 
-static void setCallback(const xRedisAsyncContextPtr &c, void *r, const std::any &privdata)
+static void setCallback(const RedisAsyncContextPtr &c, void *r, const std::any &privdata)
 {
 	redisReply *reply = (redisReply*) r;
 	assert(reply != nullptr);
@@ -73,7 +73,7 @@ static void setCallback(const xRedisAsyncContextPtr &c, void *r, const std::any 
 	sconnetCount++;
 }
 
-static void getCallback(const xRedisAsyncContextPtr &c, void *r, const std::any &privdata)
+static void getCallback(const RedisAsyncContextPtr &c, void *r, const std::any &privdata)
 {
 	redisReply *reply = (redisReply*) r;
 	assert(reply != nullptr);

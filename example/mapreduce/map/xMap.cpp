@@ -1,6 +1,6 @@
 #include "xLog.h"
 #include "xTcpClient.h"
-#include "xTcpconnection.h"
+#include "xTcpConnection.h"
 const size_t kMaxHashSize = 10 * 1000 * 1000;
 
 class xMapWoker:noncopyable
@@ -10,14 +10,14 @@ public:
 :loop(loop),
  count(2)
 	{
-		xTcpClientPtr client1(new xTcpClient(loop,this));
+		TcpClientPtr client1(new xTcpClient(loop,this));
 		client1->setConnectionCallback(std::bind(&xMapWoker::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
 		client1->setMessageCallback( std::bind(&xMapWoker::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
 		client1->setConnectionErrorCallBack(std::bind(&xMapWoker::connErrorCallBack, this));
 		client1->connect(ip1,port1);
 		tcpVecs.push_back(client1);
 
-		xTcpClientPtr client2( new xTcpClient(loop,this));
+		TcpClientPtr client2( new xTcpClient(loop,this));
 		client2->setConnectionCallback(std::bind(&xMapWoker::connCallBack, this, std::placeholders::_1,std::placeholders::_2));
 		client2->setMessageCallback( std::bind(&xMapWoker::readCallBack, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
 		client2->setConnectionErrorCallBack(std::bind(&xMapWoker::connErrorCallBack, this));
@@ -41,12 +41,12 @@ public:
 
 	}
 
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* recvBuf,void *data)
+	void readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf,void *data)
 	{
 
 	}
 
-	void connCallBack(const xTcpconnectionPtr& conn,void *data)
+	void connCallBack(const TcpConnectionPtr& conn,void *data)
 	{
 		if(conn->connected())
 		{
