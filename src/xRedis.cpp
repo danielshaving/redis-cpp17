@@ -54,7 +54,7 @@ xRedis::~xRedis()
 	clearCommand();
 }
 
-bool xRedis::clearClusterMigradeCommand(void * data)
+bool xRedis::clearClusterMigradeCommand(std::any *data)
 {
 	return true;
 }
@@ -174,7 +174,22 @@ void xRedis::clearDeques(std::deque<rObj*> & robj)
 
 void xRedis::clearPubSubState(int32_t sockfd)
 {
-
+	
+	{
+		std::unique_lock <std::mutex> lck(pubsubMutex);
+		for (auto &it : pubsubs)
+		{
+			for (auto iter = it.second.begin(); iter != it.second.end();)
+			{
+				if (iter->first == sockfd)
+				{
+					it.second.erase(iter++);
+					continue;
+				}
+				++iter;
+			}
+		}
+	}
 }
 
 void xRedis::clearClusterState(int32_t sockfd)
@@ -568,7 +583,7 @@ bool xRedis::configCommand(const std::deque <rObj*> & obj, const SessionPtr &ses
 
 }
 
-bool xRedis::migrateCommand(const std::deque<rObj*> & obj, const SessionPtr &session)
+bool xRedis::migrateCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
 {
 	if (obj.size() < 5)
 	{
@@ -582,7 +597,64 @@ bool xRedis::migrateCommand(const std::deque<rObj*> & obj, const SessionPtr &ses
 		return false;
 	}
 
+	int32_t firstKey = 3; /* Argument index of the first key. */
+	int32_t numKeys = 1;  /* By default only migrate the 'key' argument. */
+
+	int8_t copy = 0, replace = 0;
+	char *password = nullptr;
+
+	for (int i  = 5; i < obj.size(); i++)
+	{
+		int moreargs = i < obj.size() - 1;
+		if (!strcasecmp(obj[i]->ptr, "copy"))
+		{
+			copy = 1;
+		}
+		else if (!strcasecmp(obj[i]->ptr, "replace"))
+		{
+			replace = 1;
+		}
+		else if (!strcasecmp(obj[i]->ptr, "auth"))
+		{
+			if (!moreargs) 
+			{
+				object.addReply(session->sendBuf, object.syntaxerr);
+				return false;
+			}
+			i++;
+			password = obj[i]->ptr;
+		}
+		else if (!strcasecmp(obj[i]->ptr, "keys"))
+		{
+			if (sdslen(obj[2]->ptr) != 0)
+			{
+				object.addReplyError(session->sendBuf,
+					"When using MIGRATE KEYS option, the key argument"
+					" must be set to the empty string");
+				return false;
+			}
+			firstKey = i + 1;
+			numKeys = obj.size() - i - 1;
+			break;
+		}
+		else
+		{
+			object.addReply(session->sendBuf,object.syntaxerr);
+			return false;
+		}
+	}
+
 	long long port;
+	long timeout;
+	long dbid;
+	/* Sanity check */
+	if (object.getLongFromObjectOrReply(session->sendBuf, obj[4], &timeout, nullptr) != REDIS_OK ||
+		object.getLongFromObjectOrReply(session->sendBuf, obj[3], &dbid, nullptr) != REDIS_OK)
+	{
+		return false;
+	}
+
+	if (timeout <= 0) timeout = 1000;
 
 	if (object.getLongLongFromObject(obj[1], &port) != REDIS_OK)
 	{
@@ -592,13 +664,22 @@ bool xRedis::migrateCommand(const std::deque<rObj*> & obj, const SessionPtr &ses
 	}
 
 	std::string ip = obj[0]->ptr;
-	if (ip == ip  &&  this->port == port)
+	if (this->ip == ip && this->port == port)
 	{
 		object.addReplyErrorFormat(session->sendBuf, "migrate  self server error ");
 		return false;
 	}
 
-	clus.replicationToNode(session,ip,port);
+	{
+		std::unique_lock <std::mutex> lck(clusterMutex);
+		for (int j = 0; j < numKeys; j++)
+		{
+			clusterDelkeys.push_back(object.createStringObject(obj[firstKey + j]->ptr, sdslen(obj[firstKey + j]->ptr)));
+		}
+	}
+
+
+	clus.replicationToNode(obj,session,ip,port,copy,replace);
 	object.addReply(session->sendBuf, object.ok);
 
 	return false;
@@ -3086,8 +3167,6 @@ bool xRedis::hsetCommand(const std::deque <rObj*> & obj,const SessionPtr &sessio
 	object.addReply(session->sendBuf,update ? object.czero : object.cone);
 	return true;
 }
-
-
 
 bool xRedis::setCommand(const std::deque <rObj*> & obj,const SessionPtr &session)
 {	

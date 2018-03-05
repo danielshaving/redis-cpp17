@@ -22,7 +22,7 @@ xCluster::~xCluster()
 
 void xCluster::cretateClusterNode(int32_t slot,const std::string &ip,int16_t port,const std::string &name)
 {
-	xClusterNode node;
+	clusterNode node;
 	node.name = name;
 	node.configEpoch = -1;
 	node.createTime = time(0);
@@ -122,7 +122,7 @@ void xCluster::readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
 }
 
 
-void xCluster::clusterRedirectClient(const SessionPtr &session, xClusterNode * n, int32_t hashSlot, int32_t errCode)
+void xCluster::clusterRedirectClient(const SessionPtr &session, clusterNode * n, int32_t hashSlot, int32_t errCode)
 {
 	if (errCode == CLUSTER_REDIR_CROSS_SLOT)
 	{
@@ -235,6 +235,15 @@ void xCluster::delClusterImport(std::deque<rObj*> &robj)
 }
 
 
+bool xCluster::getKeySlot(const std::string &name)
+{
+	auto it = migratingSlosTos.find(std::move(name));
+	if (it == migratingSlosTos.end())
+	{
+		return false;
+	}
+	return true;
+}
 
 void xCluster::clear()
 {
@@ -243,30 +252,43 @@ void xCluster::clear()
 	sendBuf.retrieveAll();
 }
 
-bool  xCluster::replicationToNode(const SessionPtr &session,const std::string &ip,int16_t port)
+bool  xCluster::replicationToNode(const std::deque<rObj*> &obj, const SessionPtr &session, const std::string &ip, int16_t port, int8_t copy, int8_t replace)
 {
-  	clear();
-	TcpConnectionPtr conn;
-	bool mark = false;
+	clear();
+	TcpConnectionPtr clusterConn;
 	{
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
-		for(auto &it: redis->clusterConns)
+		for (auto &it : redis->clusterConns)
 		{
-			if(it.second->ip == ip && it.second->port == port)
+			if (it.second->ip == ip && it.second->port == port)
 			{
-			    conn = it.second;
-			    mark = true;
+				clusterConn = it.second;
+			}
+		}
+
+		for (auto &it : clusterSlotNodes)
+		{
+			if (it.second.ip == ip && it.second.port == port)
+			{
+				std::string nodeName = it.second.name;
+				auto it = migratingSlosTos.find(std::move(nodeName));
+				if (it == migratingSlosTos.end())
+				{
+					return false;
+				}
 			}
 		}
 	}
 
-	if (!mark)
+	if (!strcasecmp(obj[2]->ptr, ""))
 	{
-		LOG_WARN << "cluster node disconnect:" << ip<<":"<<port;
-		return false;
+
+	}
+	else
+	{
+
 	}
 
-	mark = false;
 
 	LOG_INFO<<"cluster send  success";
 	
@@ -279,7 +301,7 @@ void xCluster::connCallBack(const TcpConnectionPtr& conn)
 		isConnect = true;
 		state = false;
 		{
-			std::unique_lock <std::mutex> lck(cmtex);
+			std::unique_lock <std::mutex> lck(mtx);
 			condition.notify_one();
 		}
 
@@ -328,7 +350,7 @@ void xCluster::connCallBack(const TcpConnectionPtr& conn)
 }
 
 
-xClusterNode  *xCluster::checkClusterSlot(int32_t slot)
+clusterNode  *xCluster::checkClusterSlot(int32_t slot)
 {
 	auto it = clusterSlotNodes.find(slot);
 	if(it == clusterSlotNodes.end())
@@ -538,7 +560,7 @@ bool  xCluster::connSetCluster(const char *ip, int16_t port)
 	client->connect(ip, port);
 	tcpvectors.push_back(client);
 
-	std::unique_lock <std::mutex> lck(cmtex);
+	std::unique_lock <std::mutex> lck(mtx);
 	while(state)
 	{
 		condition.wait(lck);
@@ -575,7 +597,7 @@ void xCluster::connErrorCallBack()
 	isConnect = false;
 
 	{
-		std::unique_lock <std::mutex> lck(cmtex);
+		std::unique_lock <std::mutex> lck(mtx);
 		condition.notify_one();
 	}
 }
