@@ -37,7 +37,7 @@ public:
 		return crlf == beginWrite() ? nullptr : crlf;
 	}
 
-	const char* findCRLF(const char* start) const
+	const char* findCRLF(const char *start) const
 	{
 		assert(peek() <= start);
 		assert(start <= beginWrite());
@@ -57,7 +57,7 @@ public:
 		return content == beginWrite() ? nullptr : content;
 	}
 
-	const char* findEOL(const char* start) const
+	const char* findEOL(const char *start) const
 	{
 		assert(peek() <= start);
 		assert(start <= beginWrite());
@@ -78,7 +78,7 @@ public:
 		}
 	}
 
-	void retrieveUntil(const char* end)
+	void retrieveUntil(const char *end)
 	{
 		assert(peek() <= end);
 		assert(end <= beginWrite());
@@ -129,19 +129,19 @@ public:
 		return result;
 	}
 
-	void append(const char* data, size_t len)
+	void append(const char *data, size_t len)
 	{
 		ensureWritableBytes(len);
 		std::copy(data, data+len, beginWrite());
 		hasWritten(len);
 	}
 
-	void append(const xStringPiece & str)
+	void append(const xStringPiece &str)
 	{
 		append(str.data(), str.size());
 	}
 
-	void append(const void* data, size_t len)
+	void append(const void *data, size_t len)
 	{
 		append(static_cast<const char*>(data), len);
 	}
@@ -187,7 +187,7 @@ public:
 		prepend(&x, sizeof x);
 	}
 
-	void prepend(const void * data, size_t len)
+	void prepend(const void *data, size_t len)
 	{
 		assert(len <= prependableBytes());
 		readerIndex -= len;
@@ -195,12 +195,12 @@ public:
 		std::copy(d,d + len,begin() + readerIndex);
 	}
 
-	void preapend(const void * data, size_t len)
+	void preapend(const void *data, size_t len)
 	{
 		prepend(static_cast<const char*>(data),len);
 	}
 
-	void preapend(const char * data, size_t len)
+	void preapend(const char *data, size_t len)
 	{
 		ensureWritableBytes(len);
 		std::copy(prepeek(), prepeek() + writableBytes(), prepeek() + len);

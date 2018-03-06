@@ -8,13 +8,13 @@
 
 class xSentinel;
 class xRedis;
-class xMemcachedServer;
+class xMemcached;
 
 class xSession : noncopyable, public std::enable_shared_from_this<xSession>
 {
 public:
 	xSession(xRedis *redis,const TcpConnectionPtr &conn);
-	xSession(xMemcachedServer *memcahed,const TcpConnectionPtr &conn);
+	xSession(xMemcached *memcahed,const TcpConnectionPtr &conn);
 	~xSession();
 
 	void resetVlaue();
@@ -52,19 +52,19 @@ public:
 	};
 
 	xRedis *redis;
-	xMemcachedServer *memcached;
+	xMemcached *memcached;
 
+	rObj * command;
 	int32_t reqtype;
 	int32_t multibulklen;
 	int64_t bulklen;
 	int32_t argc;
-	xBuffer sendBuf;
-	xBuffer sendSlaveBuf;
-	xBuffer sendPubSub;
-	TcpConnectionPtr conn;
-	std::deque<rObj*>  robjs;
-	std::vector<TcpConnectionPtr> pubSubTcpconn;
-	rObj * command;
+	xBuffer clientBuffer;
+	xBuffer slaveBuffer;
+	xBuffer pubsubBuffer;
+	std::deque<rObj*> commands;
+	TcpConnectionPtr clientConn;
+
 	State state;
 	Protocol protocol;
 	xItem::UpdatePolicy policy;

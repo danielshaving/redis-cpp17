@@ -58,7 +58,7 @@ AppendFile::~AppendFile()
   ::fclose(fp);
 }
 
-void AppendFile::append(const char* logline, const size_t len)
+void AppendFile::append(const char *logline, const size_t len)
 {
   size_t n = write(logline, len);
   size_t remain = len - n;
@@ -99,7 +99,7 @@ size_t AppendFile::write(const char* logline, size_t len)
 
 
 
-xLogFile::xLogFile(const std::string& basename,
+xLogFile::xLogFile(const std::string &basename,
                  size_t rollSize,
                  bool threadSafe,
                  int flushInterval,
@@ -121,7 +121,7 @@ xLogFile::~xLogFile()
 {
 }
 
-void xLogFile::append(const char* logline, int len)
+void xLogFile::append(const char *logline, int len)
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	append_unlocked(logline, len);
@@ -134,7 +134,7 @@ void xLogFile::flush()
 
 }
 
-void xLogFile::append_unlocked(const char* logline, int len)
+void xLogFile::append_unlocked(const char *logline, int len)
 {
   file->append(logline, len);
 
@@ -180,7 +180,7 @@ bool xLogFile::rollFile()
 	return false;
 }
 
-std::string xLogFile::getLogFileName(const std::string& basename, time_t* now)
+std::string xLogFile::getLogFileName(const std::string &basename, time_t *now)
 {
   std::string filename;
   filename.reserve(basename.size() + 64);
@@ -214,7 +214,7 @@ buffers()
 	buffers.reserve(16);
 }
 
-void xAsyncLogging::append(const char * logline,int len)
+void xAsyncLogging::append(const char *logline,int len)
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	if(currentBuffer->avail() > len)
@@ -235,11 +235,7 @@ void xAsyncLogging::append(const char * logline,int len)
 
 		currentBuffer->append(logline,len);
 		condition.notify_one();
-
-
 	}
-
-
 }
 
 void xAsyncLogging::threadFunc()
@@ -456,7 +452,7 @@ xLogger::OutputFunc g_output = defaultOutput;
 xLogger::FlushFunc g_flush = defaultFlush;
 
 
-xLogger::xImpl::xImpl(LogLevel level, int savedErrno, const xSourceFile& file, int line)
+xLogger::xImpl::xImpl(LogLevel level, int savedErrno, const xSourceFile &file, int line)
   : stream(),
     level(level),
     line(line),
@@ -492,7 +488,7 @@ xLogger::xLogger(xSourceFile file, int line)
 {
 }
 
-xLogger::xLogger(xSourceFile file, int line, LogLevel level, const char* func)
+xLogger::xLogger(xSourceFile file, int line, LogLevel level, const char *func)
   : impl(level, 0, file, line)
 {
   impl.stream << func << ' ';

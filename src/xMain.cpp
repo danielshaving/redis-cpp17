@@ -3,7 +3,7 @@
 
 
 xAsyncLogging *g_asyncLog = nullptr;
-void asyncOutput(const char* msg, int len)
+void asyncOutput(const char *msg, int len)
 {
 	printf("%s\n",msg);
 	g_asyncLog->append(msg, len);
@@ -30,7 +30,7 @@ char *ascii_logo =
 
 
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGHUP, SIG_IGN);

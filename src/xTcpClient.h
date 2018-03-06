@@ -9,14 +9,14 @@ class xTcpClient: noncopyable
 {
 public:
 	xTcpClient();
-	xTcpClient(xEventLoop *loop,const std::any & context);
+	xTcpClient(xEventLoop *loop,const std::any &context);
 	~xTcpClient();
 
-	void connect(const char * ip,int16_t port);
+	void connect(const char *ip,int16_t port);
 	void disconnect();
 	void stop();
 
-	void setConnectionErrorCallBack(ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb);}
+	void setConnectionErrorCallBack(ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb); }
 	void setConnectionCallback(ConnectionCallback&& cb) { connectionCallback = std::move(cb); }
 	void setMessageCallback(MessageCallback&&  cb){ messageCallback = std::move(cb); }
 	void setWriteCompleteCallback(WriteCompleteCallback&& cb) { writeCompleteCallback = std::move(cb); }
@@ -24,13 +24,13 @@ public:
 	xEventLoop * getLoop(){ return loop; }
 	std::any* getContext() { return &context; }
 	const std::any& getContext() const { return context; }
-	void setContext(const std::any& context) { this->context = context; }
+	void setContext(const std::any &context) { this->context = context; }
 
 	TcpConnectionPtr getConnection() { return connection; }
 private:
 	void errorConnection();
 	void newConnection(int32_t sockfd);
-	void removeConnection(const TcpConnectionPtr& conn);
+	void removeConnection(const TcpConnectionPtr &conn);
 
 	ConnectorPtr connector;
 	xEventLoop *loop;

@@ -5,25 +5,25 @@
 const int kLongestKeySize = 250;
 std::string xSession::kLongestKey(kLongestKeySize, 'x');
 
-xSession::xSession(xRedis *redis,const TcpConnectionPtr & conn)
+xSession::xSession(xRedis *redis,const TcpConnectionPtr &conn)
 :reqtype(0),
  multibulklen(0),
  bulklen(-1),
  argc(0),
- conn(conn),
+ clientConn(conn),
  redis(redis),
  authEnabled(false),
  replyBuffer(false),
  fromMaster(false),
  fromSlave(false)
 {
-	command = redis->object.createStringObject(nullptr,10);
-	conn->setMessageCallback(std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
+	command = redis->object.createStringObject(nullptr, REDIS_COMMAND_LENGTH);
+	clientConn->setMessageCallback(std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
 }
 
-xSession::xSession(xMemcachedServer *memcahed,const TcpConnectionPtr & conn)
+xSession::xSession(xMemcached *memcahed,const TcpConnectionPtr &conn)
 :memcached(memcached),
-conn(conn),
+clientConn(conn),
 state(kNewCommand),
 protocol(kAscii),
 noreply(false),
@@ -33,7 +33,7 @@ needle(xItem::makeItem(kLongestKey, 0, 0, 2, 0)),
 bytesRead(0),
 requestsProcessed(0)
 {
-	 conn->setMessageCallback(std::bind(&xSession::onMessage, this, std::placeholders::_1,std::placeholders::_2));
+	 clientConn->setMessageCallback(std::bind(&xSession::onMessage, this, std::placeholders::_1,std::placeholders::_2));
 }
 
 xSession::~xSession()
@@ -44,7 +44,7 @@ xSession::~xSession()
 	}
 }
 
-void xSession::readCallBack(const TcpConnectionPtr &conn, xBuffer *recvBuf)
+void xSession::readCallBack(const TcpConnectionPtr &clientConn, xBuffer *recvBuf)
 {
 	while(recvBuf->readableBytes() > 0 )
 	{
@@ -84,21 +84,15 @@ void xSession::readCallBack(const TcpConnectionPtr &conn, xBuffer *recvBuf)
 
 	}
 
-	if(sendBuf.readableBytes() > 0 )
+	if(clientBuffer.readableBytes() > 0 )
 	{
-		conn->send(&sendBuf);
-		sendBuf.retrieveAll();
+		clientConn->send(&clientBuffer);
+		clientBuffer.retrieveAll();
 	}
 
-	if(sendPubSub.readableBytes() > 0 )
+	if(pubsubBuffer.readableBytes() > 0 )
 	{
-		for(auto &it : pubSubTcpconn)
-		{
-			it->send(&sendPubSub);
-		}
-
-		pubSubTcpconn.clear();
-		sendPubSub.retrieveAll();
+		pubsubBuffer.retrieveAll();
 	}
 
 	if(redis->repliEnabled)
@@ -106,19 +100,19 @@ void xSession::readCallBack(const TcpConnectionPtr &conn, xBuffer *recvBuf)
 		std::unique_lock <std::mutex> lck(redis->slaveMutex);
 		for (auto &it : redis->slaveConns)
 		{
-			if (sendSlaveBuf.readableBytes() > 0)
+			if (slaveBuffer.readableBytes() > 0)
 			{
-			 	it.second->send(&sendSlaveBuf);
+			 	it.second->send(&slaveBuffer);
 			}
 		}
 
-		sendSlaveBuf.retrieveAll();
+		slaveBuffer.retrieveAll();
 	}
 }
 
-bool xSession::checkCommand(rObj *robjs)
+bool xSession::checkCommand(rObj *commands)
 {
-	auto it = redis->commands.find(robjs);
+	auto it = redis->commands.find(commands);
 	if(it == redis->commands.end())
 	{
 		return false;
@@ -134,10 +128,10 @@ int32_t xSession::processCommand()
 	{
 		if(!authEnabled)
 		{
-			if (strcasecmp(robjs[0]->ptr,"auth") != 0)
+			if (strcasecmp(commands[0]->ptr,"auth") != 0)
 			{
 				clearObj();
-				redis->object.addReplyErrorFormat(sendBuf,"NOAUTH Authentication required");
+				redis->object.addReplyErrorFormat(clientBuffer,"NOAUTH Authentication required");
 				return REDIS_ERR;
 			}
 		}
@@ -150,8 +144,8 @@ int32_t xSession::processCommand()
 			goto jump;
 		}
 			
-		assert(!robjs.empty());
-		char * key = robjs[0]->ptr;
+		assert(!commands.empty());
+		char * key = commands[0]->ptr;
 		int32_t hashslot = redis->clus.keyHashSlot(key, sdslen(key));
 		
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
@@ -163,7 +157,7 @@ int32_t xSession::processCommand()
 				auto iter = it.second.find(hashslot);
 				if(iter != it.second.end())
 				{
-					redis->structureRedisProtocol(redis->clusterMigratCached,robjs);
+					redis->structureRedisProtocol(redis->clusterMigratCached,commands);
 					goto jump;
 				}
 			}
@@ -209,7 +203,7 @@ jump:
 
 	if(redis->repliEnabled)
 	{
-		if (conn->getSockfd() == redis->masterfd)
+		if (clientConn->getSockfd() == redis->masterfd)
 		{
 			fromMaster = true;
 			if(!checkCommand(command))
@@ -224,7 +218,7 @@ jump:
 			if(checkCommand(command))
 			{
 				clearObj();
-				redis->object.addReplyErrorFormat(sendBuf,"slaveof command unknown");
+				redis->object.addReplyErrorFormat(clientBuffer,"slaveof command unknown");
 				return REDIS_ERR;
 			}
 		}
@@ -232,20 +226,20 @@ jump:
 		{
 			if(checkCommand(command))
 			{
-				robjs.push_front(command);
+				commands.push_front(command);
 
 				{
 					std::unique_lock <std::mutex> lck(redis->slaveMutex);
 					if(redis->salveCount < redis->slaveConns.size())
 					{
-						redis->structureRedisProtocol(redis->slaveCached,robjs);
+						redis->structureRedisProtocol(redis->slaveCached,commands);
 					}
 					else
 					{
-						redis->structureRedisProtocol(sendSlaveBuf,robjs);
+						redis->structureRedisProtocol(slaveBuffer,commands);
 					}
 				}
-				robjs.pop_front();
+				commands.pop_front();
 			}
 		}
 
@@ -257,11 +251,11 @@ jump:
 	if(it == map.end())
 	{
 		clearObj();
-		redis->object.addReplyErrorFormat(sendBuf,"command unknown");
+		redis->object.addReplyErrorFormat(clientBuffer,"command unknown");
 		return REDIS_ERR;
 	}
 
-	if(!it->second(robjs,shared_from_this()))
+	if(!it->second(commands,shared_from_this()))
 	{
 		clearObj();
 		return REDIS_ERR;
@@ -277,7 +271,7 @@ void xSession::resetVlaue()
 
 void xSession::clearObj()
 {
-	for(auto &it : robjs)
+	for(auto &it : commands)
 	{
 		zfree(it);
 	}	
@@ -288,26 +282,26 @@ void xSession::reset()
 	argc = 0;
 	multibulklen = 0;
 	bulklen = -1;
-	robjs.clear();
+	commands.clear();
 
 	if(replyBuffer)
 	{
-	    sendBuf.retrieveAll();
+		clientBuffer.retrieveAll();
 	    replyBuffer = false;
 	}
 
 	if(fromMaster)
 	{
-		sendBuf.retrieveAll();
-		sendSlaveBuf.retrieveAll();
-		sendPubSub.retrieveAll();
+		clientBuffer.retrieveAll();
+		slaveBuffer.retrieveAll();
+		pubsubBuffer.retrieveAll();
 		fromMaster = false;
 	}
 }
 
 int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
 {
-    	const char *newline;
+    const char *newline;
 	const char *queryBuf = recvBuf->peek();
 	int32_t  j;
 	size_t queryLen;
@@ -319,7 +313,7 @@ int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
 		 if(recvBuf->readableBytes() > PROTO_INLINE_MAX_SIZE)
 		 {
 			LOG_WARN << "Protocol error";
-			redis->object.addReplyError(sendBuf,"Protocol error: too big inline request");
+			redis->object.addReplyError(clientBuffer,"Protocol error: too big inline request");
 			recvBuf->retrieveAll();
 		 }
 		 
@@ -339,7 +333,7 @@ int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
 	if (argv == nullptr) 
 	{
 		LOG_WARN << "Protocol error";
-		redis->object.addReplyError(sendBuf,"Protocol error: unbalanced quotes in request");
+		redis->object.addReplyError(clientBuffer,"Protocol error: unbalanced quotes in request");
 		recvBuf->retrieveAll();
 		return REDIS_ERR;
     }
@@ -355,7 +349,7 @@ int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
 		{
 			rObj * obj = (rObj*)redis->object.createStringObject(argv[j],sdslen(argv[j]));
 			obj->calHash();
-			robjs.push_back(obj);
+			commands.push_back(obj);
 		}
 		sdsfree(argv[j]);
 	}
@@ -378,7 +372,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		{
 			if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 			{
-				redis->object.addReplyError(sendBuf,"Protocol error: too big mbulk count string");
+				redis->object.addReplyError(clientBuffer,"Protocol error: too big mbulk count string");
 				LOG_INFO<<"Protocol error: too big mbulk count string";
 				recvBuf->retrieveAll();
 			}
@@ -403,7 +397,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		ok = string2ll(queryBuf + 1,newline - ( queryBuf + 1),&ll);
 		if(!ok || ll > 1024 * 1024)
 		{
-			redis->object.addReplyError(sendBuf,"Protocol error: invalid multibulk length");
+			redis->object.addReplyError(clientBuffer,"Protocol error: invalid multibulk length");
 			LOG_INFO<<"Protocol error: invalid multibulk length";
 			recvBuf->retrieveAll();
 			return REDIS_ERR;
@@ -429,7 +423,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			{
 				if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
 				{
-					redis->object.addReplyError(sendBuf,"Protocol error: too big bulk count string");
+					redis->object.addReplyError(clientBuffer,"Protocol error: too big bulk count string");
 					LOG_INFO<<"Protocol error: too big bulk count string";
 					recvBuf->retrieveAll();
 					return REDIS_ERR;
@@ -445,7 +439,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 
 			if(queryBuf[pos] != '$')
 			{
-				redis->object.addReplyErrorFormat(sendBuf,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
+				redis->object.addReplyErrorFormat(clientBuffer,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
 				LOG_INFO<<"Protocol error: expected '$'";
 				recvBuf->retrieveAll();
 				return REDIS_ERR;
@@ -455,7 +449,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			ok = string2ll(queryBuf + pos +  1,newline - (queryBuf + pos + 1),&ll);
 			if(!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
-				redis->object.addReplyError(sendBuf,"Protocol error: invalid bulk length");
+				redis->object.addReplyError(clientBuffer,"Protocol error: invalid bulk length");
 				LOG_INFO<<"Protocol error: invalid bulk length";
 				recvBuf->retrieveAll();
 				return REDIS_ERR;
@@ -484,7 +478,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			{
 				rObj * obj = (rObj*)redis->object.createStringObject((char*)(queryBuf + pos),bulklen);
 				obj->calHash();
-				robjs.push_back(obj);
+				commands.push_back(obj);
 			}
 
 			pos += bulklen+2;
@@ -688,18 +682,18 @@ bool xSession::processRequest(xStringPiece request)
 			++beg;
 			if (item)
 			{
-				item->output(&sendBuf, cas);
+				item->output(&clientBuffer, cas);
 			}
 		}
-		sendBuf.append("END\r\n");
+		clientBuffer.append("END\r\n");
 
-		if (conn->outputBuffer()->writableBytes() > 65536 + sendBuf.readableBytes())
+		if (clientConn->outputBuffer()->writableBytes() > 65536 + clientBuffer.readableBytes())
 		{
-			LOG_DEBUG << "shrink output buffer from " << conn->outputBuffer()->internalCapacity();
-			conn->outputBuffer()->shrink(65536 + sendBuf.readableBytes());
+			LOG_DEBUG << "shrink output buffer from " << clientConn->outputBuffer()->internalCapacity();
+			clientConn->outputBuffer()->shrink(65536 + clientBuffer.readableBytes());
 		}
 
-		conn->send(&sendBuf);
+		clientConn->send(&clientBuffer);
 	}
 	else if (command == "delete")
 	{
@@ -711,11 +705,11 @@ bool xSession::processRequest(xStringPiece request)
 	}
 	else if (command == "quit")
 	{
-		conn->shutdown();
+		clientConn->shutdown();
 	}
 	else if (command == "shutdown")
 	{
-		conn->shutdown();
+		clientConn->shutdown();
 		memcached->stop();
 	}
 	else
@@ -738,7 +732,7 @@ void xSession::reply(xStringPiece msg)
 {
 	if (!noreply)
 	{
-		conn->send(msg.data(), msg.size());
+		clientConn->send(msg.data(), msg.size());
 	}
 }
 
@@ -883,7 +877,7 @@ void xSession::onMessage(const TcpConnectionPtr &conn,xBuffer *buf)
 				{
 					if (buf->readableBytes() > 1024)
 					{
-						conn->shutdown();
+						clientConn->shutdown();
 					}
 					break;
 				}

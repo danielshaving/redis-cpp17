@@ -44,8 +44,8 @@ public:
 	size_t neededBytes() const;
 	size_t getHash() const { return hash; }
 	xStringPiece getKey()const { return xStringPiece(data,keyLen); }
-	void append(const char* data, size_t len);
-	void output(xBuffer* out, bool needCas = false) const;
+	void append(const char *data, size_t len);
+	void output(xBuffer *out, bool needCas = false) const;
 	void resetKey(xStringPiece k);
 
 	bool endsWithCRLF() const

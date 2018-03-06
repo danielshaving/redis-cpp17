@@ -1,36 +1,36 @@
 #include "xMemcached.h"
 
-xMemcachedServer::xMemcachedServer(xEventLoop *loop,const Options & op)
+xMemcached::xMemcached(xEventLoop *loop,const Options & op)
 :loop(loop),
  server(loop,ops.ip,ops.port,nullptr),
 ops(op),
 startTime(time(0))
 {
-	server.setConnectionCallback(std::bind(&xMemcachedServer::onConnection,this,std::placeholders::_1));
+	server.setConnectionCallback(std::bind(&xMemcached::onConnection,this,std::placeholders::_1));
 }
 
-void xMemcachedServer::start()
+void xMemcached::start()
 {
 	server.start();
 }
 
 
-void xMemcachedServer::quit(const std::any &context)
+void xMemcached::quit(const std::any &context)
 {
 	loop->quit();
 }
 
-void xMemcachedServer::run()
+void xMemcached::run()
 {
 	loop->run();
 }
 
-void xMemcachedServer::stop()
+void xMemcached::stop()
 {
-	 loop->runAfter(3.0, nullptr,false,std::bind(&xMemcachedServer::quit,this,std::placeholders::_1));
+	 loop->runAfter(3.0, nullptr,false,std::bind(&xMemcached::quit,this,std::placeholders::_1));
 }
 
-bool xMemcachedServer::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy, bool *exists)
+bool xMemcached::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy, bool *exists)
 {
 	assert(item->neededBytes() == 0);
 	std::mutex & mutex = shards[item->getHash() % kShards].mutex;
@@ -127,7 +127,7 @@ bool xMemcachedServer::storeItem(const ItemPtr & item, xItem::UpdatePolicy polic
 	return true;
 }
 
-ConstItemPtr xMemcachedServer::getItem(const ConstItemPtr & key) const
+ConstItemPtr xMemcached::getItem(const ConstItemPtr & key) const
 {
 	std::mutex & mutex  = shards[key->getHash() % kShards].mutex;
 	const ItemMap& items = shards[key->getHash() % kShards].items;
@@ -136,7 +136,7 @@ ConstItemPtr xMemcachedServer::getItem(const ConstItemPtr & key) const
 	return it != items.end() ? *it : ConstItemPtr();
 }
 
-bool xMemcachedServer::deleteItem(const ConstItemPtr & key)
+bool xMemcached::deleteItem(const ConstItemPtr & key)
 {
 	std::mutex & mutex= shards[key->getHash() % kShards].mutex;
 	ItemMap& items = shards[key->getHash() % kShards].items;
@@ -145,7 +145,7 @@ bool xMemcachedServer::deleteItem(const ConstItemPtr & key)
 }
 
 
-void xMemcachedServer::onConnection(const TcpConnectionPtr & conn)
+void xMemcached::onConnection(const TcpConnectionPtr & conn)
 {
 	if(conn->connected())
 	{

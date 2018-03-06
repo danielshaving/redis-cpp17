@@ -22,7 +22,7 @@ namespace detail
 {
 	void removeConnection(xEventLoop* loop, const TcpConnectionPtr& conn)
 	{
-	 	loop->queueInLoop(std::bind(&xTcpConnection::connectDestroyed, conn));
+		loop->queueInLoop(std::bind(&xTcpConnection::connectDestroyed, conn));
 	}
 
 	void removeConnector(const ConnectorPtr& connector)
@@ -33,16 +33,16 @@ namespace detail
 
 xTcpClient::~xTcpClient()
 {
-	  TcpConnectionPtr conn;
-	  bool unique = false;
-	  {
+	TcpConnectionPtr conn;
+	bool unique = false;
+	{
 		std::unique_lock<std::mutex> lk(mutex);
 		unique = connection.unique();
 		conn = connection;
-	  }
+	}
 
-	  if (conn)
-	  {
+	if (conn)
+	{
 		assert(loop == conn->getLoop());
 		CloseCallback cb = std::bind(&detail::removeConnection, loop, conn);
 		loop->runInLoop(std::bind(&xTcpConnection::setCloseCallback, conn, cb));
@@ -50,20 +50,20 @@ xTcpClient::~xTcpClient()
 		{
 			conn->forceClose();
 		}
-	  }
-	  else
-	  {
-	   	 connector->stop();
-	   	 loop->runAfter(1, nullptr,false,std::bind(&detail::removeConnector, connector));
-	  }
+	}
+	else
+	{
+		 connector->stop();
+		 loop->runAfter(1, nullptr,false,std::bind(&detail::removeConnector, connector));
+	}
 }
 
 void xTcpClient::connect(const char *ip,int16_t port)
 {
-	 isconnect = true;
-	 this->ip = ip;
-	 this->port = port;
-	 connector->start(ip,port);
+	isconnect = true;
+	this->ip = ip;
+	this->port = port;
+	connector->start(ip,port);
 }
 
 void xTcpClient::disconnect()
@@ -73,7 +73,7 @@ void xTcpClient::disconnect()
 		std::unique_lock<std::mutex> lk(mutex);
 		if (connection)
 		{
-		  	connection->shutdown();
+			connection->shutdown();
 		}
 	}
 }

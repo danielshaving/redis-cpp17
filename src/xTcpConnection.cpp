@@ -147,7 +147,6 @@ void xTcpConnection::handleError()
 	//LOG_ERROR<<"handleError";
 }
 
-
 bool xTcpConnection::connected()
 {
 	return state == kConnected;
@@ -163,8 +162,7 @@ int xTcpConnection::getSockfd()
 	return sockfd;
 }
 
-
-void xTcpConnection::sendPipe(xBuffer* buf)
+void xTcpConnection::sendPipe(xBuffer *buf)
 {
 	if (state == kConnected)
 	{
@@ -182,14 +180,12 @@ void xTcpConnection::sendPipe(xBuffer* buf)
 }
 
 
-void xTcpConnection::sendPipe(const void* message, int len)
+void xTcpConnection::sendPipe(const void *message, int len)
 {
-
     send(xStringPiece(static_cast<const char*>(message), len));
-
 }
 
-void xTcpConnection::sendPipe(const xStringPiece & message)
+void xTcpConnection::sendPipe(const xStringPiece &message)
 {
 	if (state == kConnected)
 	{
@@ -206,13 +202,13 @@ void xTcpConnection::sendPipe(const xStringPiece & message)
 	}
 }
 
-void xTcpConnection::send(const void* message, int len)
+void xTcpConnection::send(const void *message, int len)
 {
 	send(xStringPiece(static_cast<const char*>(message), len));
 }
 
 
-void xTcpConnection::send(const xStringPiece & message)
+void xTcpConnection::send(const xStringPiece &message)
 {
 	if (state == kConnected)
 	{
@@ -229,14 +225,14 @@ void xTcpConnection::send(const xStringPiece & message)
 	}
 }
 
-void xTcpConnection::sendPipeInLoop(const xStringPiece & message)
+void xTcpConnection::sendPipeInLoop(const xStringPiece &message)
 {
 	sendPipeInLoop(message.data(),message.size());
 }
 
 
 
-void xTcpConnection::sendPipeInLoop(const void* message, size_t len)
+void xTcpConnection::sendPipeInLoop(const void *message, size_t len)
 {
 	sendBuff.append(message,len);
 	if (!channel->isWriting())
@@ -245,13 +241,13 @@ void xTcpConnection::sendPipeInLoop(const void* message, size_t len)
 	}
 }
 
-void xTcpConnection::bindSendPipeInLoop(xTcpConnection* conn, const xStringPiece& message)
+void xTcpConnection::bindSendPipeInLoop(xTcpConnection *conn, const xStringPiece &message)
 {
 	conn->sendPipeInLoop(message.data(),message.size());
 }
 
 
-void xTcpConnection::bindSendInLoop(xTcpConnection* conn, const xStringPiece& message)
+void xTcpConnection::bindSendInLoop(xTcpConnection *conn, const xStringPiece &message)
 {
 	 conn->sendInLoop(message.data(),message.size());
 }

@@ -2,7 +2,7 @@
 
 
 
-xRedisReader::xRedisReader(xBuffer & recvBuff)
+xRedisReader::xRedisReader(xBuffer &recvBuff)
 {
 	buf = &recvBuff;
 }
@@ -24,7 +24,7 @@ xRedisContext::xRedisContext()
 }
 
 
-xRedisContext::xRedisContext(xBuffer & recvBuff,int32_t sockfd)
+xRedisContext::xRedisContext(xBuffer &recvBuff,int32_t sockfd)
 :reader(new xRedisReader(recvBuff)),
  fd(sockfd)
 {
@@ -57,7 +57,7 @@ void xRedisContext::setConnected()
 }
 
 
-xRedisAsyncContext::xRedisAsyncContext(xBuffer & recvBuff,TcpConnectionPtr conn,int32_t sockfd)
+xRedisAsyncContext::xRedisAsyncContext(xBuffer &recvBuff,const TcpConnectionPtr &conn,int32_t sockfd)
 :c(new xRedisContext(recvBuff,sockfd)),
  conn(conn)
 {
@@ -216,7 +216,7 @@ long long xRedisReader::readLongLong(const char * s)
 
 
 /* Find pointer to \r\n. */
-static const char * seekNewline(const char * s, size_t len)
+static const char * seekNewline(const char *s, size_t len)
 {
 	int32_t 	pos = 0;
 	int32_t 	_len = len - 1;
@@ -330,7 +330,7 @@ void freeReply(void * reply)
 	zfree(r);
 }
 
-void * createString(const redisReadTask * task, const char * str, size_t len)
+void * createString(const redisReadTask *task, const char *str, size_t len)
 {
 	redisReply *r, *parent;
 	char * buf;
@@ -367,7 +367,7 @@ void * createString(const redisReadTask * task, const char * str, size_t len)
 }
 
 
-void * createArray(const redisReadTask * task, int32_t elements)
+void * createArray(const redisReadTask *task, int32_t elements)
 {
 	redisReply * r, *parent;
 
@@ -400,7 +400,7 @@ void * createArray(const redisReadTask * task, int32_t elements)
 }
 
 
-void * createInteger(const redisReadTask * task, long long value)
+void * createInteger(const redisReadTask *task, long long value)
 {
 	redisReply * r, *parent;
 
@@ -422,7 +422,7 @@ void * createInteger(const redisReadTask * task, long long value)
 }
 
 
-void * createNil(const redisReadTask * task)
+void * createNil(const redisReadTask *task)
 {
 	redisReply * r, *parent;
 
@@ -518,7 +518,7 @@ void xRedisReader::moveToNextTask()
 
 int32_t xRedisReader::processLineItem()
 {
-	redisReadTask * cur = & (rstack[ridx]);
+	redisReadTask *cur = & (rstack[ridx]);
 	void * obj;
 	const char * p;
 	int32_t len;
@@ -769,7 +769,7 @@ int32_t xRedisReader::processItem()
 	}
 }
 
-int32_t xRedisReader::redisReaderGetReply(void * *reply)
+int32_t xRedisReader::redisReaderGetReply(void **reply)
 {
 	if (reply != nullptr)
 	{
@@ -829,7 +829,7 @@ int32_t xRedisReader::redisReaderGetReply(void * *reply)
 }
 
 
-int32_t xRedisContext::redisGetReplyFromReader(void * *reply)
+int32_t xRedisContext::redisGetReplyFromReader(void **reply)
 {
 	if (reader->redisReaderGetReply(reply) == REDIS_ERR)
 	{
@@ -842,7 +842,7 @@ int32_t xRedisContext::redisGetReplyFromReader(void * *reply)
 
 
 
-int32_t xRedisContext::redisBufferWrite( int32_t * done)
+int32_t xRedisContext::redisBufferWrite( int32_t *done)
 {
 	int32_t nwritten;
 	if (err)
@@ -915,7 +915,7 @@ int32_t xRedisContext::redisBufferRead()
 	return REDIS_OK;
 }
 
-int32_t xRedisContext::redisGetReply(void * *reply)
+int32_t xRedisContext::redisGetReply(void **reply)
 {
 	int32_t wdone	= 0;
 	void * aux	= nullptr;
@@ -986,14 +986,14 @@ int32_t xRedisAsyncContext::__redisAsyncCommand(redisCallbackFn *fn, const std::
 }
 
 
-int32_t redisvFormatCommand(char * *target, const char * format, va_list ap)
+int32_t redisvFormatCommand(char **target, const char * format, va_list ap)
 {
-	const char * c = format;
-	char * cmd = nullptr; 					/* final command */
+	const char *c = format;
+	char *cmd = nullptr; 					/* final command */
 	int32_t pos;							/* position in final command */
 	sds curarg, newarg; 				/* current argument */
 	int32_t touched = 0;					/* was the current argument touched? */
-	char * * curargv = nullptr, * *newargv = nullptr;
+	char ** curargv = nullptr, **newargv = nullptr;
 	int32_t argc = 0;
 	int32_t totlen = 0;
 	int32_t j;
@@ -1257,7 +1257,7 @@ int32_t redisFormatCommand(char **target, const char *format, ...)
     return len;
 }
 
-int32_t xRedisAsyncContext::redisvAsyncCommand(redisCallbackFn *fn, const std::any& privdata, const char *format, va_list ap)
+int32_t xRedisAsyncContext::redisvAsyncCommand(redisCallbackFn *fn, const std::any &privdata, const char *format, va_list ap)
 {
 	char *cmd;
 	int32_t len;
@@ -1267,7 +1267,7 @@ int32_t xRedisAsyncContext::redisvAsyncCommand(redisCallbackFn *fn, const std::a
 	return status;
 }
 
-int32_t xRedisAsyncContext::redisAsyncCommand(redisCallbackFn *fn, const std::any& privdata, const char *format, ...)
+int32_t xRedisAsyncContext::redisAsyncCommand(redisCallbackFn *fn, const std::any &privdata, const char *format, ...)
 {
 	va_list ap;
 	int32_t status;
@@ -1289,13 +1289,13 @@ void * xRedisContext::redisBlockForReply()
 	return nullptr;
 }
 
-int32_t xRedisContext::__redisAppendCommand(const char * cmd, size_t len)
+int32_t xRedisContext::__redisAppendCommand(const char *cmd, size_t len)
 {
 	sender.append(cmd,len);
 	return REDIS_OK;
 }
 
-int32_t xRedisContext::redisvAppendCommand(const char * format, va_list ap)
+int32_t xRedisContext::redisvAppendCommand(const char *format, va_list ap)
 {
 	char * cmd;
 	int32_t len;
@@ -1323,7 +1323,7 @@ int32_t xRedisContext::redisvAppendCommand(const char * format, va_list ap)
 }
 
 
-void * xRedisContext::redisCommand(const char * format, ...)
+void * xRedisContext::redisCommand(const char *format, ...)
 {
 	va_list ap;
 	void * reply	 = nullptr;
@@ -1438,7 +1438,7 @@ int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc, const char **argv, 
 }
 
 
-int32_t xRedisContext::redisAppendCommandArgv(int32_t argc, const char * *argv, const size_t * argvlen)
+int32_t xRedisContext::redisAppendCommandArgv(int32_t argc, const char **argv, const size_t *argvlen)
 {
 	char * cmd;
 	int32_t len;
@@ -1673,7 +1673,7 @@ count(0)
 }
 
 
-void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr& conn)
+void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 {
 	int32_t *context = std::any_cast<int32_t>(conn->getContext());
 	if(conn->connected())
@@ -1705,7 +1705,7 @@ void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr& conn)
 }
 
 
-void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr& conn)
+void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 {
 	int32_t *context = std::any_cast<int32_t>(conn->getContext());
 	if(conn->connected())
@@ -1787,7 +1787,7 @@ void xHiredis::insertTcpMap(int32_t data,TcpClientPtr tc)
 	tcpClientMaps.insert(std::make_pair(data,tc));
 }
 
-void xHiredis::redisReadCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
+void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn, xBuffer*recvBuf)
 {
 	RedisAsyncContextPtr redis;
 	{

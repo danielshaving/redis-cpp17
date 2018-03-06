@@ -9,7 +9,7 @@ const int32_t kAdded = 1;
 const int32_t kDeleted = 2;
 
 
-xEpoll::xEpoll(xEventLoop * loop)
+xEpoll::xEpoll(xEventLoop *loop)
 :events(64),
 loop(loop),
 epollFd(-1)
@@ -29,7 +29,7 @@ xEpoll::~xEpoll()
 }
 
 
-void  xEpoll::epollWait(ChannelList* activeChannels,int32_t msTime)
+void  xEpoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
 	int32_t numEvents = ::epoll_wait(epollFd, &*events.begin(), static_cast<int32_t>(events.size()), msTime);
 	int32_t savedErrno = errno;
@@ -58,7 +58,7 @@ void  xEpoll::epollWait(ChannelList* activeChannels,int32_t msTime)
 }
 
 
-bool xEpoll::hasChannel(xChannel* channel)
+bool xEpoll::hasChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	auto  it = channels.find(channel->getfd());
@@ -66,7 +66,7 @@ bool xEpoll::hasChannel(xChannel* channel)
 }
 
 
-void xEpoll::updateChannel(xChannel* channel)
+void xEpoll::updateChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	const int32_t index = channel->getIndex();
@@ -114,7 +114,7 @@ void xEpoll::updateChannel(xChannel* channel)
 
 
 
-void xEpoll::removeChannel(xChannel* channel)
+void xEpoll::removeChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	int32_t fd = channel->getfd();
@@ -137,7 +137,7 @@ void xEpoll::removeChannel(xChannel* channel)
 	channel->setIndex(kNew);
 }
 
-void xEpoll::update(int32_t operation, xChannel* channel)
+void xEpoll::update(int32_t operation, xChannel *channel)
 {
 	struct epoll_event event;
 	bzero(&event, sizeof event);
@@ -150,7 +150,7 @@ void xEpoll::update(int32_t operation, xChannel* channel)
 	}
 }
 
-void xEpoll::fillActiveChannels(int32_t numEvents, ChannelList* activeChannels) const
+void xEpoll::fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const
 {
 	for (int32_t i = 0; i < numEvents; ++i)
 	{

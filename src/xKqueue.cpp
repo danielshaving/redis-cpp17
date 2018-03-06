@@ -8,7 +8,7 @@ const int kNew = -1;
 const int kAdded = 1;
 const int kDeleted = 2;
 
-xKqueue::xKqueue(xEventLoop * loop)
+xKqueue::xKqueue(xEventLoop *loop)
 :events(64),
 loop(loop),
 kqueueFd(-1)
@@ -25,7 +25,7 @@ xKqueue::~xKqueue()
 	::close(kqueueFd);
 }
 
-void  xKqueue::epollWait(ChannelList* activeChannels,int msTime)
+void  xKqueue::epollWait(ChannelList *activeChannels,int msTime)
 {
     struct timespec timeout;
 	timeout.tv_sec = msTime;
@@ -63,7 +63,7 @@ void  xKqueue::epollWait(ChannelList* activeChannels,int msTime)
 	loop->handlerTimerQueue();
 }
 
-bool xKqueue::hasChannel(xChannel* channel)
+bool xKqueue::hasChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	auto it = channels.find(channel->getfd());
@@ -71,7 +71,7 @@ bool xKqueue::hasChannel(xChannel* channel)
 }
 
 
-void xKqueue::updateChannel(xChannel* channel)
+void xKqueue::updateChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	const int index = channel->getIndex();
@@ -108,7 +108,7 @@ void xKqueue::updateChannel(xChannel* channel)
 	}
 }
 
-void xKqueue::removeChannel(xChannel* channel)
+void xKqueue::removeChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	int fd = channel->getfd();
@@ -124,7 +124,7 @@ void xKqueue::removeChannel(xChannel* channel)
 }
 
 
-void	xKqueue::delUpdate(xChannel* channel)
+void	xKqueue::delUpdate(xChannel *channel)
 {
 	if (channel->readEnabled())
 	{
@@ -148,7 +148,7 @@ void	xKqueue::delUpdate(xChannel* channel)
 }
 
 
-void	xKqueue::addUpdate(xChannel* channel)
+void	xKqueue::addUpdate(xChannel *channel)
 {
 	if (channel->readEnabled())
 	{
@@ -172,7 +172,7 @@ void	xKqueue::addUpdate(xChannel* channel)
 
 }
 
-void xKqueue::fillActiveChannels(int numEvents, ChannelList* activeChannels) const
+void xKqueue::fillActiveChannels(int numEvents, ChannelList *activeChannels) const
 {
 	for (int i = 0; i < numEvents; ++i)
 	{

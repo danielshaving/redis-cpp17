@@ -144,6 +144,7 @@
 
 
 /* Static server configuration */
+#define REDIS_COMMAND_LENGTH 15
 #define REDIS_DEFAULT_HZ        10      /* Time interrupt calls/sec. */
 #define REDIS_MIN_HZ            1
 #define REDIS_MAX_HZ            500

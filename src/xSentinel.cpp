@@ -17,13 +17,13 @@ xSentinel::~xSentinel()
 	
 }
 
-void xSentinel::readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
+void xSentinel::readCallBack(const TcpConnectionPtr &conn, xBuffer*recvBuf)
 {
 	
 }
 
 
-void xSentinel::connCallBack(const TcpConnectionPtr& conn)
+void xSentinel::connCallBack(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{

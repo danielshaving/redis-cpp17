@@ -181,7 +181,7 @@ void xReplication::connCallBack(const TcpConnectionPtr& conn)
 {
 	if(conn->connected())
 	{
-		this->conn = conn;
+		repliConn = conn;
 		socket.getpeerName(conn->getSockfd(),&(conn->ip),conn->port);
 		redis->masterHost = conn->ip;
 		redis->masterPort = conn->port ;
@@ -194,7 +194,7 @@ void xReplication::connCallBack(const TcpConnectionPtr& conn)
 	}
 	else
 	{
-		this->conn = nullptr;
+		repliConn = nullptr;
 		salveReadLen = 0;
 		salveLen = 0;
 		redis->masterHost.clear();

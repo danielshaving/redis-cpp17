@@ -57,7 +57,7 @@ public:
 	off_t  rioTell(xRio *r);
 	size_t rioWrite(xRio *r,const void *buf,size_t len);
 	size_t rioRead(xRio *r,void *buf,size_t len);
-	size_t rioRepliRead(xRio * r,void *buf,size_t len);
+	size_t rioRepliRead(xRio *r,void *buf,size_t len);
 	off_t  rioFlush(xRio *r);
 	size_t rioFileRead(xRio*r, void *buf, size_t len);
 	size_t rioFileWrite(xRio *r, const void *buf, size_t len);

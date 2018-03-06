@@ -12,9 +12,9 @@ public:
 	~xSentinel();
 	void connectSentinel();
 	void connErrorCallBack();
-	void readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf);
-	void connCallBack(const TcpConnectionPtr& conn);
-	void reconnectTimer(const std::any & context);
+	void readCallBack(const TcpConnectionPtr &conn, xBuffer *recvBuf);
+	void connCallBack(const TcpConnectionPtr &conn);
+	void reconnectTimer(const std::any &context);
 
 private:
 	xRedis *redis;

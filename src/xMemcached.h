@@ -8,7 +8,7 @@
 #include "xSession.h"
 
 
-class xMemcachedServer : noncopyable
+class xMemcached : noncopyable
 {
 public:
 	struct Options
@@ -17,8 +17,8 @@ public:
 		std::string ip;
 	};
 
-	xMemcachedServer(xEventLoop *loop,const Options &op);
-	~xMemcachedServer();
+	xMemcached(xEventLoop *loop,const Options &op);
+	~xMemcached();
 
 	void setThreadNum();
 	void quit(const std::any &context);

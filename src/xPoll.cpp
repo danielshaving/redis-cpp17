@@ -19,7 +19,7 @@ xPoll::~xPoll()
 
 }
 
-void  xPoll::epollWait(ChannelList* activeChannels,int msTime)
+void  xPoll::epollWait(ChannelList *activeChannels,int msTime)
 {
 	int numEvents = ::poll(&*events.begin(), events.size(), msTime);
 	int savedErrno = errno;
@@ -47,14 +47,14 @@ void  xPoll::epollWait(ChannelList* activeChannels,int msTime)
 
 }
 
-bool xPoll::hasChannel(xChannel* channel)
+bool xPoll::hasChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	auto  it = channels.find(channel->getfd());
 	return it != channels.end() && it->second == channel;
 }
 
-void xPoll::updateChannel(xChannel* channel)
+void xPoll::updateChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	if (channel->getIndex() < 0)
@@ -89,7 +89,7 @@ void xPoll::updateChannel(xChannel* channel)
 	}
 }
 
-void xPoll::removeChannel(xChannel* channel)
+void xPoll::removeChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	assert(channels.find(channel->getfd()) != channels.end());
@@ -118,7 +118,7 @@ void xPoll::removeChannel(xChannel* channel)
 	}
 }
 
-void xPoll::fillActiveChannels(int numEvents, ChannelList* activeChannels) const
+void xPoll::fillActiveChannels(int numEvents, ChannelList *activeChannels) const
 {
 	for(auto it = events.begin(); it != events.end() && numEvents >0 ; ++it)
 	{

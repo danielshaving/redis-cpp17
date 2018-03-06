@@ -24,7 +24,7 @@ xLock::~xLock()
 }
 
 
-int32_t xRedLock::defaultRetryCount  = 3;
+int32_t xRedLock::defaultRetryCount = 3;
 int32_t xRedLock::defaultRetryDelay = 100;
 float xRedLock::clockDriftFactor = 0.01;
 

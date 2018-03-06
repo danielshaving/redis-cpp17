@@ -19,18 +19,18 @@
 class xRedis : noncopyable
 {
 public:
-	xRedis(const char * ip, int16_t port,int16_t threadCount,bool enbaledCluster = false);
+	xRedis(const char *ip, int16_t port,int16_t threadCount,bool enbaledCluster = false);
 	~xRedis();
 	
 	void initConfig();
-	void handleTimeOut(const std::any & context);
-	void serverCron(const std::any & context);
-	void handleSalveRepliTimeOut(const std::any & context);
-	void handleSetExpire(const std::any & context);
+	void handleTimeOut(const std::any &context);
+	void serverCron(const std::any &context);
+	void handleSalveRepliTimeOut(const std::any &context);
+	void handleSetExpire(const std::any &context);
    	void handleForkTimeOut();
 
 	void run();
-	void connCallBack(const TcpConnectionPtr& conn);
+	void connCallBack(const TcpConnectionPtr &conn);
 	void replyCheck();
 	void loadDataFromDisk();
 	void flush();
@@ -106,11 +106,12 @@ public:
 	void clearRepliState(int32_t sockfd);
 	void clearClusterState(int32_t sockfd);
 	void clearPubSubState(int32_t sockfd);
-	void clearDeques(std::deque<rObj*> &robj);
+	void clearCommand(std::deque<rObj*> &commands);
 	size_t getDbsize();
 	void structureRedisProtocol(xBuffer &sendBuf, std::deque<rObj*> &robjs);
 	bool getClusterMap(rObj *command);
 	auto &getHandlerCommandMap() { return handlerCommands; }
+	rObj *createDumpPayload(rObj *dump);
 
 public:
 	typedef std::function<bool(const std::deque<rObj*>&,SessionPtr)> CommandFunc;
@@ -145,22 +146,9 @@ public:
 	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
 	std::unordered_map<rObj*,std::unordered_map<int32_t,TcpConnectionPtr>,Hash,Equal> pubsubs;
 
-	std::vector<rObj*> clusterDelkeys;
-	std::vector<rObj*> clusterCopyDel;
-
 	const static int32_t kShards = 4096;
 	struct RedisMapLock
-	{
-		RedisMapLock()
-		{
-			 redis.reserve(kShards);
-			 stringMap.reserve(kShards);
-			 hashMap.reserve(kShards);
-			 listMap.reserve(kShards);
-			 zsetMap.reserve(kShards);
-			 setMap.reserve(kShards);
-		}
-		
+	{		
 		RedisMap redis;
 		StringMap stringMap;
 		HashMap hashMap;

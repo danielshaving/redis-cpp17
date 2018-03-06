@@ -10,26 +10,26 @@ class xTcpConnection : noncopyable,public std::enable_shared_from_this<xTcpConne
 {
 public:
 	enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };
-	xTcpConnection(xEventLoop *loop,int32_t sockfd,const std::any & context);
+	xTcpConnection(xEventLoop *loop,int32_t sockfd,const std::any &context);
 	~xTcpConnection();
 
 	xEventLoop	 *getLoop();
 	int  getSockfd();
 	void setState(StateE s) { state  = s; }
 
-	void setConnectionCallback(const ConnectionCallback& cb)
+	void setConnectionCallback(const ConnectionCallback &cb)
 	{ connectionCallback = cb; }
 
-	void setMessageCallback(const MessageCallback& cb)
+	void setMessageCallback(const MessageCallback &cb)
 	{ messageCallback = cb; }
 
-	void setWriteCompleteCallback(const WriteCompleteCallback& cb)
+	void setWriteCompleteCallback(const WriteCompleteCallback &cb)
 	{ writeCompleteCallback = cb; }
 
-	void setHighWaterMarkCallback(const HighWaterMarkCallback& cb, size_t highWaterMark)
+	void setHighWaterMarkCallback(const HighWaterMarkCallback &cb, size_t highWaterMark)
 	{ highWaterMarkCallback = cb; this->highWaterMark  = highWaterMark; }
 
-	void setCloseCallback(const CloseCallback& cb)
+	void setCloseCallback(const CloseCallback &cb)
 	{ closeCallback = cb; }
 
 	void handleRead();
@@ -37,21 +37,21 @@ public:
 	void handleClose();
 	void handleError();
 
-	void sendInLoop(const void* message, size_t len);
-	void sendInLoop(const xStringPiece & message);
-	void sendPipeInLoop(const void* message, size_t len);
-	void sendPipeInLoop(const xStringPiece & message);
+	void sendInLoop(const void *message, size_t len);
+	void sendInLoop(const xStringPiece &message);
+	void sendPipeInLoop(const void *message, size_t len);
+	void sendPipeInLoop(const xStringPiece &message);
 
-	static void bindSendInLoop(xTcpConnection* conn, const xStringPiece& message);
-	static void bindSendPipeInLoop(xTcpConnection* conn, const xStringPiece& message);
+	static void bindSendInLoop(xTcpConnection *conn, const xStringPiece &message);
+	static void bindSendPipeInLoop(xTcpConnection *conn, const xStringPiece &message);
 	
-	void sendPipe(const xStringPiece & message);
-	void sendPipe(xBuffer* message);
-	void sendPipe(const void* message, int len);
+	void sendPipe(const xStringPiece &message);
+	void sendPipe(xBuffer *message);
+	void sendPipe(const void *message, int len);
 
-  	void send(const void* message, int len);
-	void send(xBuffer* message);
-	void send(const xStringPiece  &message);
+  	void send(const void *message, int len);
+	void send(xBuffer *message);
+	void send(const xStringPiece &message);
 
 	bool disconnected() const { return state == kDisconnected; }
 	bool connected();

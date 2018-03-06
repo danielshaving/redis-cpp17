@@ -25,14 +25,14 @@ public:
     void quit();
     void run();
     void handleRead();
-    void runInLoop(Functor&& cb);
-    void queueInLoop(Functor&& cb);
+    void runInLoop(Functor &&cb);
+    void queueInLoop(Functor &&cb);
     void wakeup();
-    void updateChannel(xChannel* channel);
-    void removeChannel(xChannel* channel);
-    bool hasChannel(xChannel* channel);
-    void cancelAfter(xTimer * timer);
-    xTimer  *runAfter(double  when,const std::any &context,bool repeat,xTimerCallback&& cb);
+    void updateChannel(xChannel *channel);
+    void removeChannel(xChannel *channel);
+    bool hasChannel(xChannel *channel);
+    void cancelAfter(xTimer *timer);
+    xTimer  *runAfter(double  when,const std::any &context,bool repeat,xTimerCallback &&cb);
     void assertInLoopThread()
     {
     if (!isInLoopThread())

@@ -21,7 +21,7 @@ public:
 		}
 	}
 
-	const char * getData()const { return data; }
+	const char *getData()const { return data; }
 	int length() const { return static_cast<int>(cur - data); }
 	char *current() { return cur; }
 	void add(size_t len) { cur += len; }
@@ -45,12 +45,12 @@ class AppendFile : noncopyable
 public:
 	explicit AppendFile(std::string  &filename);
 	~AppendFile();
-	void append(const char* logline, const size_t len);
+	void append(const char *logline, const size_t len);
 	void flush();
 	size_t getWrittenBytes() const { return writtenBytes; }
 
 	private:
-	size_t write(const char* logline, size_t len);
+	size_t write(const char *logline, size_t len);
 	FILE* fp;
 	char buffer[64*1024];
 	size_t writtenBytes;
@@ -60,20 +60,20 @@ public:
 class xLogFile :noncopyable
 {
  public:
-	xLogFile(const std::string& basename,
+	xLogFile(const std::string &basename,
 	  size_t rollSize,
 	  bool threadSafe = true,
 	  int flushInterval = 3,
 	  int checkEveryN = 1024);
 	~xLogFile();
 
-	void append(const char* logline, int len);
+	void append(const char *logline, int len);
 	void flush();
 	bool rollFile();
 
 	private:
-	void append_unlocked(const char* logline, int len);
-	static std::string getLogFileName(const std::string& basename, time_t* now);
+	void append_unlocked(const char *logline, int len);
+	static std::string getLogFileName(const std::string& basename, time_t *now);
 	const std::string basename;
 	const size_t rollSize;
 	const int flushInterval;
@@ -121,7 +121,7 @@ public:
 		}
 	}
 
-	void append(const char * loline,int len);
+	void append(const char *loline,int len);
 private:
 	void threadFunc();
 
@@ -188,7 +188,7 @@ public:
 		return *this;
 	}
 
-	self& operator<<(const char* str)
+	self& operator<<(const char *str)
 	{
 		if (str)
 		{
@@ -231,7 +231,7 @@ public:
 		return *this;
 	}
 
-	void append(const char* data, int len) { buffer.append(data, len); }
+	void append(const char *data, int len) { buffer.append(data, len); }
 	const Buffer& getBuffer() const { return buffer; }
 	void resetBuffer() { buffer.reset(); }
 public:
@@ -272,7 +272,7 @@ public:
 			}
 		}
 
-		explicit xSourceFile(const  char * fileName)
+		explicit xSourceFile(const  char *fileName)
 		:data(fileName)
 		{
 			const char * slash = strrchr(fileName,'/');
@@ -297,7 +297,7 @@ public:
 	static LogLevel logLevel();
 	static void setLogLevel(LogLevel level);
 
-	typedef void (*OutputFunc)(const char* msg, int len);
+	typedef void (*OutputFunc)(const char *msg, int len);
 	typedef void (*FlushFunc)();
 
 	static void setOutput(OutputFunc);
