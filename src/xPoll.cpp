@@ -8,7 +8,7 @@ const int kAdded = 1;
 const int kDeleted = 2;
 
 
-xPoll::xPoll(xEventLoop * loop)
+xPoll::xPoll(xEventLoop *loop)
 :loop(loop)
 {
 

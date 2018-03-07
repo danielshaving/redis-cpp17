@@ -29,13 +29,13 @@ public:
 	bool connSetCluster(const char *ip, int16_t port);
 	void connectCluster();
 	void connErrorCallBack();
-	void readCallBack(const TcpConnectionPtr &conn, xBuffer *recvBuf);
+	void readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer);
 	void connCallBack(const TcpConnectionPtr &conn);
 	void reconnectTimer(const std::any &context);
 	void cretateClusterNode(int32_t slot,const std::string &ip,int16_t port,const std::string &name);
 
 	bool getKeySlot(const std::string &name);
-	void structureProtocolSetCluster(std::string host,int16_t port,xBuffer &sendBuf,const TcpConnectionPtr &conn);
+	void structureProtocolSetCluster(std::string host,int16_t port,xBuffer &buffer,const TcpConnectionPtr &conn);
 	int32_t getSlotOrReply(const SessionPtr &session,rObj *o);
 	uint32_t keyHashSlot(char *key, int32_t keylen);
 	void syncClusterSlot();
@@ -48,7 +48,7 @@ public:
 	void eraseClusterNode(int32_t slot);
 	void getKeyInSlot(int32_t slot,std::vector<rObj*> &keys,int32_t count);
 
-	clusterNode  *checkClusterSlot(int32_t slot);
+	clusterNode *checkClusterSlot(int32_t slot);
 	sds showClusterNodes();
 	void delSlotDeques(rObj *obj,int32_t slot);
 	void addSlotDeques(rObj *slot,const std::string &name);

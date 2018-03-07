@@ -23,11 +23,11 @@ public:
 	~xRedis();
 	
 	void initConfig();
-	void handleTimeOut(const std::any &context);
+	void timeOut(const std::any &context);
 	void serverCron(const std::any &context);
-	void handleSalveRepliTimeOut(const std::any &context);
-	void handleSetExpire(const std::any &context);
-   	void handleForkTimeOut();
+	void slaveRepliTimeOut(const std::any &context);
+	void setExpireTimeOut(const std::any &context);
+   	void forkWait();
 
 	void run();
 	void connCallBack(const TcpConnectionPtr &conn);
@@ -108,7 +108,7 @@ public:
 	void clearPubSubState(int32_t sockfd);
 	void clearCommand(std::deque<rObj*> &commands);
 	size_t getDbsize();
-	void structureRedisProtocol(xBuffer &sendBuf, std::deque<rObj*> &robjs);
+	void structureRedisProtocol(xBuffer &buffer, std::deque<rObj*> &robjs);
 	bool getClusterMap(rObj *command);
 	auto &getHandlerCommandMap() { return handlerCommands; }
 	rObj *createDumpPayload(rObj *dump);

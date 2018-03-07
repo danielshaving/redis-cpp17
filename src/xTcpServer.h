@@ -10,28 +10,28 @@ class xTcpServer : noncopyable
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;
-	xTcpServer(xEventLoop *loop,std::string ip,int16_t port,const std::any & context);
+	xTcpServer(xEventLoop *loop,std::string ip,int16_t port,const std::any &context);
 	~xTcpServer();
 	void newConnection(int32_t sockfd);
 	void start();
 
-	void removeConnection(const TcpConnectionPtr& conn);
-	void removeConnectionInLoop(const TcpConnectionPtr& conn);
-	void setThreadInitCallback(const ThreadInitCallback& cb){ threadInitCallback= cb; }
-	void setConnectionCallback(const ConnectionCallback& cb){ connectionCallback = cb; }
-	void setMessageCallback(const MessageCallback& cb){ messageCallback = cb; }
-	void setWriteCompleteCallback(const WriteCompleteCallback& cb){ writeCompleteCallback = cb; }
+	void removeConnection(const TcpConnectionPtr &conn);
+	void removeConnectionInLoop(const TcpConnectionPtr  &conn);
+	void setThreadInitCallback(const ThreadInitCallback &cb){ threadInitCallback= cb; }
+	void setConnectionCallback(const ConnectionCallback &cb){ connectionCallback = cb; }
+	void setMessageCallback(const MessageCallback &cb){ messageCallback = cb; }
+	void setWriteCompleteCallback(const WriteCompleteCallback &cb){ writeCompleteCallback = cb; }
 	void setThreadNum(int numThreads);
 
 	xEventLoop *getLoop() const { return loop; }
-	std::shared_ptr<xThreadPool> getThreadPool() { return threadPool;}
+	std::shared_ptr<xThreadPool> getThreadPool() { return threadPool; }
 
 	std::any* getContext() { return &context; }
 	const std::any& getContext() const { return context; }
 	void setContext(const std::any& context) { this->context = context; }
 
 private:
-	xEventLoop* loop;
+	xEventLoop *loop;
 	std::unique_ptr<xAcceptor> 	acceptor;
 	std::shared_ptr<xThreadPool> 	threadPool;
 	ConnectionCallback connectionCallback;

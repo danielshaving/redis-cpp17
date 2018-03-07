@@ -9,15 +9,15 @@ class xRedis;
 class xReplication : noncopyable
 {
 public:
-	xReplication(xRedis * redis);
+	xReplication(xRedis *redis);
 	~xReplication();
 	
 	void connectMaster();
-	void replicationSetMaster(rObj * obj,int16_t port);
+	void replicationSetMaster(rObj *obj,int16_t port);
 
 	void connErrorCallBack();
-	void slaveCallBack(const TcpConnectionPtr &conn, xBuffer *recvBuf);
-	void readCallBack(const TcpConnectionPtr &conn, xBuffer *recvBuf);
+	void slaveCallBack(const TcpConnectionPtr &conn, xBuffer *buffer);
+	void readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer);
 	void connCallBack(const TcpConnectionPtr &conn);
 
 	void reconnectTimer(const std::any &context);

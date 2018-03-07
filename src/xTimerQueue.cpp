@@ -138,10 +138,10 @@ int createTimerfd()
 #endif
 
 
-struct timespec howMuchTimeFromNow(xTimestamp when)
+struct timespec howMuchTimeFromNow(xTimeStamp when)
 {
 	int64_t  microseconds = when.getMicroSecondsSinceEpoch()
-						 - xTimestamp::now().getMicroSecondsSinceEpoch();
+						 - xTimeStamp::now().getMicroSecondsSinceEpoch();
 	if (microseconds < 100)
 	{
 		microseconds = 100;
@@ -149,15 +149,15 @@ struct timespec howMuchTimeFromNow(xTimestamp when)
 
 	struct timespec ts;
 	ts.tv_sec = static_cast<time_t>(
-	  microseconds / xTimestamp::kMicroSecondsPerSecond);
+	  microseconds / xTimeStamp::kMicroSecondsPerSecond);
 	ts.tv_nsec = static_cast<long>(
-	  (microseconds % xTimestamp::kMicroSecondsPerSecond) * 1000);
+	  (microseconds % xTimeStamp::kMicroSecondsPerSecond) * 1000);
 	return ts;
 }
 
 
 
-void resetTimerfd(int timerfd, xTimestamp expiration)
+void resetTimerfd(int timerfd, xTimeStamp expiration)
 {
 #ifdef __linux__
 	struct itimerspec newValue;
@@ -174,7 +174,7 @@ void resetTimerfd(int timerfd, xTimestamp expiration)
   
 }
 
-void readTimerfd(int timerfd,xTimestamp now)
+void readTimerfd(int timerfd,xTimeStamp now)
 {
   uint64_t howmany;
   ssize_t n = ::read(timerfd, &howmany, sizeof howmany);
@@ -208,9 +208,9 @@ xTimerQueue::~xTimerQueue()
 #endif
 }
 
-xTimer  * xTimerQueue::addTimer(double when, const std::any &context,bool repeat,xTimerCallback&& cb)
+xTimer  * xTimerQueue::addTimer(double when, const std::any &context,bool repeat,xTimerCallback &&cb)
 {
-	xTimestamp time(addTime(xTimestamp::now(), when));
+	xTimeStamp time(addTime(xTimeStamp::now(), when));
 	xTimer * timer = (xTimer*)zmalloc(sizeof(xTimer));
 	new(timer)xTimer(std::move(cb), std::move(time), repeat, when, context);
 	loop->runInLoop(std::bind(&xTimerQueue::addTimerInLoop,this,timer));
@@ -236,11 +236,9 @@ void xTimerQueue::cancelInloop(xTimer *timer)
 	{
 		resetTimerfd(timerfd, pqueue.head()->getExpiration());
 	}
-	
 }
 
-
-void   xTimerQueue::addTimerInLoop(xTimer* timer)
+void   xTimerQueue::addTimerInLoop(xTimer *timer)
 {
 	bool earliestChanged = false;
 	loop->assertInLoopThread();
@@ -268,7 +266,7 @@ void   xTimerQueue::addTimerInLoop(xTimer* timer)
 void  xTimerQueue::handleRead()
 {
 	loop->assertInLoopThread();
-	xTimestamp now(xTimestamp::now());
+	xTimeStamp now(xTimeStamp::now());
 
 #ifdef __linux__
 	readTimerfd(timerfd,now);

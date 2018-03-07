@@ -1,6 +1,6 @@
 #include "xMemcached.h"
 
-xMemcached::xMemcached(xEventLoop *loop,const Options & op)
+xMemcached::xMemcached(xEventLoop *loop,const Options &op)
 :loop(loop),
  server(loop,ops.ip,ops.port,nullptr),
 ops(op),

@@ -1852,7 +1852,7 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn, xBuffer*recvBuf)
 			}
 
 			freeReply(reply);
-			client->connect(ip.c_str(),port);
+			client->asyncConnect(ip.c_str(),port);
 		 }
 		 else
 		 {

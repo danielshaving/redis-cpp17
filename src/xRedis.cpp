@@ -135,19 +135,19 @@ void xRedis::serverCron(const std::any &context)
 	}
 }
 
-void xRedis::handleTimeOut(const std::any &context)
+void xRedis::timeOut(const std::any &context)
 {
 	loop.quit();
 }
 
-void xRedis::handleSetExpire(const std::any &context)
+void xRedis::setExpireTimeOut(const std::any &context)
 {
 	rObj * obj = std::any_cast<rObj*>(context);
 	removeCommand(obj);
 }
 
 
-void xRedis::handleSalveRepliTimeOut(const std::any &context)
+void xRedis::slaveRepliTimeOut(const std::any &context)
 {
 	std::unique_lock <std::mutex> lck(slaveMutex);
 	auto it = slaveConns.find(std::any_cast<int32_t>(context));
@@ -270,10 +270,10 @@ void xRedis::loadDataFromDisk()
 {
 	char rdb_filename[] = "dump.rdb";
 
-	xTimestamp start (xTimestamp::now());
+	xTimeStamp start (xTimeStamp::now());
 	if(rdb.rdbLoad(rdb_filename) == REDIS_OK)
 	{
-		xTimestamp end(xTimestamp::now());
+		xTimeStamp end(xTimeStamp::now());
 		LOG_INFO<<"db loaded from disk sec: "<<timeDifference(end, start);
 	}
 	else if (errno != ENOENT)
@@ -1119,7 +1119,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 	
 }
 
-void xRedis::structureRedisProtocol(xBuffer &sendBuf, std::deque<rObj*> &robjs)
+void xRedis::structureRedisProtocol(xBuffer &buffer, std::deque<rObj*> &robjs)
 {
 	int32_t len, j;
 	char buf[8];
@@ -1127,7 +1127,7 @@ void xRedis::structureRedisProtocol(xBuffer &sendBuf, std::deque<rObj*> &robjs)
 	len = 1 + ll2string(buf + 1, sizeof(buf) - 1, robjs.size());
 	buf[len++] = '\r';
 	buf[len++] = '\n';
-	sendBuf.append(buf, len);
+	buffer.append(buf, len);
 
 	for (int32_t i = 0; i < robjs.size(); i++)
 	{
@@ -1135,9 +1135,9 @@ void xRedis::structureRedisProtocol(xBuffer &sendBuf, std::deque<rObj*> &robjs)
 		len = 1 + ll2string(buf + 1, sizeof(buf) - 1, sdslen(robjs[i]->ptr));
 		buf[len++] = '\r';
 		buf[len++] = '\n';
-		sendBuf.append(buf, len);
-		sendBuf.append(robjs[i]->ptr, sdslen(robjs[i]->ptr));
-		sendBuf.append("\r\n", 2);
+		buffer.append(buf, len);
+		buffer.append(robjs[i]->ptr, sdslen(robjs[i]->ptr));
+		buffer.append("\r\n", 2);
 	}
 }
 
@@ -1158,7 +1158,6 @@ bool xRedis::bgsave(const SessionPtr &session,bool enabled)
 		if(!enabled)
 		{
 			object.addReplyError(session->clientBuffer, "Background save already in progress");
-			LOG_WARN << "rdbChildPid == -1";
 		}
 		return false;
 	}
@@ -1188,12 +1187,12 @@ bool  xRedis::save(const SessionPtr &session)
 		return false;
 	}
 
-	xTimestamp start(xTimestamp::now());
+	xTimeStamp start(xTimeStamp::now());
 	{
 		char filename[] = "dump.rdb";
 		if(rdb.rdbSave(filename) == REDIS_OK)
 		{
-			xTimestamp end(xTimestamp::now());
+			xTimeStamp end(xTimeStamp::now());
 			LOG_INFO<<"DB saved on disk sec: "<<timeDifference(end, start);
 		}
 		else
@@ -1359,7 +1358,7 @@ bool xRedis::commandCommand(const std::deque <rObj*> &obj,const SessionPtr &sess
 	return false;
 }
 
- void xRedis::handleForkTimeOut()
+ void xRedis::forkWait()
  {
     forkCondWaitCount++;
     expireCondition.notify_one();
@@ -1748,7 +1747,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 		
 		slavefd = session->clientConn->getSockfd();
 		timer = session->clientConn->getLoop()->runAfter(REPLI_TIME_OUT,(void *)&slavefd,
-				false,std::bind(&xRedis::handleSalveRepliTimeOut,this,std::placeholders::_1));
+				false,std::bind(&xRedis::slaveRepliTimeOut,this,std::placeholders::_1));
 		repliTimers.insert(std::make_pair(session->clientConn->getSockfd(),timer));
 		slaveConns.insert(std::make_pair(session->clientConn->getSockfd(),session->clientConn));
 
@@ -1763,7 +1762,7 @@ bool xRedis::syncCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 		    continue;
 		}
 
-		it->runInLoop(std::bind(&xRedis::handleForkTimeOut, this));
+		it->runInLoop(std::bind(&xRedis::forkWait,this));
 	}
 
 	if(threadCount > 1)
@@ -2643,7 +2642,7 @@ bool xRedis::restoreCommand(const std::deque <rObj*> &obj,const SessionPtr &sess
 	{
 		rObj * ex = object.createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
 		std::unique_lock <std::mutex> lck(slaveMutex);
-		xTimer * timer = loop.runAfter(ttl / 1000,ex,false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
+		xTimer * timer = loop.runAfter(ttl / 1000,ex,false,std::bind(&xRedis::setExpireTimeOut,this,std::placeholders::_1));
 		auto it = expireTimers.find(ex);
 #ifdef __DEBUG__
 		assert(it == expireTimers.end());
@@ -3316,7 +3315,7 @@ bool xRedis::setCommand(const std::deque <rObj*> &obj,const SessionPtr &session)
 				expireTimers.erase(iter);
 			}
 
-			xTimer * timer = loop.runAfter(milliseconds / 1000,ex,false,std::bind(&xRedis::handleSetExpire,this,std::placeholders::_1));
+			xTimer * timer = loop.runAfter(milliseconds / 1000,ex,false,std::bind(&xRedis::setExpireTimeOut,this,std::placeholders::_1));
 			expireTimers.insert(std::make_pair(ex,timer));
 		}
 
@@ -3390,7 +3389,7 @@ bool xRedis::ttlCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
 		return false;
 	}
 	
-	int64_t ttl = it->second->getExpiration().getMicroSecondsSinceEpoch() - xTimestamp::now().getMicroSecondsSinceEpoch();
+	int64_t ttl = it->second->getExpiration().getMicroSecondsSinceEpoch() - xTimeStamp::now().getMicroSecondsSinceEpoch();
 	
 	object.addReplyLongLong(session->clientBuffer, ttl / 1000000);
 	return false;

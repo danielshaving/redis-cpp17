@@ -605,13 +605,13 @@ int32_t xRdb::rdbLoadExpire(xRio *rdb,int32_t type)
 		return REDIS_ERR;
 	}
 
-	int64_t curExpire = xTimestamp::now().getMicroSecondsSinceEpoch();
+	int64_t curExpire = xTimeStamp::now().getMicroSecondsSinceEpoch();
 	if (curExpire > expire)
 	{
 		key->calHash();
 		key->type = OBJ_EXPIRE;
 		std::unique_lock <std::mutex> lck(redis->expireMutex);
-		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000, key, false, std::bind(&xRedis::handleSetExpire, redis, std::placeholders::_1));
+		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000, key, false, std::bind(&xRedis::setExpireTimeOut, redis, std::placeholders::_1));
 		redis->expireTimers.insert(std::make_pair(key, timer));
 	}
 	else
@@ -1179,13 +1179,13 @@ int32_t xRdb::rdbRestoreExpire(rObj * key,xRio *rdb,int32_t type)
 		return REDIS_ERR;
 	}
 
-	int64_t curExpire = xTimestamp::now().getMicroSecondsSinceEpoch();
+	int64_t curExpire = xTimeStamp::now().getMicroSecondsSinceEpoch();
 	if (curExpire > expire)
 	{
 		key->calHash();
 		key->type = OBJ_EXPIRE;
 		std::unique_lock <std::mutex> lck(redis->expireMutex);
-		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000, key, false, std::bind(&xRedis::handleSetExpire, redis, std::placeholders::_1));
+		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000, key, false, std::bind(&xRedis::setExpireTimeOut, redis, std::placeholders::_1));
 		redis->expireTimers.insert(std::make_pair(key, timer));
 	}
 	else

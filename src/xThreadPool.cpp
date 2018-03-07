@@ -15,7 +15,7 @@ xThreadPool::~xThreadPool()
 	threads.clear();
 }
 
-void xThreadPool::start(const ThreadInitCallback& cb)
+void xThreadPool::start(const ThreadInitCallback &cb)
 {
 	assert(!started);
 	baseLoop->assertInLoopThread();

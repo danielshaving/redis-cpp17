@@ -64,7 +64,7 @@ void xSentinel::connectSentinel()
 void xSentinel::reconnectTimer(const std::any &context)
 {
 	LOG_INFO<<"Reconnect..........";
-	client->connect(ip.c_str(),port);
+	client->asyncConnect(ip.c_str(),port);
 }
 
 

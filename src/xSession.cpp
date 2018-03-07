@@ -44,13 +44,13 @@ xSession::~xSession()
 	}
 }
 
-void xSession::readCallBack(const TcpConnectionPtr &clientConn, xBuffer *recvBuf)
+void xSession::readCallBack(const TcpConnectionPtr &clientConn, xBuffer *buffer)
 {
-	while(recvBuf->readableBytes() > 0 )
+	while(buffer->readableBytes() > 0 )
 	{
 		if(!reqtype)
 		{
-			if((recvBuf->peek()[0])== '*')
+			if((buffer->peek()[0])== '*')
 			{
 				reqtype = REDIS_REQ_MULTIBULK;
 			}
@@ -62,14 +62,14 @@ void xSession::readCallBack(const TcpConnectionPtr &clientConn, xBuffer *recvBuf
 
 		if(reqtype == REDIS_REQ_MULTIBULK)
 		{
-			if(processMultibulkBuffer(recvBuf)!= REDIS_OK)
+			if(processMultibulkBuffer(buffer)!= REDIS_OK)
 			{
 				break;
 			}
 		}
 		else if(reqtype == REDIS_REQ_INLINE)
 		{
-			if(processInlineBuffer(recvBuf)!= REDIS_OK)
+			if(processInlineBuffer(buffer)!= REDIS_OK)
 			{
 				break;
 			}
@@ -299,10 +299,10 @@ void xSession::reset()
 	}
 }
 
-int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
+int32_t xSession::processInlineBuffer(xBuffer *buffer)
 {
     const char *newline;
-	const char *queryBuf = recvBuf->peek();
+	const char *queryBuf = buffer->peek();
 	int32_t  j;
 	size_t queryLen;
 	sds *argv, aux;
@@ -310,11 +310,11 @@ int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
 	newline = strchr(queryBuf,'\n');
 	if(newline == nullptr)
 	{
-		 if(recvBuf->readableBytes() > PROTO_INLINE_MAX_SIZE)
+		 if(buffer->readableBytes() > PROTO_INLINE_MAX_SIZE)
 		 {
 			LOG_WARN << "Protocol error";
 			redis->object.addReplyError(clientBuffer,"Protocol error: too big inline request");
-			recvBuf->retrieveAll();
+			buffer->retrieveAll();
 		 }
 		 
 		 return REDIS_ERR;
@@ -328,13 +328,13 @@ int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
 	argv = sdssplitargs(aux,&argc);
 	sdsfree(aux);
 
-	recvBuf->retrieve(queryLen + 2);
+	buffer->retrieve(queryLen + 2);
 	  
 	if (argv == nullptr) 
 	{
 		LOG_WARN << "Protocol error";
 		redis->object.addReplyError(clientBuffer,"Protocol error: unbalanced quotes in request");
-		recvBuf->retrieveAll();
+		buffer->retrieveAll();
 		return REDIS_ERR;
     }
 
@@ -359,29 +359,29 @@ int32_t xSession::processInlineBuffer(xBuffer *recvBuf)
    
 }
 
-int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
+int32_t xSession::processMultibulkBuffer(xBuffer *buffer)
 {
 	const char * newline = nullptr;
 	int32_t pos = 0,ok;
 	long long ll = 0 ;
-	const char * queryBuf = recvBuf->peek();
+	const char * queryBuf = buffer->peek();
 	if(multibulklen == 0)
 	{
 		newline = strchr(queryBuf,'\r');
 		if(newline == nullptr)
 		{
-			if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
+			if(buffer->readableBytes() > REDIS_INLINE_MAX_SIZE)
 			{
 				redis->object.addReplyError(clientBuffer,"Protocol error: too big mbulk count string");
 				LOG_INFO<<"Protocol error: too big mbulk count string";
-				recvBuf->retrieveAll();
+				buffer->retrieveAll();
 			}
 
 			return REDIS_ERR;
 		}
 
 
-		  if (newline-(queryBuf) > ((signed)recvBuf->readableBytes()-2))
+		  if (newline-(queryBuf) > ((signed)buffer->readableBytes()-2))
 		  {
 		  	 return REDIS_ERR;
 		  }
@@ -390,7 +390,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		if(queryBuf[0] != '*')
 		{
 			LOG_WARN<<"Protocol error: *";
-			recvBuf->retrieveAll();
+			buffer->retrieveAll();
 			return REDIS_ERR;
 		}
 
@@ -399,14 +399,14 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 		{
 			redis->object.addReplyError(clientBuffer,"Protocol error: invalid multibulk length");
 			LOG_INFO<<"Protocol error: invalid multibulk length";
-			recvBuf->retrieveAll();
+			buffer->retrieveAll();
 			return REDIS_ERR;
 		}
 
 		pos = (newline - queryBuf) + 2;
 		if(ll <= 0)
 		{
-			recvBuf->retrieve(pos);
+			buffer->retrieve(pos);
 			return REDIS_OK;
 		}
 
@@ -421,18 +421,18 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			newline = strchr(queryBuf + pos, '\r');
 			if(newline == nullptr)
 			{
-				if(recvBuf->readableBytes() > REDIS_INLINE_MAX_SIZE)
+				if(buffer->readableBytes() > REDIS_INLINE_MAX_SIZE)
 				{
 					redis->object.addReplyError(clientBuffer,"Protocol error: too big bulk count string");
 					LOG_INFO<<"Protocol error: too big bulk count string";
-					recvBuf->retrieveAll();
+					buffer->retrieveAll();
 					return REDIS_ERR;
 				}
 			
 				break;
 			}
 
-			if( (newline - queryBuf) > ((signed)recvBuf->readableBytes() - 2))
+			if( (newline - queryBuf) > ((signed)buffer->readableBytes() - 2))
 			{
 				break;
 			}
@@ -441,7 +441,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			{
 				redis->object.addReplyErrorFormat(clientBuffer,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
 				LOG_INFO<<"Protocol error: expected '$'";
-				recvBuf->retrieveAll();
+				buffer->retrieveAll();
 				return REDIS_ERR;
 			}
 
@@ -451,7 +451,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			{
 				redis->object.addReplyError(clientBuffer,"Protocol error: invalid bulk length");
 				LOG_INFO<<"Protocol error: invalid bulk length";
-				recvBuf->retrieveAll();
+				buffer->retrieveAll();
 				return REDIS_ERR;
 			}
 
@@ -463,7 +463,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 			bulklen = ll;
 		}
 
-		if(recvBuf->readableBytes() - pos < (bulklen + 2))
+		if(buffer->readableBytes() - pos < (bulklen + 2))
 		{
 			break;
 		}
@@ -490,7 +490,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *recvBuf)
 	
 	if(pos)
 	{
-		recvBuf->retrieve(pos);
+		buffer->retrieve(pos);
 	}	
 	
 	if(multibulklen == 0)
@@ -533,15 +533,15 @@ struct xSession::Reader
 };
 
 
-void xSession::receiveValue(xBuffer *buf)
+void xSession::receiveValue(xBuffer *buffer)
 {
 	assert(currItem.get());
 	assert(state == kReceiveValue);
 
-	const size_t avail = std::min(buf->readableBytes(), currItem->neededBytes());
+	const size_t avail = std::min(buffer->readableBytes(), currItem->neededBytes());
 	assert(currItem.unique());
-	currItem->append(buf->peek(), avail);
-	buf->retrieve(avail);
+	currItem->append(buffer->peek(), avail);
+	buffer->retrieve(avail);
 	if (currItem->neededBytes() == 0)
 	{
 		if (currItem->endsWithCRLF())
@@ -580,18 +580,18 @@ void xSession::receiveValue(xBuffer *buf)
   	}
 }
 
-void xSession::discardValue(xBuffer *buf)
+void xSession::discardValue(xBuffer *buffer)
 {
 	assert(!currItem);
 	assert(state == kDiscardValue);
-	if (buf->readableBytes() < bytesToDiscard)
+	if (buffer->readableBytes() < bytesToDiscard)
 	{
-		bytesToDiscard -= buf->readableBytes();
-		buf->retrieveAll();
+		bytesToDiscard -= buffer->readableBytes();
+		buffer->retrieveAll();
 	}
 	else
 	{
-		buf->retrieve(bytesToDiscard);
+		buffer->retrieve(bytesToDiscard);
 		bytesToDiscard= 0;
 		resetRequest();
 		state = kNewCommand;
@@ -841,18 +841,18 @@ static bool isBinaryProtocol(uint8_t firstByte)
 	return firstByte == 0x80;
 }
 
-void xSession::onMessage(const TcpConnectionPtr &conn,xBuffer *buf)
+void xSession::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
-	const size_t initialReadable = buf->readableBytes();
+	const size_t initialReadable = buffer->readableBytes();
 
-	while (buf->readableBytes() > 0)
+	while (buffer->readableBytes() > 0)
 	{
 		if (state == kNewCommand)
 		{
 			if (protocol == kAuto)
 			{
 				assert(bytesRead == 0);
-				protocol = isBinaryProtocol(buf->peek()[0]) ? kBinary : kAscii;
+				protocol = isBinaryProtocol(buffer->peek()[0]) ? kBinary : kAscii;
 			}
 
 			assert(protocol == kAscii || protocol == kBinary);
@@ -862,20 +862,20 @@ void xSession::onMessage(const TcpConnectionPtr &conn,xBuffer *buf)
 			}
 			else  // ASCII protocol
 			{
-				const char* crlf = buf->findCRLF();
+				const char* crlf = buffer->findCRLF();
 				if (crlf)
 				{
-					int len = static_cast<int>(crlf - buf->peek());
-					xStringPiece request(buf->peek(), len);
+					int len = static_cast<int>(crlf - buffer->peek());
+					xStringPiece request(buffer->peek(), len);
 					if (processRequest(request))
 					{
 						resetRequest();
 					}
-					buf->retrieveUntil(crlf + 2);
+					buffer->retrieveUntil(crlf + 2);
 				}
 				else
 				{
-					if (buf->readableBytes() > 1024)
+					if (buffer->readableBytes() > 1024)
 					{
 						clientConn->shutdown();
 					}
@@ -885,11 +885,11 @@ void xSession::onMessage(const TcpConnectionPtr &conn,xBuffer *buf)
 		}
 		else if (state == kReceiveValue)
 		{
-			receiveValue(buf);
+			receiveValue(buffer);
 		}
 		else if (state == kDiscardValue)
 		{
-			discardValue(buf);
+			discardValue(buffer);
 		}
 		else
 		{

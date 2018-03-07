@@ -12,14 +12,15 @@ public:
 	xTcpClient(xEventLoop *loop,const std::any &context);
 	~xTcpClient();
 
-	void connect(const char *ip,int16_t port);
+	void syncConnect(const char *ip,int16_t port);
+	void asyncConnect(const char *ip,int16_t port);
 	void disconnect();
 	void stop();
 
 	void setConnectionErrorCallBack(ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb); }
-	void setConnectionCallback(ConnectionCallback&& cb) { connectionCallback = std::move(cb); }
-	void setMessageCallback(MessageCallback&&  cb){ messageCallback = std::move(cb); }
-	void setWriteCompleteCallback(WriteCompleteCallback&& cb) { writeCompleteCallback = std::move(cb); }
+	void setConnectionCallback(ConnectionCallback &&cb) { connectionCallback = std::move(cb); }
+	void setMessageCallback(MessageCallback &&cb){ messageCallback = std::move(cb); }
+	void setWriteCompleteCallback(WriteCompleteCallback &&cb) { writeCompleteCallback = std::move(cb); }
 
 	xEventLoop * getLoop(){ return loop; }
 	std::any* getContext() { return &context; }
@@ -35,8 +36,6 @@ private:
 	ConnectorPtr connector;
 	xEventLoop *loop;
 
-	std::string ip;
-	int16_t port;
 	bool isconnect;
 	int nextConnId;
 	mutable std::mutex mutex;

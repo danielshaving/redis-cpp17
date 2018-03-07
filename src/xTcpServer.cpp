@@ -1,7 +1,7 @@
 #include "xTcpServer.h"
 #include "xTcpConnection.h"
 
-xTcpServer::xTcpServer(xEventLoop *loop,std::string ip,int16_t port,const std::any & context)
+xTcpServer::xTcpServer(xEventLoop *loop,std::string ip,int16_t port,const std::any &context)
 :loop(loop),
  acceptor(new xAcceptor(loop,ip,port)),
  threadPool(new xThreadPool(loop)),
@@ -9,7 +9,6 @@ xTcpServer::xTcpServer(xEventLoop *loop,std::string ip,int16_t port,const std::a
 {
 	acceptor->setNewConnectionCallback(std::bind(&xTcpServer::newConnection,this,std::placeholders::_1));
 }
-
 
 xTcpServer::~xTcpServer()
 {
@@ -22,7 +21,6 @@ xTcpServer::~xTcpServer()
 		conn.reset();
 	}
 }
-
 
 void xTcpServer::newConnection(int32_t sockfd)
 {
@@ -37,7 +35,6 @@ void xTcpServer::newConnection(int32_t sockfd)
 	loop->runInLoop(std::bind(&xTcpConnection::connectEstablished, conn));
 }
 
-
 void xTcpServer::setThreadNum(int numThreads)
 {
 	threadPool->setThreadNum(numThreads);
@@ -49,13 +46,12 @@ void xTcpServer::start()
 	acceptor->listen();
 }
 
-void xTcpServer::removeConnection(const TcpConnectionPtr& conn)
+void xTcpServer::removeConnection(const TcpConnectionPtr &conn)
 {
 	loop->runInLoop(std::bind(&xTcpServer::removeConnectionInLoop, this, conn));
 }
 
-
-void xTcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn)
+void xTcpServer::removeConnectionInLoop(const TcpConnectionPtr &conn)
 {
 	loop->assertInLoopThread();
 	size_t n = connections.erase(conn->getSockfd());

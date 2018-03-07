@@ -2,7 +2,7 @@
 #include "xRedis.h"
 #include "xLog.h"
 
-xReplication::xReplication(xRedis * redis)
+xReplication::xReplication(xRedis *redis)
 :redis(redis),
 start(false),
  isreconnect(true),
@@ -40,15 +40,12 @@ void xReplication::replicationCron()
 
 }
 
-
-
 void xReplication::disconnect()
 {
 	client->disconnect();
 }
 
-
-void xReplication::syncWrite(const TcpConnectionPtr& conn)
+void xReplication::syncWrite(const TcpConnectionPtr &conn)
 {
 	conn->send("sync\r\n",6);
 	fp = redis->rdb.createFile();
@@ -58,7 +55,7 @@ void xReplication::syncWrite(const TcpConnectionPtr& conn)
 	}
 }
 
-void xReplication::syncWithMaster(const TcpConnectionPtr& conn)
+void xReplication::syncWithMaster(const TcpConnectionPtr &conn)
 {
 	int32_t sockerr = 0;
    	socklen_t errlen = sizeof(sockerr);
@@ -75,13 +72,13 @@ void xReplication::syncWithMaster(const TcpConnectionPtr& conn)
 	
 }
 
-void xReplication::readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
+void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 {
-	while (recvBuf->readableBytes() >= 4)
+	while (buffer->readableBytes() >= 4)
 	{
 		if (salveLen == 0)
 		{
-			salveLen = *(int32_t*)(recvBuf->peek());
+			salveLen = *(int32_t*)(buffer->peek());
 			if (salveLen >= INT_MAX || salveLen <= 0)
 			{
 				redis->rdb.closeFile(fp);
@@ -90,16 +87,16 @@ void xReplication::readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
 				break;
 			}
 
-			recvBuf->retrieveInt32();
-			if (recvBuf->readableBytes() == 0)
+			buffer->retrieveInt32();
+			if (buffer->readableBytes() == 0)
 			{
 				break;
 			}
 		}
 		char fileName[] = "dump.rdb";
-		redis->rdb.rdbSyncWrite(recvBuf->peek(), fp, recvBuf->readableBytes());
-		salveReadLen += recvBuf->readableBytes();
-		recvBuf->retrieveAll();
+		redis->rdb.rdbSyncWrite(buffer->peek(), fp, buffer->readableBytes());
+		salveReadLen += buffer->readableBytes();
+		buffer->retrieveAll();
 
 		if (salveReadLen > salveLen)
 		{
@@ -136,17 +133,17 @@ void xReplication::readCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
 	
 }
 
-void xReplication::slaveCallBack(const TcpConnectionPtr& conn, xBuffer* recvBuf)
+void xReplication::slaveCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 {
-	while(recvBuf->readableBytes() >= sdslen(redis->object.ok->ptr))
+	while(buffer->readableBytes() >= sdslen(redis->object.ok->ptr))
 	{
 		std::unique_lock <std::mutex> lck(redis->slaveMutex);
 		auto it = redis->slaveConns.find(conn->getSockfd());
 		if (it != redis->slaveConns.end())
 		{
-			if (memcmp(recvBuf->peek(), redis->object.ok->ptr, sdslen(redis->object.ok->ptr)) == 0)
+			if (memcmp(buffer->peek(), redis->object.ok->ptr, sdslen(redis->object.ok->ptr)) == 0)
 			{
-				recvBuf->retrieve(sdslen(redis->object.ok->ptr));
+				buffer->retrieve(sdslen(redis->object.ok->ptr));
 				if (++redis->salveCount >= redis->slaveConns.size())
 				{
 					if (redis->slaveCached.readableBytes() > 0)
@@ -211,16 +208,15 @@ void xReplication::connCallBack(const TcpConnectionPtr& conn)
 void xReplication::reconnectTimer(const std::any &context)
 {
 	LOG_INFO<<"reconnect..........";
-	client->connect(ip.c_str(),port);
+	client->asyncConnect(ip.c_str(),port);
 }
 
 void xReplication::connErrorCallBack()
 {
 	return;
-
 }
 
-void xReplication::replicationSetMaster(rObj * obj,int16_t port)
+void xReplication::replicationSetMaster(rObj *obj,int16_t port)
 {
 	this->ip = obj->ptr;
 	this->port = port;
@@ -234,6 +230,6 @@ void xReplication::replicationSetMaster(rObj * obj,int16_t port)
 		}
 	}
 
-	client->connect(this->ip.c_str(),this->port);
+	client->asyncConnect(this->ip.c_str(),this->port);
 }
 

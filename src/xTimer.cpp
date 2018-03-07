@@ -5,7 +5,7 @@ xTimer::xTimer()
 
 }
 
-xTimer::xTimer(xTimerCallback && cb, xTimestamp && expiration,bool repeat,double interval,const  std::any &context)
+xTimer::xTimer(xTimerCallback &&cb, xTimeStamp &&expiration,bool repeat,double interval,const std::any &context)
 :index(-1),
 repeat(repeat),
 interval(interval),
@@ -16,12 +16,10 @@ context(context)
 	
 }
 
-
 xTimer::~xTimer()
 {
 
 }
-
 
 void xTimer::run()
 {
@@ -31,8 +29,7 @@ void xTimer::run()
 	}
 }
 
-
-void xTimer::restart(xTimestamp now)
+void xTimer::restart(xTimeStamp now)
 {
 	if (repeat)
 	{
@@ -40,13 +37,11 @@ void xTimer::restart(xTimestamp now)
 	}
 	else
 	{
-		expiration = xTimestamp::invalid();
+		expiration = xTimeStamp::invalid();
 	}
 }
 
-
-
-std::string xTimestamp::toFormattedString(bool showMicroseconds) const
+std::string xTimeStamp::toFormattedString(bool showMicroseconds) const
 {
 	char buf[32] = {0};
 	time_t seconds = static_cast<time_t>(microSecondsSinceEpoch / kMicroSecondsPerSecond);

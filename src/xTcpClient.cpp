@@ -58,12 +58,16 @@ xTcpClient::~xTcpClient()
 	}
 }
 
-void xTcpClient::connect(const char *ip,int16_t port)
+void xTcpClient::asyncConnect(const char *ip,int16_t port)
 {
 	isconnect = true;
-	this->ip = ip;
-	this->port = port;
-	connector->start(ip,port);
+	connector->asyncStart(ip,port);
+}
+
+void xTcpClient::syncConnect(const char *ip,int16_t port)
+{
+	isconnect = true;
+	connector->syncStart(ip,port);
 }
 
 void xTcpClient::disconnect()

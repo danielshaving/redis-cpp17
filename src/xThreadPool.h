@@ -12,7 +12,7 @@ public:
 	~xThreadPool();
 
 	void setThreadNum(int numThreads) { this->numThreads = numThreads; }
-	void start(const ThreadInitCallback& cb = ThreadInitCallback());
+	void start(const ThreadInitCallback &cb = ThreadInitCallback());
 
 	xEventLoop* getNextLoop();
 	xEventLoop* getLoopForHash(size_t hashCode);

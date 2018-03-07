@@ -29,7 +29,7 @@ public:
 	void onConnection(const TcpConnectionPtr &conn);
 	time_t getStartTime() const { return startTime; }
 
-	bool storeItem(const ItemPtr &item, xItem::UpdatePolicy policy, bool *exists);
+	bool storeItem(const ItemPtr &item,xItem::UpdatePolicy policy,bool *exists);
 	ConstItemPtr getItem(const ConstItemPtr &key) const;
 	bool deleteItem(const ConstItemPtr &key);
 

@@ -3,15 +3,15 @@
 #include "xZmalloc.h"
 #include "xCallback.h"
 
-class xTimestamp
+class xTimeStamp
 {
 public:
-	xTimestamp()
+	xTimeStamp()
 	: microSecondsSinceEpoch(0)
 	{
 	}
 
-	explicit xTimestamp(int64_t microSecondsSinceEpochArg)
+	explicit xTimeStamp(int64_t microSecondsSinceEpochArg)
 	: microSecondsSinceEpoch(microSecondsSinceEpochArg)
 	{
 	}
@@ -21,17 +21,17 @@ public:
 	{ return static_cast<time_t>(microSecondsSinceEpoch / kMicroSecondsPerSecond); }
 
 	std::string toFormattedString(bool showMicroseconds = true) const;
-	static xTimestamp now()
+	static xTimeStamp now()
 	{
 		struct timeval tv;
 		gettimeofday(&tv, nullptr);
 		int64_t seconds = tv.tv_sec;
-		return xTimestamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
+		return xTimeStamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
 	}
 
-	  static xTimestamp invalid()
+	  static xTimeStamp invalid()
 	  {
-	    	return xTimestamp();
+	    	return xTimeStamp();
 	  }
 
 	static const int kMicroSecondsPerSecond = 1000 * 1000;
@@ -39,38 +39,35 @@ private:
 	int64_t microSecondsSinceEpoch;
 };
 
-inline xTimestamp addTime(xTimestamp timestamp, double seconds)
+inline xTimeStamp addTime(xTimeStamp timestamp, double seconds)
 {
-	int64_t delta = static_cast<int64_t>(seconds * xTimestamp::kMicroSecondsPerSecond);
-	return xTimestamp(timestamp.getMicroSecondsSinceEpoch() + delta);
+	int64_t delta = static_cast<int64_t>(seconds * xTimeStamp::kMicroSecondsPerSecond);
+	return xTimeStamp(timestamp.getMicroSecondsSinceEpoch() + delta);
 }
 
-
-
-inline double timeDifference(xTimestamp high, xTimestamp low)
+inline double timeDifference(xTimeStamp high, xTimeStamp low)
 {
 	int64_t diff = high.getMicroSecondsSinceEpoch() - low.getMicroSecondsSinceEpoch();
-	return static_cast<double>(diff) / xTimestamp::kMicroSecondsPerSecond;
+	return static_cast<double>(diff) / xTimeStamp::kMicroSecondsPerSecond;
 }
-
 
 class xTimer : noncopyable
 {
 public:
 	xTimer();
-	xTimer(xTimerCallback && cb, xTimestamp && expiration,bool	repeat,double interval,const std::any &context);
+	xTimer(xTimerCallback &&cb, xTimeStamp &&expiration,bool repeat,double interval,const std::any &context);
 	~xTimer();
 
-	xTimestamp getExpiration() const  { return expiration;}
+	xTimeStamp getExpiration() const  { return expiration;}
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
-	void restart(xTimestamp now);
+	void restart(xTimeStamp now);
 	void run();
 
 public:	
 	int32_t index;
 	bool	repeat;
 	double interval;
-	xTimestamp expiration;
+	xTimeStamp expiration;
 	xTimerCallback callback;
 	std::any context;
 };

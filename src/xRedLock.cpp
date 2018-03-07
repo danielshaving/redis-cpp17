@@ -1,6 +1,6 @@
 #include "xRedLock.h"
 
-static char **convertToSds(int32_t count, char** args)
+static char **convertToSds(int32_t count, char **args)
 {
 	int32_t j;
 	char **sds = (char**)zmalloc(sizeof(char*)*count);
@@ -53,7 +53,7 @@ xRedLock::~xRedLock()
 
 }
 
-sds	 xRedLock::getUniqueLockId()
+sds xRedLock::getUniqueLockId()
 {
 	unsigned char buffer[20];
 	if(::read(fd,buffer,sizeof(buffer)) == sizeof(buffer))
@@ -74,9 +74,7 @@ sds	 xRedLock::getUniqueLockId()
 	return nullptr;
 }
 
-
-
-int32_t  xRedLock::lockInstance(const RedisContextPtr &c,const char * resource,const  char *val,const int32_t ttl)
+int32_t xRedLock::lockInstance(const RedisContextPtr &c,const char *resource,const  char *val,const int32_t ttl)
 {
 
 	redisReply *reply;
@@ -105,7 +103,7 @@ int32_t  xRedLock::lockInstance(const RedisContextPtr &c,const char * resource,c
 }
 
 
-redisReply * xRedLock::commandArgv(const RedisContextPtr &c, int32_t argc, char **inargv)
+redisReply *xRedLock::commandArgv(const RedisContextPtr &c, int32_t argc, char **inargv)
 {
 	char **argv = convertToSds(argc, inargv);
 	size_t *argvlen;
@@ -127,7 +125,7 @@ redisReply * xRedLock::commandArgv(const RedisContextPtr &c, int32_t argc, char 
 	return reply;
 }
 
-void  xRedLock::unlockInstance(const RedisContextPtr &c,const char * resource,const  char *val)
+void  xRedLock::unlockInstance(const RedisContextPtr &c,const char *resource,const  char *val)
 {
 	int32_t argc = 5;
 	char *unlockScriptArgv[] = {(char*)"EVAL",
@@ -140,9 +138,7 @@ void  xRedLock::unlockInstance(const RedisContextPtr &c,const char * resource,co
 	{
 		freeReply(reply);
 	}
-
 }
-
 
 bool xRedLock::unlock(const xLock &lock)
 {
@@ -217,9 +213,9 @@ bool xRedLock::lock(const char *resource, const int32_t ttl, xLock &lock)
 		if (n >=  quoRum && validityTime > 0)
 		{
 			lock.validityTime = validityTime;
-			for(auto it = disconnectServers.begin(); it  !=disconnectServers.end(); ++it)
+			for(auto &it : disconnectServers)
 			{
-				syncServers.insert(std::make_pair((*it)->fd,*it));
+				syncServers.insert(std::make_pair(it->fd,it));
 			}
 
 			disconnectServers.clear();

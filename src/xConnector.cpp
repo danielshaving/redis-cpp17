@@ -14,23 +14,41 @@ xConnector::~xConnector()
 
 }
 
-
-void xConnector::start(const char *ip, int16_t port)
+void xConnector::syncStart(const char *ip, int16_t port)
 {
 	isconnect = true;
-	loop->runInLoop(std::bind(&xConnector::startInLoop, this,ip,port));
+	loop->runInLoop(std::bind(&xConnector::asyncStartInLoop,this,ip,port));
 }
 
-void xConnector::startInLoop(const char *ip, int16_t port)
+void xConnector::asyncStart(const char *ip, int16_t port)
+{
+	isconnect = true;
+	loop->runInLoop(std::bind(&xConnector::asyncStartInLoop,this,ip,port));
+}
+
+void xConnector::syncStartInLoop(const char *ip,int16_t port)
 {
 	loop->assertInLoopThread();
 	if (isconnect)
 	{
-		connect(ip,port);
+		syncConnect(ip,port);
 	}
 	else
 	{
-		LOG_WARN<<"do not connect";
+		LOG_WARN<<"do not async connect";
+	}
+}
+
+void xConnector::asyncStartInLoop(const char *ip, int16_t port)
+{
+	loop->assertInLoopThread();
+	if (isconnect)
+	{
+		asyncConnect(ip,port);
+	}
+	else
+	{
+		LOG_WARN<<"do not sync connect";
 	}
 }
 
@@ -77,8 +95,12 @@ void xConnector::connecting(int sockfd)
 	}
 }
 
+void xConnector::syncConnect(const char *ip,int16_t port)
+{
 
-void xConnector::connect(const char *ip, int16_t port)
+}
+
+void xConnector::asyncConnect(const char *ip, int16_t port)
 {
 	int sockfd = socket.createSocket();
 	int ret = socket.connect(sockfd, ip,port);

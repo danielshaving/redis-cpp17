@@ -20,15 +20,15 @@ public:
 	void resetVlaue();
 	void clearObj();
 	void reset();
-	void readCallBack(const TcpConnectionPtr &conn,xBuffer *buf);
-	int32_t processMultibulkBuffer(xBuffer *recvBuf);
-	int32_t processInlineBuffer(xBuffer *recvBuf);
+	void readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
+	int32_t processMultibulkBuffer(xBuffer *buffer);
+	int32_t processInlineBuffer(xBuffer *buffer);
 	int32_t processCommand();
 	bool checkCommand(rObj *robjs);
 
-	void onMessage(const TcpConnectionPtr &conn,xBuffer *buf);
-	void receiveValue(xBuffer *buf);
-	void discardValue(xBuffer *buf);
+	void onMessage(const TcpConnectionPtr &conn,xBuffer *buffer);
+	void receiveValue(xBuffer *buffer);
+	void discardValue(xBuffer *buffer);
 	bool processRequest(xStringPiece request);
 	void resetRequest();
 	void reply(xStringPiece msg);
