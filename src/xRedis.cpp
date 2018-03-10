@@ -1412,13 +1412,14 @@ bool xRedis::lpushCommand(const std::deque<rObj*> &obj, const SessionPtr &sessio
 				return false;
 			}
 			
-			zfree(obj[0]);
 			auto iter = listMap.find(obj[0]);
 #ifdef __DEBUG__
 			assert(iter != listMap.end());
 			assert(iter->first->type == (*it)->type);
 #endif
 			
+			zfree(obj[0]);
+
 			for (int32_t i = 1; i < obj.size(); ++i)
 			{
 				obj[i]->type == OBJ_LIST;
@@ -1611,12 +1612,14 @@ bool xRedis::rpushCommand(const std::deque<rObj*> &obj, const SessionPtr &sessio
 				return false;
 			}
 			
-			zfree(obj[0]);
+
 			auto iter = listMap.find(obj[0]);
 #ifdef __DEBUG__
 			assert(iter != listMap.end());
 			assert(iter->first->type == (*it)->type);
 #endif
+			zfree(obj[0]);
+
 			for (int32_t i = 1; i < obj.size(); ++i)
 			{
 				obj[i]->type == OBJ_LIST;
@@ -2348,15 +2351,13 @@ bool xRedis::zaddCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 				return false;
 			}
 
-			zfree(obj[0]);
-			
 			auto iter = zsetMap.find(obj[0]);
 #ifdef __DEBUG__
 			assert(iter != zsetMap.end());
 			assert(iter->first->type == (*it)->type);
 #endif
 			
-		
+			zfree(obj[0]);
 			for(int i = 1; i < obj.size(); i += 2)
 			{
 				obj[i + 1]->type = OBJ_ZSET;
@@ -2710,7 +2711,6 @@ bool xRedis::saddCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 #endif
 			
 			std::unordered_set<rObj*,Hash,Equal> set;
-			set.reserve(obj.size());
 			for(int i = 1; i < obj.size(); i ++)
 			{
 				obj[i]->type = OBJ_SET;
@@ -2725,6 +2725,7 @@ bool xRedis::saddCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 					zfree(obj[i]);
 				}
 				setMap.insert(std::make_pair(obj[0],std::move(set)));
+				map.insert(obj[0]);
 			}
 		}
 		else
@@ -2735,12 +2736,13 @@ bool xRedis::saddCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 				return false;
 			}
 
-			zfree(obj[0]);
 			auto iter = setMap.find(obj[0]);
 #ifdef __DEBUG__
 			assert(iter != setMap.end());
 			assert(iter->first->type == (*it)->type);
 #endif
+			zfree(obj[0]);
+
 			for(int i = 1; i < obj.size(); i++)
 			{
 				obj[i]->type = OBJ_SET;
@@ -3139,14 +3141,14 @@ bool xRedis::hsetCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 				object.addReplyErrorFormat(session->clientBuffer,"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return false;
 			}
-
-			zfree(obj[0]);
 			
 			auto iter = hashMap.find(obj[0]);
 #ifdef __DEBUG__
 			assert(iter != hashMap.end());
 #endif
 			
+			zfree(obj[0]);
+
 			auto iterr = iter->second.find(obj[1]);
 			if(iterr == iter->second.end())
 			{

@@ -17,7 +17,7 @@ xSentinel::~xSentinel()
 	
 }
 
-void xSentinel::readCallBack(const TcpConnectionPtr &conn, xBuffer*recvBuf)
+void xSentinel::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 {
 	
 }

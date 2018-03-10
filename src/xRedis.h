@@ -108,7 +108,7 @@ public:
 	void clearPubSubState(int32_t sockfd);
 	void clearCommand(std::deque<rObj*> &commands);
 	size_t getDbsize();
-	void structureRedisProtocol(xBuffer &buffer, std::deque<rObj*> &robjs);
+	void structureRedisProtocol(xBuffer &buffer,std::deque<rObj*> &robjs);
 	bool getClusterMap(rObj *command);
 	auto &getHandlerCommandMap() { return handlerCommands; }
 	rObj *createDumpPayload(rObj *dump);

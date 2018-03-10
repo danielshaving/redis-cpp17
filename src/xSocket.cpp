@@ -21,12 +21,10 @@ xSocket::~xSocket()
 	::close(listenSocketFd);
 }
 
-
 int  xSocket::getListenFd()
 {
 	return listenSocketFd;
 }
-
 
 bool xSocket::getpeerName(int32_t fd,std::string *ip, int16_t &port)
 {

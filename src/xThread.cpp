@@ -9,12 +9,10 @@ xThread::xThread(const ThreadInitCallback& cb)
 
 }
 
-
 xThread::~xThread()
 {
 
 }
-
 
 xEventLoop *xThread::startLoop()
 {

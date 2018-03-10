@@ -23,7 +23,7 @@ xEventLoop::xEventLoop()
  wakeupChannel(new xChannel(this,wakeupFd)),
 #endif
 #ifdef __APPLE__
- epoller(new xKqueue(this)),
+ epoller(new xPoll(this)),
  op(socketpair(AF_UNIX,SOCK_STREAM,0,wakeupFd)),
  //op(::pipe(wakeupFd)),
  timerQueue(new xTimerQueue(this)),
@@ -150,7 +150,6 @@ void xEventLoop::runInLoop(Functor&& cb)
 	}
 	else
 	{
-
 		queueInLoop(std::move(cb));
 	}
 }

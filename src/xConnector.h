@@ -17,14 +17,14 @@ public:
 	void setNewConnectionCallback(const NewConnectionCallback& cb) { newConnectionCallback = cb; }
 	void setConnectionErrorCallBack(const ErrorConnectionCallback & cb) { errorConnectionCallback = cb; }
 
-	void asyncStart(const char *ip, int16_t port);
-	void syncStart(const char *ip, int16_t port);
+	void asyncStart(const char *ip,int16_t port);
+	void syncStart(const char *ip,int16_t port);
 	void stop();
 
 	void syncStartInLoop(const char *ip,int16_t port);
-	void asyncStartInLoop(const char *ip, int16_t port);
+	void asyncStartInLoop(const char *ip,int16_t port);
 	void stopInLoop();
-	void asyncConnect(const char *ip, int16_t port);
+	void asyncConnect(const char *ip,int16_t port);
 	void syncConnect(const char *ip,int16_t port);
 	void connecting(int sockfd);
 	void resetChannel();

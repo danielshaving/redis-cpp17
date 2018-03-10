@@ -25,8 +25,6 @@ xTcpConnection::~xTcpConnection()
     ::close(sockfd);
 }
 
-
-
 void xTcpConnection::shutdown()
 {
     if (state == kConnected)
@@ -36,7 +34,6 @@ void xTcpConnection::shutdown()
      }
 }
 
-
 void xTcpConnection::forceClose()
 {
 	  if (state == kConnected || state == kDisconnecting)
@@ -45,7 +42,6 @@ void xTcpConnection::forceClose()
 	    loop->queueInLoop(std::bind(&xTcpConnection::forceCloseInLoop, shared_from_this()));
 	  }
 }
-
 
 void xTcpConnection::forceCloseInLoop()
 {

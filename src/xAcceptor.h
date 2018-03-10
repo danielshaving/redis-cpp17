@@ -26,5 +26,4 @@ private:
 	bool listenning;
 	bool protocol;
 	void *data;
-
 };
