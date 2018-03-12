@@ -9,21 +9,21 @@ public:
 	~xSocket();
 
 	bool getpeerName(int32_t sockfd,std::string *ip, int16_t &port);
-	int  createSocket();
-	int  connect(int sockfd,const std::string &ip, int16_t port);
+	int32_t createSocket();
+	int32_t connect(int32_t sockfd,const std::string &ip, int16_t port);
 
-	int    getListenFd();
-	void  setkeepAlive(int fd,int idle);
-	bool  createTcpListenSocket(const std::string &ip,int16_t port);
-	bool  setSocketNonBlock(int sockfd);
-	bool  setSocketBlock(int sockfd);
-	bool  setTcpNoDelay(int sockfd,bool on);
-	bool  setTimeOut(int sockfd,const struct timeval tc);
-	int    setFlag(int fd, int flag);
+	int32_t getListenFd();
+	void setkeepAlive(int32_t fd,int32_t idle);
+	bool createTcpListenSocket(const std::string &ip,int16_t port);
+	bool setSocketNonBlock(int32_t sockfd);
+	bool setSocketBlock(int32_t sockfd);
+	bool setTcpNoDelay(int32_t sockfd,bool on);
+	bool setTimeOut(int32_t sockfd,const struct timeval tc);
+	int32_t setFlag(int32_t fd, int32_t flag);
 
 private:
-	int  listenSocketFd;
-	int  onlineNumber;
+	int32_t  listenSocketFd;
+	int32_t  onlineNumber;
 	bool protocol;
 
 };

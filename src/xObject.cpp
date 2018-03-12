@@ -2,9 +2,9 @@
 #include "xRedis.h"
 
 
-rObj * xObjects::createObject(int type, void *ptr)
+rObj * xObjects::createObject(int32_t type, void *ptr)
 {
-	rObj * o = (rObj*)zmalloc(sizeof(rObj));
+	rObj *o = (rObj*)zmalloc(sizeof(rObj));
 	o->encoding = REDIS_ENCODING_RAW;
 	o->type = type;
 	o->ptr  = (char*)ptr;
@@ -12,9 +12,9 @@ rObj * xObjects::createObject(int type, void *ptr)
 }
 
 
-int xObjects::getLongLongFromObject(rObj *o, long long   *target)
+int32_t xObjects::getLongLongFromObject(rObj *o,int64_t *target)
 {
-	long long   value;
+	int64_t value;
 
 	if (o == nullptr)
 	{
@@ -34,20 +34,19 @@ int xObjects::getLongLongFromObject(rObj *o, long long   *target)
 	
 	if (target) *target = value;
 	return REDIS_OK;
-
 }
 
-int xObjects::getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg)
+int32_t xObjects::getLongLongFromObjectOrReply(xBuffer &buffer,rObj *o,int64_t *target, const char *msg)
 {
-    long long value;
+    int64_t value;
     if (getLongLongFromObject(o, &value) != REDIS_OK)
     {
         if (msg != nullptr)
         {
-            addReplyError(sendBuf,(char*)msg);
+            addReplyError(buffer,(char*)msg);
         } else
         {
-            addReplyError(sendBuf,"value is no an integer or out of range");
+            addReplyError(buffer,"value is no an integer or out of range");
         }
         return REDIS_ERR;
     }
@@ -56,18 +55,18 @@ int xObjects::getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *
 }
 
 
-int xObjects::getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg)
+int xObjects::getLongFromObjectOrReply(xBuffer &buffer,rObj *o,int32_t *target, const char *msg)
 {
-	long  long value;
+	int64_t value;
 	if (getLongLongFromObject(o, &value) != REDIS_OK)
 	{
 		if (msg != nullptr) 
 		{
-			addReplyError(sendBuf, (char*)msg);
+			addReplyError(buffer, (char*)msg);
 		}
 		else 
 		{
-			addReplyError(sendBuf, "value is no an integer or out of range");
+			addReplyError(buffer, "value is no an integer or out of range");
 		}
 		return REDIS_ERR;
 	}
@@ -76,7 +75,7 @@ int xObjects::getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target,
 	return REDIS_OK;
 }
 
-rObj * xObjects::createStringObjectFromLongLong(long long value)
+rObj * xObjects::createStringObjectFromLongLong(int64_t value)
 {
 	rObj *o;
 	if(value <=0 && value < REDIS_SHARED_INTEGERS)
@@ -99,20 +98,18 @@ rObj * xObjects::createStringObjectFromLongLong(long long value)
 	return o;
 }
 
-
-
-int xObjects::getDoubleFromObjectOrReply(xBuffer  &sendBuf, rObj *o, double *target, const char *msg)
+int32_t xObjects::getDoubleFromObjectOrReply(xBuffer &buffer,rObj *o,double *target, const char *msg)
 {
     double value;
     if (getDoubleFromObject(o, &value) != REDIS_OK)
     {
         if (msg != nullptr)
         {
-            addReplyError(sendBuf,(char*)msg);
+            addReplyError(buffer,(char*)msg);
         }
         else
         {
-            addReplyError(sendBuf,"value is no a valid float");
+            addReplyError(buffer,"value is no a valid float");
         }
         return REDIS_ERR;
     }
@@ -553,7 +550,7 @@ void xObjects::createSharedObjects()
 	}
 
 	char buf[8];
-	int len = ll2string(buf,sizeof(buf),redis->port);
+	int32_t len = ll2string(buf,sizeof(buf),redis->port);
 	rPort = createStringObject(buf,len);
 	rIp = createStringObject((char*)(redis->ip.c_str()),redis->ip.length());
 
@@ -710,7 +707,7 @@ rObj * xObjects::createEmbeddedStringObject(char *ptr, size_t len)
    	return o;
 }
 
-void xObjects::addReplyBulkLen(xBuffer & sendBuf,rObj *obj)
+void xObjects::addReplyBulkLen(xBuffer &buffer,rObj *obj)
 {
 	size_t len;
 
@@ -734,31 +731,31 @@ void xObjects::addReplyBulkLen(xBuffer & sendBuf,rObj *obj)
 	}
 
 	if (len < REDIS_SHARED_BULKHDR_LEN)
-	    addReply(sendBuf,bulkhdr[len]);
+	    addReply(buffer,bulkhdr[len]);
 	else
-	    addReplyLongLongWithPrefix(sendBuf,len,'$');
+	    addReplyLongLongWithPrefix(buffer,len,'$');
 
 }
 
-void xObjects::addReplyBulk(xBuffer &sendBuf,rObj *obj)
+void xObjects::addReplyBulk(xBuffer &buffer,rObj *obj)
 {
-	addReplyBulkLen(sendBuf,obj);
-	addReply(sendBuf,obj);
-	addReply(sendBuf,crlf);
+	addReplyBulkLen(buffer,obj);
+	addReply(buffer,obj);
+	addReply(buffer,crlf);
 }
 
-void xObjects::addReplyLongLongWithPrefix(xBuffer &sendBuf,long long ll, char prefix)
+void xObjects::addReplyLongLongWithPrefix(xBuffer &buffer,int64_t ll, char prefix)
 {
 	char buf[128];
 	int len;
 	if (prefix == '*' && ll < REDIS_SHARED_BULKHDR_LEN) 
 	{
-	    addReply(sendBuf,mbulkhdr[ll]);
+	    addReply(buffer,mbulkhdr[ll]);
 	    return;
 	} 
 	else if (prefix == '$' && ll < REDIS_SHARED_BULKHDR_LEN) 
 	{
-	    addReply(sendBuf,bulkhdr[ll]);
+	    addReply(buffer,bulkhdr[ll]);
 	    return;
 	}
 
@@ -766,60 +763,60 @@ void xObjects::addReplyLongLongWithPrefix(xBuffer &sendBuf,long long ll, char pr
 	len = ll2string(buf+1,sizeof(buf)-1,ll);
 	buf[len+1] = '\r';
 	buf[len+2] = '\n';
-	sendBuf.append(buf,len +3);
+	buffer.append(buf,len +3);
 
 }
 
-void xObjects::addReplyLongLong(xBuffer &sendBuf,size_t len)
+void xObjects::addReplyLongLong(xBuffer &buffer,size_t len)
 {
 	if (len == 0)
-		addReply(sendBuf,czero);
+		addReply(buffer,czero);
 	else if (len == 1)
-		addReply(sendBuf,cone);
+		addReply(buffer,cone);
 	else
-		addReplyLongLongWithPrefix(sendBuf,len,':');
+		addReplyLongLongWithPrefix(buffer,len,':');
 }
 
-void xObjects::addReplyStatusLength(xBuffer &sendBuf, char *s, size_t len)
+void xObjects::addReplyStatusLength(xBuffer &buffer, char *s, size_t len)
 {
-	addReplyString(sendBuf,"+",1);
-	addReplyString(sendBuf,s,len);
-	addReplyString(sendBuf,"\r\n",2);
+	addReplyString(buffer,"+",1);
+	addReplyString(buffer,s,len);
+	addReplyString(buffer,"\r\n",2);
 }
 
-void xObjects::addReplyStatus(xBuffer &sendBuf, char *status)
+void xObjects::addReplyStatus(xBuffer &buffer, char *status)
 {
-    addReplyStatusLength(sendBuf,status,strlen(status));
+    addReplyStatusLength(buffer,status,strlen(status));
 }
 
-void xObjects::addReplyError(xBuffer &sendBuf,const char *str)
+void xObjects::addReplyError(xBuffer &buffer,const char *str)
 {
-	addReplyErrorLength(sendBuf,str,strlen(str));
+	addReplyErrorLength(buffer,str,strlen(str));
 }
 
-void xObjects::addReply(xBuffer &sendBuf,rObj *obj)
+void xObjects::addReply(xBuffer &buffer,rObj *obj)
 {
-	sendBuf.append(obj->ptr,sdslen((const sds)obj->ptr));
+	buffer.append(obj->ptr,sdslen((const sds)obj->ptr));
 }
 
 /* Add sds to reply (takes ownership of sds and frees it) */
-void xObjects::addReplyBulkSds(xBuffer &sendBuf, sds s)
+void xObjects::addReplyBulkSds(xBuffer &buffer, sds s)
 {
-	addReplySds(sendBuf,sdscatfmt(sdsempty(),"$%u\r\n",
+	addReplySds(buffer,sdscatfmt(sdsempty(),"$%u\r\n",
 	    (unsigned long)sdslen(s)));
-	addReplySds(sendBuf,s);
-	addReply(sendBuf,crlf);
+	addReplySds(buffer,s);
+	addReply(buffer,crlf);
 }
 
-void xObjects::addReplyMultiBulkLen(xBuffer & sendBuf,long length)
+void xObjects::addReplyMultiBulkLen(xBuffer &buffer,int32_t length)
 {
 	if (length < REDIS_SHARED_BULKHDR_LEN)
-        addReply(sendBuf,mbulkhdr[length]);
+        addReply(buffer,mbulkhdr[length]);
     else
-        addReplyLongLongWithPrefix(sendBuf,length,'*');
+        addReplyLongLongWithPrefix(buffer,length,'*');
 }
 
-void xObjects::prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length)
+void xObjects::prePendReplyLongLongWithPrefix(xBuffer &buffer,int32_t length)
 {
 	char buf[128];
 	buf[0] = '*';
@@ -828,43 +825,43 @@ void xObjects::prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length)
 	buf[len+2] = '\n';
 	if(length == 0)
 	{
-		sendBuf.append(buf,len + 3);
+		buffer.append(buf,len + 3);
 	}
 	else
 	{
-		sendBuf.prepend(buf,len + 3);
+		buffer.prepend(buf,len + 3);
 	}
 }
 
-void xObjects::addReplyBulkCString(xBuffer & sendBuf, const char *s)
+void xObjects::addReplyBulkCString(xBuffer &buffer, const char *s)
 {
 	if (s == nullptr)
 	{
-		addReply(sendBuf, nullbulk);
+		addReply(buffer, nullbulk);
 	}
 	else 
 	{
-		addReplyBulkCBuffer(sendBuf, s, strlen(s));
+		addReplyBulkCBuffer(buffer, s, strlen(s));
 	}
 }
 
-void xObjects::addReplyDouble(xBuffer & sendBuf, double d)
+void xObjects::addReplyDouble(xBuffer &buffer, double d)
 {
 	char dbuf[128], sbuf[128];
 	int dlen, slen;
 	dlen = snprintf(dbuf, sizeof(dbuf), "%.17g", d);
 	slen = snprintf(sbuf, sizeof(sbuf), "$%d\r\n%s\r\n", dlen, dbuf);
-	addReplyString(sendBuf, sbuf, slen);
+	addReplyString(buffer, sbuf, slen);
 }
 
-void xObjects::addReplyBulkCBuffer(xBuffer & sendBuf,const char  *p, size_t len)
+void xObjects::addReplyBulkCBuffer(xBuffer &buffer,const char *p, size_t len)
 {
-	addReplyLongLongWithPrefix(sendBuf,len,'$');
-	addReplyString(sendBuf,p,len);
-	addReply(sendBuf,crlf);
+	addReplyLongLongWithPrefix(buffer,len,'$');
+	addReplyString(buffer,p,len);
+	addReply(buffer,crlf);
 }
 
-void xObjects::addReplyErrorFormat(xBuffer & sendBuf,const char *fmt, ...)
+void xObjects::addReplyErrorFormat(xBuffer &buffer,const char *fmt, ...)
 {
 	size_t l, j;
 	va_list ap;
@@ -876,27 +873,27 @@ void xObjects::addReplyErrorFormat(xBuffer & sendBuf,const char *fmt, ...)
 	{
 	    if (s[j] == '\r' || s[j] == '\n') s[j] = ' ';
 	}
-	addReplyErrorLength(sendBuf,s,sdslen(s));
+	addReplyErrorLength(buffer,s,sdslen(s));
 	sdsfree(s);
 }
 
-void xObjects::addReplyString(xBuffer & sendBuf,const char *s, size_t len)
+void xObjects::addReplyString(xBuffer &buffer,const char *s, size_t len)
 {
-	sendBuf.append(s,len);
+	buffer.append(s,len);
 }
 
-void xObjects::addReplySds(xBuffer &sendBuf, sds s)
+void xObjects::addReplySds(xBuffer &buffer, sds s)
 {
-	sendBuf.append(s, sdslen(s));
+	buffer.append(s, sdslen(s));
 	sdsfree(s);
 }
 
 
-void xObjects::addReplyErrorLength(xBuffer & sendBuf,const char *s,size_t len)
+void xObjects::addReplyErrorLength(xBuffer &buffer,const char *s,size_t len)
 {
-	addReplyString(sendBuf,"-ERR ",5);
-	addReplyString(sendBuf,s,len);
-	addReplyString(sendBuf,"\r\n",2);
+	addReplyString(buffer,"-ERR ",5);
+	addReplyString(buffer,s,len);
+	addReplyString(buffer,"\r\n",2);
 }
 
 

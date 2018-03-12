@@ -435,7 +435,7 @@ bool xRedis::infoCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 	used_memory_rss_hmem,
 	zmalloc_used,
 	peak_hmem,
-	(unsigned long)total_system_mem,
+	(unsigned int32_t)total_system_mem,
 	total_system_hmem,
 	maxmemory_hmem,
 	zmalloc_get_fragmentation_ratio(zmalloc_get_rss()),
@@ -644,9 +644,9 @@ bool xRedis::migrateCommand(const std::deque<rObj*> &obj, const SessionPtr &sess
 		}
 	}
 
-	long long port;
-	long timeout;
-	long dbid;
+	int64_t port;
+	int32_t timeout;
+	int32_t dbid;
 	/* Sanity check */
 	if (object.getLongFromObjectOrReply(session->clientBuffer, obj[4], &timeout, nullptr) != REDIS_OK ||
 		object.getLongFromObjectOrReply(session->clientBuffer, obj[3], &dbid, nullptr) != REDIS_OK)
@@ -692,7 +692,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 			return false;
 		}
 
-		long long port;
+		int64_t port;
 
 		if (object.getLongLongFromObject(obj[2], &port) != REDIS_OK)
 		{
@@ -729,7 +729,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 	}
 	else if (!strcasecmp(obj[0]->ptr, "connect") && obj.size() == 3)
 	{
-		long long  port;
+		int64_t  port;
 	
 		if (object.getLongLongFromObject(obj[2], &port) != REDIS_OK)
 		{
@@ -784,7 +784,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 	}
 	else if(!strcasecmp(obj[0]->ptr,"getkeysinslot") && obj.size() == 3)
 	{
-		long long maxkeys, slot;
+		int64_t maxkeys, slot;
 		uint32_t numkeys, j;
 
 		if (object.getLongLongFromObjectOrReply(session->clientBuffer,obj[1],&slot,nullptr) != REDIS_OK)
@@ -850,7 +850,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 				std::string ip(start,space);
 				fromIp = ip;
 				std::string port(space + 2,end);
-				long long value;
+				int64_t value;
 				string2ll(port.c_str(), port.length(), &value);
 				fromPort = value;
 			}
@@ -1002,7 +1002,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 	else if (!strcasecmp(obj[0]->ptr, "addsync") && obj.size() == 5)
 	{
 		int32_t slot;
-		long long  port;
+		int64_t  port;
 		if ((slot = clus.getSlotOrReply(session, obj[1])) == 0)
 		{
 			LOG_INFO << "getSlotOrReply error ";
@@ -1325,7 +1325,7 @@ bool xRedis::slaveofCommand(const std::deque <rObj*> &obj,const SessionPtr &sess
 	}
 	else
 	{
-		long   port;
+		int32_t   port;
 		if ((object.getLongFromObjectOrReply(session->clientBuffer, obj[1], &port, nullptr) != REDIS_OK))
 			return false;
 
@@ -1493,8 +1493,8 @@ bool xRedis::lrangeCommand(const std::deque<rObj*> &obj, const SessionPtr &sessi
 		return false;
 	}
 
-	long  start;
-	long end;
+	int32_t  start;
+	int32_t end;
 	if ((object.getLongFromObjectOrReply(session->clientBuffer, obj[1], &start, nullptr) != REDIS_OK) ||
 		(object.getLongFromObjectOrReply(session->clientBuffer, obj[2], &end,nullptr) != REDIS_OK))
 	{
@@ -2007,7 +2007,7 @@ bool xRedis::debugCommand(const std::deque <rObj*> &obj, const SessionPtr &sessi
 	if(!strcasecmp(obj[0]->ptr,"sleep"))
 	{
 		double dtime = strtod(obj[1]->ptr,nullptr);
-		long long utime = dtime*1000000;
+		int64_t utime = dtime*1000000;
 		struct timespec tv;
 
 		tv.tv_sec = utime / 1000000;
@@ -2149,7 +2149,7 @@ bool xRedis::keysCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 
 	sds pattern =obj[0]->ptr;
 	int32_t plen = sdslen(pattern), allkeys;
-	unsigned long numkeys = 0;
+	uint32_t numkeys = 0;
 
 	allkeys = (pattern[0] == '*' && pattern[1] == '\0');
 
@@ -2556,7 +2556,7 @@ bool xRedis::restoreCommand(const std::deque <rObj*> &obj,const SessionPtr &sess
 		return false;
 	}
 
-	long long ttl;
+	int64_t ttl;
 	int type, replace = 0;
 
 	for(int i  = 3; i < obj.size(); i++)
@@ -2774,7 +2774,7 @@ bool xRedis::zrangeGenericCommand(const std::deque <rObj*> &obj,const SessionPtr
 
 	int rangelen;
 	int withscores = 0;
-	long long start;
+	int64_t start;
 	
 	if (object.getLongLongFromObjectOrReply(session->clientBuffer,obj[1],&start,nullptr) != REDIS_OK)
 	{
@@ -2782,7 +2782,7 @@ bool xRedis::zrangeGenericCommand(const std::deque <rObj*> &obj,const SessionPtr
 		return false;
 	}
 
-	long long end;
+	int64_t end;
 
 	if (object.getLongLongFromObjectOrReply(session->clientBuffer,obj[2],&end,nullptr) != REDIS_OK)
 	{
@@ -3225,7 +3225,7 @@ bool xRedis::setCommand(const std::deque <rObj*> &obj,const SessionPtr &session)
 	}
 	
 
-	long long milliseconds = 0;
+	int64_t milliseconds = 0;
 
 	if (expire)
 	{

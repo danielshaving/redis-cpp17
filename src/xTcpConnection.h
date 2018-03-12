@@ -13,8 +13,8 @@ public:
 	xTcpConnection(xEventLoop *loop,int32_t sockfd,const std::any &context);
 	~xTcpConnection();
 
-	xEventLoop	 *getLoop();
-	int  getSockfd();
+	xEventLoop *getLoop();
+	int32_t  getSockfd();
 	void setState(StateE s) { state  = s; }
 
 	void setConnectionCallback(const ConnectionCallback &cb)
@@ -63,9 +63,9 @@ public:
 	void shutdownInLoop();
 	void forceClose();
 	
-	std::any* getContext() { return &context; }
-	const std::any& getContext() const { return context; }
-	void setContext(const std::any& context) { this->context = context; }
+	std::any *getContext() { return &context; }
+	const std::any &getContext() const { return context; }
+	void setContext(const std::any &context) { this->context = context; }
 
 	xBuffer *outputBuffer() { return &sendBuff; }
 

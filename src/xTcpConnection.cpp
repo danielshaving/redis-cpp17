@@ -153,7 +153,7 @@ xEventLoop *xTcpConnection::getLoop()
 	return loop;
 }
 
-int xTcpConnection::getSockfd()
+int32_t xTcpConnection::getSockfd()
 {
 	return sockfd;
 }

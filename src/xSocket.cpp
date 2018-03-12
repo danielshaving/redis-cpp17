@@ -21,7 +21,7 @@ xSocket::~xSocket()
 	::close(listenSocketFd);
 }
 
-int  xSocket::getListenFd()
+int32_t  xSocket::getListenFd()
 {
 	return listenSocketFd;
 }
@@ -44,12 +44,12 @@ bool xSocket::getpeerName(int32_t fd,std::string *ip, int16_t &port)
 
 }
 
-int  xSocket::createSocket()
+int32_t  xSocket::createSocket()
 {
 	return socket(AF_INET, SOCK_STREAM, 0);
 }
 
-int  xSocket::connect(int sockfd,const std::string &ip, int16_t port)
+int32_t  xSocket::connect(int32_t sockfd,const std::string &ip, int16_t port)
 {
 	struct sockaddr_in sin;
 	memset(&sin, 0, sizeof(sin));
@@ -62,13 +62,13 @@ int  xSocket::connect(int sockfd,const std::string &ip, int16_t port)
 
 
 
-int xSocket::setFlag(int fd, int flag)
+int32_t xSocket::setFlag(int32_t fd, int32_t flag)
 {
-	   int ret = fcntl(fd, F_GETFD);
+	   int32_t ret = fcntl(fd, F_GETFD);
 	   return fcntl(fd, F_SETFD, ret | flag);
 }
 
-bool xSocket::setTimeOut(int sockfd,const struct timeval tv)
+bool xSocket::setTimeOut(int32_t sockfd,const struct timeval tv)
 {
     if (setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&tv,sizeof(tv)) == -1)
     {
@@ -85,14 +85,14 @@ bool xSocket::setTimeOut(int sockfd,const struct timeval tv)
     return true;
 }
 
-void  xSocket::setkeepAlive(int fd,int idle)
+void  xSocket::setkeepAlive(int32_t fd,int32_t idle)
 {
 #ifdef __linux__
-	int keepalive = 1;
-	int keepidle = idle;
-	int keepintvl = 2;
-	int keepcnt = 3;
-	int err = 0;
+	int32_t keepalive = 1;
+	int32_t keepidle = idle;
+	int32_t keepintvl = 2;
+	int32_t keepcnt = 3;
+	int32_t err = 0;
 
 	if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char*)&keepalive, sizeof(keepalive)) < 0)
 	{
@@ -145,7 +145,7 @@ bool xSocket::createTcpListenSocket(const std::string &ip,int16_t port)
 		return false;
     }
 
-    int optval = 1;
+    int32_t optval = 1;
 	
 	if (setsockopt(listenSocketFd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
     {
@@ -179,7 +179,7 @@ bool xSocket::createTcpListenSocket(const std::string &ip,int16_t port)
 #ifdef __linux__
     setsockopt(listenSocketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
 
-    int len = 65536;
+    int32_t len = 65536;
     setsockopt(listenSocketFd, SOL_SOCKET, SO_RCVBUF, (void*)&len, sizeof(len));
     setsockopt(listenSocketFd, SOL_SOCKET, SO_SNDBUF, (void*)&len, sizeof(len));
 #endif
@@ -188,17 +188,17 @@ bool xSocket::createTcpListenSocket(const std::string &ip,int16_t port)
 
 
 
-bool xSocket::setTcpNoDelay(int socketFd, bool on)
+bool xSocket::setTcpNoDelay(int32_t socketFd, bool on)
 {
 #ifdef __linux__
-	int optval = on ? 1 : 0;
+	int32_t optval = on ? 1 : 0;
 	::setsockopt(socketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
 #endif
 }
 
-bool  xSocket::setSocketBlock(int socketFd)
+bool  xSocket::setSocketBlock(int32_t socketFd)
 {
-    int opt = fcntl(socketFd, F_GETFL);
+    int32_t opt = fcntl(socketFd, F_GETFL);
     if (opt < 0)
     {
         LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
@@ -214,9 +214,9 @@ bool  xSocket::setSocketBlock(int socketFd)
 }
 
 
-bool xSocket::setSocketNonBlock(int socketFd)
+bool xSocket::setSocketNonBlock(int32_t socketFd)
 {
-    int opt = fcntl(socketFd, F_GETFL);
+    int32_t opt = fcntl(socketFd, F_GETFL);
     if (opt < 0)
     {
         LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);

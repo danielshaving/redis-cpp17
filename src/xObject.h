@@ -21,7 +21,7 @@ typedef struct redisObject
 
 	bool operator <(const redisObject & r) const
 	{
-		int cmp = memcmp(ptr,r.ptr,sdslen(ptr));
+		int32_t cmp = memcmp(ptr,r.ptr,sdslen(ptr));
 		if( cmp < 0)
 		{
 			return true;
@@ -37,7 +37,7 @@ typedef struct redisObject
 	}
 
 	unsigned lru:LRU_BITS;    
-   	int refcount;					
+   	int32_t refcount;
 	unsigned type;
 	unsigned encoding;
 	size_t hash;
@@ -79,37 +79,37 @@ public:
 	void freeZsetObject(rObj *o);
 	void decrRefCount(rObj *o) ;
 
-	void addReplyBulkSds(xBuffer &sendBuf, sds s);
-	void addReplyMultiBulkLen(xBuffer &sendBuf,long length);
-	void addReply(xBuffer &sendBuf,rObj *obj);
-	void addReplyString(xBuffer & sendBuf,const char *s, size_t len);
-	void addReplyError(xBuffer &sendBuf,const char *str);
-	void addReplyErrorLength(xBuffer &sendBuf,const char *s,size_t len);
-	void addReplyLongLongWithPrefix(xBuffer &sendBuf, long long ll, char prefix);
-	void addReplyBulkLen(xBuffer &sendBuf,rObj *obj);
-	void addReplyBulk(xBuffer &sendBuf,rObj *obj);
-	void addReplyErrorFormat(xBuffer &sendBuf,const char *fmt, ...);
-	void addReplyBulkCBuffer(xBuffer &sendBuf, const char  *p, size_t len);
-	void addReplyLongLong(xBuffer &sendBuf,size_t len);
-	void addReplySds(xBuffer &sendBuf,sds s);
-	void addReplyStatus(xBuffer &sendBuf, char *status);
-	void addReplyStatusLength(xBuffer &sendBuf, char *s, size_t len);
-	void addReplyBulkCString(xBuffer & sendBuf, const char *s);
-	void addReplyDouble(xBuffer & sendBuf, double d);
-	void prePendReplyLongLongWithPrefix(xBuffer & sendBuf,long length);
+	void addReplyBulkSds(xBuffer &buffer, sds s);
+	void addReplyMultiBulkLen(xBuffer &buffer,int32_t length);
+	void addReply(xBuffer &buffer,rObj *obj);
+	void addReplyString(xBuffer &buffer,const char *s,size_t len);
+	void addReplyError(xBuffer &buffer,const char *str);
+	void addReplyErrorLength(xBuffer &buffer,const char *s,size_t len);
+	void addReplyLongLongWithPrefix(xBuffer &buffer,int64_t ll, char prefix);
+	void addReplyBulkLen(xBuffer &buffer,rObj *obj);
+	void addReplyBulk(xBuffer &buffer,rObj *obj);
+	void addReplyErrorFormat(xBuffer &buffer,const char *fmt, ...);
+	void addReplyBulkCBuffer(xBuffer &buffer,const char  *p,size_t len);
+	void addReplyLongLong(xBuffer &buffer,size_t len);
+	void addReplySds(xBuffer &buffer,sds s);
+	void addReplyStatus(xBuffer &buffer,char *status);
+	void addReplyStatusLength(xBuffer &buffer,char *s,size_t len);
+	void addReplyBulkCString(xBuffer &buffer,const char *s);
+	void addReplyDouble(xBuffer &buffer,double d);
+	void prePendReplyLongLongWithPrefix(xBuffer &buffer,int32_t length);
 
-	rObj *createRawStringObject(char *ptr, size_t len);
-	rObj *createObject(int type, void *ptr);
-	rObj *createStringObject(char *ptr, size_t len);
-	rObj *createEmbeddedStringObject(char *ptr, size_t len);
-	rObj *createStringObjectFromLongLong(long long value);
+	rObj *createRawStringObject(char *ptr,size_t len);
+	rObj *createObject(int32_t type,void *ptr);
+	rObj *createStringObject(char *ptr,size_t len);
+	rObj *createEmbeddedStringObject(char *ptr,size_t len);
+	rObj *createStringObjectFromLongLong(int64_t value);
 
 
-	int getLongLongFromObject(rObj *o, long long   *target);
-	int getLongFromObjectOrReply(xBuffer &sendBuf, rObj *o, long  *target, const char *msg);
-	int getLongLongFromObjectOrReply(xBuffer &sendBuf,rObj *o, long long *target, const char *msg);
-	int getDoubleFromObject(const rObj *o, double *target);
-	int getDoubleFromObjectOrReply(xBuffer  &sendBuf, rObj *o, double *target, const char *msg);
+	int32_t getLongLongFromObject(rObj *o,int64_t *target);
+	int32_t getLongFromObjectOrReply(xBuffer &buffer,rObj *o,int32_t *target,const char *msg);
+	int32_t getLongLongFromObjectOrReply(xBuffer &buffer,rObj *o,int64_t *target,const char *msg);
+	int32_t getDoubleFromObject(const rObj *o,double *target);
+	int32_t getDoubleFromObjectOrReply(xBuffer &buffer,rObj *o,double *target,const char *msg);
 
 	rObj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *pping,*ping,*pong,*ppong, *space,
 	*colon, *nullbulk, *nullmultibulk, *queued,

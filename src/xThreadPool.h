@@ -20,7 +20,7 @@ public:
 	bool getStarted() const { return started; }
 
 private:
-	xEventLoop * baseLoop;
+	xEventLoop *baseLoop;
 	bool	started;
 	int	numThreads;
 	int	next;
