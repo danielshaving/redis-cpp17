@@ -34,35 +34,35 @@ bool xPriorityQueue::push(xTimer *e)
 	shiftUp(n++, e);
 	return true;
 }
+
 xTimer *xPriorityQueue::pop()
 {
 	if (n)
 	{
 		xTimer *e = *p;
 		shiftDown(0, p[--n]);
-		*(int *)e = -1;
+		*(int64_t*)e = -1;
 		return e;
 	}
 	return nullptr;
 }
 
-
-int  xPriorityQueue::size()
+int64_t  xPriorityQueue::size()
 {
 	return n;
 }
 
 bool   xPriorityQueue::erase(xTimer *e)
 {
-	if (-1 != *(int *)e)
+	if (-1 != *(int64_t *)e)
 	{
 		xTimer *last = p[--n];
-		int parent = (*(int *)e - 1) / 2;
-		if (*(int *)e > 0 && (p[parent]->getWhen()  >  last->getWhen()) > 0)
-			shiftUp(*(int *)e, last);
+		int64_t parent = (*(int64_t *)e - 1) / 2;
+		if (*(int64_t *)e > 0 && (p[parent]->getWhen()  >  last->getWhen()) > 0)
+			shiftUp(*(int64_t *)e, last);
 		else
-			shiftDown(*(int *)e, last);
-		*(int *)e = -1;
+			shiftDown(*(int64_t *)e, last);
+		*(int64_t *)e = -1;
 		return 0;
 	}
 	return -1;
@@ -87,7 +87,7 @@ xTimer *xPriorityQueue::top()
 
 void  xPriorityQueue::reserve()
 {
-	int aa = a ? a * 2:8;
+	int64_t aa = a ? a * 2:8;
 	xTimer **pp = (xTimer**)zrealloc(p,aa * sizeof * pp);
 
 	a = aa;
@@ -96,38 +96,38 @@ void  xPriorityQueue::reserve()
 }
 
 
-void xPriorityQueue::shiftUp(int hole_index, xTimer *e)
+void xPriorityQueue::shiftUp(int64_t index, xTimer *e)
 {
-	int parent = (hole_index - 1) / 2;
-	while (hole_index && ((p[parent])->getWhen() >  e->getWhen()) > 0)
+	int64_t parent = (index - 1) / 2;
+	while (index && ((p[parent])->getWhen() >  e->getWhen()) > 0)
 	{
-		*(int *)(p[hole_index] = p[parent]) = hole_index;
-		hole_index = parent;
-		parent = (hole_index - 1) / 2;
+		*(int64_t *)(p[index] = p[parent]) = index;
+		index = parent;
+		parent = (index - 1) / 2;
 	}
-	*(int *)(p[hole_index] = e) = hole_index;
+	*(int64_t *)(p[index] = e) = index;
 }
 
 
-void xPriorityQueue::shiftDown(int hole_index, xTimer *e)
+void xPriorityQueue::shiftDown(int64_t index, xTimer *e)
 {
-	int min_child = 2 * (hole_index + 1);
+	int64_t min_child = 2 * (index + 1);
 	while (min_child <= n)
 	{
 		min_child -= min_child == n || (p[min_child]->getWhen()  >  p[min_child - 1]->getWhen()) > 0;
 		if (!((e->getWhen() >  p[min_child]->getWhen() ) > 0))
 			break;
-		*(int *)(p[hole_index] = p[min_child]) = hole_index;
-		hole_index = min_child;
-		min_child = 2 * (hole_index + 1);
+		*(int64_t *)(p[index] = p[min_child]) = index;
+		index = min_child;
+		min_child = 2 * (index + 1);
 	}
-	*(int *)(p[hole_index] = e) = hole_index;
+	*(int64_t *)(p[index] = e) = index;
 }
 
 #ifdef __linux__
-int createTimerfd()
+int64_t createTimerfd()
 {
-  int timerfd = ::timerfd_create(CLOCK_MONOTONIC,
+  int64_t timerfd = ::timerfd_create(CLOCK_MONOTONIC,
                                  TFD_NONBLOCK | TFD_CLOEXEC);
   if (timerfd < 0)
   {	
@@ -157,7 +157,7 @@ struct timespec howMuchTimeFromNow(xTimeStamp when)
 
 
 
-void resetTimerfd(int timerfd, xTimeStamp expiration)
+void resetTimerfd(int64_t timerfd, xTimeStamp expiration)
 {
 #ifdef __linux__
 	struct itimerspec newValue;
@@ -165,7 +165,7 @@ void resetTimerfd(int timerfd, xTimeStamp expiration)
 	bzero(&newValue, sizeof newValue);
 	bzero(&oldValue, sizeof oldValue);
 	newValue.it_value = howMuchTimeFromNow(expiration);
-	int net = ::timerfd_settime(timerfd, 0, &newValue, &oldValue);
+	int64_t net = ::timerfd_settime(timerfd, 0, &newValue, &oldValue);
 	if(net < 0 )
 	{
 		LOG_ERROR<<"timerfd_settime error";
@@ -174,7 +174,7 @@ void resetTimerfd(int timerfd, xTimeStamp expiration)
   
 }
 
-void readTimerfd(int timerfd,xTimeStamp now)
+void readTimerfd(int64_t timerfd,xTimeStamp now)
 {
   uint64_t howmany;
   ssize_t n = ::read(timerfd, &howmany, sizeof howmany);

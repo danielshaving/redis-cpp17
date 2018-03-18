@@ -1,11 +1,11 @@
 #include "xChannel.h"
 #include "xEventLoop.h"
 
-const int xChannel::kNoneEvent = 0;
-const int xChannel::kReadEvent = POLLIN | POLLPRI;
-const int xChannel::kWriteEvent = POLLOUT;
+const int32_t xChannel::kNoneEvent = 0;
+const int32_t xChannel::kReadEvent = POLLIN | POLLPRI;
+const int32_t xChannel::kWriteEvent = POLLOUT;
 
-xChannel::xChannel(xEventLoop *loop,int fd)
+xChannel::xChannel(xEventLoop *loop,int32_t fd)
 :loop(loop),
  fd(fd),
  events(0),

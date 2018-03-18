@@ -7,7 +7,6 @@
 #include "xItem.h"
 #include "xSession.h"
 
-
 class xMemcached : noncopyable
 {
 public:

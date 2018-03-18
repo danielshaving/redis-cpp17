@@ -3,9 +3,9 @@
 #include "xChannel.h"
 #include "xEventLoop.h"
 
-const int kNew = -1;
-const int kAdded = 1;
-const int kDeleted = 2;
+const int32_t kNew = -1;
+const int32_t kAdded = 1;
+const int32_t kDeleted = 2;
 
 
 xPoll::xPoll(xEventLoop *loop)
@@ -19,10 +19,10 @@ xPoll::~xPoll()
 
 }
 
-void  xPoll::epollWait(ChannelList *activeChannels,int msTime)
+void  xPoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
-	int numEvents = ::poll(&*events.begin(), events.size(), msTime);
-	int savedErrno = errno;
+	int32_t numEvents = ::poll(&*events.begin(), events.size(), msTime);
+	int32_t savedErrno = errno;
 
 	if (numEvents > 0)
 	{
@@ -65,7 +65,7 @@ void xPoll::updateChannel(xChannel *channel)
 		pfd.events = static_cast<short>(channel->getEvents());
 		pfd.revents = 0;
 		events.push_back(pfd);
-		int idx = static_cast<int>(events.size())-1;
+		int32_t idx = static_cast<int32_t>(events.size())-1;
 		channel->setIndex(idx);
 		channels[pfd.fd] = channel;
 	}
@@ -74,8 +74,8 @@ void xPoll::updateChannel(xChannel *channel)
 		// update existing one
 		assert(channels.find(channel->getfd()) != channels.end());
 		assert(channels[channel->getfd()] == channel);
-		int idx = channel->getIndex();
-		assert(0 <= idx && idx < static_cast<int>(events.size()));
+		int32_t idx = channel->getIndex();
+		assert(0 <= idx && idx < static_cast<int32_t>(events.size()));
 		struct pollfd& pfd = events[idx];
 		assert(pfd.fd == channel->getfd() || pfd.fd == -channel->getfd()-1);
 		pfd.fd = channel->getfd();
@@ -95,8 +95,8 @@ void xPoll::removeChannel(xChannel *channel)
 	assert(channels.find(channel->getfd()) != channels.end());
 	assert(channels[channel->getfd()] == channel);
 	assert(channel->isNoneEvent());
-	int idx = channel->getIndex();
-	assert(0 <= idx && idx < static_cast<int>(events.size()));
+	int32_t idx = channel->getIndex();
+	assert(0 <= idx && idx < static_cast<int32_t>(events.size()));
 	const struct pollfd& pfd = events[idx]; (void)pfd;
 	assert(pfd.fd == -channel->getfd()-1 && pfd.events == channel->getEvents());
 	size_t n = channels.erase(channel->getfd());
@@ -107,7 +107,7 @@ void xPoll::removeChannel(xChannel *channel)
 	}
 	else
 	{
-		int channelAtEnd = events.back().fd;
+		int32_t channelAtEnd = events.back().fd;
 		iter_swap(events.begin()+idx, events.end()-1);
 		if (channelAtEnd < 0)
 		{
@@ -118,9 +118,9 @@ void xPoll::removeChannel(xChannel *channel)
 	}
 }
 
-void xPoll::fillActiveChannels(int numEvents, ChannelList *activeChannels) const
+void xPoll::fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const
 {
-	for(auto it = events.begin(); it != events.end() && numEvents >0 ; ++it)
+	for(auto it = events.begin(); it != events.end() && numEvents > 0 ; ++it)
 	{
 		if((*it).revents > 0)
 		{

@@ -4,8 +4,6 @@
 
 xReplication::xReplication(xRedis *redis)
 :redis(redis),
-start(false),
- isreconnect(true),
  port(0),
  salveLen(0),
  salveReadLen(0),
@@ -20,10 +18,8 @@ xReplication::~xReplication()
 
 }
 
-
 void xReplication::connectMaster()
 {
-	start = true;
 	xEventLoop loop;
 	xTcpClient client(&loop,this);
 	client.setConnectionCallback(std::bind(&xReplication::connCallBack, this, std::placeholders::_1));
@@ -33,7 +29,6 @@ void xReplication::connectMaster()
 	this->loop = &loop;
 	loop.run();
 }
-
 
 void xReplication::replicationCron()
 {
@@ -114,12 +109,13 @@ void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 			{
 				salveLen = 0;
 				{
-                    std::shared_ptr<xSession> session(new xSession(redis, conn));
-                    std::unique_lock <std::mutex> lck(redis->mtx);
-                    redis->sessions[conn->getSockfd()] = session;
-                }
-		    	conn->send(redis->object.ok->ptr, sdslen(redis->object.ok->ptr));
-		    	LOG_INFO << "replication load rdb success";
+					std::shared_ptr<xSession> session(new xSession(redis, conn));
+					std::unique_lock <std::mutex> lck(redis->mtx);
+					redis->sessions[conn->getSockfd()] = session;
+				}
+
+				conn->send(redis->object.ok->ptr, sdslen(redis->object.ok->ptr));
+				LOG_INFO << "replication load rdb success";
 			}
 			else
 			{
@@ -130,7 +126,6 @@ void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 			}
 		}
 	}
-	
 }
 
 void xReplication::slaveCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
@@ -173,7 +168,6 @@ void xReplication::slaveCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 	}
 }
 
-
 void xReplication::connCallBack(const TcpConnectionPtr& conn)
 {
 	if(conn->connected())
@@ -185,7 +179,6 @@ void xReplication::connCallBack(const TcpConnectionPtr& conn)
 		redis->masterfd = conn->getSockfd();
 		redis->slaveEnabled = true;
 		redis->repliEnabled = true;
-		isreconnect = true;
 		syncWithMaster(conn);
 		LOG_INFO<<"connect master success";
 	}

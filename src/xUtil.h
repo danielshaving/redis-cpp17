@@ -9,19 +9,19 @@
 
 long long ustime(void);
 long long mstime(void);
-long long setime(void) ;
+long long setime(void);
 
 
-unsigned int dictGenHashFunction(const void *key, int len) ;
-unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len);
+uint32_t dictGenHashFunction(const void *key, int32_t len) ;
+uint32_t dictGenCaseHashFunction(const  char *buf, int32_t len);
 
-int ll2string(char *s, size_t len, long long value);
-int string2ll(const char *s,size_t slen, long long *value);
-int stringmatchlen(const char *p, int plen, const char *s, int slen, int nocase);
-int stringmatch(const char *p, const char *s, int nocase);
-void getRandomHexChars(char *p, unsigned int len);
+int32_t ll2string(char *s, size_t len, int64_t value);
+int32_t string2ll(const char *s,size_t slen,int64_t  *value);
+int32_t stringmatchlen(const char *p, int32_t plen, const char *s, int32_t slen, int32_t nocase);
+int32_t stringmatch(const char *p, const char *s, int32_t nocase);
+void getRandomHexChars(char *p, uint32_t len);
 void memrev64(void *p);
-void bytesToHuman(char *s, unsigned long long n);
+void bytesToHuman(char *s, uint64_t n);
 
 
 

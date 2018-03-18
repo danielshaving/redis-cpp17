@@ -8,14 +8,14 @@
 class xConnector : noncopyable, public std::enable_shared_from_this<xConnector>
 {
 public:
-	typedef std::function<void (int sockfd)> NewConnectionCallback;
+	typedef std::function<void (int32_t sockfd)> NewConnectionCallback;
 	typedef std::function<void()> ErrorConnectionCallback;
 
-	xConnector(xEventLoop* loop);
+	xConnector(xEventLoop *loop);
 	~xConnector();
 
-	void setNewConnectionCallback(const NewConnectionCallback& cb) { newConnectionCallback = cb; }
-	void setConnectionErrorCallBack(const ErrorConnectionCallback & cb) { errorConnectionCallback = cb; }
+	void setNewConnectionCallback(const NewConnectionCallback &&cb) { newConnectionCallback = std::move(cb); }
+	void setConnectionErrorCallBack(const ErrorConnectionCallback &&cb) { errorConnectionCallback = std::move(cb); }
 
 	void asyncStart(const char *ip,int16_t port);
 	void syncStart(const char *ip,int16_t port);
@@ -26,7 +26,7 @@ public:
 	void stopInLoop();
 	void asyncConnect(const char *ip,int16_t port);
 	void syncConnect(const char *ip,int16_t port);
-	void connecting(int sockfd);
+	void connecting(int32_t sockfd);
 	void resetChannel();
 	int  removeAndResetChannel();
 

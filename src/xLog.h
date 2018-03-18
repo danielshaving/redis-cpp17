@@ -6,11 +6,18 @@ const int kSmallBuffer = 4000;
 const int kLargeBuffer = 4000*10;
 
 template<int SIZE>
-class xFixedBuffer:noncopyable
+class xFixedBuffer : noncopyable
 {
 public:
-	xFixedBuffer():cur(data){}
-	~xFixedBuffer(){}
+	xFixedBuffer()
+	:cur(data)
+	{
+
+	}
+	~xFixedBuffer()
+	{
+
+	}
 
 	void append(const char *buf,size_t len)
 	{
@@ -101,7 +108,6 @@ public:
 		{
 			stop();
 		}
-	
 	}
 
 	void stop()
@@ -132,7 +138,7 @@ private:
 	const int flushInterval;
 	bool running;
 	size_t rollSize;
-	std::thread * thread;
+	std::thread *thread;
 	mutable std::mutex mutex;
 	std::condition_variable condition;
 	BufferPtr currentBuffer;
@@ -152,8 +158,6 @@ class T
 	const char* str;
 	const unsigned len;
 };
-
-
 
 class xLogStream : noncopyable
 {

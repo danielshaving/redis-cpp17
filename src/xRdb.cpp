@@ -12,7 +12,7 @@ xRio::~xRio()
 }
 
 
-xRdb::xRdb(xRedis * redis)
+xRdb::xRdb(xRedis *redis)
 :redis(redis)
 {
 
@@ -1185,7 +1185,8 @@ int32_t xRdb::rdbRestoreExpire(rObj * key,xRio *rdb,int32_t type)
 		key->calHash();
 		key->type = OBJ_EXPIRE;
 		std::unique_lock <std::mutex> lck(redis->expireMutex);
-		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000, key, false, std::bind(&xRedis::setExpireTimeOut, redis, std::placeholders::_1));
+		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000,
+				key, false, std::bind(&xRedis::setExpireTimeOut, redis, std::placeholders::_1));
 		redis->expireTimers.insert(std::make_pair(key, timer));
 	}
 	else
@@ -1833,11 +1834,11 @@ int32_t xRdb::rdbLoadBinaryDoubleValue(xRio *rdb,double *val)
    	 memrev64ifbe(val);
 }
 
-long long xRdb::rdbLoadMillisecondTime(xRio *rdb)
+int64_t xRdb::rdbLoadMillisecondTime(xRio *rdb)
 {
 	int64_t t64;
 	if (rioRead(rdb, &t64, 8) == 0) return -1;
-	return (long long)t64;
+	return t64;
 }
 
 rObj * xRdb::rdbLoadObject(int32_t rdbtype, xRio *rdb)

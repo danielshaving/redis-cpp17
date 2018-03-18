@@ -17,17 +17,17 @@ public:
 	void disconnect();
 	void stop();
 
-	void setConnectionErrorCallBack(ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb); }
-	void setConnectionCallback(ConnectionCallback &&cb) { connectionCallback = std::move(cb); }
-	void setMessageCallback(MessageCallback &&cb){ messageCallback = std::move(cb); }
-	void setWriteCompleteCallback(WriteCompleteCallback &&cb) { writeCompleteCallback = std::move(cb); }
+	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb); }
+	void setConnectionCallback(const ConnectionCallback &&cb) { connectionCallback = std::move(cb); }
+	void setMessageCallback(const MessageCallback &&cb){ messageCallback = std::move(cb); }
+	void setWriteCompleteCallback(const WriteCompleteCallback &&cb) { writeCompleteCallback = std::move(cb); }
 
-	xEventLoop * getLoop(){ return loop; }
-	std::any* getContext() { return &context; }
-	const std::any& getContext() const { return context; }
+	xEventLoop *getLoop() { return loop; }
+	std::any *getContext() { return &context; }
+	const std::any &getContext() const { return context; }
 	void setContext(const std::any &context) { this->context = context; }
-
 	TcpConnectionPtr getConnection() { return connection; }
+
 private:
 	void errorConnection();
 	void newConnection(int32_t sockfd);

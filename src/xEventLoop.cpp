@@ -3,9 +3,9 @@
 #include "xLog.h"
 
 #ifdef __linux__
-int createEventfd()
+int32_t createEventfd()
 {
-  int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+  int32_t evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
   if (evtfd < 0)
   {
     assert(false);
@@ -142,7 +142,7 @@ void xEventLoop::wakeup()
 
 }
 
-void xEventLoop::runInLoop(Functor&& cb)
+void xEventLoop::runInLoop(Functor &&cb)
 {
 	if (isInLoopThread())
 	{
@@ -154,7 +154,7 @@ void xEventLoop::runInLoop(Functor&& cb)
 	}
 }
 
-void xEventLoop::queueInLoop(Functor&& cb)
+void xEventLoop::queueInLoop(Functor &&cb)
 {
 	{
 		 std::unique_lock<std::mutex> lk(mutex);

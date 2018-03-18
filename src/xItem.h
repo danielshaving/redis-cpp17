@@ -43,7 +43,7 @@ public:
 	void setCas(uint64_t casArg) { cas = casArg;}
 	size_t neededBytes() const;
 	size_t getHash() const { return hash; }
-	xStringPiece getKey()const { return xStringPiece(data,keyLen); }
+	xStringPiece getKey() const { return xStringPiece(data,keyLen); }
 	void append(const char *data, size_t len);
 	void output(xBuffer *out, bool needCas = false) const;
 	void resetKey(xStringPiece k);

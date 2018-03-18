@@ -17,17 +17,17 @@ public:
 	int32_t  getSockfd();
 	void setState(StateE s) { state  = s; }
 
-	void setConnectionCallback(const ConnectionCallback &cb)
-	{ connectionCallback = cb; }
+	void setConnectionCallback(const ConnectionCallback &&cb)
+	{ connectionCallback = std::move(cb); }
 
-	void setMessageCallback(const MessageCallback &cb)
-	{ messageCallback = cb; }
+	void setMessageCallback(const MessageCallback &&cb)
+	{ messageCallback = std::move(cb); }
 
-	void setWriteCompleteCallback(const WriteCompleteCallback &cb)
-	{ writeCompleteCallback = cb; }
+	void setWriteCompleteCallback(const WriteCompleteCallback &&cb)
+	{ writeCompleteCallback = std::move(cb); }
 
-	void setHighWaterMarkCallback(const HighWaterMarkCallback &cb, size_t highWaterMark)
-	{ highWaterMarkCallback = cb; this->highWaterMark  = highWaterMark; }
+	void setHighWaterMarkCallback(const HighWaterMarkCallback &&cb, size_t highWaterMark)
+	{ highWaterMarkCallback = std::move(cb); this->highWaterMark  = highWaterMark; }
 
 	void setCloseCallback(const CloseCallback &cb)
 	{ closeCallback = cb; }
@@ -47,9 +47,9 @@ public:
 	
 	void sendPipe(const xStringPiece &message);
 	void sendPipe(xBuffer *message);
-	void sendPipe(const void *message, int len);
+	void sendPipe(const void *message, int32_t len);
 
-  	void send(const void *message, int len);
+  	void send(const void *message, int32_t len);
 	void send(xBuffer *message);
 	void send(const xStringPiece &message);
 
@@ -68,10 +68,10 @@ public:
 	void setContext(const std::any &context) { this->context = context; }
 
 	xBuffer *outputBuffer() { return &sendBuff; }
+	xBuffer *intputBuffer() { return &recvBuff; }
 
-public:
 	xEventLoop *loop;
-	int sockfd;
+	int32_t sockfd;
 	xBuffer recvBuff;
 	xBuffer sendBuff;
 	ConnectionCallback connectionCallback;

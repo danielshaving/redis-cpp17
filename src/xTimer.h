@@ -64,7 +64,7 @@ public:
 	void run();
 
 public:	
-	int32_t index;
+	int64_t index;
 	bool	repeat;
 	double interval;
 	xTimeStamp expiration;

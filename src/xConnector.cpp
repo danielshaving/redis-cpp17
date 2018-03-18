@@ -8,7 +8,6 @@ xConnector::xConnector(xEventLoop *loop)
 
 }
 
-
 xConnector::~xConnector()
 {
 
@@ -17,7 +16,7 @@ xConnector::~xConnector()
 void xConnector::syncStart(const char *ip, int16_t port)
 {
 	isconnect = true;
-	loop->runInLoop(std::bind(&xConnector::asyncStartInLoop,this,ip,port));
+	loop->runInLoop(std::bind(&xConnector::syncStartInLoop,this,ip,port));
 }
 
 void xConnector::asyncStart(const char *ip, int16_t port)
@@ -64,26 +63,25 @@ void xConnector::stopInLoop()
 	if (state == kConnecting)
 	{
 		setState(kDisconnected);
-		int sockfd = removeAndResetChannel();
+		int32_t sockfd = removeAndResetChannel();
 	}
 }
-
 
 void xConnector::resetChannel()
 {
 	channel.reset();
 }
 
-int  xConnector::removeAndResetChannel()
+int32_t  xConnector::removeAndResetChannel()
 {
 	channel->disableAll();
 	channel->remove();
-	int sockfd = channel->getfd();
+	int32_t sockfd = channel->getfd();
 	loop->queueInLoop(std::bind(&xConnector::resetChannel, this));
 	return sockfd;
 }
 
-void xConnector::connecting(int sockfd)
+void xConnector::connecting(int32_t sockfd)
 {
 	if(state == kConnecting)
 	{
@@ -102,9 +100,9 @@ void xConnector::syncConnect(const char *ip,int16_t port)
 
 void xConnector::asyncConnect(const char *ip, int16_t port)
 {
-	int sockfd = socket.createSocket();
-	int ret = socket.connect(sockfd, ip,port);
-	int savedErrno = (ret == 0) ? 0 : errno;
+	int32_t sockfd = socket.createSocket();
+	int32_t ret = socket.connect(sockfd, ip,port);
+	int32_t savedErrno = (ret == 0) ? 0 : errno;
 	switch (savedErrno)
 	{
 		case 0:

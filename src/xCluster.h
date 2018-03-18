@@ -17,7 +17,6 @@ struct clusterNode
 	struct clusterNode *master;
 };
 
-
 class xRedis;
 class xCluster : noncopyable
 {
@@ -26,10 +25,10 @@ public:
 	~xCluster();
 
     void clear();
-	bool connSetCluster(const char *ip, int16_t port);
+	bool connSetCluster(const char *ip,int16_t port);
 	void connectCluster();
 	void connErrorCallBack();
-	void readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer);
+	void readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
 	void connCallBack(const TcpConnectionPtr &conn);
 	void reconnectTimer(const std::any &context);
 	void cretateClusterNode(int32_t slot,const std::string &ip,int16_t port,const std::string &name);
@@ -76,7 +75,7 @@ private:
 	std::map<int32_t,clusterNode> clusterSlotNodes;
 	std::unordered_map<std::string, std::unordered_set<int32_t>> migratingSlosTos;
 	std::unordered_map<std::string, std::unordered_set<int32_t>> importingSlotsFroms;
-	std::vector<rObj*> clusterDelkeys;
+	std::vector<rObj*> clusterDelKeys;
 	std::vector<rObj*> clusterDelCopys;
 	std::condition_variable condition;
 	std::mutex mtx;

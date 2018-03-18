@@ -36,10 +36,10 @@ public:
     xTimer  *runAfter(double  when,const std::any &context,bool repeat,xTimerCallback &&cb);
     void assertInLoopThread()
     {
-    if (!isInLoopThread())
-    {
-      abortNotInLoopThread();
-    }
+		if (!isInLoopThread())
+		{
+			abortNotInLoopThread();
+		}
     }
 
     void handlerTimerQueue(){ timerQueue->handleRead(); }
@@ -57,13 +57,13 @@ private:
     mutable std::mutex mutex;
 #ifdef __APPLE__
     std::unique_ptr<xPoll>   epoller;
-    int op;
-    int wakeupFd[2];
+    int16_t op;
+    int32_t wakeupFd[2];
 #endif
 
 #ifdef __linux__
 	std::unique_ptr<xEpoll>   epoller;
-    int wakeupFd;
+    int32_t wakeupFd;
 #endif
 
     std::unique_ptr<xTimerQueue> timerQueue;
@@ -77,7 +77,6 @@ private:
     bool callingPendingFunctors;
     std::vector<Functor> pendingFunctors;
     std::vector<Functor> pendingPipeFunctors;
-
     xSocket socket;
 };
 

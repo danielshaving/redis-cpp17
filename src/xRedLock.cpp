@@ -180,7 +180,7 @@ bool xRedLock::lock(const char *resource, const int32_t ttl, xLock &lock)
 			else if(r ==-1)
 			{
 				LOG_INFO<<"reconnect redis..................";
-				auto c = redisConnectWithTimeout(it->second->ip, it->second->port, timeout);
+				auto c = redisConnectWithTimeout(it->second->ip, it->second->p, timeout);
 				if (c == nullptr || c->err)
 				{
 					if (c)

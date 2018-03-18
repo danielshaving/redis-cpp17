@@ -16,8 +16,8 @@ public:
 	void replicationSetMaster(rObj *obj,int16_t port);
 
 	void connErrorCallBack();
-	void slaveCallBack(const TcpConnectionPtr &conn, xBuffer *buffer);
-	void readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer);
+	void slaveCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
+	void readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
 	void connCallBack(const TcpConnectionPtr &conn);
 
 	void reconnectTimer(const std::any &context);
@@ -28,8 +28,6 @@ public:
 
 public:
 	xRedis *redis;
-	bool start;
-	bool isreconnect;
 	xEventLoop *loop;
 	xTcpClient *client;
 	std::string ip;

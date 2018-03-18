@@ -5,30 +5,28 @@
 const uint32_t dict_hash_function_seed = 5381;
 
 /* And a case insensitive hash function (based on djb hash) */
-unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len) 
+uint32_t dictGenCaseHashFunction(const char *buf, int32_t len)
 {
-	unsigned int hash = (unsigned int)dict_hash_function_seed;
+	uint32_t hash = (uint32_t)dict_hash_function_seed;
 
 	while (len--)
 	    hash = ((hash << 5) + hash) + (tolower(*buf++)); /* hash * 33 + c */
 	return hash;
 }
 
-
-
-unsigned int dictGenHashFunction(const void *key, int len)
+uint32_t dictGenHashFunction(const void *key, int32_t len)
 {
 	/* 'm' and 'r' are mixing constants generated offline.
 	 They're no really 'magic', they just happen to work well.  */
 	uint32_t seed = dict_hash_function_seed;
 	const uint32_t m = 0x5bd1e995;
-	const int r = 24;
+	const int32_t r = 24;
 
 	/* Initialize the hash to a 'random' value */
 	uint32_t h = seed ^ len;
 
 	/* Mix 4 bytes at a time into the hash */
-	const unsigned char *data = (const unsigned char *)key;
+	const char *data = (const char *)key;
 
 	while(len >= 4)
 	{
@@ -59,16 +57,16 @@ unsigned int dictGenHashFunction(const void *key, int len)
 	h *= m;
 	h ^= h >> 15;
 
-	return (unsigned int)h;
+	return h;
 }
 
 
-int string2ll(const char * s,size_t slen, long long * value)
+int32_t string2ll(const char * s,size_t slen, int64_t *value)
 {
 	const char *p = s;
     size_t plen = 0;
-    int negative = 0;
-    unsigned long long v;
+    int32_t negative = 0;
+    uint64_t v;
 
     if (plen == slen)
         return 0;
@@ -135,11 +133,10 @@ int string2ll(const char * s,size_t slen, long long * value)
 
 }
 
-
-int ll2string(char *s, size_t len, long long value)
+int32_t ll2string(char *s, size_t len, int64_t value)
 {
     char buf[32], *p;
-    unsigned long long v;
+    uint64_t v;
     size_t l;
 
     if (len == 0) return 0;
@@ -159,10 +156,9 @@ int ll2string(char *s, size_t len, long long value)
     return l;
 }
 
-
 /* Glob-style pattern matching. */
-int stringmatchlen(const char *pattern, int patternLen,
-        const char *string, int stringLen, int nocase)
+int32_t stringmatchlen(const char *pattern, int32_t patternLen,
+        const char *string, int32_t stringLen, int32_t nocase)
 {
     while(patternLen)
     {
@@ -308,15 +304,15 @@ int stringmatchlen(const char *pattern, int patternLen,
     return 0;
 }
 
-int stringmatch(const char *pattern, const char *string, int nocase)
+int32_t stringmatch(const char *pattern, const char *string, int32_t nocase)
 {
     return stringmatchlen(pattern,strlen(pattern),string,strlen(string),nocase);
 }
 
-void getRandomHexChars(char *p, unsigned int len)
+void getRandomHexChars(char *p, uint32_t len)
 {
 	char *charset = "0123456789abcdef";
-	unsigned int j;
+	uint32_t j;
 
 	/* Global state. */
 	static int seedInitialized = 0;
@@ -341,7 +337,7 @@ void getRandomHexChars(char *p, unsigned int len)
 		{
 			unsigned char digest[20];
 			SHA1_CTX ctx;
-			unsigned int copylen = len > 20 ? 20 : len;
+			uint32_t copylen = len > 20 ? 20 : len;
 
 			SHA1Init(&ctx);
 			SHA1Update(&ctx, seed, sizeof(seed));
@@ -362,7 +358,7 @@ void getRandomHexChars(char *p, unsigned int len)
 		* in order to create some entropy, since this function is used to
 		* generate run_id and cluster instance IDs */
 		char *x = p;
-		unsigned int l = len;
+		uint32_t l = len;
 		struct timeval tv;
 		pid_t pid = getpid();
 
@@ -468,7 +464,7 @@ void bytesToHuman(char *s, unsigned long long n)
 }
 
 
-/* Toggle the 16 bit unsigned integer pointed by *p from little endian to
+/* Toggle the 16 bit uint32_teger pointed by *p from little endian to
  * big endian */
 void memrev16(void *p)
 {
@@ -479,7 +475,7 @@ void memrev16(void *p)
 	x[1] = t;
 }
 
-/* Toggle the 32 bit unsigned integer pointed by *p from little endian to
+/* Toggle the 32 bit uint32_teger pointed by *p from little endian to
  * big endian */
 void memrev32(void *p)
 {
@@ -493,7 +489,7 @@ void memrev32(void *p)
 	x[2] = t;
 }
 
-/* Toggle the 64 bit unsigned integer pointed by *p from little endian to
+/* Toggle the 64 bit uint32_teger pointed by *p from little endian to
  * big endian */
 void memrev64(void *p)
 {

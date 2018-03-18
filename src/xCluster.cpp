@@ -4,7 +4,7 @@
 #include "xCrc16.h"
 #include "xUtil.h"
 
-xCluster::xCluster(xRedis * redis)
+xCluster::xCluster(xRedis *redis)
 :redis(redis),
 state(true),
 isConnect(false),
@@ -236,7 +236,7 @@ bool xCluster::getKeySlot(const std::string &name)
 void xCluster::clear()
 {
 	clusterDelCopys.clear();
-	clusterDelkeys.clear();
+	clusterDelKeys.clear();
 	slotSets.clear();
 	commands.clear();
 	buffer.retrieveAll();
@@ -286,14 +286,14 @@ bool  xCluster::replicationToNode(const std::deque<rObj*> &obj, const SessionPtr
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
 		for (int j = 0; j < numKeys; j++)
 		{
-			clusterDelkeys.push_back(redis->object.createStringObject(obj[firstKey + j]->ptr, sdslen(obj[firstKey + j]->ptr)));
+			clusterDelKeys.push_back(redis->object.createStringObject(obj[firstKey + j]->ptr, sdslen(obj[firstKey + j]->ptr)));
 		}
 	}
 
 	if (!strcasecmp(obj[2]->ptr, ""))
 	{
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
-		for (auto &it : clusterDelkeys)
+		for (auto &it : clusterDelKeys)
 		{
 			char *key = it->ptr;
 			int32_t hashslot = redis->clus.keyHashSlot(key, sdslen(key));

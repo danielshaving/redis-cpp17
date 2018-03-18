@@ -13,11 +13,11 @@ class xTcpClient;
 class xSession;
 class xItem;
 
+typedef std::shared_ptr<xHiredisAsync> HiredisAsyncPtr;
+typedef std::shared_ptr<xBuffer> xBufferPtr;
 typedef std::shared_ptr<xRedisReader>  RedisReaderPtr;
 typedef std::shared_ptr<xRedisContext> RedisContextPtr;
-typedef std::shared_ptr<xHiredisAsync> HiredisAsyncPtr;
 typedef std::shared_ptr<xRedisAsyncContext> RedisAsyncContextPtr;
-typedef std::shared_ptr<xBuffer> xBufferPtr;
 typedef std::shared_ptr<xTcpConnection> TcpConnectionPtr;
 typedef std::shared_ptr<xConnector> ConnectorPtr;
 typedef std::shared_ptr<xTcpClient> TcpClientPtr;

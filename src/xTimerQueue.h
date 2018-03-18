@@ -16,16 +16,16 @@ public:
 	bool push(xTimer *e);
 	xTimer *pop();
 	bool  erase(xTimer *e);
-	int   size();
+	int64_t   size();
 	xTimer *head();
 	void clear();
 	xTimer *top();
 	void reserve();
-	void shiftUp(int hole_index, xTimer *e);
-	void shiftDown(int hole_index, xTimer *e);
+	void shiftUp(int64_t index, xTimer *e);
+	void shiftDown(int64_t index, xTimer *e);
 
 	xTimer **p;
-	int n,a;
+	int64_t n,a;
 };
 
 class xTimerQueue : noncopyable

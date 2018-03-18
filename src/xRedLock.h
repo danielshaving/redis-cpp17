@@ -46,6 +46,6 @@ private:
 	struct timeval timeout = { 1, 500000 }; 
 	std::vector<RedisContextPtr> disconnectServers;
 	std::unordered_map<int32_t,RedisContextPtr> syncServers;
-	HiredisAsyncPtr	asyncServerMaps;
+	HiredisAsyncPtr	asyncServers;
 
 };

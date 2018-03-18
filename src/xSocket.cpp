@@ -41,7 +41,6 @@ bool xSocket::getpeerName(int32_t fd,std::string *ip, int16_t &port)
 	{
 		return false;
 	}
-
 }
 
 int32_t  xSocket::createSocket()
@@ -56,11 +55,8 @@ int32_t  xSocket::connect(int32_t sockfd,const std::string &ip, int16_t port)
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = inet_addr(ip.c_str());
-
 	return  ::connect(sockfd, (struct sockaddr *)&sin, sizeof(sin));
 }
-
-
 
 int32_t xSocket::setFlag(int32_t fd, int32_t flag)
 {

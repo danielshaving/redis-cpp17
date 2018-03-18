@@ -7,7 +7,7 @@
 class xAcceptor : noncopyable
 {
 public:
-	typedef std::function<void (int sockfd)> NewConnectionCallback;
+	typedef std::function<void (int32_t sockfd)> NewConnectionCallback;
 	xAcceptor(xEventLoop* loop,std::string ip, int16_t port);
 	~xAcceptor();
 
@@ -18,12 +18,11 @@ public:
 
 private:
 	xEventLoop *loop;
-	xSocket    socket;
-	xChannel   channel;
-	int        listenfd;
+	xSocket socket;
+	xChannel channel;
+	int32_t listenfd;
 
 	NewConnectionCallback newConnectionCallback;
 	bool listenning;
 	bool protocol;
-	void *data;
 };

@@ -19,7 +19,7 @@ typedef struct redisObject
 		hash = dictGenHashFunction(ptr,sdslen(ptr));
 	}
 
-	bool operator <(const redisObject & r) const
+	bool operator <(const redisObject &r) const
 	{
 		int32_t cmp = memcmp(ptr,r.ptr,sdslen(ptr));
 		if( cmp < 0)
@@ -47,7 +47,7 @@ typedef struct redisObject
 
 struct Hash
 {
-	size_t operator()(const rObj * x) const
+	size_t operator()(const rObj *x) const
 	{
 		return x->hash;
 	}
@@ -55,7 +55,7 @@ struct Hash
 
 struct Equal
 {
-	bool operator()(const rObj * x, const rObj * y) const
+	bool operator()(const rObj *x, const rObj *y) const
 	{
 		 return ((sdslen(x->ptr) == sdslen(y->ptr)) &&
             (memcmp(x->ptr, y->ptr, sdslen(y->ptr))== 0));
@@ -67,7 +67,7 @@ class xRedis;
 class xObjects : noncopyable
 {
 public:
-	xObjects(xRedis * redis);
+	xObjects(xRedis *redis);
 	~xObjects();
 
 	void createSharedObjects();
@@ -77,7 +77,7 @@ public:
 	void freeSetObject(rObj *o);
 	void freeHashObject(rObj *o);
 	void freeZsetObject(rObj *o);
-	void decrRefCount(rObj *o) ;
+	void decrRefCount(rObj *o);
 
 	void addReplyBulkSds(xBuffer &buffer, sds s);
 	void addReplyMultiBulkLen(xBuffer &buffer,int32_t length);
@@ -134,11 +134,11 @@ public:
 	*mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
 	*bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
 
-	rObj * rIp;
-	rObj * rPort;
+	rObj *rIp;
+	rObj *rPort;
 
 private:
-	xRedis * redis;
+	xRedis *redis;
 
 };
 

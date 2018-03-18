@@ -52,7 +52,7 @@ public:
 class xRdb: noncopyable
 {
 public:
-	xRdb(xRedis * redis);
+	xRdb(xRedis *redis);
 	off_t  rioTell(xRio *r);
 	size_t rioWrite(xRio *r,const void *buf,size_t len);
 	size_t rioRead(xRio *r,void *buf,size_t len);
@@ -95,7 +95,7 @@ public:
 	rObj *rdbLoadIntegerObject(xRio *rdb, int32_t enctype, int32_t encode);
 	rObj *rdbLoadEncodedStringObject(xRio *rdb);
 	rObj *rdbLoadLzfStringObject(xRio *rdb);
-	long long rdbLoadMillisecondTime(xRio *rdb);
+	int64_t rdbLoadMillisecondTime(xRio *rdb);
 	int32_t rdbLoadBinaryDoubleValue(xRio *rdb,double *val);
 
 	int32_t rdbRestoreString(rObj * key,xRio *rdb,int32_t type);

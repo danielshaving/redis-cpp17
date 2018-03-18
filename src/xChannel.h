@@ -6,18 +6,18 @@ class xChannel : noncopyable
 {
 public:
 	typedef std::function<void()> EventCallback;
-	xChannel(xEventLoop *loop,int fd);
+	xChannel(xEventLoop *loop,int32_t fd);
 	~xChannel();
 
 	void handleEvent();
 	void setTie(const std::shared_ptr<void>&);
-	void setRevents(int revt) { revents = revt; }
-	void setEvents(int revt) { events = revt; }
-	void setIndex(int idx) { index = idx; }
-	void setReadCallback(EventCallback&& cb) { readCallback  = std::move(cb); }
-	void setWriteCallback(EventCallback&& cb){ writeCallback = std::move(cb); }
-	void setCloseCallback(EventCallback&& cb){ closeCallback = std::move(cb); }
-	void setErrorCallback(EventCallback&& cb){ errorCallback = std::move(cb); }
+	void setRevents(int32_t revt) { revents = revt; }
+	void setEvents(int32_t revt) { events = revt; }
+	void setIndex(int32_t idx) { index = idx; }
+	void setReadCallback(const EventCallback &&cb) { readCallback  = std::move(cb); }
+	void setWriteCallback(const EventCallback &&cb){ writeCallback = std::move(cb); }
+	void setCloseCallback(const EventCallback &&cb){ closeCallback = std::move(cb); }
+	void setErrorCallback(const EventCallback &&cb){ errorCallback = std::move(cb); }
 
 	bool readEnabled() { return events & kReadEvent; }
 	bool writeEnabled() { return events & kWriteEvent; }
@@ -31,10 +31,10 @@ public:
 	bool isWriting() const { return events & kWriteEvent; }
 	bool isReading() const { return events & kReadEvent; }
 
-	int  getEvents() { return events; }
-	int  getfd(){ return fd;}
+	int32_t  getEvents() { return events; }
+	int32_t  getfd(){ return fd;}
 	void remove();
-	int  getIndex(){ return index; }
+	int32_t  getIndex(){ return index; }
 	xEventLoop *ownerLoop() { return loop; }
 
 private:
@@ -50,10 +50,10 @@ private:
 	static const int kWriteEvent;
 
 	xEventLoop *loop;
-	int fd;
-	int events;
-	int revents;
-	int index;
+	int32_t fd;
+	int32_t events;
+	int32_t revents;
+	int32_t index;
 	bool tied;
 	bool eventHandling;
 	bool addedToLoop;

@@ -17,7 +17,7 @@ xTcpServer::~xTcpServer()
 	{
 		TcpConnectionPtr conn = it.second;
 		it.second.reset();
-		conn->getLoop()->runInLoop(std::bind(&xTcpConnection::connectDestroyed, conn));
+		conn->getLoop()->runInLoop(std::bind(&xTcpConnection::connectDestroyed,conn));
 		conn.reset();
 	}
 }
@@ -25,17 +25,17 @@ xTcpServer::~xTcpServer()
 void xTcpServer::newConnection(int32_t sockfd)
 {
 	loop->assertInLoopThread();
-	xEventLoop* loop = threadPool->getNextLoop();
+	xEventLoop *loop = threadPool->getNextLoop();
 	TcpConnectionPtr conn(new xTcpConnection(loop,sockfd,context));
 	connections[sockfd] = conn;
-	conn->setConnectionCallback(connectionCallback);
-	conn->setMessageCallback(messageCallback);
-	conn->setWriteCompleteCallback(writeCompleteCallback);
-	conn->setCloseCallback(std::bind(&xTcpServer::removeConnection, this, std::placeholders::_1));
-	loop->runInLoop(std::bind(&xTcpConnection::connectEstablished, conn));
+	conn->setConnectionCallback(std::move(connectionCallback));
+	conn->setMessageCallback(std::move(messageCallback));
+	conn->setWriteCompleteCallback(std::move(writeCompleteCallback));
+	conn->setCloseCallback(std::bind(&xTcpServer::removeConnection,this,std::placeholders::_1));
+	loop->runInLoop(std::bind(&xTcpConnection::connectEstablished,conn));
 }
 
-void xTcpServer::setThreadNum(int numThreads)
+void xTcpServer::setThreadNum(int16_t numThreads)
 {
 	threadPool->setThreadNum(numThreads);
 }
@@ -48,7 +48,7 @@ void xTcpServer::start()
 
 void xTcpServer::removeConnection(const TcpConnectionPtr &conn)
 {
-	loop->runInLoop(std::bind(&xTcpServer::removeConnectionInLoop, this, conn));
+	loop->runInLoop(std::bind(&xTcpServer::removeConnectionInLoop,this,conn));
 }
 
 void xTcpServer::removeConnectionInLoop(const TcpConnectionPtr &conn)
@@ -57,6 +57,6 @@ void xTcpServer::removeConnectionInLoop(const TcpConnectionPtr &conn)
 	size_t n = connections.erase(conn->getSockfd());
 	(void)n;
 	assert(n == 1);
-	xEventLoop* ioLoop = conn->getLoop();
-	ioLoop->queueInLoop(std::bind(&xTcpConnection::connectDestroyed, conn));
+	xEventLoop *ioLoop = conn->getLoop();
+	ioLoop->queueInLoop(std::bind(&xTcpConnection::connectDestroyed,conn));
 }
