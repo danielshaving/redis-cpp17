@@ -10,7 +10,6 @@ class xHttpServer:noncopyable
 {
 public:
 	typedef std::function<void(const xHttpRequest &,xHttpResponse*)> HttpCallBack;
-
 	xHttpServer(xEventLoop *loop,const char *ip,uint16_t  port);
 	~xHttpServer();
 	void disPlayer(const char *begin);

@@ -35,6 +35,7 @@ public:
 	{
 		version = v;
 	}
+
 	Version getVersion()const
 	{
 		return version;
@@ -43,6 +44,11 @@ public:
 	void setMethod()
 	{
 		method = kContent;
+	}
+
+	void setSecKey(const std::string &k)
+	{
+		secKey = k;
 	}
 
 	bool setMethod(const char * start,const char * end)
@@ -81,7 +87,12 @@ public:
 		return method;
 	}
 
-	const char * methodString()const
+	const std::string &getSecKey() const
+	{
+		return secKey;
+	}
+
+	const char  *methodString() const
 	{
 		const char * result = "UNKNOWN";
 		switch(method)
@@ -158,6 +169,7 @@ public:
 		}
 		contentLength = atoi(value.c_str());
 	}
+
 	void addHeader(const char *start,const char *colon,const char *end)
 	{
 		std::string field(start,colon);
@@ -199,21 +211,22 @@ public:
 		headers.swap(that.headers);
 		cacheFrame.swap(that.cacheFrame);
 		parseString.swap(that.parseString);
+		secKey.swap(that.secKey);
 		opcode = ERROR_FRAME;
 	}
   
+	std::string cacheFrame;
+	std::string parseString;
+	WebSocketType opcode;
+
 private:
 	Method method;
 	Version version;
 	std::string path;
 	std::string query;
-	int32_t queryLength = -1;
+	int32_t queryLength;
 	std::map<std::string,std::string> headers;
-	int64_t receiveTime = -1;
-	int32_t contentLength = -1;
-
-public:
-	std::string cacheFrame;
-	std::string parseString;
-	WebSocketType opcode;
+	int64_t receiveTime;
+	int32_t contentLength;
+	std::string secKey;
 };

@@ -134,7 +134,6 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,std::string &frame,
 		xHttpRequest::WebSocketType frame_type,bool isFin,bool masking)
  {
-	static_assert(std::is_same<std::string::value_type, char>::value, "");
 	uint8_t head = (uint8_t)frame_type | (isFin ? 0x80 : 0x00);
 	frame.clear();
 	frame.push_back((char)head);
@@ -193,7 +192,6 @@ bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,std::stri
 bool xHttpContext::parseWebRequest(xBuffer *buf)
 {
 	bool ok = true;
-
 	while(buf->readableBytes() > 0)
 	{
 		request.parseString.clear();
@@ -207,7 +205,8 @@ bool xHttpContext::parseWebRequest(xBuffer *buf)
 			break;
 		}
 
-		if (isFin && (request.opcode == xHttpRequest::TEXT_FRAME || request.opcode == xHttpRequest::BINARY_FRAME))
+		if (isFin && (request.opcode == xHttpRequest::TEXT_FRAME ||
+				request.opcode == xHttpRequest::BINARY_FRAME))
 		{
 			if (!request.cacheFrame.empty())
 			{

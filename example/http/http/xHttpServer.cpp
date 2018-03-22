@@ -76,12 +76,22 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 		conn->shutdown();
 	}
 
+	bool type = false;
+	auto &headers = context->getRequest().getHeaders();
+	auto it = headers.find("Sec-WebSocket-Key");
+	if(it != headers.end())
+	{
+		context->getRequest().setSecKey(it->second + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+	}
+
 	if(context->gotAll())
 	{
 		if(context->getRequest().getMethod() == xHttpRequest::kPost)
 		{
-			context->getRequest().setQuery(buffer->peek(),buffer->peek() + buffer->readableBytes());
+			conn->shutdown();
+			//context->getRequest().setQuery(buffer->peek(),buffer->peek() + buffer->readableBytes());
 		}
+
 		onRequest(conn,context->getRequest());
 		context->reset();
 	}
