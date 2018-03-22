@@ -29,10 +29,9 @@ void xCluster::cretateClusterNode(int32_t slot,const std::string &ip,int16_t por
 	node.master = nullptr;
 	node.slaves = nullptr;
 	clusterSlotNodes.insert(std::make_pair(slot, node));
-
 }
 
-void xCluster::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
+void xCluster::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	while (buffer->readableBytes() > 0)
 	{
@@ -193,7 +192,7 @@ int32_t xCluster::getSlotOrReply(const SessionPtr &session,rObj * o)
 	return (int32_t)slot;
 }
 
-void xCluster::structureProtocolSetCluster(std::string ip, int16_t port, xBuffer &buffer,const TcpConnectionPtr &conn)
+void xCluster::structureProtocolSetCluster(const std::string &ip, int16_t port, xBuffer &buffer,const TcpConnectionPtr &conn)
 {
     commands.push_back(redis->object.cluster);
 	commands.push_back(redis->object.connect);
@@ -333,7 +332,7 @@ bool  xCluster::replicationToNode(const std::deque<rObj*> &obj, const SessionPtr
 	LOG_INFO<<"cluster send  success";
 }
 
-void xCluster::connCallBack(const TcpConnectionPtr& conn)
+void xCluster::connCallBack(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{
@@ -409,7 +408,7 @@ void xCluster::eraseImportingSlot(const std::string &name)
 	importingSlotsFroms.erase(name);
 }
 
-void xCluster::addSlotDeques(rObj * slot,const std::string &name)
+void xCluster::addSlotDeques(rObj *slot,const std::string &name)
 {
 	commands.push_back(redis->object.cluster);
 	commands.push_back(redis->object.addsync);
@@ -419,7 +418,7 @@ void xCluster::addSlotDeques(rObj * slot,const std::string &name)
 	commands.push_back(redis->object.createStringObject((char*)(name.c_str()), name.length()));
 }
 
-void xCluster::delSlotDeques(rObj * obj,int32_t slot)
+void xCluster::delSlotDeques(rObj *obj,int32_t slot)
 {
 	commands.push_back(redis->object.cluster);
 	commands.push_back(redis->object.delsync);
@@ -580,7 +579,6 @@ void xCluster::eraseClusterNode(const std::string &ip ,int16_t port)
 
 		++it;
 	}
-
 }
 
 bool  xCluster::connSetCluster(const char *ip, int16_t port)
@@ -590,25 +588,11 @@ bool  xCluster::connSetCluster(const char *ip, int16_t port)
 	client->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2));
 	client->setConnectionErrorCallBack(std::bind(&xCluster::connErrorCallBack, this));
 	client->asyncConnect(ip, port);
-	clusterConns.push_back(client);
-
-	std::unique_lock <std::mutex> lck(mtx);
-	while(state)
+	if(state)
 	{
-		condition.wait(lck);
+		clusterConns.push_back(client);
 	}
-	
-	state = true;
-
-	if(isConnect)
-	{
-		isConnect = false;
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return state;
 }
 
 void xCluster::connectCluster()
@@ -620,18 +604,12 @@ void xCluster::connectCluster()
 
 void xCluster::reconnectTimer(const std::any &context)
 {
-	LOG_INFO << "Reconnect..........";
+	LOG_INFO << "reconnect cluster";
 }
 
 void xCluster::connErrorCallBack()
 {
 	state = false;
-	isConnect = false;
-
-	{
-		std::unique_lock <std::mutex> lck(mtx);
-		condition.notify_one();
-	}
 }
 
 

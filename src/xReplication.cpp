@@ -35,9 +35,9 @@ void xReplication::replicationCron()
 
 }
 
-void xReplication::disconnect()
+void xReplication::disConnect()
 {
-	client->disconnect();
+	client->disConnect();
 }
 
 void xReplication::syncWrite(const TcpConnectionPtr &conn)

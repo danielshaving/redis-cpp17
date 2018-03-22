@@ -24,7 +24,7 @@ public:
 	void syncWithMaster(const TcpConnectionPtr &conn);
 	void replicationCron();
 	void syncWrite(const TcpConnectionPtr &conn);
-	void disconnect();
+	void disConnect();
 
 public:
 	xRedis *redis;

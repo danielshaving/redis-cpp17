@@ -95,8 +95,8 @@ public:
 	bool migrateCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
 	bool ttlCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
 
-	int32_t rdbSaveBackground(const SessionPtr &session, bool enabled);
-	bool bgsave(const SessionPtr &session, bool enabled = false);
+	int32_t rdbSaveBackground(const SessionPtr &session,bool enabled);
+	bool bgsave(const SessionPtr &session,bool enabled = false);
 	bool save(const SessionPtr &session);
 	bool removeCommand(rObj *obj);
 	bool clearClusterMigradeCommand(std::any *data);
@@ -198,8 +198,7 @@ public:
 	xCluster clus;
 	xRdb rdb;
 	xSocket socket;
-	
-	
+
 	std::string ip;
 	std::string password;
  	std::string masterHost;

@@ -21,7 +21,7 @@ class xRedis;
 class xCluster : noncopyable
 {
 public:
-	xCluster(xRedis * redis);
+	xCluster(xRedis *redis);
 	~xCluster();
 
     void clear();
@@ -34,7 +34,7 @@ public:
 	void cretateClusterNode(int32_t slot,const std::string &ip,int16_t port,const std::string &name);
 
 	bool getKeySlot(const std::string &name);
-	void structureProtocolSetCluster(std::string host,int16_t port,xBuffer &buffer,const TcpConnectionPtr &conn);
+	void structureProtocolSetCluster(const std::string &host,int16_t port,xBuffer &buffer,const TcpConnectionPtr &conn);
 	int32_t getSlotOrReply(const SessionPtr &session,rObj *o);
 	uint32_t keyHashSlot(char *key, int32_t keylen);
 	void syncClusterSlot();

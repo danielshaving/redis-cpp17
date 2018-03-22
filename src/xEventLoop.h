@@ -43,26 +43,25 @@ public:
     }
 
     void handlerTimerQueue(){ timerQueue->handleRead(); }
-    xPriorityQueue * getTimerQueue(){ return timerQueue->getPriority(); }
+    xPriorityQueue *getTimerQueue(){ return timerQueue->getPriority(); }
     bool isInLoopThread() const { return threadId == std::this_thread::get_id(); }
     bool geteventHandling() const { return eventHandling; }
-
     std::thread::id getThreadId() const { return threadId; }
-private:
 
+private:
     void abortNotInLoopThread();
     void doPendingFunctors();
 
     std::thread::id threadId;
     mutable std::mutex mutex;
 #ifdef __APPLE__
-    std::unique_ptr<xPoll>   epoller;
+    std::unique_ptr<xPoll> epoller;
     int16_t op;
     int32_t wakeupFd[2];
 #endif
 
 #ifdef __linux__
-	std::unique_ptr<xEpoll>   epoller;
+	std::unique_ptr<xEpoll> epoller;
     int32_t wakeupFd;
 #endif
 
@@ -70,13 +69,15 @@ private:
     std::unique_ptr<xChannel> wakeupChannel;
     typedef std::vector<xChannel*> ChannelList;
     ChannelList activeChannels;
-    xChannel* currentActiveChannel;
+    xChannel *currentActiveChannel;
 	
     bool running;
     bool eventHandling;
     bool callingPendingFunctors;
+    std::vector<Functor> functors;
     std::vector<Functor> pendingFunctors;
-    std::vector<Functor> pendingPipeFunctors;
+#ifdef __APPLE__
     xSocket socket;
+#endif
 };
 

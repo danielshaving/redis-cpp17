@@ -826,7 +826,6 @@ int32_t xRedisReader::redisReaderGetReply(redisReply **reply)
 	return REDIS_OK;
 }
 
-
 int32_t xRedisContext::redisGetReplyFromReader(redisReply **reply)
 {
 	if (reader->redisReaderGetReply(reply) == REDIS_ERR)
@@ -837,8 +836,6 @@ int32_t xRedisContext::redisGetReplyFromReader(redisReply **reply)
 
 	return REDIS_OK;
 }
-
-
 
 int32_t xRedisContext::redisBufferWrite( int32_t *done)
 {
@@ -918,20 +915,20 @@ int32_t xRedisContext::redisGetReply(redisReply **reply)
 	int32_t wdone	= 0;
 	redisReply *aux = nullptr;
 
-	if (redisGetReplyFromReader(&aux) == REDIS_ERR)
+	if(redisGetReplyFromReader(&aux) == REDIS_ERR)
 	{
 		redisSetError(reader->err,reader->errstr);
 		return REDIS_ERR;
 	}
-		
+
 	if (aux == nullptr && flags & REDIS_BLOCK)
 	{
 		do
 		{
 			if (redisBufferWrite(&wdone) == REDIS_ERR)
 			return REDIS_ERR;
-		}
-		while(!wdone);
+
+		}while(!wdone);
 
 		do
 		{
@@ -940,8 +937,8 @@ int32_t xRedisContext::redisGetReply(redisReply **reply)
 
 			if (redisGetReplyFromReader(&aux) == REDIS_ERR)
 				return REDIS_ERR;
-		}
-		while(aux == nullptr);
+
+		}while(aux == nullptr);
 	}
 
 	if (reply != nullptr)
@@ -1319,6 +1316,10 @@ int32_t xRedisContext::redisvAppendCommand(const char *format, va_list ap)
 }
 
 
+redisReply *xRedisContext::redisCommand(xBuffer *buffer)
+{
+	return redisBlockForReply();
+}
 redisReply *xRedisContext::redisCommand(const char *format, ...)
 {
 	va_list ap;
@@ -1329,7 +1330,7 @@ redisReply *xRedisContext::redisCommand(const char *format, ...)
 	return reply;
 }
 
-redisReply *xRedisContext::redisvCommand(const char * format, va_list ap)
+redisReply *xRedisContext::redisvCommand(const char *format, va_list ap)
 {
 	if (redisvAppendCommand(format, ap) != REDIS_OK)
 		return nullptr;
@@ -1337,7 +1338,7 @@ redisReply *xRedisContext::redisvCommand(const char * format, va_list ap)
 	  return redisBlockForReply();
 }
 
-int32_t redisFormatCommandArgv(char * *target, int32_t argc, const char * *argv, const size_t * argvlen)
+int32_t redisFormatCommandArgv(char **target, int32_t argc, const char **argv, const size_t *argvlen)
 {
 	char * cmd = nullptr; 					/* final command */
 	int32_t pos;							/* position in final command */
@@ -1453,7 +1454,6 @@ int32_t xRedisContext::redisAppendCommandArgv(int32_t argc, const char **argv, c
 	zfree(cmd);
 	return REDIS_OK;
 }
-
 
 redisReply *xRedisContext::redisCommandArgv(int32_t argc, const char * *argv, const size_t * argvlen)
 {
@@ -1747,7 +1747,6 @@ void xHiredis::clusterErrorConnCallBack(const std::any &context)
 	}
 }
 
-
 void xHiredis::eraseTcpMap(int32_t context)
 {
 	std::unique_lock<std::mutex> lk(rtx);
@@ -1764,15 +1763,13 @@ void xHiredis::eraseRedisMap(int32_t sockfd)
 	redisAsyncs.erase(it);
 }
 
-
-void xHiredis::insertRedisMap(int32_t sockfd, RedisAsyncContextPtr ac)
+void xHiredis::insertRedisMap(int32_t sockfd, const RedisAsyncContextPtr &ac)
 {
 	std::unique_lock<std::mutex> lk(rtx);
 	redisAsyncs.insert(std::make_pair(sockfd,ac));
 }
 
-
-void xHiredis::insertTcpMap(int32_t data,TcpClientPtr tc)
+void xHiredis::insertTcpMap(int32_t data,const TcpClientPtr &tc)
 {
 	std::unique_lock<std::mutex> lk(rtx);
 	tcpClients.insert(std::make_pair(data,tc));

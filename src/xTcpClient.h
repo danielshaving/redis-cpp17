@@ -14,7 +14,7 @@ public:
 
 	void syncConnect(const char *ip,int16_t port);
 	void asyncConnect(const char *ip,int16_t port);
-	void disconnect();
+	void disConnect();
 	void stop();
 
 	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb); }

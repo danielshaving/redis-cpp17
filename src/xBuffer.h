@@ -18,7 +18,7 @@ public:
 		assert(prependableBytes() == kCheapPrepend);
 	}
 
-	void swap(xBuffer& rhs)
+	void swap(xBuffer &rhs)
 	{
 		buffer.swap(rhs.buffer);
 		std::swap(readerIndex, rhs.readerIndex);
@@ -51,7 +51,7 @@ public:
 		return static_cast<const char*>(eol);
 	}
 
-	const char* findCONTENT()const
+	const char* findCONTENT() const
 	{
 		const char* content = std::search(peek(), beginWrite(), CONTENT, CONTENT+14);
 		return content == beginWrite() ? nullptr : content;
@@ -293,7 +293,7 @@ public:
 
 	xStringPiece toStringPiece() const
 	{
-		return xStringPiece(peek(), static_cast<int>(readableBytes()));
+		return xStringPiece(peek(), static_cast<int32_t>(readableBytes()));
 	}
 
 	void shrink(size_t reserve)
@@ -309,7 +309,7 @@ public:
 	{
 		return buffer.capacity();
 	}
-	ssize_t readFd(int fd, int* savedErrno);
+	ssize_t readFd(int32_t fd, int32_t* savedErrno);
 
 private:
 	char* begin() { return &*buffer.begin(); }

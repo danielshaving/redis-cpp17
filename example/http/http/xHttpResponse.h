@@ -9,6 +9,7 @@ public:
 	enum HttpStatusCode
 	{
 		kUnknown,
+		k101k = 101,
 		k2000k = 200,
 		k301MovedPermanently = 301,
 		k400BadRequest = 400,
@@ -55,9 +56,9 @@ public:
 	{
 		this->body = body;
 	}
+	std::string &getBody() { return body; }
 
-	void appendToBuffer(xBuffer* output) const;
-
+	void appendToBuffer(xBuffer *output) const;
 
 private:
 	std::map<std::string,std::string> headers;

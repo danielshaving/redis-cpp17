@@ -1,21 +1,25 @@
 #pragma once
 #include "all.h"
-#include "xTcpconnection.h"
+#include "xTcpConnection.h"
 #include "xTcpServer.h"
 #include "xEventLoop.h"
 #include "xLog.h"
 
-void onConnection(const xTcpconnectionPtr& conn)
+void onConnection(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{
-		
+
+	}
+	else
+	{
+
 	}
 }
 
-void onMessage(const xTcpconnectionPtr& conn, xBuffer* buf)
+void onMessage(const TcpConnectionPtr &conn, xBuffer *buf)
 {
- 	conn->send(buf);
+	conn->send(buf);
 }
 
 
@@ -35,8 +39,7 @@ int main(int argc, char* argv[])
 
 		xEventLoop loop;
 
-		xTcpServer server;
-		server.init(&loop, ip,port,nullptr);
+		xTcpServer server(&loop, ip,port,nullptr);
 		server.setConnectionCallback(onConnection);
 		server.setMessageCallback(onMessage);
 

@@ -7,7 +7,7 @@ const char xBuffer::CONTENT[] = "Content-Length";
 const size_t xBuffer::kCheapPrepend;
 const size_t xBuffer::kInitialSize;
 
-ssize_t xBuffer::readFd(int fd, int *savedErrno)
+ssize_t xBuffer::readFd(int32_t fd, int32_t *savedErrno)
 {
 	char extrabuf[1024 * 64];
 	struct iovec vec[2];
@@ -16,7 +16,7 @@ ssize_t xBuffer::readFd(int fd, int *savedErrno)
 	vec[0].iov_len = writable;
 	vec[1].iov_base = extrabuf;
 	vec[1].iov_len = sizeof extrabuf;
-	const int iovcnt = (writable < sizeof extrabuf) ? 2 : 1;
+	const int32_t iovcnt = (writable < sizeof extrabuf) ? 2 : 1;
 	const ssize_t n = ::readv(fd, vec, iovcnt);
 	if (n < 0)
 	{

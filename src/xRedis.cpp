@@ -1,6 +1,6 @@
 #include "xRedis.h"
 
-xRedis::xRedis(const char *ip, int16_t port, int16_t threadCount,bool enbaledCluster)
+xRedis::xRedis(const char *ip,int16_t port,int16_t threadCount,bool enbaledCluster)
 :server(&loop, ip, port,nullptr),
 ip(ip),
 port(port),
@@ -1320,7 +1320,7 @@ bool xRedis::slaveofCommand(const std::deque <rObj*> &obj,const SessionPtr &sess
 		if (masterHost.c_str() && masterPort) 
 		{
 			LOG_WARN<<"master mode enabled (user request from "<<masterHost.c_str()<<":"<<masterPort;
-			repli.disconnect();
+			repli.disConnect();
 		}
 	}
 	else

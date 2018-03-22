@@ -191,7 +191,6 @@ void testReplyReader()
 
 void testBlockingConnectionTimeOuts()
 {
-
 	RedisContextPtr c = redisConnect(ip,port);
 	redisReply *reply;
 	xSocket socket;
@@ -221,10 +220,7 @@ void testBlockingConnectionTimeOuts()
 	reply = (redisReply*)c->redisCommand( "PING");
 	test_cond(reply != nullptr && reply->type == REDIS_REPLY_STATUS && strcmp(reply->str, "PONG") == 0);
 	freeReply(reply);
-
 }
-
-
 
 void testBlockingConnection()
 {

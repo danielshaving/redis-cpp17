@@ -10,10 +10,22 @@ public:
 	{
 	}
 
+	enum  WebSocketType
+	{
+		ERROR_FRAME = 0xff,
+		CONTINUATION_FRAME = 0x00,
+		TEXT_FRAME = 0x01,
+		BINARY_FRAME = 0x02,
+		CLOSE_FRAME = 0x08,
+		PING_FRAME = 0x09,
+		PONG_FRAME = 0x0A
+	};
+
 	enum Method
 	{
 		kInvalid, kGet, kPost, kHead, kPut, kDelete,kContent
 	};
+
 	enum Version
 	{
 		kUnknown, kHttp10, kHttp11
@@ -179,12 +191,15 @@ public:
 		return headers;
 	}
 
-	void swap(xHttpRequest& that)
+	void swap(xHttpRequest &that)
 	{
 		std::swap(method, that.method);
 		path.swap(that.path);
 		query.swap(that.query);
 		headers.swap(that.headers);
+		cacheFrame.swap(that.cacheFrame);
+		parseString.swap(that.parseString);
+		opcode = ERROR_FRAME;
 	}
   
 private:
@@ -196,4 +211,9 @@ private:
 	std::map<std::string,std::string> headers;
 	int64_t receiveTime = -1;
 	int32_t contentLength = -1;
+
+public:
+	std::string cacheFrame;
+	std::string parseString;
+	WebSocketType opcode;
 };

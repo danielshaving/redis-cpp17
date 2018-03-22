@@ -13,12 +13,15 @@ xHttpServer::xHttpServer(xEventLoop *loop,const  char *ip,uint16_t port)
 	server.setMessageCallback(std::bind(&xHttpServer::onMessage,this,std::placeholders::_1,std::placeholders::_2));
 }
 
-
 void xHttpServer::disPlayer(const char *begin)
 {
 
 }
 
+void xHttpServer::setWebCallback(HttpCallBack callback)
+{
+	webCallback = callback;
+}
 
 void xHttpServer::setMessageCallback(HttpCallBack callback)
 {
@@ -30,31 +33,44 @@ xHttpServer::~xHttpServer()
 
 }
 
-
 void xHttpServer::start()
 {
 	server.start();
 }
 
-void xHttpServer::onConnection(const TcpConnectionPtr & conn)
+void xHttpServer::onConnection(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
-		LOG_INFO<<"connecct";
+		//LOG_INFO<<"connect";
 		xHttpContext context;
-		conn->setContext((void*)&context);
+		conn->setContext(context);
 	}
 	else
 	{
-		LOG_INFO<<"disconnecct";
+		//LOG_INFO<<"disconnecct";
 	}
 }
 
-
-void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *recvBuf)
+void xHttpServer::webMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
-	xHttpContext * context = std::any_cast<xHttpContext>(conn->getContext());
-	if(!context->parseRequest(recvBuf))
+	xHttpContext *context = std::any_cast<xHttpContext>(conn->getContext());
+	if(context->parseWebRequest(buffer))
+	{
+		xHttpResponse response(true);
+		webCallback(context->getRequest(),&response);
+
+		auto frame = std::make_shared<std::string>();
+		context->wsFrameBuild(response.getBody().c_str(),response.getBody().size(),*frame,xHttpRequest::TEXT_FRAME,true,false);
+		conn->send(frame->data(),frame->size());
+		context->reset();
+	}
+}
+
+void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
+{
+	xHttpContext *context = std::any_cast<xHttpContext>(conn->getContext());
+	if(!context->parseRequest(buffer))
 	{
 		conn->send("HTTP/1.1 400 Bad Request\r\n\r\n");
 		conn->shutdown();
@@ -64,18 +80,17 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *recvBuf)
 	{
 		if(context->getRequest().getMethod() == xHttpRequest::kPost)
 		{
-			context->getRequest().setQuery(recvBuf->peek(),recvBuf->peek() + recvBuf->readableBytes());
+			context->getRequest().setQuery(buffer->peek(),buffer->peek() + buffer->readableBytes());
 		}
 		onRequest(conn,context->getRequest());
 		context->reset();
 	}
-
 }
 
-void xHttpServer::onRequest(const TcpConnectionPtr & conn ,const xHttpRequest & req)
+void xHttpServer::onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req)
 {
-	const std::string &connection =req.getHeader("Connection");
-	bool close = connection == "close" || (req.getVersion() == xHttpRequest::kHttp10 && connection != "Keep-Alive");
+	 const std::string &connection =req.getHeader("Connection");
+	 bool close = connection == "close" || (req.getVersion() == xHttpRequest::kHttp10 && connection != "Keep-Alive");
 	 xHttpResponse response(close);
 	 httpCallback(req,&response);
 	 xBuffer sendBuf;
@@ -83,8 +98,10 @@ void xHttpServer::onRequest(const TcpConnectionPtr & conn ,const xHttpRequest & 
 	 conn->send(&sendBuf);
 	 if(response.getCloseConnection())
 	 {
-		 conn->shutdown();
+		 //conn->shutdown();
 	 }
+
+	 conn->setMessageCallback(std::bind(&xHttpServer::webMessage,this,std::placeholders::_1,std::placeholders::_2));
 }
 
 

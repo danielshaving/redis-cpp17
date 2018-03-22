@@ -3,8 +3,8 @@
 
 xItem::xItem(xStringPiece keyArg,
            uint32_t flagsArg,
-           int exptimeArg,
-           int valuelen,
+           int32_t exptimeArg,
+           int32_t valuelen,
            uint64_t casArg)
   : keyLen(keyArg.size()),
     flags(flagsArg),
@@ -25,16 +25,15 @@ size_t xItem::neededBytes() const
 	return totalLen() - receivedBytes;
 }
 
-void xItem::append(const char* data, size_t len)
+void xItem::append(const char *data, size_t len)
 {
 	assert(len <= neededBytes());
 	memcpy(this->data + receivedBytes, data, len);
-	receivedBytes += static_cast<int>(len);
+	receivedBytes += static_cast<int32_t>(len);
 	assert(receivedBytes <= totalLen());
 }
 
-
-void xItem::output(xBuffer* out, bool needCas) const
+void xItem::output(xBuffer *out, bool needCas) const
 {
 	out->append("VALUE ");
 	out->append(data, keyLen);

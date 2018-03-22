@@ -5,12 +5,13 @@
 #ifdef __linux__
 int32_t createEventfd()
 {
-  int32_t evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-  if (evtfd < 0)
-  {
-    assert(false);
-  }
-  return evtfd;
+	int32_t evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	if (evtfd < 0)
+	{
+		assert(false);
+	}
+
+	return evtfd;
 }
 #endif
 
@@ -63,14 +64,14 @@ xEventLoop::~xEventLoop()
 #endif
 }
 
-void xEventLoop::updateChannel(xChannel* channel)
+void xEventLoop::updateChannel(xChannel *channel)
 {
 	assert(channel->ownerLoop() == this);
 	assertInLoopThread();
 	epoller->updateChannel(channel);
 }
 
-void xEventLoop::removeChannel(xChannel* channel)
+void xEventLoop::removeChannel(xChannel *channel)
 {
 	assert(channel->ownerLoop() == this);
 	assertInLoopThread();
@@ -82,17 +83,17 @@ void xEventLoop::removeChannel(xChannel* channel)
 	epoller->removeChannel(channel);
 }
 
-void xEventLoop::cancelAfter(xTimer * timer)
+void xEventLoop::cancelAfter(xTimer *timer)
 {
 	timerQueue->cancelTimer(timer);
 }
 
-xTimer * xEventLoop::runAfter(double  when, const std::any &context,bool repeat,xTimerCallback&& cb)
+xTimer * xEventLoop::runAfter(double  when,const std::any &context,bool repeat,xTimerCallback &&cb)
 {
 	return timerQueue->addTimer(when,context,repeat,std::move(cb));
 }
 
-bool xEventLoop::hasChannel(xChannel* channel)
+bool xEventLoop::hasChannel(xChannel *channel)
 {
 	assert(channel->ownerLoop() == this);
 	assertInLoopThread();
@@ -169,7 +170,6 @@ void xEventLoop::queueInLoop(Functor &&cb)
 
 void xEventLoop::doPendingFunctors()
 {
-	std::vector<Functor> functors;
 	callingPendingFunctors = true;
 
 	{
@@ -181,6 +181,8 @@ void xEventLoop::doPendingFunctors()
 	{
 		functors[i]();
 	}
+
+	functors.clear();
 
 	callingPendingFunctors = false;
 }

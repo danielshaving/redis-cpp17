@@ -23,5 +23,8 @@ void getRandomHexChars(char *p, uint32_t len);
 void memrev64(void *p);
 void bytesToHuman(char *s, uint64_t n);
 
+std::string base64_encode(unsigned char const*, unsigned int len);
+std::string base64_decode(std::string const& s);
+
 
 

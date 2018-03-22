@@ -1,5 +1,7 @@
 #pragma once
 #include "xHttpRequest.h"
+#include "xLog.h"
+
 class xBuffer;
 class xHttpContext
 {
@@ -11,6 +13,7 @@ public:
 		kExpectBody,
 		kGotAll,
 	};
+
 	xHttpContext()
 	:state(kExpectRequestLine)
 	{
@@ -18,6 +21,12 @@ public:
 	}
 
 	bool parseRequest(xBuffer *buf);
+	bool wsFrameExtractBuffer(const char *peek,const size_t bufferSize,
+			 xHttpRequest::WebSocketType &outopcode,size_t &frameSize,bool &outfin);
+	bool parseWebRequest(xBuffer *buf);
+	bool wsFrameBuild(const char *payload,size_t payloadLen,std::string &frame,
+	          xHttpRequest::WebSocketType frame_type = xHttpRequest::WebSocketType::TEXT_FRAME,
+	          bool isFin = true,bool masking = false);
 
 	bool gotAll() const
 	{
@@ -37,8 +46,9 @@ public:
 	}
 
 	bool processRequestLine(const char *begin,const char *end);
-private:
 
+private:
 	HttpRequestParseState state;
 	xHttpRequest request;
+
 };

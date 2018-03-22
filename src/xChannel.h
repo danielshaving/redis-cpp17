@@ -15,9 +15,9 @@ public:
 	void setEvents(int32_t revt) { events = revt; }
 	void setIndex(int32_t idx) { index = idx; }
 	void setReadCallback(const EventCallback &&cb) { readCallback  = std::move(cb); }
-	void setWriteCallback(const EventCallback &&cb){ writeCallback = std::move(cb); }
-	void setCloseCallback(const EventCallback &&cb){ closeCallback = std::move(cb); }
-	void setErrorCallback(const EventCallback &&cb){ errorCallback = std::move(cb); }
+	void setWriteCallback(const EventCallback &&cb) { writeCallback = std::move(cb); }
+	void setCloseCallback(const EventCallback &&cb) { closeCallback = std::move(cb); }
+	void setErrorCallback(const EventCallback &&cb) { errorCallback = std::move(cb); }
 
 	bool readEnabled() { return events & kReadEvent; }
 	bool writeEnabled() { return events & kWriteEvent; }
@@ -32,9 +32,9 @@ public:
 	bool isReading() const { return events & kReadEvent; }
 
 	int32_t  getEvents() { return events; }
-	int32_t  getfd(){ return fd;}
+	int32_t  getfd() { return fd;}
 	void remove();
-	int32_t  getIndex(){ return index; }
+	int32_t  getIndex() { return index; }
 	xEventLoop *ownerLoop() { return loop; }
 
 private:
@@ -57,6 +57,7 @@ private:
 	bool tied;
 	bool eventHandling;
 	bool addedToLoop;
+
 	std::weak_ptr<void> tie;
 
 };

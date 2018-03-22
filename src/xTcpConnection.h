@@ -37,13 +37,13 @@ public:
 	void handleClose();
 	void handleError();
 
-	void sendInLoop(const void *message, size_t len);
+	void sendInLoop(const void *message,size_t len);
 	void sendInLoop(const xStringPiece &message);
-	void sendPipeInLoop(const void *message, size_t len);
+	void sendPipeInLoop(const void *message,size_t len);
 	void sendPipeInLoop(const xStringPiece &message);
 
-	static void bindSendInLoop(xTcpConnection *conn, const xStringPiece &message);
-	static void bindSendPipeInLoop(xTcpConnection *conn, const xStringPiece &message);
+	static void bindSendInLoop(xTcpConnection *conn,const xStringPiece &message);
+	static void bindSendPipeInLoop(xTcpConnection *conn,const xStringPiece &message);
 	
 	void sendPipe(const xStringPiece &message);
 	void sendPipe(xBuffer *message);

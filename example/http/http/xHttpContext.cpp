@@ -45,6 +45,200 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 	return succeed;
 }
 
+ bool xHttpContext::wsFrameExtractBuffer(const char *buffer,const size_t bufferSize,
+		 xHttpRequest::WebSocketType &outopcode,size_t &frameSize,bool &outfin)
+{
+	if(bufferSize < 2)
+	{
+		return false;
+	}
+
+	outfin = (buffer[0] & 0x80) != 0;
+	outopcode = (xHttpRequest::WebSocketType)(buffer[0] & 0x0F);
+
+	const bool isMasking = (buffer[1] & 0x80) != 0;
+	uint32_t payloadlen = buffer[1] & 0x7F;
+
+	uint32_t pos = 2;
+	if (payloadlen == 126)
+	{
+		if (bufferSize < 4)
+		{
+			return false;
+		}
+
+		payloadlen = (buffer[2] << 8) + buffer[3];
+		pos = 4;
+	}
+	else if(payloadlen == 127)
+	{
+		if (bufferSize < 10)
+		{
+			return false;
+		}
+
+		if (buffer[2] != 0 ||
+		buffer[3] != 0 ||
+		buffer[4] != 0 ||
+		buffer[5] != 0)
+		{
+			return false;
+		}
+
+		if ((buffer[6] & 0x80) != 0)
+		{
+			return false;
+		}
+
+		payloadlen = (buffer[6] << 24) + (buffer[7] << 16) + (buffer[8] << 8) + buffer[9];
+		pos = 10;
+	}
+
+	uint8_t mask[4];
+	if (isMasking)
+	{
+		if (bufferSize < (pos + 4))
+		{
+			return false;
+		}
+
+		mask[0] = buffer[pos++];
+		mask[1] = buffer[pos++];
+		mask[2] = buffer[pos++];
+		mask[3] = buffer[pos++];
+	}
+
+	if (bufferSize < (pos + payloadlen))
+	{
+		return false;
+	}
+
+	if (isMasking)
+	{
+		for (size_t i = pos, j = 0; j < payloadlen; i++, j++)
+		{
+			request.parseString.push_back(buffer[i] ^ mask[j % 4]);
+		}
+	}
+	else
+	{
+		request.parseString.append((const char*)(buffer + pos), payloadlen);
+	}
+
+	frameSize = payloadlen + pos;
+
+	 return true;
+}
+
+
+bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,std::string &frame,
+		xHttpRequest::WebSocketType frame_type,bool isFin,bool masking)
+ {
+	static_assert(std::is_same<std::string::value_type, char>::value, "");
+	uint8_t head = (uint8_t)frame_type | (isFin ? 0x80 : 0x00);
+	frame.clear();
+	frame.push_back((char)head);
+	if (payloadLen <= 125)
+	{
+		 // mask << 7 | payloadLen, mask = 0
+		 frame.push_back((uint8_t)payloadLen);
+	}
+	else if (payloadLen <= 0xFFFF)
+	{
+		 // 126 + 16bit len
+		 frame.push_back(126);
+		 frame.push_back((payloadLen & 0xFF00) >> 8);
+		 frame.push_back(payloadLen & 0x00FF);
+	 }
+	 else
+	 {
+		 // 127 + 64bit len
+		 frame.push_back(127);
+		 // assume payload len is less than u_int32_max
+		 frame.push_back(0x00);
+		 frame.push_back(0x00);
+		 frame.push_back(0x00);
+		 frame.push_back(0x00);
+		 frame.push_back(static_cast<char>((payloadLen & 0xFF000000) >> 24));
+		 frame.push_back(static_cast<char>((payloadLen & 0x00FF0000) >> 16));
+		 frame.push_back(static_cast<char>((payloadLen & 0x0000FF00) >> 8));
+		 frame.push_back(static_cast<char>(payloadLen & 0x000000FF));
+	 }
+
+	 if (masking)
+	 {
+		 frame[1] = ((uint8_t)frame[1]) | 0x80;
+		 uint8_t mask[4];
+		 for (size_t i = 0; i < sizeof(mask) / sizeof(mask[0]); i++)
+		 {
+			 mask[i] = rand();
+			 frame.push_back(mask[i]);
+		 }
+
+		 frame.reserve(frame.size() + payloadLen);
+
+		 for (size_t i = 0; i < payloadLen; i++)
+		 {
+			 frame.push_back((uint8_t)payload[i] ^ mask[i % 4]);
+		 }
+	 }
+	 else
+	 {
+		 frame.append(payload,payloadLen);
+	 }
+
+	 return true;
+ }
+
+bool xHttpContext::parseWebRequest(xBuffer *buf)
+{
+	bool ok = true;
+
+	while(buf->readableBytes() > 0)
+	{
+		request.parseString.clear();
+		request.opcode = xHttpRequest::ERROR_FRAME;
+		size_t frameSize = 0;
+		bool isFin = false;
+		if (!wsFrameExtractBuffer(buf->peek(),buf->readableBytes(),request.opcode,frameSize,isFin))
+		{
+			buf->retrieve(frameSize);
+			ok = false;
+			break;
+		}
+
+		if (isFin && (request.opcode == xHttpRequest::TEXT_FRAME || request.opcode == xHttpRequest::BINARY_FRAME))
+		{
+			if (!request.cacheFrame.empty())
+			{
+				request.cacheFrame += request.parseString;
+				request.parseString = std::move(request.cacheFrame);
+				request.cacheFrame.clear();
+				ok = false;
+			}
+		}
+		else if (request.opcode == xHttpRequest::CONTINUATION_FRAME)
+		{
+			request.cacheFrame += request.parseString;
+			request.parseString.clear();
+			ok = false;
+		}
+		else if (request.opcode == xHttpRequest::PING_FRAME ||
+				request.opcode == xHttpRequest::PONG_FRAME ||
+				request.opcode == xHttpRequest::CLOSE_FRAME)
+		{
+
+		}
+		else
+		{
+			assert(false);
+		}
+
+		buf->retrieve(frameSize);
+	}
+
+	return ok;
+}
 
 bool xHttpContext::parseRequest(xBuffer *buf)
 {

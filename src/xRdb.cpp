@@ -11,7 +11,6 @@ xRio::~xRio()
 
 }
 
-
 xRdb::xRdb(xRedis *redis)
 :redis(redis)
 {

@@ -19,15 +19,15 @@ public:
 		kCas,
 	};
 
-	static ItemPtr makeItem(xStringPiece keyArg, uint32_t flagsArg,int exptimeArg,int valuelen,uint64_t casArg)
+	static ItemPtr makeItem(xStringPiece keyArg, uint32_t flagsArg,int32_t exptimeArg,int32_t valuelen,uint64_t casArg)
 	{
-		return std::make_shared<xItem>(keyArg, flagsArg, exptimeArg, valuelen, casArg);
+		return std::make_shared<xItem>(keyArg,flagsArg,exptimeArg,valuelen, casArg);
 	}
 
 	xItem(xStringPiece keyArg,
 		 uint32_t flagsArg,
-		 int exptimeArg,
-		 int valuelen,
+		 int32_t exptimeArg,
+		 int32_t valuelen,
 		 uint64_t casArg);
 
 	~xItem()
@@ -35,9 +35,9 @@ public:
 		zfree(data);
 	}
 
-	int getRelExptime() const  {  return relExptime; }
+	int32_t getRelExptime() const  {  return relExptime; }
 	uint32_t getFlags() const {  return flags; }
-	const char* value() const {  return data +keyLen; }
+	const char *value() const {  return data +keyLen; }
 	size_t valueLength() const {  return valueLen; }
 	uint64_t getCas() const{ return cas; }
 	void setCas(uint64_t casArg) { cas = casArg;}
@@ -45,7 +45,7 @@ public:
 	size_t getHash() const { return hash; }
 	xStringPiece getKey() const { return xStringPiece(data,keyLen); }
 	void append(const char *data, size_t len);
-	void output(xBuffer *out, bool needCas = false) const;
+	void output(xBuffer *out,bool needCas = false) const;
 	void resetKey(xStringPiece k);
 
 	bool endsWithCRLF() const
@@ -54,12 +54,12 @@ public:
 	}
 
 private:
-	int totalLen() const { return keyLen + valueLen; }
-	int keyLen;
+	int32_t totalLen() const { return keyLen + valueLen; }
+	int32_t keyLen;
 	const uint32_t flags;
-	const int relExptime;
-	const int valueLen;
-	int receivedBytes;
+	const int32_t relExptime;
+	const int32_t valueLen;
+	int32_t receivedBytes;
 	uint64_t cas;
 	size_t hash;
 	char *data;

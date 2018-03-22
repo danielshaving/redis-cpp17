@@ -3,6 +3,7 @@
 #include "xHttpServer.h"
 #include "xHttpContext.h"
 #include "xHttpResponse.h"
+#include "xUtil.h"
 
 char favicon[555];
 bool benchmark = false;
@@ -14,62 +15,49 @@ void asyncOutput(const char* msg, int len)
 	g_asyncLog->append(msg, len);
 }
 
-
-void onMessage(const xHttpRequest & req,xHttpResponse* resp)
+void webMessage(const xHttpRequest &req,xHttpResponse *resp)
 {
-	std::cout << "Headers " << req.methodString() << " " << req.getPath() << std::endl;
+	//LOG_INFO<<"req.parseString:"<<req.parseString;
+	resp->setBody(req.parseString);
+}
+
+void onMessage(const xHttpRequest &req,xHttpResponse *resp)
+{
+	//std::cout << "Headers " << req.methodString() << " " << req.getPath() << std::endl;
+	std::string secKey;
 	if (!benchmark)
 	{
 		auto &headers = req.getHeaders();
-		for (auto  it = headers.begin();it != headers.end(); ++it)
+		auto it = headers.find("Sec-WebSocket-Key");
+		if(it == headers.end())
 		{
-			std::cout << it->first << ": " << it->second << std::endl;
-		}
-	}
-
-	//std::string getContext = req.getQuery();
-
-	if(req.getMethod() == xHttpRequest::kGet)
-	{
-		if (req.getPath() == "/")
-		{
-			resp->setStatusCode(xHttpResponse::k2000k);
-			resp->setStatusMessage("OK");
-			resp->setContentType("text/html");
-			resp->addHeader("Server", "xHttp");
-			std::string now = xTimestamp::now().toFormattedString();
-			resp->setBody("<html><head><title>This is title</title></head>"
-				"<body><h1>Hello</h1>Now is " + now +
-				"</body></html>");
-		}
-		else if (req.getPath() == "/favicon.ico")
-		{
-			resp->setStatusCode(xHttpResponse::k2000k);
-			resp->setStatusMessage("OK");
-			resp->setContentType("image/png");
-			resp->setBody(std::string(favicon, sizeof favicon));
-		}
-		else if (req.getPath() == "/hello")
-		{
-			resp->setStatusCode(xHttpResponse::k2000k);
-			resp->setStatusMessage("OK");
-			resp->setContentType("text/plain");
-			resp->addHeader("Server", "xHttp");
-			resp->setBody("hello, world!\n");
+			assert(false);
 		}
 		else
 		{
-			resp->setStatusCode(xHttpResponse::k404NotFound);
-			resp->setStatusMessage("Not Found");
-			resp->setCloseConnection(true);
+			secKey = it->second;
+			secKey += "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 		}
-	}
-	else if(req.getMethod() == xHttpRequest::kPost)
-	{
-		resp->setStatusCode(xHttpResponse::k2000k);
-		resp->setStatusMessage("OK");
+
+//		for (auto  it = headers.begin(); it != headers.end(); ++it)
+//		{
+//			std::cout << it->first << ": " << it->second << std::endl;
+//		}
+
 	}
 
+	CSHA1 s1;
+	s1.Update((unsigned char*)secKey.c_str(), static_cast<unsigned int>(secKey.size()));
+	s1.Final();
+	unsigned char puDest[20];
+	s1.GetHash(puDest);
+
+	std::string base64Str = base64_encode((const unsigned char *)puDest, sizeof(puDest));
+	resp->setStatusCode(xHttpResponse::k101k);
+	resp->setStatusMessage("Switching Protocols");
+	resp->addHeader("Upgrade", "websocket");
+	resp->addHeader("Connection", "Upgrade");
+	resp->addHeader("Sec-WebSocket-Accept", base64Str);
 }
 
 int main(int argc, char* argv[])
@@ -93,6 +81,7 @@ int main(int argc, char* argv[])
 	xHttpServer server(&loop,ip,port);
 	server.setThreadNum(threadNum);
 	server.setMessageCallback(onMessage);
+	server.setWebCallback(webMessage);
 	server.start();
 	loop.run();
 

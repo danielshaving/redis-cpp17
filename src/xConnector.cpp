@@ -63,7 +63,7 @@ void xConnector::stopInLoop()
 	if (state == kConnecting)
 	{
 		setState(kDisconnected);
-		int32_t sockfd = removeAndResetChannel();
+		removeAndResetChannel();
 	}
 }
 

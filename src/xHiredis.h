@@ -118,6 +118,7 @@ public:
 
 	int32_t redisvAppendCommand(const char *format, va_list ap);
 	int32_t redisAppendCommand(const char *cmd, size_t len);
+	redisReply *redisCommand(xBuffer *buffer);
 	redisReply *redisCommand(const char *format, ...);
 	redisReply *redisvCommand(const char *format, va_list ap);
 	redisReply *redisCommandArgv(int32_t argc, const char **argv, const size_t *argvlen);
@@ -190,11 +191,11 @@ public:
 	void clusterAskConnCallBack(const TcpConnectionPtr &conn);
 	void clusterMoveConnCallBack(const TcpConnectionPtr &conn);
 	void clusterErrorConnCallBack(const std::any &context);
-	void redisReadCallBack(const TcpConnectionPtr &conn, xBuffer *buffer);
+	void redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
 	void eraseTcpMap(int32_t context);
 	void eraseRedisMap(int32_t sockfd);
-	void insertRedisMap(int32_t sockfd, RedisAsyncContextPtr ac);
-	void insertTcpMap(int32_t data,TcpClientPtr tc);
+	void insertRedisMap(int32_t sockfd, const RedisAsyncContextPtr &ac);
+	void insertTcpMap(int32_t data,const TcpClientPtr &tc);
 
 	xThreadPool &getPool() { return pool; }
 	void setCount() { count ++; }
@@ -215,8 +216,8 @@ private:
 };
 
 int32_t redisFormatCommand(char **target, const char *format, ...);
-int32_t redisFormatCommandArgv(char * *target, int32_t argc, const char * *argv, const size_t * argvlen);
-int32_t redisvFormatCommand(char * *target, const char * format, va_list ap);
+int32_t redisFormatCommandArgv(char **target, int32_t argc, const char **argv, const size_t *argvlen);
+int32_t redisvFormatCommand(char **target, const char *format, va_list ap);
 
 RedisContextPtr redisConnectWithTimeout(const char *ip, int16_t port, const struct timeval tv);
 RedisContextPtr redisConnect(const char *ip, int16_t port);

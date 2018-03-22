@@ -13,7 +13,7 @@ public:
 	typedef std::vector<xChannel*> ChannelList;
 	typedef std::unordered_map<int32_t, xChannel*> ChannelMap;
 	
-	xEpoll(xEventLoop * loop);
+	xEpoll(xEventLoop *loop);
 	~xEpoll();
 
 	void epollWait(ChannelList *activeChannels,int32_t msTime = 10);

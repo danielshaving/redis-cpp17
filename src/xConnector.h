@@ -28,7 +28,7 @@ public:
 	void syncConnect(const char *ip,int16_t port);
 	void connecting(int32_t sockfd);
 	void resetChannel();
-	int  removeAndResetChannel();
+	int32_t  removeAndResetChannel();
 
 private:
   	enum States { kDisconnected, kConnecting, kConnected };

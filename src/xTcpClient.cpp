@@ -70,7 +70,7 @@ void xTcpClient::syncConnect(const char *ip,int16_t port)
 	connector->syncStart(ip,port);
 }
 
-void xTcpClient::disconnect()
+void xTcpClient::disConnect()
 {
 	isconnect = false;
 	{

@@ -21,26 +21,26 @@ xTcpConnection::xTcpConnection(xEventLoop *loop,int32_t sockfd,const std::any &c
 
 xTcpConnection::~xTcpConnection()
 {
-    assert(state == kDisconnected);
-    ::close(sockfd);
+	assert(state == kDisconnected);
+	::close(sockfd);
 }
 
 void xTcpConnection::shutdown()
 {
-    if (state == kConnected)
-    {
-        setState(kDisconnecting);
-        loop->runInLoop(std::bind(&xTcpConnection::shutdownInLoop, this));
-     }
+	if (state == kConnected)
+	{
+		setState(kDisconnecting);
+		loop->runInLoop(std::bind(&xTcpConnection::shutdownInLoop, this));
+	}
 }
 
 void xTcpConnection::forceClose()
 {
-	  if (state == kConnected || state == kDisconnecting)
-	  {
-	    setState(kDisconnecting);
-	    loop->queueInLoop(std::bind(&xTcpConnection::forceCloseInLoop, shared_from_this()));
-	  }
+	if (state == kConnected || state == kDisconnecting)
+	{
+		setState(kDisconnecting);
+		loop->queueInLoop(std::bind(&xTcpConnection::forceCloseInLoop, shared_from_this()));
+	}
 }
 
 void xTcpConnection::forceCloseInLoop()
@@ -220,6 +220,7 @@ void xTcpConnection::send(const xStringPiece &message)
 		}
 	}
 }
+
 
 void xTcpConnection::sendPipeInLoop(const xStringPiece &message)
 {
