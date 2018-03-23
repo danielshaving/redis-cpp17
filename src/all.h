@@ -59,6 +59,7 @@
 #include <sys/wait.h>
 #include <any>
 
+
 #ifdef __APPLE__
 #include <sys/event.h>
 #endif
@@ -69,6 +70,7 @@
 #include <linux/tcp.h>
 #include <sys/timerfd.h>
 #include <sys/eventfd.h>
+#include <endian.h>
 #endif
 
 #define REDIS_CONNECT_RETRIES  10

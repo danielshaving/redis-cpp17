@@ -3,7 +3,6 @@
 #include "xHttpServer.h"
 #include "xHttpContext.h"
 #include "xHttpResponse.h"
-#include "xUtil.h"
 
 char favicon[555];
 bool benchmark = false;
@@ -15,25 +14,9 @@ void asyncOutput(const char* msg, int len)
 	g_asyncLog->append(msg, len);
 }
 
-void webMessage(const xHttpRequest &req,xHttpResponse *resp)
-{
-	resp->setBody(req.parseString);
-}
-
 void onMessage(const xHttpRequest &req,xHttpResponse *resp)
 {
-	SHA1_CTX ctx;
-	unsigned char hash[20];
-	SHA1Init(&ctx);
-	SHA1Update(&ctx, (const unsigned char*)req.getSecKey().c_str(), req.getSecKey().size());
-	SHA1Final(hash, &ctx);
-
-	std::string base64Str = base64_encode((const unsigned char *)hash, sizeof(hash));
-	resp->setStatusCode(xHttpResponse::k101k);
-	resp->setStatusMessage("Switching Protocols");
-	resp->addHeader("Upgrade", "websocket");
-	resp->addHeader("Connection", "Upgrade");
-	resp->addHeader("Sec-WebSocket-Accept", base64Str);
+	resp->setBody(req.parseString);
 }
 
 int main(int argc, char* argv[])
@@ -57,7 +40,6 @@ int main(int argc, char* argv[])
 	xHttpServer server(&loop,ip,port);
 	server.setThreadNum(threadNum);
 	server.setMessageCallback(onMessage);
-	server.setWebCallback(webMessage);
 	server.start();
 	loop.run();
 

@@ -29,15 +29,16 @@ public:
 	size_t writableBytes() const { return buffer.size() - writerIndex; }
 	size_t prependableBytes() const { return readerIndex; }
 
-	const char* peek() const { return begin() + readerIndex; }
+	const char *peek() const { return begin() + readerIndex; }
+	char *cpeek() { return begin() + readerIndex; }
 
-	const char* findCRLF() const
+	const char *findCRLF() const
 	{
 		const char* crlf = std::search(peek(), beginWrite(), kCRLF, kCRLF+2);
 		return crlf == beginWrite() ? nullptr : crlf;
 	}
 
-	const char* findCRLF(const char *start) const
+	const char *findCRLF(const char *start) const
 	{
 		assert(peek() <= start);
 		assert(start <= beginWrite());
@@ -45,19 +46,19 @@ public:
 		return crlf == beginWrite() ? nullptr : crlf;
 	}
 
-	const char* findEOL() const
+	const char *findEOL() const
 	{
-		const void* eol = memchr(peek(), '\n', readableBytes());
+		const void *eol = memchr(peek(), '\n', readableBytes());
 		return static_cast<const char*>(eol);
 	}
 
-	const char* findCONTENT() const
+	const char *findCONTENT() const
 	{
 		const char* content = std::search(peek(), beginWrite(), CONTENT, CONTENT+14);
 		return content == beginWrite() ? nullptr : content;
 	}
 
-	const char* findEOL(const char *start) const
+	const char *findEOL(const char *start) const
 	{
 		assert(peek() <= start);
 		assert(start <= beginWrite());
@@ -129,7 +130,7 @@ public:
 		return result;
 	}
 
-	void append(const char *data, size_t len)
+	void append(const char *data,size_t len)
 	{
 		ensureWritableBytes(len);
 		std::copy(data, data+len, beginWrite());
@@ -152,6 +153,12 @@ public:
 		append(&be32, sizeof be32);
 	}
 
+	void appendInt64(int64_t x)
+	{
+		int64_t be64 = x;
+		append(&be64, sizeof be64);
+	}
+
 	void appendInt16(int16_t x)
 	{
 		int16_t be16 = x;
@@ -163,6 +170,10 @@ public:
 		append(&x, sizeof x);
 	}
 
+	void appendUInt8(uint8_t x)
+	{
+		append(&x, sizeof x);
+	}
 
 	void prependInt64(int64_t x)
 	{

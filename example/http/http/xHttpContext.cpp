@@ -130,60 +130,54 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 	 return true;
 }
 
-
-bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,std::string &frame,
+bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,xBuffer *buffer,
 		xHttpRequest::WebSocketType frame_type,bool isFin,bool masking)
  {
 	uint8_t head = (uint8_t)frame_type | (isFin ? 0x80 : 0x00);
-	frame.clear();
-	frame.push_back((char)head);
+	buffer->appendUInt8(head);
 	if (payloadLen <= 125)
 	{
-		 // mask << 7 | payloadLen, mask = 0
-		 frame.push_back((uint8_t)payloadLen);
+		buffer->appendUInt8(payloadLen);
 	}
 	else if (payloadLen <= 0xFFFF)
 	{
-		 // 126 + 16bit len
-		 frame.push_back(126);
-		 frame.push_back((payloadLen & 0xFF00) >> 8);
-		 frame.push_back(payloadLen & 0x00FF);
+		buffer->appendUInt8(126);
+		buffer->appendUInt8((payloadLen & 0xFF00) >> 8);
+		buffer->appendUInt8(payloadLen & 0x00FF);
 	 }
 	 else
 	 {
-		 // 127 + 64bit len
-		 frame.push_back(127);
-		 // assume payload len is less than u_int32_max
-		 frame.push_back(0x00);
-		 frame.push_back(0x00);
-		 frame.push_back(0x00);
-		 frame.push_back(0x00);
-		 frame.push_back(static_cast<char>((payloadLen & 0xFF000000) >> 24));
-		 frame.push_back(static_cast<char>((payloadLen & 0x00FF0000) >> 16));
-		 frame.push_back(static_cast<char>((payloadLen & 0x0000FF00) >> 8));
-		 frame.push_back(static_cast<char>(payloadLen & 0x000000FF));
+		 buffer->appendUInt8(127);
+		 buffer->appendUInt8(0x00);
+		 buffer->appendUInt8(0x00);
+		 buffer->appendUInt8(0x00);
+		 buffer->appendUInt8(0x00);
+
+		 buffer->appendUInt8((payloadLen & 0xFF000000) >> 24);
+		 buffer->appendUInt8((payloadLen & 0x00FF0000) >> 16);
+		 buffer->appendUInt8((payloadLen & 0x0000FF00) >> 8);
+		 buffer->appendUInt8(payloadLen & 0x000000FF);
 	 }
 
 	 if (masking)
 	 {
-		 frame[1] = ((uint8_t)frame[1]) | 0x80;
+		 char *peek = buffer->cpeek();
+		 peek[1] = ((uint8_t)peek[1]) | 0x80;
 		 uint8_t mask[4];
 		 for (size_t i = 0; i < sizeof(mask) / sizeof(mask[0]); i++)
 		 {
 			 mask[i] = rand();
-			 frame.push_back(mask[i]);
+			 buffer->appendUInt8(mask[i]);
 		 }
-
-		 frame.reserve(frame.size() + payloadLen);
 
 		 for (size_t i = 0; i < payloadLen; i++)
 		 {
-			 frame.push_back((uint8_t)payload[i] ^ mask[i % 4]);
+			 buffer->appendUInt8(payload[i] ^ mask[i % 4]);
 		 }
 	 }
 	 else
 	 {
-		 frame.append(payload,payloadLen);
+		 buffer->append(payload,payloadLen);
 	 }
 
 	 return true;
@@ -269,7 +263,7 @@ bool xHttpContext::parseRequest(xBuffer *buf)
 		}
 		else if(state == kExpectHeaders)
 		{
-			const char * crlf = buf->findCRLF();
+			const char *crlf = buf->findCRLF();
 			if(crlf)
 			{
 				const char *colon = std::find(buf->peek(), crlf, ':');

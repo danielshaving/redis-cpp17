@@ -24,7 +24,7 @@ public:
 	bool wsFrameExtractBuffer(const char *peek,const size_t bufferSize,
 			 xHttpRequest::WebSocketType &outopcode,size_t &frameSize,bool &outfin);
 	bool parseWebRequest(xBuffer *buf);
-	bool wsFrameBuild(const char *payload,size_t payloadLen,std::string &frame,
+	bool wsFrameBuild(const char *payload,size_t payloadLen,xBuffer *buffer,
 	          xHttpRequest::WebSocketType frame_type = xHttpRequest::WebSocketType::TEXT_FRAME,
 	          bool isFin = true,bool masking = false);
 

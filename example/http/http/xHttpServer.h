@@ -1,6 +1,7 @@
 #pragma once
 #include "all.h"
 #include "xTcpServer.h"
+#include "xUtil.h"
 
 class xEventLoop;
 class xHttpRequest;
@@ -19,7 +20,6 @@ public:
 	}
 
 	void setMessageCallback(HttpCallBack callback);
-	void setWebCallback(HttpCallBack callback);
 	void start();
 	void onConnection(const TcpConnectionPtr &conn);
 	void onMessage(const TcpConnectionPtr &conn,xBuffer *buffer);
@@ -29,6 +29,5 @@ public:
 private:
 	xEventLoop *loop;
 	xTcpServer server;
-	HttpCallBack httpCallback;
 	HttpCallBack webCallback;
 };

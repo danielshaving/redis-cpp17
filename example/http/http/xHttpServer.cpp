@@ -18,14 +18,9 @@ void xHttpServer::disPlayer(const char *begin)
 
 }
 
-void xHttpServer::setWebCallback(HttpCallBack callback)
-{
-	webCallback = callback;
-}
-
 void xHttpServer::setMessageCallback(HttpCallBack callback)
 {
-	httpCallback = callback;
+	webCallback = callback;
 }
 
 xHttpServer::~xHttpServer()
@@ -42,13 +37,12 @@ void xHttpServer::onConnection(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
-		//LOG_INFO<<"connect";
 		xHttpContext context;
 		conn->setContext(context);
 	}
 	else
 	{
-		//LOG_INFO<<"disconnecct";
+
 	}
 }
 
@@ -59,10 +53,9 @@ void xHttpServer::webMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 	{
 		xHttpResponse response(true);
 		webCallback(context->getRequest(),&response);
-
-		auto frame = std::make_shared<std::string>();
-		context->wsFrameBuild(response.getBody().c_str(),response.getBody().size(),*frame,xHttpRequest::TEXT_FRAME,true,false);
-		conn->send(frame->data(),frame->size());
+		xBuffer sendBuf;
+		context->wsFrameBuild(response.getBody().c_str(),response.getBody().size(),&sendBuf,xHttpRequest::TEXT_FRAME,true,false);
+		conn->send(&sendBuf);
 		context->reset();
 	}
 }
@@ -83,13 +76,16 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 	{
 		context->getRequest().setSecKey(it->second + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 	}
+	else
+	{
+		conn->shutdown();
+	}
 
 	if(context->gotAll())
 	{
 		if(context->getRequest().getMethod() == xHttpRequest::kPost)
 		{
 			conn->shutdown();
-			//context->getRequest().setQuery(buffer->peek(),buffer->peek() + buffer->readableBytes());
 		}
 
 		onRequest(conn,context->getRequest());
@@ -99,19 +95,24 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 
 void xHttpServer::onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req)
 {
-	 const std::string &connection =req.getHeader("Connection");
-	 bool close = connection == "close" || (req.getVersion() == xHttpRequest::kHttp10 && connection != "Keep-Alive");
-	 xHttpResponse response(close);
-	 httpCallback(req,&response);
-	 xBuffer sendBuf;
-	 response.appendToBuffer(&sendBuf);
-	 conn->send(&sendBuf);
-	 if(response.getCloseConnection())
-	 {
-		 //conn->shutdown();
-	 }
+	xBuffer sendBuf;
+	SHA1_CTX ctx;
+	unsigned char hash[20];
+	SHA1Init(&ctx);
+	SHA1Update(&ctx, (const unsigned char*)req.getSecKey().c_str(), req.getSecKey().size());
+	SHA1Final(hash, &ctx);
+	std::string base64Str = base64Encode((const unsigned char *)hash, sizeof(hash));
 
-	 conn->setMessageCallback(std::bind(&xHttpServer::webMessage,this,std::placeholders::_1,std::placeholders::_2));
+	sendBuf.append("HTTP/1.1 101 Switching Protocols\r\n"
+			 "Upgrade: websocket\r\n"
+			 "Connection: Upgrade\r\n"
+			 "Sec-WebSocket-Accept: ");
+
+	sendBuf.append(base64Str.data(),base64Str.size());
+	sendBuf.append("\r\n\r\n");
+	conn->send(&sendBuf);
+	conn->setMessageCallback(std::bind(&xHttpServer::webMessage,this,std::placeholders::_1,std::placeholders::_2));
+
 }
 
 
