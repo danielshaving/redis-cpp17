@@ -49,12 +49,13 @@ void xHttpServer::onConnection(const TcpConnectionPtr &conn)
 void xHttpServer::webMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	xHttpContext *context = std::any_cast<xHttpContext>(conn->getContext());
-	if(context->parseWebRequest(buffer))
+	if(context->parseWebRequest(conn,buffer))
 	{
-		xHttpResponse response(true);
-		webCallback(context->getRequest(),&response);
+		xHttpResponse resp(true);
 		xBuffer sendBuf;
-		context->wsFrameBuild(response.getBody().c_str(),response.getBody().size(),&sendBuf,xHttpRequest::TEXT_FRAME,true,false);
+		webCallback(context->getRequest(),&resp);
+		context->wsFrameBuild(resp.getBody().c_str(),resp.getBody().size(),
+				&sendBuf,xHttpRequest::TEXT_FRAME,true,false);
 		conn->send(&sendBuf);
 		context->reset();
 	}
@@ -69,7 +70,6 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 		conn->shutdown();
 	}
 
-	bool type = false;
 	auto &headers = context->getRequest().getHeaders();
 	auto it = headers.find("Sec-WebSocket-Key");
 	if(it != headers.end())
@@ -112,7 +112,6 @@ void xHttpServer::onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req
 	sendBuf.append("\r\n\r\n");
 	conn->send(&sendBuf);
 	conn->setMessageCallback(std::bind(&xHttpServer::webMessage,this,std::placeholders::_1,std::placeholders::_2));
-
 }
 
 

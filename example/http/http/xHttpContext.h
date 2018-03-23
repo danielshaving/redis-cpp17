@@ -1,5 +1,6 @@
 #pragma once
 #include "xHttpRequest.h"
+#include "xTcpConnection.h"
 #include "xLog.h"
 
 class xBuffer;
@@ -23,9 +24,9 @@ public:
 	bool parseRequest(xBuffer *buf);
 	bool wsFrameExtractBuffer(const char *peek,const size_t bufferSize,
 			 xHttpRequest::WebSocketType &outopcode,size_t &frameSize,bool &outfin);
-	bool parseWebRequest(xBuffer *buf);
+	bool parseWebRequest(const TcpConnectionPtr &conn,xBuffer *buf);
 	bool wsFrameBuild(const char *payload,size_t payloadLen,xBuffer *buffer,
-	          xHttpRequest::WebSocketType frame_type = xHttpRequest::WebSocketType::TEXT_FRAME,
+	          xHttpRequest::WebSocketType framType = xHttpRequest::WebSocketType::TEXT_FRAME,
 	          bool isFin = true,bool masking = false);
 
 	bool gotAll() const

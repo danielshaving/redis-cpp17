@@ -1,14 +1,10 @@
-
 #include "all.h"
 #include "xHttpServer.h"
 #include "xHttpContext.h"
 #include "xHttpResponse.h"
 
-char favicon[555];
-bool benchmark = false;
-
 xAsyncLogging *g_asyncLog = nullptr;
-void asyncOutput(const char* msg, int len)
+void asyncOutput(const char *msg, int len)
 {
 	printf("%s\n",msg);
 	g_asyncLog->append(msg, len);
@@ -16,6 +12,7 @@ void asyncOutput(const char* msg, int len)
 
 void onMessage(const xHttpRequest &req,xHttpResponse *resp)
 {
+	LOG_INFO<<req.parseString;
 	resp->setBody(req.parseString);
 }
 

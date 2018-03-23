@@ -131,9 +131,9 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 }
 
 bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,xBuffer *buffer,
-		xHttpRequest::WebSocketType frame_type,bool isFin,bool masking)
+		xHttpRequest::WebSocketType framType,bool isFin,bool masking)
  {
-	uint8_t head = (uint8_t)frame_type | (isFin ? 0x80 : 0x00);
+	uint8_t head = (uint8_t)framType | (isFin ? 0x80 : 0x00);
 	buffer->appendUInt8(head);
 	if (payloadLen <= 125)
 	{
@@ -183,7 +183,7 @@ bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,xBuffer *
 	 return true;
  }
 
-bool xHttpContext::parseWebRequest(xBuffer *buf)
+bool xHttpContext::parseWebRequest(const TcpConnectionPtr &conn,xBuffer *buf)
 {
 	bool ok = true;
 	while(buf->readableBytes() > 0)
@@ -210,17 +210,22 @@ bool xHttpContext::parseWebRequest(xBuffer *buf)
 				ok = false;
 			}
 		}
-		else if (request.opcode == xHttpRequest::CONTINUATION_FRAME)
+		else if(request.opcode == xHttpRequest::CONTINUATION_FRAME)
 		{
 			request.cacheFrame += request.parseString;
 			request.parseString.clear();
 			ok = false;
 		}
 		else if (request.opcode == xHttpRequest::PING_FRAME ||
-				request.opcode == xHttpRequest::PONG_FRAME ||
-				request.opcode == xHttpRequest::CLOSE_FRAME)
+				request.opcode == xHttpRequest::PONG_FRAME )
 		{
-
+			LOG_INFO<<"request.opcode "<<request.opcode;
+		}
+		else if(request.opcode == xHttpRequest::CLOSE_FRAME)
+		{
+			LOG_INFO<<"CLOSE_FRAME:"<<request.cacheFrame;
+			LOG_INFO<<"CLOSE_FRAME:"<<request.parseString;
+			conn->shutdown();
 		}
 		else
 		{
