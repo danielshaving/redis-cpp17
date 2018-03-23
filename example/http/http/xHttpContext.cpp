@@ -1,5 +1,4 @@
 #include "xHttpContext.h"
-#include "xBuffer.h"
 
 bool xHttpContext::processRequestLine(const char *begin,const char *end)
 {
@@ -45,32 +44,33 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 	return succeed;
 }
 
- bool xHttpContext::wsFrameExtractBuffer(const char *buffer,const size_t bufferSize,
-		 xHttpRequest::WebSocketType &outopcode,size_t &frameSize,bool &outfin)
+bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,size_t &size,bool &ok)
 {
+	const unsigned char* buffer = (const unsigned char*)buf;
+
 	if(bufferSize < 2)
 	{
 		return false;
 	}
 
-	outfin = (buffer[0] & 0x80) != 0;
-	outopcode = (xHttpRequest::WebSocketType)(buffer[0] & 0x0F);
+	ok = (buffer[0] & 0x80) != 0;
+	request.setOpCodeType((xHttpRequest::WebSocketType)(buffer[0] & 0x0F));
 
-	const bool isMasking = (buffer[1] & 0x80) != 0;
-	uint32_t payloadlen = buffer[1] & 0x7F;
+	const bool masking = (buffer[1] & 0x80) != 0;
+	uint32_t len = buffer[1] & 0x7F;
 
 	uint32_t pos = 2;
-	if (payloadlen == 126)
+	if (len == 126)
 	{
 		if (bufferSize < 4)
 		{
 			return false;
 		}
 
-		payloadlen = (buffer[2] << 8) + buffer[3];
+		len = (buffer[2] << 8) + buffer[3];
 		pos = 4;
 	}
-	else if(payloadlen == 127)
+	else if(len == 127)
 	{
 		if (bufferSize < 10)
 		{
@@ -90,12 +90,12 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 			return false;
 		}
 
-		payloadlen = (buffer[6] << 24) + (buffer[7] << 16) + (buffer[8] << 8) + buffer[9];
+		len = (buffer[6] << 24) + (buffer[7] << 16) + (buffer[8] << 8) + buffer[9];
 		pos = 10;
 	}
 
 	uint8_t mask[4];
-	if (isMasking)
+	if (masking)
 	{
 		if (bufferSize < (pos + 4))
 		{
@@ -108,42 +108,42 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 		mask[3] = buffer[pos++];
 	}
 
-	if (bufferSize < (pos + payloadlen))
+	if (bufferSize < (pos + len))
 	{
 		return false;
 	}
 
-	if (isMasking)
+	if (masking)
 	{
-		for (size_t i = pos, j = 0; j < payloadlen; i++, j++)
+		for (size_t i = pos, j = 0; j < len; i++, j++)
 		{
-			request.parseString.push_back(buffer[i] ^ mask[j % 4]);
+			request.outputBuffer().appendUInt8(buffer[i] ^ mask[j % 4]);
 		}
 	}
 	else
 	{
-		request.parseString.append((const char*)(buffer + pos), payloadlen);
+		request.outputBuffer().append((buffer + pos), len);
 	}
 
-	frameSize = payloadlen + pos;
+	size = len + pos;
 
 	 return true;
 }
 
-bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,xBuffer *buffer,
-		xHttpRequest::WebSocketType framType,bool isFin,bool masking)
+bool xHttpContext::wsFrameBuild(const char *payload, size_t size,xBuffer *buffer,
+		xHttpRequest::WebSocketType framType,bool ok,bool masking)
  {
-	uint8_t head = (uint8_t)framType | (isFin ? 0x80 : 0x00);
+	uint8_t head = (uint8_t)framType | (ok ? 0x80 : 0x00);
 	buffer->appendUInt8(head);
-	if (payloadLen <= 125)
+	if (size <= 125)
 	{
-		buffer->appendUInt8(payloadLen);
+		buffer->appendUInt8(size);
 	}
-	else if (payloadLen <= 0xFFFF)
+	else if (size <= 0xFFFF)
 	{
 		buffer->appendUInt8(126);
-		buffer->appendUInt8((payloadLen & 0xFF00) >> 8);
-		buffer->appendUInt8(payloadLen & 0x00FF);
+		buffer->appendUInt8((size & 0xFF00) >> 8);
+		buffer->appendUInt8(size & 0x00FF);
 	 }
 	 else
 	 {
@@ -153,10 +153,10 @@ bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,xBuffer *
 		 buffer->appendUInt8(0x00);
 		 buffer->appendUInt8(0x00);
 
-		 buffer->appendUInt8((payloadLen & 0xFF000000) >> 24);
-		 buffer->appendUInt8((payloadLen & 0x00FF0000) >> 16);
-		 buffer->appendUInt8((payloadLen & 0x0000FF00) >> 8);
-		 buffer->appendUInt8(payloadLen & 0x000000FF);
+		 buffer->appendUInt8((size & 0xFF000000) >> 24);
+		 buffer->appendUInt8((size & 0x00FF0000) >> 16);
+		 buffer->appendUInt8((size & 0x0000FF00) >> 8);
+		 buffer->appendUInt8(size & 0x000000FF);
 	 }
 
 	 if (masking)
@@ -170,75 +170,20 @@ bool xHttpContext::wsFrameBuild(const char *payload, size_t payloadLen,xBuffer *
 			 buffer->appendUInt8(mask[i]);
 		 }
 
-		 for (size_t i = 0; i < payloadLen; i++)
+		 for (size_t i = 0; i < size; i++)
 		 {
 			 buffer->appendUInt8(payload[i] ^ mask[i % 4]);
 		 }
 	 }
 	 else
 	 {
-		 buffer->append(payload,payloadLen);
+		 buffer->append(payload,size);
 	 }
 
 	 return true;
  }
 
-bool xHttpContext::parseWebRequest(const TcpConnectionPtr &conn,xBuffer *buf)
-{
-	bool ok = true;
-	while(buf->readableBytes() > 0)
-	{
-		request.parseString.clear();
-		request.opcode = xHttpRequest::ERROR_FRAME;
-		size_t frameSize = 0;
-		bool isFin = false;
-		if (!wsFrameExtractBuffer(buf->peek(),buf->readableBytes(),request.opcode,frameSize,isFin))
-		{
-			buf->retrieve(frameSize);
-			ok = false;
-			break;
-		}
-
-		if (isFin && (request.opcode == xHttpRequest::TEXT_FRAME ||
-				request.opcode == xHttpRequest::BINARY_FRAME))
-		{
-			if (!request.cacheFrame.empty())
-			{
-				request.cacheFrame += request.parseString;
-				request.parseString = std::move(request.cacheFrame);
-				request.cacheFrame.clear();
-				ok = false;
-			}
-		}
-		else if(request.opcode == xHttpRequest::CONTINUATION_FRAME)
-		{
-			request.cacheFrame += request.parseString;
-			request.parseString.clear();
-			ok = false;
-		}
-		else if (request.opcode == xHttpRequest::PING_FRAME ||
-				request.opcode == xHttpRequest::PONG_FRAME )
-		{
-			LOG_INFO<<"request.opcode "<<request.opcode;
-		}
-		else if(request.opcode == xHttpRequest::CLOSE_FRAME)
-		{
-			LOG_INFO<<"CLOSE_FRAME:"<<request.cacheFrame;
-			LOG_INFO<<"CLOSE_FRAME:"<<request.parseString;
-			conn->shutdown();
-		}
-		else
-		{
-			assert(false);
-		}
-
-		buf->retrieve(frameSize);
-	}
-
-	return ok;
-}
-
-bool xHttpContext::parseRequest(xBuffer *buf)
+bool xHttpContext::parseRequest(xBuffer *buffer)
 {
 	bool ok = true;
 	bool hasMore = true;
@@ -246,14 +191,13 @@ bool xHttpContext::parseRequest(xBuffer *buf)
 	{
 		if(state == kExpectRequestLine)
 		{
-			const char * crlf = buf->findCRLF();
+			const char * crlf = buffer->findCRLF();
 			if(crlf)
 			{
-				ok = processRequestLine(buf->peek(),crlf);
+				ok = processRequestLine(buffer->peek(),crlf);
 				if(ok)
 				{
-					request.setReceiveTime(time(0));
-					buf->retrieveUntil(crlf + 2);
+					buffer->retrieveUntil(crlf + 2);
 					state = kExpectHeaders;
 				}
 				else
@@ -268,20 +212,20 @@ bool xHttpContext::parseRequest(xBuffer *buf)
 		}
 		else if(state == kExpectHeaders)
 		{
-			const char *crlf = buf->findCRLF();
+			const char *crlf = buffer->findCRLF();
 			if(crlf)
 			{
-				const char *colon = std::find(buf->peek(), crlf, ':');
+				const char *colon = std::find(buffer->peek(), crlf, ':');
 				if(colon != crlf)
 				{
-					request.addHeader(buf->peek(),colon,crlf);
+					request.addHeader(buffer->peek(),colon,crlf);
 				}
 				else
 				{
 					state = kGotAll;
 					hasMore = false;
 				}
-				buf->retrieveUntil(crlf + 2);
+				buffer->retrieveUntil(crlf + 2);
 			}
 			else
 			{

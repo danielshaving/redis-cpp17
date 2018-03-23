@@ -24,12 +24,7 @@ public:
 		return std::make_shared<xItem>(keyArg,flagsArg,exptimeArg,valuelen, casArg);
 	}
 
-	xItem(xStringPiece keyArg,
-		 uint32_t flagsArg,
-		 int32_t exptimeArg,
-		 int32_t valuelen,
-		 uint64_t casArg);
-
+	xItem(xStringPiece keyArg,uint32_t flagsArg,int32_t exptimeArg, int32_t valuelen,uint64_t casArg);
 	~xItem()
 	{
 		zfree(data);

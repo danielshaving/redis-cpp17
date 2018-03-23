@@ -1,8 +1,7 @@
 #pragma once
 
-#include "all.h"
+#include "xBuffer.h"
 
-class xBuffer;
 class xHttpResponse
 {
 public:
@@ -56,9 +55,11 @@ public:
 	{
 		this->body = body;
 	}
-	std::string &getBody() { return body; }
 
+	void swap(xBuffer &output) { sendBuff.swap(output); }
+	std::string &getBody() { return body; }
 	void appendToBuffer(xBuffer *output) const;
+	xBuffer *intputBuffer() { return &sendBuff; }
 
 private:
 	std::map<std::string,std::string> headers;
@@ -66,4 +67,5 @@ private:
 	std::string statusMessage;
 	bool closeConnection;
 	std::string body;
+	xBuffer sendBuff;
 };

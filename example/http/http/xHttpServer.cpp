@@ -1,21 +1,11 @@
 #include "xHttpServer.h"
-#include "xHttpContext.h"
-#include "xHttpResponse.h"
-#include "xHttpRequest.h"
-#include "xBuffer.h"
-#include "xTcpConnection.h"
 
-xHttpServer::xHttpServer(xEventLoop *loop,const  char *ip,uint16_t port)
+xHttpServer::xHttpServer(xEventLoop *loop,const char *ip,uint16_t port)
 :loop(loop),
  server(loop,ip,port,nullptr)
 {
 	server.setConnectionCallback(std::bind(&xHttpServer::onConnection,this,std::placeholders::_1));
 	server.setMessageCallback(std::bind(&xHttpServer::onMessage,this,std::placeholders::_1,std::placeholders::_2));
-}
-
-void xHttpServer::disPlayer(const char *begin)
-{
-
 }
 
 void xHttpServer::setMessageCallback(HttpCallBack callback)
@@ -37,59 +27,99 @@ void xHttpServer::onConnection(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
-		xHttpContext context;
-		conn->setContext(context);
+		std::shared_ptr<xHttpContext> context (new xHttpContext());
+		auto it = webSockets.find(conn->getSockfd());
+		assert(it == webSockets.end());
+		webSockets[conn->getSockfd()] = context;
+		//conn->setContext(context);
 	}
 	else
 	{
-
+		auto it = webSockets.find(conn->getSockfd());
+		assert(it != webSockets.end());
+		webSockets.erase(conn->getSockfd());
 	}
 }
 
 void xHttpServer::webMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
-	xHttpContext *context = std::any_cast<xHttpContext>(conn->getContext());
-	if(context->parseWebRequest(conn,buffer))
+	auto it = webSockets.find(conn->getSockfd());
+	assert(it != webSockets.end());
+	while(buffer->readableBytes() > 0)
 	{
-		xHttpResponse resp(true);
-		xBuffer sendBuf;
-		webCallback(context->getRequest(),&resp);
-		context->wsFrameBuild(resp.getBody().c_str(),resp.getBody().size(),
-				&sendBuf,xHttpRequest::TEXT_FRAME,true,false);
-		conn->send(&sendBuf);
-		context->reset();
+		size_t size = 0;
+		bool fin = false;
+		it->second->getRequest().setOpCode();
+		if (!it->second->wsFrameExtractBuffer(buffer->peek(),buffer->readableBytes(),size,fin))
+		{
+			break;
+		}
+
+		if (fin && (it->second->getRequest().getOpCode() == xHttpRequest::TEXT_FRAME ||
+				it->second->getRequest().getOpCode() == xHttpRequest::BINARY_FRAME))
+		{
+			xBuffer sendBuf;
+			xHttpResponse resp(true);
+			webCallback(it->second->getRequest(),&resp);
+			auto intputBuffer = resp.intputBuffer();
+			it->second->wsFrameBuild(intputBuffer->peek(),intputBuffer->readableBytes(),&sendBuf,xHttpRequest::TEXT_FRAME,true,false);
+			conn->send(&sendBuf);
+			it->second->reset();
+		}
+		else if(it->second->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
+		{
+
+		}
+		else if (it->second->getRequest().getOpCode() == xHttpRequest::PING_FRAME ||
+				it->second->getRequest().getOpCode() == xHttpRequest::PONG_FRAME )
+		{
+
+		}
+		else if(it->second->getRequest().getOpCode() == xHttpRequest::CLOSE_FRAME)
+		{
+			conn->shutdown();
+		}
+		else
+		{
+			assert(false);
+		}
+
+		buffer->retrieve(size);
 	}
 }
 
 void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
-	xHttpContext *context = std::any_cast<xHttpContext>(conn->getContext());
-	if(!context->parseRequest(buffer))
+	auto it = webSockets.find(conn->getSockfd());
+	assert(it != webSockets.end());
+
+	//xHttpContext *context = std::any_cast<xHttpContext>(conn->getContext());
+	if(!it->second->parseRequest(buffer))
 	{
 		conn->send("HTTP/1.1 400 Bad Request\r\n\r\n");
 		conn->shutdown();
 	}
 
-	auto &headers = context->getRequest().getHeaders();
-	auto it = headers.find("Sec-WebSocket-Key");
-	if(it != headers.end())
+	auto &headers = it->second->getRequest().getHeaders();
+	auto iter = headers.find("Sec-WebSocket-Key");
+	if(iter != headers.end())
 	{
-		context->getRequest().setSecKey(it->second + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+		it->second->getRequest().setSecKey(iter->second + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 	}
 	else
 	{
 		conn->shutdown();
 	}
 
-	if(context->gotAll())
+	if(it->second->gotAll())
 	{
-		if(context->getRequest().getMethod() == xHttpRequest::kPost)
+		if(it->second->getRequest().getMethod() == xHttpRequest::kPost)
 		{
 			conn->shutdown();
 		}
 
-		onRequest(conn,context->getRequest());
-		context->reset();
+		onRequest(conn,it->second->getRequest());
+		it->second->reset();
 	}
 }
 

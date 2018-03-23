@@ -1,5 +1,4 @@
 #include "xHttpResponse.h"
-#include "xBuffer.h"
 
 void xHttpResponse::appendToBuffer(xBuffer *output) const
 {

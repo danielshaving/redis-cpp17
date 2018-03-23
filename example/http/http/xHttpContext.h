@@ -3,7 +3,6 @@
 #include "xTcpConnection.h"
 #include "xLog.h"
 
-class xBuffer;
 class xHttpContext
 {
 public:
@@ -21,35 +20,23 @@ public:
 
 	}
 
-	bool parseRequest(xBuffer *buf);
-	bool wsFrameExtractBuffer(const char *peek,const size_t bufferSize,
-			 xHttpRequest::WebSocketType &outopcode,size_t &frameSize,bool &outfin);
-	bool parseWebRequest(const TcpConnectionPtr &conn,xBuffer *buf);
+	bool parseRequest(xBuffer *buffer);
+	bool wsFrameExtractBuffer(const char *peek,const size_t bufferSize,size_t &size,bool &ok);
 	bool wsFrameBuild(const char *payload,size_t payloadLen,xBuffer *buffer,
 	          xHttpRequest::WebSocketType framType = xHttpRequest::WebSocketType::TEXT_FRAME,
-	          bool isFin = true,bool masking = false);
+	          bool ok = true,bool masking = false);
 
-	bool gotAll() const
-	{
-		return state == kGotAll;
-	}
-
+	bool gotAll() const { return state == kGotAll; }
 	void reset()
 	{
 		state = kExpectRequestLine;
-		xHttpRequest dummy;
-		request.swap(dummy);
+		request.reset();
 	}
 
-	xHttpRequest & getRequest()
-	{
-		return request;
-	}
-
+	xHttpRequest &getRequest() { return request;}
 	bool processRequestLine(const char *begin,const char *end);
 
 private:
 	HttpRequestParseState state;
 	xHttpRequest request;
-
 };

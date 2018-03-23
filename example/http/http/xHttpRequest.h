@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xBuffer.h"
 
 class xHttpRequest
 {
@@ -82,7 +82,7 @@ public:
 		return method != kInvalid;
 	}
 
-	Method getMethod()const
+	Method getMethod() const
 	{
 		return method;
 	}
@@ -184,13 +184,14 @@ public:
 		{
 			value.resize(value.size()-1);
 		}
+
 		headers[field] = value;
 	}
 
-	std::string getHeader(const std::string& field) const
+	std::string getHeader(const std::string &field) const
 	{
 		std::string result;
-		std::map<std::string, std::string>::const_iterator it = headers.find(field);
+		auto  it = headers.find(field);
 		if (it != headers.end())
 		{
 			result = it->second;
@@ -198,26 +199,31 @@ public:
 		return result;
 	}
 
-	const std::map<std::string, std::string>& getHeaders() const
+	const std::map<std::string, std::string> &getHeaders() const
 	{
 		return headers;
 	}
 
-	void swap(xHttpRequest &that)
+	void reset()
 	{
-		std::swap(method, that.method);
-		path.swap(that.path);
-		query.swap(that.query);
-		headers.swap(that.headers);
-		cacheFrame.swap(that.cacheFrame);
-		parseString.swap(that.parseString);
-		secKey.swap(that.secKey);
-		opcode = ERROR_FRAME;
+		method = kInvalid;
+		version = kUnknown;
+		setOpCode();
+		path.clear();
+		query.clear();
+		queryLength = 0;
+		receiveTime = 0;
+		contentLength = 0;
+		secKey.clear();
+		headers.clear();
+		recvBuff.retrieveAll();
 	}
+
+	xBuffer &outputBuffer() { return recvBuff; }
   
-	std::string cacheFrame;
-	std::string parseString;
-	WebSocketType opcode;
+	WebSocketType &getOpCode() { return opcode; }
+	void setOpCode() { opcode = ERROR_FRAME; }
+	void setOpCodeType(WebSocketType op) {  opcode = op; }
 
 private:
 	Method method;
@@ -229,4 +235,6 @@ private:
 	int64_t receiveTime;
 	int32_t contentLength;
 	std::string secKey;
+	xBuffer recvBuff;
+	WebSocketType opcode;
 };

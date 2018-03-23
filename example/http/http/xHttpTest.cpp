@@ -1,19 +1,16 @@
 #include "all.h"
 #include "xHttpServer.h"
-#include "xHttpContext.h"
-#include "xHttpResponse.h"
 
-xAsyncLogging *g_asyncLog = nullptr;
+xAsyncLogging *g_asyncLog;
 void asyncOutput(const char *msg, int len)
 {
 	printf("%s\n",msg);
 	g_asyncLog->append(msg, len);
 }
 
-void onMessage(const xHttpRequest &req,xHttpResponse *resp)
+void onMessage(xHttpRequest &req,xHttpResponse *resp)
 {
-	LOG_INFO<<req.parseString;
-	resp->setBody(req.parseString);
+	resp->swap(req.outputBuffer());
 }
 
 int main(int argc, char* argv[])
