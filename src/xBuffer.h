@@ -5,7 +5,7 @@
 class xBuffer : noncopyable
 {
 public:
-	static const size_t kCheapPrepend = 8;
+	static const size_t kCheapPrepend = 32;
 	static const size_t kInitialSize = 1024 * 64;
 
 	explicit xBuffer(size_t initialSize = kInitialSize)
@@ -30,7 +30,7 @@ public:
 	size_t prependableBytes() const { return readerIndex; }
 
 	const char *peek() const { return begin() + readerIndex; }
-	char *cpeek() { return begin() + readerIndex; }
+	char *start() { return begin() + readerIndex; }
 
 	const char *findCRLF() const
 	{
@@ -198,11 +198,16 @@ public:
 		prepend(&x, sizeof x);
 	}
 
+	void prependUInt8(uint8_t x)
+	{
+		prepend(&x, sizeof x);
+	}
+
 	void prepend(const void *data, size_t len)
 	{
 		assert(len <= prependableBytes());
 		readerIndex -= len;
-		const char * d = static_cast<const char*>(data);
+		const char *d = static_cast<const char*>(data);
 		std::copy(d,d + len,begin() + readerIndex);
 	}
 
@@ -323,9 +328,9 @@ public:
 	ssize_t readFd(int32_t fd, int32_t* savedErrno);
 
 private:
-	char* begin() { return &*buffer.begin(); }
+	char *begin() { return &*buffer.begin(); }
 	char *prepeek() { return begin() + readerIndex; }
-	const char* begin() const { return &*buffer.begin(); }
+	const char *begin() const { return &*buffer.begin(); }
 
 	void makeSpace(size_t len)
 	{

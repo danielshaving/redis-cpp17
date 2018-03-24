@@ -1,14 +1,14 @@
 #pragma once
 
-#include "xBuffer.h"
+#include "all.h"
 
+class xBuffer;
 class xHttpResponse
 {
 public:
 	enum HttpStatusCode
 	{
 		kUnknown,
-		k101k = 101,
 		k2000k = 200,
 		k301MovedPermanently = 301,
 		k400BadRequest = 400,
@@ -56,10 +56,8 @@ public:
 		this->body = body;
 	}
 
-	void swap(xBuffer &output) { sendBuff.swap(output); }
-	std::string &getBody() { return body; }
-	void appendToBuffer(xBuffer *output) const;
-	xBuffer *intputBuffer() { return &sendBuff; }
+	void appendToBuffer(xBuffer* output) const;
+
 
 private:
 	std::map<std::string,std::string> headers;
@@ -67,5 +65,4 @@ private:
 	std::string statusMessage;
 	bool closeConnection;
 	std::string body;
-	xBuffer sendBuff;
 };

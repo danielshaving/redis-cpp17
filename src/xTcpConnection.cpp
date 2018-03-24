@@ -249,7 +249,7 @@ void xTcpConnection::bindSendInLoop(xTcpConnection *conn, const xStringPiece &me
 	 conn->sendInLoop(message.data(),message.size());
 }
 
-void xTcpConnection::send(xBuffer* buf)
+void xTcpConnection::send(xBuffer *buf)
 {
 	if (state == kConnected)
 	{
@@ -266,13 +266,13 @@ void xTcpConnection::send(xBuffer* buf)
 	}
 }
 
-void xTcpConnection::sendInLoop(const xStringPiece & message)
+void xTcpConnection::sendInLoop(const xStringPiece &message)
 {
 	sendInLoop(message.data(),message.size());
 }
 
 
-void xTcpConnection::sendInLoop(const void* data, size_t len)
+void xTcpConnection::sendInLoop(const void *data, size_t len)
 {
 	loop->assertInLoopThread();
 	ssize_t nwrote = 0;

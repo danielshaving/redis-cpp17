@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xBuffer.h"
 
 class xHttpRequest
 {
@@ -10,10 +10,22 @@ public:
 	{
 	}
 
+	enum  WebSocketType
+	{
+		ERROR_FRAME = 0xff,
+		CONTINUATION_FRAME = 0x00,
+		TEXT_FRAME = 0x01,
+		BINARY_FRAME = 0x02,
+		CLOSE_FRAME = 0x08,
+		PING_FRAME = 0x09,
+		PONG_FRAME = 0x0A
+	};
+
 	enum Method
 	{
 		kInvalid, kGet, kPost, kHead, kPut, kDelete,kContent
 	};
+
 	enum Version
 	{
 		kUnknown, kHttp10, kHttp11
@@ -23,6 +35,7 @@ public:
 	{
 		version = v;
 	}
+
 	Version getVersion()const
 	{
 		return version;
@@ -31,6 +44,11 @@ public:
 	void setMethod()
 	{
 		method = kContent;
+	}
+
+	void setSecKey(const std::string &k)
+	{
+		secKey = k;
 	}
 
 	bool setMethod(const char * start,const char * end)
@@ -64,12 +82,17 @@ public:
 		return method != kInvalid;
 	}
 
-	Method getMethod()const
+	Method getMethod() const
 	{
 		return method;
 	}
 
-	const char * methodString()const
+	const std::string &getSecKey() const
+	{
+		return secKey;
+	}
+
+	const char  *methodString() const
 	{
 		const char * result = "UNKNOWN";
 		switch(method)
@@ -146,6 +169,7 @@ public:
 		}
 		contentLength = atoi(value.c_str());
 	}
+
 	void addHeader(const char *start,const char *colon,const char *end)
 	{
 		std::string field(start,colon);
@@ -160,13 +184,14 @@ public:
 		{
 			value.resize(value.size()-1);
 		}
+
 		headers[field] = value;
 	}
 
-	std::string getHeader(const std::string& field) const
+	std::string getHeader(const std::string &field) const
 	{
 		std::string result;
-		std::map<std::string, std::string>::const_iterator it = headers.find(field);
+		auto  it = headers.find(field);
 		if (it != headers.end())
 		{
 			result = it->second;
@@ -174,26 +199,38 @@ public:
 		return result;
 	}
 
-	const std::map<std::string, std::string>& getHeaders() const
+	const std::map<std::string, std::string> &getHeaders() const
 	{
 		return headers;
 	}
 
-	void swap(xHttpRequest& that)
+	void reset()
 	{
-		std::swap(method, that.method);
-		path.swap(that.path);
-		query.swap(that.query);
-		headers.swap(that.headers);
+		method = kInvalid;
+		version = kUnknown;
+		setOpCode();
+		path.clear();
+		query.clear();
+		queryLength = 0;
+		receiveTime = 0;
+		contentLength = 0;
+		secKey.clear();
+		headers.clear();
 	}
-  
+
+	WebSocketType &getOpCode() { return opcode; }
+	void setOpCode() { opcode = ERROR_FRAME; }
+	void setOpCodeType(WebSocketType op) {  opcode = op; }
+
 private:
 	Method method;
 	Version version;
 	std::string path;
 	std::string query;
-	int32_t queryLength = -1;
+	int32_t queryLength;
 	std::map<std::string,std::string> headers;
-	int64_t receiveTime = -1;
-	int32_t contentLength = -1;
+	int64_t receiveTime;
+	int32_t contentLength;
+	std::string secKey;
+	WebSocketType opcode;
 };
