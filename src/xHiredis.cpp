@@ -397,9 +397,9 @@ redisReply *createArray(const redisReadTask *task, int32_t elements)
 }
 
 
-redisReply * createInteger(const redisReadTask *task, long long value)
+redisReply *createInteger(const redisReadTask *task, int64_t value)
 {
-	redisReply * r, *parent;
+	redisReply *r, *parent;
 
 	r = createReplyObject(REDIS_REPLY_INTEGER);
 

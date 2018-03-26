@@ -181,9 +181,9 @@ uint32_t xCluster::keyHashSlot(char *key, int32_t keylen)
 
 int32_t xCluster::getSlotOrReply(const SessionPtr &session,rObj * o)
 {
-	long long slot;
+	int64_t slot;
 
-	if (redis->object.getLongLongFromObject(o, &slot) != REDIS_OK ||
+	if (redis->object.getLongLongFromObject(o,&slot) != REDIS_OK ||
 		slot < 0 || slot >= CLUSTER_SLOTS)
 	{
 		redis->object.addReplyError(session->clientBuffer, "Invalid or out of range slot");

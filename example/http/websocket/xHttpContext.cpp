@@ -45,23 +45,25 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 	return succeed;
 }
 
-bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,size_t &size,bool &ok,size_t &index)
+bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,size_t &size,bool &ok)
 {
-	unsigned char *buffer = (unsigned char*)buf;
-
+	const unsigned char *buffer = (const unsigned char*)buf;
 	if(bufferSize < 2)
 	{
 		return false;
 	}
 
-	ok = (buffer[0] & 0x80) != 0;
+	ok = (buffer[0] & 0x80) == 0x80;
 	request.setOpCodeType((xHttpRequest::WebSocketType)(buffer[0] & 0x0F));
-
-	const bool masking = (buffer[1] & 0x80) != 0;
+	const bool masking = (buffer[1] & 0x80) == 0x80;
 	uint32_t len = buffer[1] & 0x7F;
-
 	uint32_t pos = 2;
-	if (len == 126)
+
+	if(len <= 125)
+	{
+
+	}
+	else if (len == 126)
 	{
 		if (bufferSize < 4)
 		{
@@ -69,6 +71,7 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 		}
 
 		len = (buffer[2] << 8) + buffer[3];
+		LOG_INFO<<"len:"<<len<<" ok:"<<ok<<" size:"<<bufferSize;
 		pos = 4;
 	}
 	else if(len == 127)
@@ -79,19 +82,20 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 		}
 
 		if (buffer[2] != 0 ||
-		buffer[3] != 0 ||
-		buffer[4] != 0 ||
-		buffer[5] != 0)
+			buffer[3] != 0 ||
+			buffer[4] != 0 ||
+			buffer[5] != 0)
 		{
 			return false;
 		}
 
-		if ((buffer[6] & 0x80) != 0)
+		if ((buffer[6] & 0x80) == 0x80)
 		{
 			return false;
 		}
 
 		len = (buffer[6] << 24) + (buffer[7] << 16) + (buffer[8] << 8) + buffer[9];
+		LOG_INFO<<"len:"<<len<<" ok:"<<ok<<" size:"<<bufferSize;
 		pos = 10;
 	}
 
@@ -116,41 +120,42 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 
 	if (masking)
 	{
+		request.getWSParseString().reserve(len);
 		for (size_t i = pos, j = 0; j < len; i++, j++)
 		{
-			buffer[i] = buffer[i] ^ mask[j % 4];
+			request.getWSParseString().push_back(buffer[i] ^ mask[j % 4]);
 		}
 	}
 	else
 	{
-		assert(false);
+		request.getWSParseString().append((const char*)(buffer + pos),len);
 	}
 
 	size = len + pos;
-	index = pos;
-
 	return true;
 }
 
 bool xHttpContext::wsFrameBuild(xBuffer *buffer,xHttpRequest::WebSocketType framType,bool ok,bool masking)
  {
-//	 if (masking)
-//	 {
-//		 char *peek = buffer->start();
-//		 peek[1] = ((uint8_t)peek[1]) | 0x80;
-//		 uint8_t mask[4];
-//
-//		 for (size_t i = 0; i < sizeof(mask) / sizeof(mask[0]); i++)
-//		 {
-//			 mask[i] = rand();
-//			 buffer->prependInt8(mask[i]);
-//		 }
-//
-//		 for (size_t i = 0; i < buffer->readableBytes(); i++)
-//		 {
-//			 peek[i] = peek[i] ^ mask[i % 4];
-//		 }
-//	 }
+	 if (masking)
+	 {
+		 char *peek = buffer->start();
+		 peek[1] = ((uint8_t)peek[1]) | 0x80;
+		 uint8_t mask[4];
+
+		 size_t size = sizeof(mask) / sizeof(mask[0]);
+
+		 for (size_t i = size ; i >=0; i--)
+		 {
+			 mask[i] = rand();
+			 buffer->prependInt8(mask[i]);
+		 }
+
+		 for (size_t i = 0; i < buffer->readableBytes(); i++)
+		 {
+			 peek[i] = peek[i] ^ mask[i % 4];
+		 }
+	 }
 
 	if (buffer->readableBytes() <= 125)
 	{
@@ -237,6 +242,7 @@ bool xHttpContext::parseRequest(xBuffer *buffer)
 	}
 	return ok;
 }
+
 
 
 

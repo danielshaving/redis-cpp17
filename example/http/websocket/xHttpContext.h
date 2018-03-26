@@ -21,7 +21,7 @@ public:
 	}
 
 	bool parseRequest(xBuffer *buffer);
-	bool wsFrameExtractBuffer(const char *buf,const size_t bufferSize,size_t &size,bool &ok,size_t &index);
+	bool wsFrameExtractBuffer(const char *buf,const size_t bufferSize,size_t &size,bool &ok);
 	bool wsFrameBuild(xBuffer *buffer,xHttpRequest::WebSocketType framType,bool ok = true,bool masking = false);
 
 	bool gotAll() const { return state == kGotAll; }

@@ -8,10 +8,11 @@ void asyncOutput(const char *msg, int len)
 	g_asyncLog->append(msg, len);
 }
 
-void onMessage(const char *buffer,size_t len,xHttpResponse *resp)
+void onMessage(xHttpRequest &rep,xHttpResponse *resp)
 {
-	std::string str(buffer,len);
-	resp->appendBuffer(buffer,len);
+	LOG_INFO<<"message";
+	auto buffer =  rep.getWSParseString();
+	resp->appendBuffer(buffer.data(),buffer.size());
 }
 
 int main(int argc, char* argv[])

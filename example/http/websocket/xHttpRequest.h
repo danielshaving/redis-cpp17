@@ -46,11 +46,6 @@ public:
 		method = kContent;
 	}
 
-	void setSecKey(const std::string &k)
-	{
-		secKey = k;
-	}
-
 	bool setMethod(const char * start,const char * end)
 	{
 		assert(method == kInvalid);
@@ -87,12 +82,7 @@ public:
 		return method;
 	}
 
-	const std::string &getSecKey() const
-	{
-		return secKey;
-	}
-
-	const char  *methodString() const
+	const char *methodString() const
 	{
 		const char * result = "UNKNOWN";
 		switch(method)
@@ -147,11 +137,6 @@ public:
 	const std::string &getQuery()const
 	{
 		return query;
-	}
-
-	void setReceiveTime(int64_t t)
-	{
-		receiveTime = t;
 	}
 
 	void addContent(const char *start,const char *colon,const char *end)
@@ -212,15 +197,18 @@ public:
 		path.clear();
 		query.clear();
 		queryLength = 0;
-		receiveTime = 0;
 		contentLength = 0;
-		secKey.clear();
 		headers.clear();
+		recvBuf.retrieveAll();
 	}
 
 	WebSocketType &getOpCode() { return opcode; }
 	void setOpCode() { opcode = ERROR_FRAME; }
 	void setOpCodeType(WebSocketType op) {  opcode = op; }
+	xBuffer * outputBuffer() { return &recvBuf; }
+
+	std::string &getWSCacheFrame() { return wsCacheFrame; }
+	std::string &getWSParseString() { return parsePayload; }
 
 private:
 	Method method;
@@ -228,9 +216,10 @@ private:
 	std::string path;
 	std::string query;
 	int32_t queryLength;
-	std::map<std::string,std::string> headers;
-	int64_t receiveTime;
 	int32_t contentLength;
-	std::string secKey;
 	WebSocketType opcode;
+	xBuffer recvBuf;
+	std::map<std::string,std::string> headers;
+	std::string wsCacheFrame;
+	std::string parsePayload;
 };

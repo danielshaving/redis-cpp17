@@ -201,6 +201,7 @@ public:
 	void setCount() { count ++; }
 	int32_t getCount() { return count; }
 	std::mutex &getMutex() { return rtx; }
+
 	std::unordered_map<int32_t,RedisAsyncContextPtr> &getRedisMap() { return redisAsyncs; }
 	std::unordered_map<int32_t,TcpClientPtr> &getClientMap() { return tcpClients; }
 
