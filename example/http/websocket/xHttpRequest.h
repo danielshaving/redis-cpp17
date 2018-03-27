@@ -8,6 +8,7 @@ public:
 	: method(kInvalid),
 	  version(kUnknown)
 	{
+
 	}
 
 	enum  WebSocketType
@@ -31,20 +32,9 @@ public:
 		kUnknown, kHttp10, kHttp11
 	};
 
-	void setVersion(Version v)
-	{
-		version = v;
-	}
-
-	Version getVersion()const
-	{
-		return version;
-	}
-
-	void setMethod()
-	{
-		method = kContent;
-	}
+	void setVersion(Version v) { version = v; }
+	Version getVersion()const { return version; }
+	void setMethod() { method = kContent; }
 
 	bool setMethod(const char * start,const char * end)
 	{
@@ -77,14 +67,11 @@ public:
 		return method != kInvalid;
 	}
 
-	Method getMethod() const
-	{
-		return method;
-	}
+	Method getMethod() const { return method; }
 
 	const char *methodString() const
 	{
-		const char * result = "UNKNOWN";
+		const char *result = "UNKNOWN";
 		switch(method)
 		{
 			case kGet:
@@ -116,23 +103,13 @@ public:
 				break;
 
 		}
+
 		return result;
 	}
 
-	const std::string &getPath() const
-	{
-		return path;
-	}
-
-	void setPath(const char *start,const char *end)
-	{
-		path.assign(start,end);
-	}
-
-	void setQuery(const char *start,const char * end)
-	{
-		query.assign(start,end);
-	}
+	const std::string &getPath() const { return path; }
+	void setPath(const char *start,const char *end) { path.assign(start,end); }
+	void setQuery(const char *start,const char * end) { query.assign(start,end); }
 
 	const std::string &getQuery()const
 	{
@@ -147,11 +124,13 @@ public:
 		{
 			++colon;
 		}
+
 		std::string value(colon,end);
 		while (!value.empty() && isspace(value[value.size()-1]))
 		{
 			value.resize(value.size()-1);
 		}
+
 		contentLength = atoi(value.c_str());
 	}
 
@@ -184,10 +163,7 @@ public:
 		return result;
 	}
 
-	const std::map<std::string, std::string> &getHeaders() const
-	{
-		return headers;
-	}
+	const std::map<std::string, std::string> &getHeaders() const {return headers; }
 
 	void reset()
 	{
@@ -198,17 +174,15 @@ public:
 		queryLength = 0;
 		contentLength = 0;
 		headers.clear();
-		recvBuf.retrieveAll();
+		parseString.clear();
+		setOpCode();
 	}
 
 	WebSocketType &getOpCode() { return opcode; }
 	void setOpCode() { opcode = ERROR_FRAME; }
 	void setOpCodeType(WebSocketType op) {  opcode = op; }
-
-	xBuffer * outputBuffer() { return &recvBuf; }
-
-	std::string &getWSCacheFrame() { return wsCacheFrame; }
-	std::string &getWSParseString() { return parsePayload; }
+	std::string &getCacheFrame() { return cacheFrame; }
+	std::string &getParseString() { return parseString; }
 
 private:
 	Method method;
@@ -218,8 +192,7 @@ private:
 	int32_t queryLength;
 	int32_t contentLength;
 	WebSocketType opcode;
-	xBuffer recvBuf;
 	std::map<std::string,std::string> headers;
-	std::string wsCacheFrame;
-	std::string parsePayload;
+	std::string cacheFrame;
+	std::string parseString;
 };

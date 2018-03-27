@@ -45,7 +45,7 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 	return succeed;
 }
 
-bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,size_t &size,bool &ok)
+bool xHttpContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,const char *buf,const size_t bufferSize,size_t &size,bool &fin)
 {
 	if(bufferSize < 2)
 	{
@@ -53,14 +53,14 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 	}
 
 	const unsigned char *buffer = (const unsigned char*)buf;
-	ok = (buffer[0] >> 7) & 0x01;
+	fin = (buffer[0] >> 7) & 0x01;
 	const bool masking = (buffer[1] & 0x80) == 0x80;
 	uint32_t len = buffer[1] & 0x7F;
 	uint32_t pos = 2;
 
 	if(len <= 125)
 	{
-		//LOG_INFO<<"len:"<<len<<" bufferSize:"<<bufferSize<<" ok:"<<ok<<" opcode:"<<(buffer[0] & 0x0F);
+
 	}
 	else if (len == 126)
 	{
@@ -70,7 +70,6 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 		}
 
 		len = (buffer[2] << 8) + buffer[3];
-		//LOG_INFO<<"len:"<<len<<" bufferSize:"<<bufferSize<<" ok:"<<ok<<" opcode:"<<(buffer[0] & 0x0F);
 		pos = 4;
 	}
 	else if(len == 127)
@@ -94,8 +93,11 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 		}
 
 		len = (buffer[6] << 24) + (buffer[7] << 16) + (buffer[8] << 8) + (buffer[9] << 0);
-		//LOG_INFO<<"len:"<<len<<" bufferSize:"<<bufferSize<<" ok:"<<ok<<" opcode:"<<(buffer[0] & 0x0F);
 		pos = 10;
+	}
+	else
+	{
+		conn->shutdown();
 	}
 
 	uint8_t mask[4];
@@ -119,24 +121,24 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 
 	if (masking)
 	{
-		request.getWSParseString().reserve(len);
+		auto &parseString = getRequest().getParseString();
 		for (size_t i = pos, j = 0; j < len; i++, j++)
 		{
-			request.getWSParseString().push_back(buffer[i] ^ mask[j % 4]);
+			parseString.push_back(buffer[i] ^ mask[j % 4]);
 		}
 	}
 	else
 	{
-		request.getWSParseString().append((const char*)(buffer + pos),len);
+		conn->shutdown();
 	}
 
-	if(!ok)
+	if(fin)
 	{
-		request.setOpCodeType(xHttpRequest::WebSocketType::CONTINUATION_FRAME);
+		getRequest().setOpCodeType((xHttpRequest::WebSocketType)(buffer[0] & 0x0F));
 	}
 	else
 	{
-		request.setOpCodeType((xHttpRequest::WebSocketType)(buffer[0] & 0x0F));
+		getRequest().setOpCodeType(xHttpRequest::WebSocketType::CONTINUATION_FRAME);
 	}
 
 	size = len + pos;

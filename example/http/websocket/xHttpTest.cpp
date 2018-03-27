@@ -10,7 +10,7 @@ void asyncOutput(const char *msg, int len)
 
 void onMessage(xHttpRequest &rep,xHttpResponse *resp)
 {
-	auto &buffer =  rep.getWSParseString();
+	auto &buffer =  rep.getParseString();
 	resp->appendBuffer(buffer.data(),buffer.size());
 }
 

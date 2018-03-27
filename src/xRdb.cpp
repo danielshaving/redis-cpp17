@@ -18,7 +18,7 @@ xRdb::xRdb(xRedis *redis)
 }
 
 /* Returns 1 or 0 for success/failure. */
-size_t xRdb::rioBufferWrite(xRio *r, const void *buf, size_t len) 
+size_t xRdb::rioBufferWrite(xRio *r,const void *buf,size_t len)
 {
     r->io.buffer.ptr = sdscatlen(r->io.buffer.ptr,(char*)buf,len);
     r->io.buffer.pos += len;
@@ -26,7 +26,7 @@ size_t xRdb::rioBufferWrite(xRio *r, const void *buf, size_t len)
 }
 
 /* Returns 1 or 0 for success/failure. */
-size_t xRdb::rioBufferRead(xRio *r, void *buf, size_t len) 
+size_t xRdb::rioBufferRead(xRio *r,void *buf,size_t len)
 {
     if (sdslen(r->io.buffer.ptr)-r->io.buffer.pos < len)
         return 0; /* not enough buffer to return len bytes. */
@@ -84,7 +84,7 @@ size_t xRdb::rioWrite(xRio *r,const void *buf,size_t len)
 }
 
 
-size_t xRdb::rioRepliRead(xRio * r,void * buf,size_t len)
+size_t xRdb::rioRepliRead(xRio *r,void *buf,size_t len)
 {
 	fseek(r->io.file.fp,r->processedBytes ,SEEK_SET);
 	size_t readBytes = ::fread(buf,1,len,r->io.file.fp);
@@ -102,7 +102,7 @@ size_t xRdb::rioRepliRead(xRio * r,void * buf,size_t len)
 	return readBytes;
 }
 
-size_t xRdb::rioRead(xRio *r,void  *buf,size_t len)
+size_t xRdb::rioRead(xRio *r,void *buf,size_t len)
 {
 	while(len)
 	{
@@ -125,12 +125,12 @@ size_t xRdb::rioRead(xRio *r,void  *buf,size_t len)
 	return 1;
 }
 
-size_t xRdb::rioFileRead(xRio*r, void *buf, size_t len)
+size_t xRdb::rioFileRead(xRio *r,void *buf,size_t len)
 {
 	return fread(buf,len,1,r->io.file.fp);
 }
 
-size_t xRdb::rioFileWrite(xRio *r, const void *buf, size_t len)
+size_t xRdb::rioFileWrite(xRio *r,const void *buf,size_t len)
 {
 	 size_t retval;
 	 retval = fwrite(buf,len,1,r->io.file.fp);
@@ -154,7 +154,7 @@ int32_t xRdb::rioFileFlush(xRio *r)
 	return (fflush(r->io.file.fp) == 0) ? 1:0;
 }
 
-void xRdb::rioGenericUpdateChecksum(xRio *r, const void *buf, size_t len)
+void xRdb::rioGenericUpdateChecksum(xRio *r,const void *buf,size_t len)
 {
 	r->cksum = crc64(r->cksum,(const unsigned char*)buf,len);
 }

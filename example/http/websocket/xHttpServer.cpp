@@ -27,57 +27,45 @@ void xHttpServer::onConnection(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
-		std::shared_ptr<xHttpContext> context (new xHttpContext());
-		auto it = webSockets.find(conn->getSockfd());
-		assert(it == webSockets.end());
-		webSockets[conn->getSockfd()] = context;
+		xHttpContext context;
+		conn->setContext(context);
 		LOG_INFO<<"onConnection";
 	}
 	else
 	{
-		auto it = webSockets.find(conn->getSockfd());
-		assert(it != webSockets.end());
-		webSockets.erase(conn->getSockfd());
 		LOG_INFO<<"disonConnection";
 	}
 }
 
 void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
-	auto it = webSockets.find(conn->getSockfd());
-	assert(it != webSockets.end());
-	auto context = it->second;
-
-	auto &cacheFrame = context->getRequest().getWSCacheFrame();
-	auto &parseString = context->getRequest().getWSParseString();
-
+	auto context = std::any_cast<xHttpContext>(conn->getContext());
 	while(buffer->readableBytes() > 0)
 	{
-		parseString.clear();
+		auto &cacheFrame = context->getRequest().getCacheFrame();
+		auto &parseString = context->getRequest().getParseString();
 		size_t size = 0;
-		bool ok = false;
-		context->getRequest().setOpCode();
+		bool fin = false;
 
-		if (!context->wsFrameExtractBuffer(buffer->peek(),buffer->readableBytes(),size,ok))
+		if (!context->wsFrameExtractBuffer(conn,buffer->peek(),buffer->readableBytes(),size,fin))
 		{
 			break;
 		}
 
-//		if (ok && (context->getRequest().getOpCode() == xHttpRequest::TEXT_FRAME ||
-//				context->getRequest().getOpCode() == xHttpRequest::BINARY_FRAME))
-		if (ok)
+		if (fin)
 		{
 			 if (!cacheFrame.empty())
 			{
 				cacheFrame += parseString;
-				parseString = std::move(cacheFrame);
+				parseString.swap(cacheFrame);
 				cacheFrame.clear();
 			}
 
 			xHttpResponse resp;
 			httpCallback(context->getRequest(),&resp);
-			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::BINARY_FRAME,true,false);
+			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::TEXT_FRAME,true,false);
 			conn->send(resp.intputBuffer());
+			context->reset();
 		}
 		else if(context->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
 		{
@@ -95,7 +83,10 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 		}
 		else
 		{
+			conn->shutdown();
+#ifdef __DEBUG__
 			assert(false);
+#endif
 		}
 
 		buffer->retrieve(size);
@@ -104,22 +95,21 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 
 void xHttpServer::onHandShake(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
-	auto it = webSockets.find(conn->getSockfd());
-	assert(it != webSockets.end());
+	auto context = std::any_cast<xHttpContext>(conn->getContext());
 
-	if(!it->second->parseRequest(buffer) ||
-			it->second->getRequest().getMethod() != xHttpRequest::kGet)
+	if(!context->parseRequest(buffer) ||
+			context->getRequest().getMethod() != xHttpRequest::kGet)
 	{
 		conn->send("HTTP/1.1 400 Bad Request\r\n\r\n");
 		conn->shutdown();
 	}
 
-	if(it->second->gotAll())
+	if(context->gotAll())
 	{
-		onRequest(conn,it->second->getRequest());
+		onRequest(conn,context->getRequest());
 		sendBuf.retrieveAll();
 		secKey.clear();
-		it->second->reset();
+		context->reset();
 	}
 	else
 	{
