@@ -5,7 +5,7 @@ xHttpServer::xHttpServer(xEventLoop *loop,const char *ip,uint16_t port)
  server(loop,ip,port,nullptr)
 {
 	server.setConnectionCallback(std::bind(&xHttpServer::onConnection,this,std::placeholders::_1));
-	server.setMessageCallback(std::bind(&xHttpServer::onHandShake,this,std::placeholders::_1,std::placeholders::_2));
+	server.setMessageCallback(std::bind(&xHttpServer::onHandeShake,this,std::placeholders::_1,std::placeholders::_2));
 }
 
 void xHttpServer::setMessageCallback(HttpCallBack callback)
@@ -42,8 +42,6 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 	auto context = std::any_cast<xHttpContext>(conn->getContext());
 	while(buffer->readableBytes() > 0)
 	{
-		auto &cacheFrame = context->getRequest().getCacheFrame();
-		auto &parseString = context->getRequest().getParseString();
 		size_t size = 0;
 		bool fin = false;
 
@@ -54,23 +52,15 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 
 		if (fin)
 		{
-			 if (!cacheFrame.empty())
-			{
-				cacheFrame += parseString;
-				parseString.swap(cacheFrame);
-				cacheFrame.clear();
-			}
-
-			xHttpResponse resp;
 			httpCallback(context->getRequest(),&resp);
 			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::TEXT_FRAME,true,false);
 			conn->send(resp.intputBuffer());
 			context->reset();
+			resp.reset();
 		}
 		else if(context->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
 		{
-			 cacheFrame += parseString;
-			 parseString.clear();
+
 		}
 		else if (context->getRequest().getOpCode() == xHttpRequest::PING_FRAME ||
 				context->getRequest().getOpCode() == xHttpRequest::PONG_FRAME )
@@ -93,10 +83,9 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 	}
 }
 
-void xHttpServer::onHandShake(const TcpConnectionPtr &conn,xBuffer *buffer)
+void xHttpServer::onHandeShake(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	auto context = std::any_cast<xHttpContext>(conn->getContext());
-
 	if(!context->parseRequest(buffer) ||
 			context->getRequest().getMethod() != xHttpRequest::kGet)
 	{

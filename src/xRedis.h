@@ -117,7 +117,7 @@ public:
 	typedef std::function<bool(const std::deque<rObj*>&,SessionPtr)> CommandFunc;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> StringMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal>,Hash,Equal> HashMap;
-	typedef std::unordered_map<rObj*,std::deque<rObj*>, Hash, Equal> ListMap;
+	typedef std::unordered_map<rObj*,std::deque<rObj*>,Hash, Equal> ListMap;
 	typedef std::unordered_map<rObj*,double,Hash,Equal> KeyMap;
 	typedef std::multimap<double,rObj*> SortMap;
 	typedef struct SortSet

@@ -110,11 +110,7 @@ public:
 	const std::string &getPath() const { return path; }
 	void setPath(const char *start,const char *end) { path.assign(start,end); }
 	void setQuery(const char *start,const char * end) { query.assign(start,end); }
-
-	const std::string &getQuery()const
-	{
-		return query;
-	}
+	const std::string &getQuery()const { return query; }
 
 	void addContent(const char *start,const char *colon,const char *end)
 	{
@@ -163,7 +159,7 @@ public:
 		return result;
 	}
 
-	const std::map<std::string, std::string> &getHeaders() const {return headers; }
+	const std::map<std::string, std::string> &getHeaders() const { return headers; }
 
 	void reset()
 	{

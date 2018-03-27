@@ -29,13 +29,12 @@ public:
 	void connecting(int32_t sockfd);
 	void resetChannel();
 	int32_t  removeAndResetChannel();
-
 private:
   	enum States { kDisconnected, kConnecting, kConnected };
 private:
 	void setState(States  s) { state = s; }
-	xEventLoop* loop;
-	std::string ip;
+	xEventLoop *loop;
+	const char *ip;
 	int16_t port;
 
 	States state;
@@ -43,5 +42,5 @@ private:
 	bool isconnect;
 	ErrorConnectionCallback	errorConnectionCallback;
 	NewConnectionCallback newConnectionCallback;
-	xSocket    socket;
+	xSocket socket;
 };
