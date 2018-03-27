@@ -45,7 +45,7 @@ public:
 
 	bool endsWithCRLF() const
 	{
-		return receivedBytes == totalLen()&& data[totalLen()-2] == '\r'&& data[totalLen()-1] == '\n';
+		return receivedBytes == totalLen() && data[totalLen()-2] == '\r'&& data[totalLen()-1] == '\n';
 	}
 
 private:

@@ -53,7 +53,6 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 
 	while(buffer->readableBytes() > 0)
 	{
-		LOG_INFO<<"buffer size:"<<buffer->readableBytes();
 		parseString.clear();
 		size_t size = 0;
 		bool ok = false;
@@ -79,27 +78,23 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 			httpCallback(context->getRequest(),&resp);
 			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::BINARY_FRAME,true,false);
 			conn->send(resp.intputBuffer());
-			LOG_INFO<<"send buffer size:"<<resp.intputBuffer()->readableBytes();
 		}
 		else if(context->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
 		{
-			 LOG_INFO<<"frame";
 			 cacheFrame += parseString;
 			 parseString.clear();
 		}
 		else if (context->getRequest().getOpCode() == xHttpRequest::PING_FRAME ||
 				context->getRequest().getOpCode() == xHttpRequest::PONG_FRAME )
 		{
-			LOG_INFO<<"ping";
+			conn->shutdown();
 		}
 		else if(context->getRequest().getOpCode() == xHttpRequest::CLOSE_FRAME)
 		{
-			LOG_INFO<<"close frame";
 			conn->shutdown();
 		}
 		else
 		{
-			LOG_INFO<<"context->getRequest().getOpCode():"<<context->getRequest().getOpCode();
 			assert(false);
 		}
 
