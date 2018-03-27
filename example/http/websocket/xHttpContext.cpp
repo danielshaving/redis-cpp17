@@ -47,21 +47,20 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 
 bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,size_t &size,bool &ok)
 {
-	const unsigned char *buffer = (const unsigned char*)buf;
 	if(bufferSize < 2)
 	{
 		return false;
 	}
 
-	ok = (buffer[0] & 0x80) == 0x80;
-	request.setOpCodeType((xHttpRequest::WebSocketType)(buffer[0] & 0x0F));
+	const unsigned char *buffer = (const unsigned char*)buf;
+	ok = (buffer[0] >> 7) & 0x01;
 	const bool masking = (buffer[1] & 0x80) == 0x80;
 	uint32_t len = buffer[1] & 0x7F;
 	uint32_t pos = 2;
 
 	if(len <= 125)
 	{
-
+		//LOG_INFO<<"len:"<<len<<" bufferSize:"<<bufferSize<<" ok:"<<ok<<" opcode:"<<(buffer[0] & 0x0F);
 	}
 	else if (len == 126)
 	{
@@ -71,7 +70,7 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 		}
 
 		len = (buffer[2] << 8) + buffer[3];
-		LOG_INFO<<"len:"<<len<<" ok:"<<ok<<" size:"<<bufferSize;
+		//LOG_INFO<<"len:"<<len<<" bufferSize:"<<bufferSize<<" ok:"<<ok<<" opcode:"<<(buffer[0] & 0x0F);
 		pos = 4;
 	}
 	else if(len == 127)
@@ -94,8 +93,8 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 			return false;
 		}
 
-		len = (buffer[6] << 24) + (buffer[7] << 16) + (buffer[8] << 8) + buffer[9];
-		LOG_INFO<<"len:"<<len<<" ok:"<<ok<<" size:"<<bufferSize;
+		len = (buffer[6] << 24) + (buffer[7] << 16) + (buffer[8] << 8) + (buffer[9] << 0);
+		//LOG_INFO<<"len:"<<len<<" bufferSize:"<<bufferSize<<" ok:"<<ok<<" opcode:"<<(buffer[0] & 0x0F);
 		pos = 10;
 	}
 
@@ -131,6 +130,15 @@ bool xHttpContext::wsFrameExtractBuffer(const char *buf,const size_t bufferSize,
 		request.getWSParseString().append((const char*)(buffer + pos),len);
 	}
 
+	if(!ok)
+	{
+		request.setOpCodeType(xHttpRequest::WebSocketType::CONTINUATION_FRAME);
+	}
+	else
+	{
+		request.setOpCodeType((xHttpRequest::WebSocketType)(buffer[0] & 0x0F));
+	}
+
 	size = len + pos;
 	return true;
 }
@@ -143,7 +151,7 @@ bool xHttpContext::wsFrameBuild(xBuffer *buffer,xHttpRequest::WebSocketType fram
 		 peek[1] = ((uint8_t)peek[1]) | 0x80;
 		 uint8_t mask[4];
 
-		 size_t size = sizeof(mask) / sizeof(mask[0]);
+		 size_t size = sizeof(mask) / sizeof(mask[0]) - 1;
 
 		 for (size_t i = size ; i >=0; i--)
 		 {
@@ -169,7 +177,7 @@ bool xHttpContext::wsFrameBuild(xBuffer *buffer,xHttpRequest::WebSocketType fram
 	 }
 	 else
 	 {
-		 buffer->prependInt8(buffer->readableBytes() & 0x000000FF);
+		 buffer->prependInt8((buffer->readableBytes() & 0x000000FF) >> 0);
 		 buffer->prependInt8((buffer->readableBytes() & 0x0000FF00) >> 8);
 		 buffer->prependInt8((buffer->readableBytes() & 0x00FF0000) >> 16);
 		 buffer->prependInt8((buffer->readableBytes() & 0xFF000000) >> 24);

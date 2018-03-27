@@ -31,7 +31,7 @@ public:
 		request.reset();
 	}
 
-	xHttpRequest &getRequest() { return request;}
+	xHttpRequest &getRequest() { return request; }
 	bool processRequestLine(const char *begin,const char *end);
 
 private:

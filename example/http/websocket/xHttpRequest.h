@@ -193,7 +193,6 @@ public:
 	{
 		method = kInvalid;
 		version = kUnknown;
-		setOpCode();
 		path.clear();
 		query.clear();
 		queryLength = 0;
@@ -205,6 +204,7 @@ public:
 	WebSocketType &getOpCode() { return opcode; }
 	void setOpCode() { opcode = ERROR_FRAME; }
 	void setOpCodeType(WebSocketType op) {  opcode = op; }
+
 	xBuffer * outputBuffer() { return &recvBuf; }
 
 	std::string &getWSCacheFrame() { return wsCacheFrame; }

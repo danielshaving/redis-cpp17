@@ -363,7 +363,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *buffer)
 {
 	const char * newline = nullptr;
 	int32_t pos = 0,ok;
-	long long ll = 0 ;
+	int64_t ll = 0 ;
 	const char * queryBuf = buffer->peek();
 	if(multibulklen == 0)
 	{
@@ -381,11 +381,10 @@ int32_t xSession::processMultibulkBuffer(xBuffer *buffer)
 		}
 
 
-		  if (newline-(queryBuf) > ((signed)buffer->readableBytes()-2))
-		  {
-		  	 return REDIS_ERR;
-		  }
-     
+		if (newline-(queryBuf) > ((signed)buffer->readableBytes()-2))
+		{
+			return REDIS_ERR;
+		}
 
 		if(queryBuf[0] != '*')
 		{
@@ -486,7 +485,6 @@ int32_t xSession::processMultibulkBuffer(xBuffer *buffer)
 			multibulklen --;
 		}
 	}
-
 	
 	if(pos)
 	{

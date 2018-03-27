@@ -118,13 +118,17 @@ void xTcpConnection::handleWrite()
 		}
 		else
 		{
+#ifdef __DEBUG__
 			LOG_ERROR<<"TcpConnection::handleWrite";
+#endif
 		}
 
 	}
 	else
 	{
+#ifdef __DEBUG__
 		LOG_ERROR<<"Connection fd  is down, no more writing "<< channel->getfd();
+#endif
 	}
 }
 void xTcpConnection::handleClose()

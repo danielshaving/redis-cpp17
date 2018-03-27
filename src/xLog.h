@@ -28,7 +28,7 @@ public:
 		}
 	}
 
-	const char *getData()const { return data; }
+	const char *getData() const { return data; }
 	int length() const { return static_cast<int>(cur - data); }
 	char *current() { return cur; }
 	void add(size_t len) { cur += len; }
@@ -38,7 +38,7 @@ public:
 
 	std::string toString() const { return std::string(data, length()); }
 	int  avail() const { return static_cast<int>(end() - cur); }
-	const char* end() const { return data + sizeof data; }
+	const char *end() const { return data + sizeof data; }
 	xStringPiece toStringPiece() const { return xStringPiece(data, length()); }
 
 private:

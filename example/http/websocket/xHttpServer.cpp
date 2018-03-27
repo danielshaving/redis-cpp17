@@ -31,12 +31,14 @@ void xHttpServer::onConnection(const TcpConnectionPtr &conn)
 		auto it = webSockets.find(conn->getSockfd());
 		assert(it == webSockets.end());
 		webSockets[conn->getSockfd()] = context;
+		LOG_INFO<<"onConnection";
 	}
 	else
 	{
 		auto it = webSockets.find(conn->getSockfd());
 		assert(it != webSockets.end());
 		webSockets.erase(conn->getSockfd());
+		LOG_INFO<<"disonConnection";
 	}
 }
 
@@ -46,11 +48,12 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 	assert(it != webSockets.end());
 	auto context = it->second;
 
-	auto& cacheFrame = context->getRequest().getWSCacheFrame();
-	auto& parseString = context->getRequest().getWSParseString();
+	auto &cacheFrame = context->getRequest().getWSCacheFrame();
+	auto &parseString = context->getRequest().getWSParseString();
 
 	while(buffer->readableBytes() > 0)
 	{
+		LOG_INFO<<"buffer size:"<<buffer->readableBytes();
 		parseString.clear();
 		size_t size = 0;
 		bool ok = false;
@@ -61,8 +64,9 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 			break;
 		}
 
-		if (ok && (context->getRequest().getOpCode() == xHttpRequest::TEXT_FRAME ||
-				context->getRequest().getOpCode() == xHttpRequest::BINARY_FRAME))
+//		if (ok && (context->getRequest().getOpCode() == xHttpRequest::TEXT_FRAME ||
+//				context->getRequest().getOpCode() == xHttpRequest::BINARY_FRAME))
+		if (ok)
 		{
 			 if (!cacheFrame.empty())
 			{
@@ -73,30 +77,29 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 
 			xHttpResponse resp;
 			httpCallback(context->getRequest(),&resp);
-			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::TEXT_FRAME,true,false);
+			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::BINARY_FRAME,true,false);
 			conn->send(resp.intputBuffer());
-			context->reset();
+			LOG_INFO<<"send buffer size:"<<resp.intputBuffer()->readableBytes();
 		}
 		else if(context->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
 		{
+			 LOG_INFO<<"frame";
 			 cacheFrame += parseString;
 			 parseString.clear();
 		}
 		else if (context->getRequest().getOpCode() == xHttpRequest::PING_FRAME ||
 				context->getRequest().getOpCode() == xHttpRequest::PONG_FRAME )
 		{
-			xHttpResponse resp;
-			httpCallback(context->getRequest(),&resp);
-			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::PONG_FRAME,true,false);
-			conn->send(resp.intputBuffer());
-			context->reset();
+			LOG_INFO<<"ping";
 		}
 		else if(context->getRequest().getOpCode() == xHttpRequest::CLOSE_FRAME)
 		{
+			LOG_INFO<<"close frame";
 			conn->shutdown();
 		}
 		else
 		{
+			LOG_INFO<<"context->getRequest().getOpCode():"<<context->getRequest().getOpCode();
 			assert(false);
 		}
 

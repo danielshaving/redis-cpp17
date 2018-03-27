@@ -14,7 +14,6 @@ void xMemcached::start()
 	server.start();
 }
 
-
 void xMemcached::quit(const std::any &context)
 {
 	loop->quit();

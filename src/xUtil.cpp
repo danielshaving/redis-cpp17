@@ -426,7 +426,8 @@ void bytesToHuman(char *s, uint64_t n)
 {
 	double d;
 
-	if (n < 1024) {
+	if (n < 1024)
+	{
 	    /* Bytes */
 	    sprintf(s,"%lluB",n);
 	    return;
@@ -521,7 +522,7 @@ static inline bool is_base64(unsigned char c)
 	return (isalnum(c) || (c == '+') || (c == '/'));
 }
 
-std::string base64Encode(unsigned char const* bytes_to_encode, unsigned int in_len)
+std::string base64Encode(unsigned char const* bytesToEncode, unsigned int in_len)
 {
 	std::string ret;
 	int i = 0;
@@ -531,7 +532,7 @@ std::string base64Encode(unsigned char const* bytes_to_encode, unsigned int in_l
 
 	while (in_len--)
 	{
-		char_array_3[i++] = *(bytes_to_encode++);
+		char_array_3[i++] = *(bytesToEncode++);
 		if (i == 3) {
 		char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
 		char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
@@ -566,18 +567,18 @@ std::string base64Encode(unsigned char const* bytes_to_encode, unsigned int in_l
 
 }
 
-std::string base64Decode(std::string const& encoded_string)
+std::string base64Decode(std::string const& encodedString)
 {
-  size_t in_len = encoded_string.size();
+  size_t in_len = encodedString.size();
   int i = 0;
   int j = 0;
   int in_ = 0;
   unsigned char char_array_4[4], char_array_3[3];
   std::string ret;
 
-  while (in_len-- && ( encoded_string[in_] != '=') && is_base64(encoded_string[in_]))
+  while (in_len-- && ( encodedString[in_] != '=') && is_base64(encodedString[in_]))
   {
-    char_array_4[i++] = encoded_string[in_]; in_++;
+    char_array_4[i++] = encodedString[in_]; in_++;
     if (i ==4) {
       for (i = 0; i <4; i++)
         char_array_4[i] = base64_chars.find(char_array_4[i]);

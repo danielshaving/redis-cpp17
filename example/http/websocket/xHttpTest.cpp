@@ -10,8 +10,8 @@ void asyncOutput(const char *msg, int len)
 
 void onMessage(xHttpRequest &rep,xHttpResponse *resp)
 {
-	LOG_INFO<<"message";
-	auto buffer =  rep.getWSParseString();
+	auto &buffer =  rep.getWSParseString();
+	LOG_INFO<<"buffer:"<<buffer.size();
 	resp->appendBuffer(buffer.data(),buffer.size());
 }
 
