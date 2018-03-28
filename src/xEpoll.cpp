@@ -8,26 +8,21 @@ const int32_t kNew = -1;
 const int32_t kAdded = 1;
 const int32_t kDeleted = 2;
 
-
 xEpoll::xEpoll(xEventLoop *loop)
 :events(64),
 loop(loop),
-epollFd(-1)
+epollFd(::epoll_create1(EPOLL_CLOEXEC))
 {
-	epollFd = ::epoll_create1(EPOLL_CLOEXEC);
-
 	if (epollFd < 0)
 	{
 		LOG_WARN<<"create epollFd Failed error " << epollFd <<strerror(errno);
 	}
-
 }
 
 xEpoll::~xEpoll()
 {
 	::close(epollFd);
 }
-
 
 void  xEpoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
@@ -39,7 +34,7 @@ void  xEpoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 		fillActiveChannels(numEvents, activeChannels);
 		if (numEvents == events.size())
 		{
-			events.resize(events.size()*2);
+			events.resize(events.size() * 2);
 		}
 	}
 	else if (numEvents == 0)

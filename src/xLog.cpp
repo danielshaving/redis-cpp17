@@ -88,16 +88,14 @@ void AppendFile::flush()
 
 size_t AppendFile::write(const char* logline, size_t len)
 {
-#ifdef LINUX
+#ifdef __linux__
   return ::fwrite_unlocked(logline, 1, len, fp);
 #endif
 
-#ifdef MAC
+#ifdef __APPLE__
   return ::fwrite(logline, 1, len, fp);
 #endif
 }
-
-
 
 xLogFile::xLogFile(const std::string &basename,
                  size_t rollSize,
@@ -131,34 +129,33 @@ void xLogFile::flush()
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	file->flush();
-
 }
 
 void xLogFile::append_unlocked(const char *logline, int len)
 {
-  file->append(logline, len);
 
+  file->append(logline, len);
   if (file->getWrittenBytes() > rollSize)
   {
-    rollFile();
+	  rollFile();
   }
   else
   {
     ++count;
     if (count >= checkEveryN)
     {
-      count = 0;
-      time_t now = ::time(NULL);
-      time_t thisPeriod = now / kRollPerSeconds * kRollPerSeconds;
-      if (thisPeriod != startOfPeriod)
-      {
-        rollFile();
-      }
-      else if (now - lastFlush > flushInterval)
-      {
-        lastFlush = now;
-        file->flush();
-      }
+		count = 0;
+		time_t now = ::time(NULL);
+		time_t thisPeriod = now / kRollPerSeconds * kRollPerSeconds;
+		if (thisPeriod != startOfPeriod)
+		{
+			rollFile();
+		}
+		else if (now - lastFlush > flushInterval)
+		{
+			lastFlush = now;
+			file->flush();
+		}
     }
   }
 }
@@ -240,7 +237,6 @@ void xAsyncLogging::append(const char *logline,int len)
 
 void xAsyncLogging::threadFunc()
 {
-
 	xLogFile output(baseName,rollSize,false);
 	BufferPtr newBuffer1(new Buffer);
 	BufferPtr newBuffer2(new Buffer);
@@ -251,7 +247,6 @@ void xAsyncLogging::threadFunc()
 	buffersToWrite.reserve(16);
 
 	running = true;
-	condition.notify_one();
 
 	while(running)
 	{
@@ -262,7 +257,7 @@ void xAsyncLogging::threadFunc()
 			std::unique_lock<std::mutex> lk(mutex);
 			if(buffers.empty())
 			{
-				condition.wait_for(lk,std::chrono::seconds(3));
+				condition.wait_for(lk,std::chrono::seconds(flushInterval));
 			}
 
 			buffers.push_back(std::unique_ptr<Buffer>(currentBuffer.release()));
@@ -284,13 +279,11 @@ void xAsyncLogging::threadFunc()
 
 		for (size_t i = 0; i < buffersToWrite.size(); ++i)
 		{
-			// FIXME: use unbuffered stdio FILE ? or use ::writev ?
 			output.append(buffersToWrite[i]->getData(), buffersToWrite[i]->length());
 		}
 
 		if (buffersToWrite.size() > 2)
 		{
-			// drop non-bzero-ed buffers, avoid trashing
 			buffersToWrite.resize(2);
 		}
 
@@ -323,102 +316,100 @@ void xAsyncLogging::threadFunc()
 template<typename T>
 void xLogStream::formatInteger(T v)
 {
-  if (buffer.avail() >= kMaxNumericSize)
-  {
-    size_t len = convert(buffer.current(), v);
-    buffer.add(len);
-  }
+	if (buffer.avail() >= kMaxNumericSize)
+	{
+		size_t len = convert(buffer.current(), v);
+		buffer.add(len);
+	}
 }
-
 
 
 xLogStream& xLogStream::operator<<(short v)
 {
-  *this << static_cast<int>(v);
-  return *this;
+	*this << static_cast<int>(v);
+	return *this;
 }
 
 xLogStream& xLogStream::operator<<(unsigned short v)
 {
-  *this << static_cast<unsigned int>(v);
-  return *this;
+	*this << static_cast<unsigned int>(v);
+	return *this;
 }
 
 xLogStream& xLogStream::operator<<(int v)
 {
-  formatInteger(v);
-  return *this;
+	formatInteger(v);
+	return *this;
 }
 
 xLogStream& xLogStream::operator<<(unsigned int v)
 {
-  formatInteger(v);
-  return *this;
+	formatInteger(v);
+	return *this;
 }
 
 xLogStream& xLogStream::operator<<(long v)
 {
-  formatInteger(v);
-  return *this;
+	formatInteger(v);
+	return *this;
 }
 
 xLogStream& xLogStream::operator<<(unsigned long v)
 {
-  formatInteger(v);
-  return *this;
+	formatInteger(v);
+	return *this;
 }
 
 xLogStream& xLogStream::operator<<(long long v)
 {
-  formatInteger(v);
-  return *this;
+	formatInteger(v);
+	return *this;
 }
 
 xLogStream& xLogStream::operator<<(unsigned long long v)
 {
-  formatInteger(v);
-  return *this;
+	formatInteger(v);
+	return *this;
 }
 
 xLogStream& xLogStream::operator<<(const void* p)
 {
-  uintptr_t v = reinterpret_cast<uintptr_t>(p);
-  if (buffer.avail() >= kMaxNumericSize)
-  {
-    char* buf = buffer.current();
-    buf[0] = '0';
-    buf[1] = 'x';
-    size_t len = convertHex(buf+2, v);
-    buffer.add(len+2);
-  }
-  return *this;
+	uintptr_t v = reinterpret_cast<uintptr_t>(p);
+	if (buffer.avail() >= kMaxNumericSize)
+	{
+		char* buf = buffer.current();
+		buf[0] = '0';
+		buf[1] = 'x';
+		size_t len = convertHex(buf+2, v);
+		buffer.add(len+2);
+	}
+	return *this;
 }
 
 // FIXME: replace this with Grisu3 by Florian Loitsch.
 xLogStream& xLogStream::operator<<(double v)
 {
-  if (buffer.avail() >= kMaxNumericSize)
-  {
-    int len = snprintf(buffer.current(), kMaxNumericSize, "%.12g", v);
-    buffer.add(len);
-  }
-  return *this;
+	if (buffer.avail() >= kMaxNumericSize)
+	{
+		int len = snprintf(buffer.current(), kMaxNumericSize, "%.12g", v);
+		buffer.add(len);
+	}
+	return *this;
 }
 
 
 
 xLogger::LogLevel initLogLevel()
 {
-  if (::getenv("TRACE"))
-    return xLogger::TRACE;
-  else if (::getenv("DEBUG"))
-    return xLogger::DEBUG;
-  else
-    return xLogger::INFO;
+	if (::getenv("TRACE"))
+		return xLogger::TRACE;
+	else if (::getenv("DEBUG"))
+		return xLogger::DEBUG;
+	else
+		return xLogger::INFO;
 }
 
 xLogger::LogLevel g_logLevel = initLogLevel();
-
 
 const char* LogLevelName[xLogger::NUM_LOG_LEVELS] =
 {
@@ -434,19 +425,16 @@ const char* LogLevelName[xLogger::NUM_LOG_LEVELS] =
 
 void defaultOutput(const char* msg, int len)
 {
-  size_t n = fwrite(msg, 1, len, stdout);
-  //FIXME check n
-  (void)n;
-  printf("%s\n",msg);
+	size_t n = fwrite(msg, 1, len, stdout);
+	//FIXME check n
+	(void)n;
+	printf("%s\n",msg);
 }
 
 void defaultFlush()
 {
-  fflush(stdout);
+	fflush(stdout);
 }
-
-
-
 
 xLogger::OutputFunc g_output = defaultOutput;
 xLogger::FlushFunc g_flush = defaultFlush;
@@ -468,7 +456,7 @@ void xLogger::xImpl::formatTime()
 	struct tm tm_time;
 	time_t now = time(0);
 	gmtime_r(&now, &tm_time);
-	 int len = snprintf(t_time, sizeof(t_time), "%4d%02d%02d %02d:%02d:%02d",
+	int len = snprintf(t_time, sizeof(t_time), "%4d%02d%02d %02d:%02d:%02d",
 	tm_time.tm_year + 1900, tm_time.tm_mon + 1, tm_time.tm_mday,
 	tm_time.tm_hour + 8, tm_time.tm_min, tm_time.tm_sec);
 	assert(len == 17); (void)len;
@@ -505,11 +493,9 @@ xLogger::xLogger(xSourceFile file, int line, bool toAbort)
 }
 
 
-
 xLogger::~xLogger()
 {
 	impl.finish();
-
 	const xLogStream::Buffer& buf(stream().getBuffer());
 	g_output(buf.getData(), buf.length());
 	if (impl.level == FATAL)
@@ -517,22 +503,19 @@ xLogger::~xLogger()
 		g_flush();
 		abort();
 	}
-
-
 }
-
 
 void xLogger::setLogLevel(xLogger::LogLevel level)
 {
-  g_logLevel = level;
+	g_logLevel = level;
 }
 
 void xLogger::setOutput(OutputFunc out)
 {
-  g_output = out;
+	g_output = out;
 }
 
 void xLogger::setFlush(FlushFunc flush)
 {
-  g_flush = flush;
+	g_flush = flush;
 }

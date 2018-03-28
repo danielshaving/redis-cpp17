@@ -42,6 +42,7 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 	auto context = std::any_cast<xHttpContext>(conn->getContext());
 	while(buffer->readableBytes() > 0)
 	{
+		LOG_INFO<<"message"<<buffer->readableBytes();
 		size_t size = 0;
 		bool fin = false;
 
@@ -53,7 +54,7 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 		if (fin)
 		{
 			httpCallback(context->getRequest(),&resp);
-			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::TEXT_FRAME,true,false);
+			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::BINARY_FRAME,true,false);
 			conn->send(resp.intputBuffer());
 			context->reset();
 			resp.reset();

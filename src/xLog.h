@@ -46,7 +46,6 @@ private:
 	char *cur;
 };
 
-
 class AppendFile : noncopyable
 {
 public:
@@ -64,7 +63,7 @@ public:
 };
 
 
-class xLogFile :noncopyable
+class xLogFile : noncopyable
 {
  public:
 	xLogFile(const std::string &basename,
@@ -87,18 +86,15 @@ class xLogFile :noncopyable
 	const int checkEveryN;
 
 	int count;
-	mutable std::mutex mutex;
+	std::mutex mutex;
 	time_t startOfPeriod;
 	time_t lastRoll;
 	time_t lastFlush;
 	std::unique_ptr<AppendFile> file;
-
 	const static int kRollPerSeconds = 60*60*24;
 };
 
-
-
-class xAsyncLogging:noncopyable
+class xAsyncLogging : noncopyable
 {
 public:
 	xAsyncLogging(std::string baseName,size_t rollSize,int flushInterval = 3);
@@ -114,20 +110,15 @@ public:
 	{
 		running = false;
 		condition.notify_one();
-		thread->join();
 	}
 
 	void start()
 	{
 		thread = new std::thread(std::bind(&xAsyncLogging::threadFunc,this));
-		std::unique_lock<std::mutex> lock(mutex);
-		while(!running)
-		{
-			condition.wait(lock);
-		}
+		thread->detach();
 	}
-
 	void append(const char *loline,int len);
+
 private:
 	void threadFunc();
 

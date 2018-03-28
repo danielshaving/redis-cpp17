@@ -4,8 +4,7 @@
 #include "xChannel.h"	
 #include "xSocket.h"
 #ifdef __APPLE__
-//#include "xKqueue.h"
-#include "xPoll.h"
+#include "xKqueue.h"
 #endif
 
 #ifdef __linux__
@@ -15,13 +14,13 @@
 #include "xTimerQueue.h"
 #include "xCallback.h"
 
-class xEventLoop : noncopyable
+class xEventLoop :noncopyable
 {
 public:
     typedef std::function<void()> Functor;
 
-    xEventLoop();
-    ~xEventLoop();
+	xEventLoop();
+	~xEventLoop();
 
     void quit();
     void run();
@@ -33,13 +32,13 @@ public:
     void removeChannel(xChannel *channel);
     bool hasChannel(xChannel *channel);
     void cancelAfter(xTimer *timer);
-    xTimer  *runAfter(double  when,const std::any &context,bool repeat,xTimerCallback &&cb);
+    xTimer *runAfter(double  when,const std::any &context,bool repeat,xTimerCallback &&cb);
     void assertInLoopThread()
     {
-		if (!isInLoopThread())
-		{
-			abortNotInLoopThread();
-		}
+	  if (!isInLoopThread())
+	  {
+	      abortNotInLoopThread();
+	  }
     }
 
     void handlerTimerQueue() { timerQueue->handleRead(); }
@@ -55,29 +54,26 @@ private:
     std::thread::id threadId;
     mutable std::mutex mutex;
 #ifdef __APPLE__
-    std::unique_ptr<xPoll> epoller;
-    int16_t op;
-    int32_t wakeupFd[2];
+    std::unique_ptr<xKqueue>   epoller;
+    int op;
+    int wakeupFd[2];
 #endif
 
 #ifdef __linux__
-	std::unique_ptr<xEpoll> epoller;
-    int32_t wakeupFd;
+	std::unique_ptr<xEpoll>   epoller;
+    int wakeupFd;
 #endif
 
     std::unique_ptr<xTimerQueue> timerQueue;
     std::unique_ptr<xChannel> wakeupChannel;
     typedef std::vector<xChannel*> ChannelList;
     ChannelList activeChannels;
-    xChannel *currentActiveChannel;
+    xChannel* currentActiveChannel;
 	
     bool running;
     bool eventHandling;
     bool callingPendingFunctors;
-    std::vector<Functor> functors;
     std::vector<Functor> pendingFunctors;
-#ifdef __APPLE__
     xSocket socket;
-#endif
 };
 

@@ -3,15 +3,14 @@
 #include "xLog.h"
 
 #ifdef __linux__
-int32_t createEventfd()
+int createEventfd()
 {
-	int32_t evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	if (evtfd < 0)
-	{
-		assert(false);
-	}
-
-	return evtfd;
+  int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+  if (evtfd < 0)
+  {
+    assert(false);
+  }
+  return evtfd;
 }
 #endif
 
@@ -24,9 +23,8 @@ xEventLoop::xEventLoop()
  wakeupChannel(new xChannel(this,wakeupFd)),
 #endif
 #ifdef __APPLE__
- epoller(new xPoll(this)),
+ epoller(new xKqueue(this)),
  op(socketpair(AF_UNIX,SOCK_STREAM,0,wakeupFd)),
- //op(::pipe(wakeupFd)),
  timerQueue(new xTimerQueue(this)),
  wakeupChannel(new xChannel(this,wakeupFd[0])),
 #endif
@@ -35,10 +33,6 @@ xEventLoop::xEventLoop()
  eventHandling(false),
  callingPendingFunctors(false)
 {
-//#ifdef __APPLE__
-//	socket.setFlag(wakeupFd[0],FD_CLOEXEC);
-//	socket.setFlag(wakeupFd[1],FD_CLOEXEC);
-//#endif
 	wakeupChannel->setReadCallback(std::bind(&xEventLoop::handleRead, this));
 	wakeupChannel->enableReading();
 }
@@ -88,12 +82,12 @@ void xEventLoop::cancelAfter(xTimer *timer)
 	timerQueue->cancelTimer(timer);
 }
 
-xTimer * xEventLoop::runAfter(double  when,const std::any &context,bool repeat,xTimerCallback &&cb)
+xTimer * xEventLoop::runAfter(double  when, const std::any &context,bool repeat,xTimerCallback&& cb)
 {
 	return timerQueue->addTimer(when,context,repeat,std::move(cb));
 }
 
-bool xEventLoop::hasChannel(xChannel *channel)
+bool xEventLoop::hasChannel(xChannel* channel)
 {
 	assert(channel->ownerLoop() == this);
 	assertInLoopThread();
@@ -151,6 +145,7 @@ void xEventLoop::runInLoop(Functor &&cb)
 	}
 	else
 	{
+
 		queueInLoop(std::move(cb));
 	}
 }
@@ -170,6 +165,7 @@ void xEventLoop::queueInLoop(Functor &&cb)
 
 void xEventLoop::doPendingFunctors()
 {
+	std::vector<Functor> functors;
 	callingPendingFunctors = true;
 
 	{
@@ -182,8 +178,6 @@ void xEventLoop::doPendingFunctors()
 		functors[i]();
 	}
 
-	functors.clear();
-
 	callingPendingFunctors = false;
 }
 
@@ -195,9 +189,9 @@ void xEventLoop::run()
 		activeChannels.clear();
 		epoller->epollWait(&activeChannels);
 		eventHandling = true;
-		for (auto &it : activeChannels)
+		for (auto it = activeChannels.begin();it != activeChannels.end(); ++it)
 		{
-			currentActiveChannel = it;
+			currentActiveChannel = *it;
 			currentActiveChannel->handleEvent();
 		}
 

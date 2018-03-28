@@ -11,6 +11,7 @@ void asyncOutput(const char *msg, int len)
 void onMessage(xHttpRequest &rep,xHttpResponse *resp)
 {
 	auto &buffer =  rep.getParseString();
+	//LOG_INFO<<"buffer size:"<<buffer.size();
 	resp->appendBuffer(buffer.data(),buffer.size());
 }
 
@@ -27,7 +28,7 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	const char* ip = argv[1];
+	const char *ip = argv[1];
 	uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 	int16_t threadNum = static_cast<int16_t>(atoi(argv[3]));
 
@@ -40,7 +41,6 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
-
 
 
 

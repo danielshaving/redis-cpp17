@@ -1,7 +1,6 @@
 #include "xRedis.h"
 #include "xLog.h"
 
-
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char *msg, int len)
 {
@@ -42,10 +41,10 @@ int main(int argc, char *argv[])
 
 	if(argc == 5)
 	{
-		const char* ip = argv[1];
+		const char *ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int16_t threadCount = atoi(argv[3]);
-		bool clusterEnbaled =  atoi(argv[4]);
+		bool clusterEnbaled = atoi(argv[4]);
 		xRedis redis(ip,port,threadCount,clusterEnbaled);
 		LOG_INFO<<"ip:"<<ip;
 		LOG_INFO<<"port:"<<port;

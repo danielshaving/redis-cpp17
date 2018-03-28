@@ -5,7 +5,7 @@
 class xBuffer : noncopyable
 {
 public:
-	static const size_t kCheapPrepend = 32;
+	static const size_t kCheapPrepend = 16;
 	static const size_t kInitialSize = 1024 * 16;
 
 	explicit xBuffer(size_t initialSize = kInitialSize)

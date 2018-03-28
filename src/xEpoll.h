@@ -6,7 +6,7 @@
 class xChannel;
 class xEventLoop;
 
-class xEpoll : noncopyable
+class xEpoll:noncopyable
 {
 public:
 	typedef std::vector<struct epoll_event> EventList;
@@ -16,12 +16,12 @@ public:
 	xEpoll(xEventLoop *loop);
 	~xEpoll();
 
-	void epollWait(ChannelList *activeChannels,int32_t msTime = 10);
-	bool hasChannel(xChannel *channel);
-	void updateChannel(xChannel *channel);
-	void removeChannel(xChannel *channel);
-	void update(int32_t operation, xChannel *channel);
-	void fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const;
+	void	epollWait(ChannelList *activeChannels,int32_t msTime = 10);
+	bool	hasChannel(xChannel *channel);
+	void	updateChannel(xChannel *channel);
+	void	removeChannel(xChannel *channel);
+	void	update(int32_t operation, xChannel *channel);
+	void 	fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const;
 
  private:
 	ChannelMap channels;
