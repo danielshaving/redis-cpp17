@@ -8,10 +8,23 @@ void asyncOutput(const char *msg, int len)
 	g_asyncLog->append(msg, len);
 }
 
+void onConnection(const TcpConnectionPtr &conn)
+{
+	if(conn->connected())
+	{
+		xHttpContext context;
+		conn->setContext(context);
+		LOG_INFO<<"onConnection";
+	}
+	else
+	{
+		LOG_INFO<<"disonConnection";
+	}
+}
+
 void onMessage(xHttpRequest &rep,xHttpResponse *resp)
 {
 	auto &buffer =  rep.getParseString();
-	//LOG_INFO<<"buffer size:"<<buffer.size();
 	resp->appendBuffer(buffer.data(),buffer.size());
 }
 
@@ -36,6 +49,7 @@ int main(int argc, char* argv[])
 	xHttpServer server(&loop,ip,port);
 	server.setThreadNum(threadNum);
 	server.setMessageCallback(onMessage);
+	server.setConnCallback(onConnection);
 	server.start();
 	loop.run();
 

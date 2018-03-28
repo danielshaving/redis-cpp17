@@ -6,84 +6,85 @@ const char* zero = digits + 9;
 template<typename T>
 size_t convert(char buf[], T value)
 {
-  T i = value;
-  char* p = buf;
+	T i = value;
+	char* p = buf;
 
-  do
-  {
-    int lsd = static_cast<int>(i % 10);
-    i /= 10;
-    *p++ = zero[lsd];
-  } while (i != 0);
+	do
+	{
+		int lsd = static_cast<int>(i % 10);
+		i /= 10;
+		*p++ = zero[lsd];
+	} while (i != 0);
 
-  if (value < 0)
-  {
-    *p++ = '-';
-  }
-  *p = '\0';
-  std::reverse(buf, p);
+	if (value < 0)
+	{
+		*p++ = '-';
+	}
 
-  return p - buf;
+	*p = '\0';
+	std::reverse(buf, p);
+
+	return p - buf;
 }
 
 
 size_t convertHex(char buf[], uintptr_t value)
 {
-  uintptr_t i = value;
-  char* p = buf;
+	uintptr_t i = value;
+	char* p = buf;
 
-  do
-  {
-    int lsd = static_cast<int>(i % 16);
-    i /= 16;
-    *p++ = digitsHex[lsd];
-  } while (i != 0);
+	do
+	{
+		int lsd = static_cast<int>(i % 16);
+		i /= 16;
+		*p++ = digitsHex[lsd];
+	} while (i != 0);
 
-  *p = '\0';
-  std::reverse(buf, p);
+	*p = '\0';
+	std::reverse(buf, p);
 
-  return p - buf;
+	return p - buf;
 }
 
 AppendFile::AppendFile(std::string  &filename)
   : fp(::fopen(filename.c_str(), "ae")),  // 'e' for O_CLOEXEC
     writtenBytes(0)
 {
-  assert(fp);
-  ::setbuffer(fp, buffer, sizeof buffer);
+	assert(fp);
+	::setbuffer(fp, buffer, sizeof buffer);
 }
 
 AppendFile::~AppendFile()
 {
-  ::fclose(fp);
+	::fclose(fp);
 }
 
 void AppendFile::append(const char *logline, const size_t len)
 {
-  size_t n = write(logline, len);
-  size_t remain = len - n;
-  while (remain > 0)
-  {
-    size_t x = write(logline + n, remain);
-    if (x == 0)
-    {
-      int err = ferror(fp);
-      if (err)
-      {
-      	LOG_ERROR<<"AppendFile::append() failed "<< strerror(err);
-      }
-      break;
-    }
-    n += x;
-    remain = len - n; // remain -= x
-  }
+	size_t n = write(logline, len);
+	size_t remain = len - n;
+	while (remain > 0)
+	{
+		size_t x = write(logline + n, remain);
+		if (x == 0)
+		{
+			int err = ferror(fp);
+			if (err)
+			{
+				LOG_ERROR<<"AppendFile::append() failed "<< strerror(err);
+			}
+			break;
+		}
+		n += x;
+		remain = len - n; // remain -= x
+	}
 
-  writtenBytes += len;
+	writtenBytes += len;
 }
 
 void AppendFile::flush()
 {
-  ::fflush(fp);
+	::fflush(fp);
 }
 
 size_t AppendFile::write(const char* logline, size_t len)
@@ -111,12 +112,13 @@ xLogFile::xLogFile(const std::string &basename,
     lastRoll(0),
     lastFlush(0)
 {
-  assert(basename.find('/') == std::string::npos);
-  rollFile();
+	assert(basename.find('/') == std::string::npos);
+	rollFile();
 }
 
 xLogFile::~xLogFile()
 {
+
 }
 
 void xLogFile::append(const char *logline, int len)
@@ -179,18 +181,18 @@ bool xLogFile::rollFile()
 
 std::string xLogFile::getLogFileName(const std::string &basename, time_t *now)
 {
-  std::string filename;
-  filename.reserve(basename.size() + 64);
-  filename = basename;
+	std::string filename;
+	filename.reserve(basename.size() + 64);
+	filename = basename;
 
-  char timebuf[32];
-  struct tm tm;
-  *now = time(NULL);
-  gmtime_r(now, &tm); // FIXME: localtime_r ?
-  strftime(timebuf, sizeof timebuf, ".%Y%m%d-%H%M%S", &tm);
-  filename += timebuf;
-  filename += ".log";
-  return filename;
+	char timebuf[32];
+	struct tm tm;
+	*now = time(NULL);
+	gmtime_r(now, &tm); // FIXME: localtime_r ?
+	strftime(timebuf, sizeof timebuf, ".%Y%m%d-%H%M%S", &tm);
+	filename += timebuf;
+	filename += ".log";
+	return filename;
 }
 
 

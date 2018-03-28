@@ -62,6 +62,7 @@ public:
 	xRedisReader();
 	xRedisReader(xBuffer &buffer);
 	
+	void clear();
 	int32_t redisReaderGetReply(redisReply **reply);
 	void redisReaderSetError(int32_t type, const char *str);
 	void redisReaderSetErrorProtocolByte(char byte);
@@ -155,9 +156,9 @@ public:
 	xRedisAsyncContext(xBuffer &buffer,const TcpConnectionPtr &conn,int32_t sockfd);
 	~xRedisAsyncContext();
 
-	int32_t redisAsyncCommand(redisCallbackFn *fn, const std::any &privdata, char *cmd, size_t len);
-	int32_t redisvAsyncCommand(redisCallbackFn *fn, const std::any&privdata, const char *format, va_list ap);
-	int32_t redisAsyncCommand(redisCallbackFn *fn, const std::any&privdata, const char *format, ...);
+	int32_t __redisAsyncCommand(redisCallbackFn *fn, const std::any &privdata, char *cmd, size_t len);
+	int32_t redisvAsyncCommand(redisCallbackFn *fn, const std::any &privdata, const char *format, va_list ap);
+	int32_t redisAsyncCommand(redisCallbackFn *fn, const std::any &privdata, const char *format, ...);
 
 	int32_t redisGetReply(redisReply **reply) { return c->redisGetReply(reply); }
 	RedisContextPtr getRedisContext() { return c; }

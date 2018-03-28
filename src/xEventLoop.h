@@ -73,6 +73,7 @@ private:
     bool running;
     bool eventHandling;
     bool callingPendingFunctors;
+    std::vector<Functor> functors;
     std::vector<Functor> pendingFunctors;
     xSocket socket;
 };

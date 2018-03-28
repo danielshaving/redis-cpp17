@@ -8,9 +8,14 @@ xHttpServer::xHttpServer(xEventLoop *loop,const char *ip,uint16_t port)
 	server.setMessageCallback(std::bind(&xHttpServer::onHandeShake,this,std::placeholders::_1,std::placeholders::_2));
 }
 
-void xHttpServer::setMessageCallback(HttpCallBack callback)
+void xHttpServer::setConnCallback(HttpConnCallBack callback)
 {
-	httpCallback = callback;
+	httpConnCallback = callback;
+}
+
+void xHttpServer::setMessageCallback(HttpReadCallBack callback)
+{
+	httpReadCallback = callback;
 }
 
 xHttpServer::~xHttpServer()
@@ -25,16 +30,7 @@ void xHttpServer::start()
 
 void xHttpServer::onConnection(const TcpConnectionPtr &conn)
 {
-	if(conn->connected())
-	{
-		xHttpContext context;
-		conn->setContext(context);
-		LOG_INFO<<"onConnection";
-	}
-	else
-	{
-		LOG_INFO<<"disonConnection";
-	}
+	httpConnCallback(conn);
 }
 
 void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
@@ -42,7 +38,6 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 	auto context = std::any_cast<xHttpContext>(conn->getContext());
 	while(buffer->readableBytes() > 0)
 	{
-		LOG_INFO<<"message"<<buffer->readableBytes();
 		size_t size = 0;
 		bool fin = false;
 
@@ -53,11 +48,11 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 
 		if (fin)
 		{
-			httpCallback(context->getRequest(),&resp);
+			xHttpResponse resp;
+			httpReadCallback(context->getRequest(),&resp);
 			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::BINARY_FRAME,true,false);
 			conn->send(resp.intputBuffer());
 			context->reset();
-			resp.reset();
 		}
 		else if(context->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
 		{
@@ -97,8 +92,6 @@ void xHttpServer::onHandeShake(const TcpConnectionPtr &conn,xBuffer *buffer)
 	if(context->gotAll())
 	{
 		onRequest(conn,context->getRequest());
-		sendBuf.retrieveAll();
-		secKey.clear();
 		context->reset();
 	}
 	else
@@ -117,12 +110,13 @@ void xHttpServer::onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req
 		return ;
 	}
 
+	xBuffer sendBuf;
 	sendBuf.append("HTTP/1.1 101 Switching Protocols\r\n"
 			 "Upgrade: websocket\r\n"
 			 "Connection: Upgrade\r\n"
 			 "Sec-WebSocket-Accept: ");
 
-	secKey = iter->second + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+	std::string secKey = iter->second + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	SHA1_CTX ctx;
 	unsigned char hash[20];
 	SHA1Init(&ctx);

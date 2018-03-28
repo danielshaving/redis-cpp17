@@ -165,7 +165,6 @@ void xEventLoop::queueInLoop(Functor &&cb)
 
 void xEventLoop::doPendingFunctors()
 {
-	std::vector<Functor> functors;
 	callingPendingFunctors = true;
 
 	{
@@ -177,6 +176,8 @@ void xEventLoop::doPendingFunctors()
 	{
 		functors[i]();
 	}
+
+	functors.clear();
 
 	callingPendingFunctors = false;
 }

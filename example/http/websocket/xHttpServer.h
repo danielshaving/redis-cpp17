@@ -8,7 +8,8 @@ class xEventLoop;
 class xHttpServer : noncopyable
 {
 public:
-	typedef std::function<void(xHttpRequest &,xHttpResponse *)> HttpCallBack;
+	typedef std::function<void(xHttpRequest &,xHttpResponse *)> HttpReadCallBack;
+	typedef std::function<void(const TcpConnectionPtr &)> HttpConnCallBack;
 	xHttpServer(xEventLoop *loop,const char *ip,uint16_t  port);
 	~xHttpServer();
 
@@ -17,7 +18,8 @@ public:
 		server.setThreadNum(numThreads);
 	}
 
-	void setMessageCallback(HttpCallBack callback);
+	void setMessageCallback(HttpReadCallBack callback);
+	void setConnCallback(HttpConnCallBack callback);
 	void start();
 	void onConnection(const TcpConnectionPtr &conn);
 	void onHandeShake(const TcpConnectionPtr &conn,xBuffer *buffer);
@@ -25,11 +27,9 @@ public:
 	void onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req);
 
 private:
-	std::string secKey;
-	xBuffer sendBuf;
 	xEventLoop *loop;
 	xTcpServer server;
-	HttpCallBack httpCallback;
-	xHttpResponse resp;
+	HttpReadCallBack httpReadCallback;
+	HttpConnCallBack httpConnCallback;
 	std::map<int32_t,std::shared_ptr<xHttpContext>> webSockets;
 };

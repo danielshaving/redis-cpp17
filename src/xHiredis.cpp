@@ -5,16 +5,22 @@
 xRedisReader::xRedisReader(xBuffer &buffer)
 {
 	buf = &buffer;
+	clear();
 }
 
 xRedisReader::xRedisReader()
 {
 	xBuffer buffer;
+	buf = &buffer;
+	clear();
+}
+
+void xRedisReader::clear()
+{
 	pos = 0;
 	err = 0;
 	errstr[0] = '\0';
 	ridx = -1;
-	buf = &buffer;
 }
 
 xRedisContext::xRedisContext()
@@ -419,7 +425,7 @@ redisReply *createInteger(const redisReadTask *task, int64_t value)
 }
 
 
-redisReply  *createNil(const redisReadTask *task)
+redisReply *createNil(const redisReadTask *task)
 {
 	redisReply * r, *parent;
 
@@ -560,7 +566,7 @@ int32_t xRedisReader::processBulkItem()
 {
 	redisReadTask *cur = &(rstack[ridx]);
 	redisReply *obj = nullptr;
-	const char * p;
+	const char *p;
 	const char *s;
 	int32_t	len;
 	unsigned long bytelen;
@@ -704,8 +710,8 @@ int32_t xRedisReader::processMultiBulkItem()
 
 int32_t xRedisReader::processItem()
 {
-	redisReadTask * cur = & (rstack[ridx]);
-	const char * p;
+	redisReadTask *cur = &(rstack[ridx]);
+	const char *p;
 
 /* check if we need to read type */
 	if (cur->type < 0)
@@ -784,7 +790,7 @@ int32_t xRedisReader::redisReaderGetReply(redisReply **reply)
 
 	if (ridx == -1)
 	{
-		rstack[0].type	= -1;
+		rstack[0].type = -1;
 		rstack[0].elements = -1;
 		rstack[0].idx = -1;
 		rstack[0].obj = nullptr;
@@ -959,7 +965,7 @@ int32_t xRedisContext::redisAppendCommand(const char *format, ...)
     return ret;
 }
 
-int32_t xRedisAsyncContext::redisAsyncCommand(redisCallbackFn *fn, const std::any& privdata, char *cmd, size_t len)
+int32_t xRedisAsyncContext::__redisAsyncCommand(redisCallbackFn *fn, const std::any &privdata, char *cmd, size_t len)
 {
 	redisCallback cb;
 	cb.fn = fn;
@@ -975,6 +981,7 @@ int32_t xRedisAsyncContext::redisAsyncCommand(redisCallbackFn *fn, const std::an
 	}
 
 	serverConn->sendPipe(cmd,len);
+
    	return REDIS_OK;
 }
 
@@ -1256,7 +1263,7 @@ int32_t xRedisAsyncContext::redisvAsyncCommand(redisCallbackFn *fn, const std::a
 	int32_t len;
 	int32_t status;
 	len = redisvFormatCommand(&cmd,format,ap);
-	status = redisAsyncCommand(fn,privdata,cmd,len);
+	status = __redisAsyncCommand(fn,privdata,cmd,len);
 	return status;
 }
 

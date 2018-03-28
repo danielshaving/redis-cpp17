@@ -12,7 +12,7 @@ ssize_t xBuffer::readFd(int32_t fd, int32_t *savedErrno)
 	char extrabuf[kInitialSize];
 	struct iovec vec[2];
 	const size_t writable = writableBytes();
-	vec[0].iov_base = begin()+writerIndex;
+	vec[0].iov_base = begin() + writerIndex;
 	vec[0].iov_len = writable;
 	vec[1].iov_base = extrabuf;
 	vec[1].iov_len = sizeof extrabuf;
