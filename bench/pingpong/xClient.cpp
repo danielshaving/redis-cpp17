@@ -29,11 +29,11 @@ public:
 
 	void start()
 	{
-		cli.connect(ip,port);
+		cli.asyncConnect(ip,port);
 	}
 	void stop()
 	{
-		cli.disconnect();
+		cli.disConnect();
 	}
 
 
@@ -41,14 +41,13 @@ public:
 	int64_t getMessagesRead() { return messagesRead; }
 
 private:
-
-	void connCallBack(const xTcpconnectionPtr& conn);
+	void connCallBack(const TcpConnectionPtr& conn);
 	void connErrorCallBack(const std::any &context)
 	{
 		//LOG_WARN<<"tcp connect failure";
 	}
 
-	void readCallBack(const xTcpconnectionPtr& conn, xBuffer* buf)
+	void readCallBack(const TcpConnectionPtr &conn, xBuffer* buf)
 	{
 		++messagesRead;
 		bytesRead +=  buf->readableBytes();
@@ -67,7 +66,7 @@ private:
 
 };
 
-class xClient:noncopyable
+class xClient : noncopyable
 {
 public:
 	xClient(xEventLoop *loop,const char *ip,uint16_t port,int blockSize,int sessionCount,
@@ -93,7 +92,7 @@ public:
 		{
 			std::shared_ptr<xConnect> vsession (new xConnect(threadPool.getNextLoop(),ip,port,this));
 			vsession->start();
-    		sessions.push_back(vsession);
+    			sessions.push_back(vsession);
 			numConencted++;
 		}
 	}
@@ -107,7 +106,7 @@ public:
 	}
 
 
-	void onDisconnect(const xTcpconnectionPtr& conn)
+	void onDisconnect(const TcpConnectionPtr& conn)
 	{
 		numConencted--;
 		if (numConencted  == 0)
@@ -155,8 +154,7 @@ private:
 	std::atomic<int> numConencted;
 };
 
-
-void xConnect::connCallBack(const xTcpconnectionPtr & conn)
+void xConnect::connCallBack(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{

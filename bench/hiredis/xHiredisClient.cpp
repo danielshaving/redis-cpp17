@@ -18,7 +18,7 @@ xHiredisClient::~xHiredisClient()
 
 bool xHiredisClient::connected() const
 {
-	return channel  && context && (context->c.flags & REDIS_CONNECTED);
+	return channel && context && (context->c.flags & REDIS_CONNECTED);
 }
 
 const char * xHiredisClient::errstr() const

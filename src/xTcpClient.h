@@ -19,7 +19,7 @@ public:
 
 	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb); }
 	void setConnectionCallback(const ConnectionCallback &&cb) { connectionCallback = std::move(cb); }
-	void setMessageCallback(const MessageCallback &&cb){ messageCallback = std::move(cb); }
+	void setMessageCallback(const MessageCallback &&cb) { messageCallback = std::move(cb); }
 	void setWriteCompleteCallback(const WriteCompleteCallback &&cb) { writeCompleteCallback = std::move(cb); }
 
 	xEventLoop *getLoop() { return loop; }

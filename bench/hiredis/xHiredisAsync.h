@@ -9,15 +9,16 @@ static int tests = 0, fails = 0;
 #define test(_s) { printf("#%02d ", ++tests); printf(_s); }
 #define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
 
-class xHiredisAsync
+class xHiredisAsync : noncopyable
 {
 public:
 	xHiredisAsync(xEventLoop *loop,int threadCount,const char *ip,int16_t port);
 	void redisErrorConnCallBack(const std::any &context);
 	void redisConnCallBack(const TcpConnectionPtr& conn);
 	xHiredis *getHiredis() { return &hiredis; }
-	void serverCron(const std::any & context);
-
+	void serverCron(const std::any &context);
+	void getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
+	void setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
 private:
 	xHiredis  hiredis;
 	std::atomic<int> connectCount;
