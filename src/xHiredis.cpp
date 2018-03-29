@@ -4,14 +4,14 @@
 
 xRedisReader::xRedisReader(xBuffer *buffer)
 {
-	buf = buffer;
+	buffer = buffer;
 	clear();
 }
 
 xRedisReader::xRedisReader()
 {
-	xBuffer buffer;
-	buf = &buffer;
+	xBuffer buf;
+	buffer = &buf;
 	clear();
 }
 
@@ -90,9 +90,9 @@ xRedisAsyncContext::~xRedisAsyncContext()
 	}
 
 	/* Clear input buffer on errors. */
-	if (buf != nullptr)
+	if (buffer != nullptr)
 	{
-		buf->retrieveAll();
+		buffer->retrieveAll();
 		pos = 0;
 	}
 
@@ -108,7 +108,7 @@ xRedisAsyncContext::~xRedisAsyncContext()
 }
 
 
-static size_t chrtos(char *buf, size_t size, char byte)
+static size_t chrtos(char *buffer, size_t size, char byte)
 {
     size_t len = 0;
 
@@ -116,18 +116,18 @@ static size_t chrtos(char *buf, size_t size, char byte)
     {
 		case '\\':
 		case '"':
-			len = snprintf(buf,size,"\"\\%c\"",byte);
+			len = snprintf(buffer,size,"\"\\%c\"",byte);
 			break;
-		case '\n': len = snprintf(buf,size,"\"\\n\""); break;
-		case '\r': len = snprintf(buf,size,"\"\\r\""); break;
-		case '\t': len = snprintf(buf,size,"\"\\t\""); break;
-		case '\a': len = snprintf(buf,size,"\"\\a\""); break;
-		case '\b': len = snprintf(buf,size,"\"\\b\""); break;
+		case '\n': len = snprintf(buffer,size,"\"\\n\""); break;
+		case '\r': len = snprintf(buffer,size,"\"\\r\""); break;
+		case '\t': len = snprintf(buffer,size,"\"\\t\""); break;
+		case '\a': len = snprintf(buffer,size,"\"\\a\""); break;
+		case '\b': len = snprintf(buffer,size,"\"\\b\""); break;
 		default:
 			if (isprint(byte))
-				len = snprintf(buf,size,"\"%c\"",byte);
+				len = snprintf(buffer,size,"\"%c\"",byte);
 			else
-				len = snprintf(buf,size,"\"\\x%02x\"",(unsigned char)byte);
+				len = snprintf(buffer,size,"\"\\x%02x\"",(unsigned char)byte);
 			break;
     }
 
@@ -261,12 +261,12 @@ const char * xRedisReader::readLine(int32_t * _len)
 	const char *s;
 	int32_t len;
 
-	p = buf->peek() + pos;
-	s = seekNewline(p, (buf->readableBytes() - pos));
+	p = buffer->peek() + pos;
+	s = seekNewline(p, (buffer->readableBytes() - pos));
 
 	if (s != nullptr)
 	{
-		len = s - (buf->peek() + pos);
+		len = s - (buffer->peek() + pos);
 		pos += len + 2; 			/* skip \r\n */
 
 		if (_len)
@@ -281,9 +281,9 @@ const char * xRedisReader::readLine(int32_t * _len)
 const char * xRedisReader::readBytes(uint32_t bytes)
 {
 	const char * p;
-	if (buf->readableBytes() - pos >= bytes)
+	if (buffer->readableBytes() - pos >= bytes)
 	{
-		p = buf->peek() + pos;
+		p = buffer->peek() + pos;
 		pos += bytes;
 		return p;
 	}
@@ -334,16 +334,16 @@ void freeReply(redisReply  *reply)
 redisReply *createString(const redisReadTask *task, const char *str, size_t len)
 {
 	redisReply *r, *parent;
-	char * buf;
+	char * buffer;
 
 	r = createReplyObject(task->type);
 
 	if (r == nullptr)
 		return nullptr;
 
-	buf  = (char *)zmalloc(len + 1);
+	buffer  = (char *)zmalloc(len + 1);
 
-	if (buf == nullptr)
+	if (buffer == nullptr)
 	{
 		freeReply(r);
 		return nullptr;
@@ -352,9 +352,9 @@ redisReply *createString(const redisReadTask *task, const char *str, size_t len)
 	assert(task->type == REDIS_REPLY_ERROR || task->type == REDIS_REPLY_STATUS || task->type == REDIS_REPLY_STRING);
 
 	/* Copy string value */
-	memcpy(buf, str, len);
-	buf[len] = '\0';
-	r->str = buf;
+	memcpy(buffer, str, len);
+	buffer[len] = '\0';
+	r->str = buffer;
 	r->len = len;
 
 	if (task->parent)
@@ -570,13 +570,13 @@ int32_t xRedisReader::processBulkItem()
 	unsigned long bytelen;
 	int32_t success = 0;
 
-	p = buf->peek() + pos;
-	s = seekNewline(p, buf->readableBytes() - pos);
+	p = buffer->peek() + pos;
+	s = seekNewline(p, buffer->readableBytes() - pos);
 
 	if (s != nullptr)
 	{
-		p = buf->peek() + pos;
-		bytelen = s - (buf->peek() + pos) + 2; /* include \r\n */
+		p = buffer->peek() + pos;
+		bytelen = s - (buffer->peek() + pos) + 2; /* include \r\n */
 		len = readLongLong(p);
 
 		if (len < 0)
@@ -594,7 +594,7 @@ int32_t xRedisReader::processBulkItem()
 			/* Only continue when the buffer contains the entire bulk item. */
 			bytelen += len + 2; 		/* include \r\n */
 
-			if (pos + bytelen <= buf->readableBytes())
+			if (pos + bytelen <= buffer->readableBytes())
 			{
 				if (fn.createStringFuc)
 					obj = fn.createStringFuc(cur, s + 2, len);
@@ -781,7 +781,7 @@ int32_t xRedisReader::redisReaderGetReply(redisReply **reply)
 		return REDIS_ERR;
 	}
 
-	if (buf->readableBytes() == 0)
+	if (buffer->readableBytes() == 0)
 	{
 		return REDIS_OK;
 	}
@@ -812,7 +812,7 @@ int32_t xRedisReader::redisReaderGetReply(redisReply **reply)
 
 	if (pos >= 1024)
 	{
-		buf->retrieve(pos);
+		buffer->retrieve(pos);
 		pos = 0;
 	}
 
@@ -888,7 +888,7 @@ int32_t xRedisContext::redisBufferWrite( int32_t *done)
 int32_t xRedisContext::redisBufferRead()
 {
 	int32_t savedErrno = 0;
-	ssize_t n = reader->buf->readFd(fd, &savedErrno);
+	ssize_t n = reader->buffer->readFd(fd, &savedErrno);
 	if (n > 0)
 	{
 		
@@ -963,7 +963,7 @@ int32_t xRedisContext::redisAppendCommand(const char *format, ...)
     return ret;
 }
 
-int32_t xRedisAsyncContext::__redisAsyncCommand(RedisCallbackFn fn, const std::any &privdata, char *cmd, size_t len)
+int32_t xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn, const std::any &privdata, char *cmd, size_t len)
 {
 	redisCallback cb;
 	cb.fn = fn;
@@ -1254,7 +1254,7 @@ int32_t redisFormatCommand(char **target, const char *format, ...)
     return len;
 }
 
-int32_t xRedisAsyncContext::redisvAsyncCommand(RedisCallbackFn fn,const std::any &privdata,const char *format, va_list ap)
+int32_t xRedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, va_list ap)
 {
 	char *cmd;
 	int32_t len;
@@ -1264,7 +1264,7 @@ int32_t xRedisAsyncContext::redisvAsyncCommand(RedisCallbackFn fn,const std::any
 	return status;
 }
 
-int32_t xRedisAsyncContext::redisAsyncCommand(RedisCallbackFn fn,const std::any &privdata,const char *format, ...)
+int32_t xRedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...)
 {
 	va_list ap;
 	int32_t status;

@@ -26,7 +26,7 @@ slavefd(-1)
 {
 	initConfig();
 	loadDataFromDisk();
-	server.setConnectionCallback(std::bind(&xRedis::connCallBack, this, std::placeholders::_1));
+	server.setConnectionCallback(std::bind(&xRedis::connCallBack,this,std::placeholders::_1));
 	server.setThreadNum(threadCount);
 	if(threadCount > 1)
 	{
@@ -37,14 +37,21 @@ slavefd(-1)
 	server.start();
 	loop.runAfter(1.0,nullptr,true,std::bind(&xRedis::serverCron,this,std::placeholders::_1));
 
-	sentiThread =  std::unique_ptr<std::thread>(new std::thread(std::bind(&xSentinel::connectSentinel,&senti)));
-	sentiThread->detach();
 
-	repliThread = std::unique_ptr<std::thread>(new std::thread(std::bind(&xReplication::connectMaster,&repli)));
-	repliThread->detach();
+	{
+		std::thread thread(std::bind(&xSentinel::connectSentinel,&senti));
+		thread.detach();
+	}
 
-	clusterThread = std::unique_ptr<std::thread>(new std::thread(std::bind(&xCluster::connectCluster, &clus)));
-	clusterThread->detach();
+	{
+		std::thread thread(std::bind(&xReplication::connectMaster,&repli));
+		thread.detach();
+	}
+
+	{
+		std::thread thread(std::bind(&xCluster::connectCluster, &clus));
+		thread.detach();
+	}
 }
 
 

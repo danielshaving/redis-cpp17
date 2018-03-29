@@ -135,10 +135,6 @@ public:
 	std::unordered_set<rObj*,Hash,Equal> cluterCommands;
 	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommands;
 	std::unordered_map<int32_t,SessionPtr> sessions;
-	
-	std::unique_ptr<std::thread> repliThread;
-	std::unique_ptr<std::thread> sentiThread;
-	std::unique_ptr<std::thread> clusterThread;
 
 	std::unordered_map<int32_t,TcpConnectionPtr> slaveConns;
 	std::unordered_map<int32_t,TcpConnectionPtr> clusterConns;
