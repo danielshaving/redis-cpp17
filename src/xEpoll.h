@@ -16,7 +16,7 @@ public:
 	xEpoll(xEventLoop *loop);
 	~xEpoll();
 
-	void	epollWait(ChannelList *activeChannels,int32_t msTime = 10);
+	void	epollWait(ChannelList *activeChannels,int32_t msTime = 100);
 	bool	hasChannel(xChannel *channel);
 	void	updateChannel(xChannel *channel);
 	void	removeChannel(xChannel *channel);

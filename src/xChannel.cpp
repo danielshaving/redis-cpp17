@@ -73,21 +73,26 @@ void xChannel::handleEventWithGuard()
 
 #ifdef __APPLE__
 
-	if (readEnabled())
+	if ((revents & POLLHUP) && !(revents & POLLIN))
 	{
-		if (readCallback)
-		{
-			readCallback();
-		}
+		if (closeCallback) closeCallback();
 	}
 
-	if (writeEnabled())
+	if (revents & POLLERR)
 	{
-		if (writeCallback)
-		{
-			writeCallback();
-		}
+		if (errorCallback) errorCallback();
 	}
+
+	if (revents & (POLLIN | POLLPRI | POLLHUP))
+	{
+		if (readCallback) readCallback();
+	}
+
+	if (revents & POLLOUT)
+	{
+		if (writeCallback) writeCallback();
+	}
+
 #endif
 
 

@@ -9,7 +9,7 @@ const size_t xBuffer::kInitialSize;
 
 ssize_t xBuffer::readFd(int32_t fd, int32_t *savedErrno)
 {
-	char extrabuf[kInitialSize];
+	char extrabuf[65536];
 	struct iovec vec[2];
 	const size_t writable = writableBytes();
 	vec[0].iov_base = begin() + writerIndex;

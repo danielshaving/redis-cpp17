@@ -105,7 +105,7 @@ typedef struct redisAsyncCallback
 	char *data;
 	int32_t  len;
 	RedisCallback cb;
-};
+}RedisAsyncCallback;
 
 typedef std::list<redisAsyncCallback> RedisAsyncCallbackList;
 class xRedisContext : noncopyable
@@ -211,7 +211,7 @@ private:
 
 	xThreadPool pool;
 	bool clusterMode;
-	int32_t count;
+	std::atomic<int> count;
 	std::mutex rtx;
 };
 

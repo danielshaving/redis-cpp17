@@ -11,7 +11,7 @@ cron(true)
 	for(int i = 0; i < sessionCount; i++)
 	{
 		TcpClientPtr client(new xTcpClient(hiredis.getPool().getNextLoop(),hiredis.setCount()));
-		hiredis.insertTcpMap(hiredis.setCount(),client);
+		hiredis.insertTcpMap(hiredis.getCount(),client);
 		client->setConnectionErrorCallBack(std::bind(&xHiredisAsync::redisErrorConnCallBack,this,std::placeholders::_1));
 		client->setConnectionCallback(std::bind(&xHiredisAsync::redisConnCallBack,this,std::placeholders::_1));
 		client->setMessageCallback(std::bind(&xHiredis::redisReadCallBack,&hiredis,std::placeholders::_1,std::placeholders::_2));
@@ -90,13 +90,12 @@ void xHiredisAsync::serverCron(const std::any &context)
 	{
 		test("Redis async close safe test");
 		{
-			std::unique_lock<std::mutex> lk(hiredis.getMutex());
+			//std::unique_lock<std::mutex> lk(hiredis.getMutex());
 			for(auto &it : hiredis.getClientMap())
 			{
 				it.second->disConnect();
 			}
 		}
-
 		cron = false;
 	}
 }
@@ -121,7 +120,7 @@ void xHiredisAsync::serverCron(const std::any &context)
 		test("Redis async multithreaded safe test ");
 
 		{
-			std::unique_lock<std::mutex> lk(redisAsync.getHiredis()->getMutex());
+			//std::unique_lock<std::mutex> lk(redisAsync.getHiredis()->getMutex());
 			auto  &redisMap = redisAsync.getHiredis()->getRedisMap();
 			int32_t count = 0;
 			for(auto it = redisMap.begin(); it != redisMap.end();)

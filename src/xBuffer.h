@@ -320,7 +320,6 @@ public:
 		swap(other);
 	}
 
-
 	size_t internalCapacity() const
 	{
 		return buffer.capacity();

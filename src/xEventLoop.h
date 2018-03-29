@@ -4,7 +4,7 @@
 #include "xChannel.h"	
 #include "xSocket.h"
 #ifdef __APPLE__
-#include "xKqueue.h"
+#include "xPoll.h"
 #endif
 
 #ifdef __linux__
@@ -54,7 +54,7 @@ private:
     std::thread::id threadId;
     mutable std::mutex mutex;
 #ifdef __APPLE__
-    std::unique_ptr<xKqueue>   epoller;
+    std::unique_ptr<xPoll>   epoller;
     int op;
     int wakeupFd[2];
 #endif

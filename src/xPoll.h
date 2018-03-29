@@ -16,11 +16,11 @@ public:
 	xPoll(xEventLoop *loop);
 	~xPoll();
 
-	void epollWait(ChannelList *activeChannels,int32_t msTime = 10000);
+	void epollWait(ChannelList *activeChannels,int32_t msTime = 100);
 	bool hasChannel(xChannel *channel);
 	void updateChannel(xChannel *channel);
 	void removeChannel(xChannel *channel);
-	void fillActiveChannels(int numEvents, ChannelList* activeChannels) const;
+	void fillActiveChannels(int numEvents,ChannelList* activeChannels) const;
 
  private:
 	ChannelMap channels;

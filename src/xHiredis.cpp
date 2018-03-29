@@ -3,8 +3,8 @@
 
 
 xRedisReader::xRedisReader(xBuffer *buffer)
+:buffer(buffer)
 {
-	buffer = buffer;
 	clear();
 }
 
@@ -888,7 +888,7 @@ int32_t xRedisContext::redisBufferWrite( int32_t *done)
 int32_t xRedisContext::redisBufferRead()
 {
 	int32_t savedErrno = 0;
-	ssize_t n = reader->buffer->readFd(fd, &savedErrno);
+	ssize_t n = reader->buffer->readFd(fd,&savedErrno);
 	if (n > 0)
 	{
 		
@@ -965,11 +965,11 @@ int32_t xRedisContext::redisAppendCommand(const char *format, ...)
 
 int32_t xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn, const std::any &privdata, char *cmd, size_t len)
 {
-	redisCallback cb;
-	cb.fn = fn;
+	RedisCallback cb;
+	cb.fn = std::move(fn);
 	cb.privdata = privdata;
 
-	redisAsyncCallback call;
+	RedisAsyncCallback call;
 	call.data = cmd;
 	call.len = len;
 	call.cb = std::move(cb);
@@ -1781,7 +1781,7 @@ void xHiredis::insertTcpMap(int32_t data,const TcpClientPtr &tc)
 	tcpClients.insert(std::make_pair(data,tc));
 }
 
-void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
+void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	RedisAsyncContextPtr redisPtr;
 	{
