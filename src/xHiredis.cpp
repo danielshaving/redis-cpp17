@@ -1,21 +1,7 @@
 #include "xHiredis.h"
 
-
-
 xRedisReader::xRedisReader(xBuffer *buffer)
 :buffer(buffer)
-{
-	clear();
-}
-
-xRedisReader::xRedisReader()
-{
-	xBuffer buf;
-	buffer = &buf;
-	clear();
-}
-
-void xRedisReader::clear()
 {
 	pos = 0;
 	err = 0;
@@ -23,25 +9,24 @@ void xRedisReader::clear()
 	ridx = -1;
 }
 
+xRedisReader::xRedisReader()
+{
+	xBuffer buf;
+	buffer = &buf;
+	pos = 0;
+	err = 0;
+	errstr[0] = '\0';
+	ridx = -1;
+}
+
+xRedisReader::~xRedisReader()
+{
+
+}
+
+
 xRedisContext::xRedisContext()
 :reader(new xRedisReader())
-{
-	clear();
-}
-
-
-xRedisContext::xRedisContext(xBuffer *buffer,int32_t sockfd)
-:reader(new xRedisReader(buffer)),
- fd(sockfd)
-{
-	clear();
-}
-xRedisContext::~xRedisContext()
-{
-
-}
-
-void xRedisContext::clear()
 {
 	flags &= ~REDIS_BLOCK;
 	err = 0;
@@ -49,23 +34,43 @@ void xRedisContext::clear()
 	fd = 0;
 }
 
+xRedisContext::xRedisContext(xBuffer *buffer,int32_t sockfd)
+:reader(new xRedisReader(buffer)),
+ fd(sockfd)
+{
+	flags &= ~REDIS_BLOCK;
+	err = 0;
+	errstr[0] = '\0';
+	fd = 0;
+}
+
+xRedisContext::~xRedisContext()
+{
+
+}
+
 void xRedisContext::setBlock()
 {
 	flags |= REDIS_BLOCK;
 }
 
-void xRedisContext::setConnected()
+void xRedisContext::setDisConnected()
 {
-	flags &= ~REDIS_CONNECTED;
+	flags &= REDIS_CONNECTED;
 }
 
-xRedisAsyncContext::xRedisAsyncContext(xBuffer *buffer,const TcpConnectionPtr &conn,int32_t sockfd)
-:c(new xRedisContext(buffer,sockfd)),
- serverConn(conn)
+void xRedisContext::setConnected()
 {
-	err = 0;
-	errstr = nullptr;
-	data = nullptr;
+	flags != REDIS_CONNECTED;
+}
+
+xRedisAsyncContext::xRedisAsyncContext(xBuffer *buffer,const TcpConnectionPtr &conn)
+:c(new xRedisContext(buffer,conn->getSockfd())),
+ serverConn(conn),
+ err(0),
+ errstr(nullptr),
+ data(nullptr)
+{
 	c->setConnected();
 }
 
@@ -963,7 +968,7 @@ int32_t xRedisContext::redisAppendCommand(const char *format, ...)
     return ret;
 }
 
-int32_t xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn, const std::any &privdata, char *cmd, size_t len)
+void xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn, const std::any &privdata, char *cmd, size_t len)
 {
 	RedisCallback cb;
 	cb.fn = std::move(fn);
@@ -980,7 +985,7 @@ int32_t xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn, const
 	}
 
 	serverConn->sendPipe(cmd,len);
-   	return REDIS_OK;
+
 }
 
 
@@ -1254,24 +1259,20 @@ int32_t redisFormatCommand(char **target, const char *format, ...)
     return len;
 }
 
-int32_t xRedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, va_list ap)
+void xRedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, va_list ap)
 {
 	char *cmd;
 	int32_t len;
-	int32_t status;
 	len = redisvFormatCommand(&cmd,format,ap);
-	status = __redisAsyncCommand(fn,privdata,cmd,len);
-	return status;
+	__redisAsyncCommand(fn,privdata,cmd,len);
 }
 
-int32_t xRedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...)
+void xRedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...)
 {
 	va_list ap;
-	int32_t status;
 	va_start(ap,format);
-	status = redisvAsyncCommand(fn,privdata,format,ap);
+	redisvAsyncCommand(fn,privdata,format,ap);
 	va_end(ap);
-	return status;
 }
 
 redisReply *xRedisContext::redisBlockForReply()
@@ -1527,7 +1528,7 @@ int32_t xRedisContext::redisCheckSocketError()
 }
 
 
-static int32_t redisContextTimeoutMsec(const struct timeval *timeout, int32_t *result)
+static int32_t redisContextTimeoutMsec(const struct timeval *timeout,int32_t *result)
 {
 	int32_t msec = -1;
 
@@ -1553,7 +1554,7 @@ static int32_t redisContextTimeoutMsec(const struct timeval *timeout, int32_t *r
 }
 
 
-int32_t xRedisContext::redisContextConnectTcp(const char *addr, int16_t port, const struct timeval *timeout)
+int32_t xRedisContext::redisContextConnectTcp(const char *addr,int16_t port,const struct timeval *timeout)
 {	
 	int32_t rv;
 	struct addrinfo hints, *servinfo;
@@ -1573,7 +1574,7 @@ int32_t xRedisContext::redisContextConnectTcp(const char *addr, int16_t port, co
 
 	if(timeout != nullptr)
 	{
-		if (redisContextTimeoutMsec(timeout, &timeoutMsec) != REDIS_OK)
+		if (redisContextTimeoutMsec(timeout,&timeoutMsec) != REDIS_OK)
 		{
 			redisSetError(REDIS_ERR_IO, "Invalid timeout specified");
 			return REDIS_ERR;
@@ -1650,132 +1651,85 @@ RedisContextPtr  redisConnectWithTimeout(const char *ip,int16_t port,const struc
 	return c;	
 }
 
-
-xHiredis::xHiredis(xEventLoop *loop):
-	pool(loop),
-	clusterMode(false),
-	count(0)
+xHiredis::xHiredis(xEventLoop *loop,bool clusterMode)
+:pool(loop),
+clusterMode(true)
 {
 
 }
 
-xHiredis::xHiredis(xEventLoop *loop,bool clusterMode)
-:pool(loop),
-clusterMode(true),
-count(0)
+xHiredis::~xHiredis()
 {
-
 
 }
 
 void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 {
-	int32_t *index = std::any_cast<int32_t>(conn->getContext());
+	auto callback = std::any_cast<RedisAsyncCallback>(conn->getContext());
 	if(conn->connected())
 	{
-		RedisAsyncContextPtr ac(new xRedisAsyncContext(conn->intputBuffer(),conn,conn->getSockfd()));
+		RedisAsyncContextPtr ac(new xRedisAsyncContext(conn->intputBuffer(),conn));
 		insertRedisMap(conn->getSockfd(),ac);
-		redisAsyncCallback asyncCb;
-
-		{
-			std::unique_lock<std::mutex> lk(rtx);
-			auto it = clusters.find(*index);
-			assert(it !=clusters.end());
-			asyncCb = std::move(it->second);
-			clusters.erase(*index);
-		}
 
 		{
 			std::unique_lock<std::mutex> lk(ac->getMutex());
-			ac->getCb().push_back(std::move(asyncCb));
+			ac->getCb().push_back(*callback);
 		}
 		
-		conn->sendPipe(asyncCb.data,asyncCb.len);
+		conn->sendPipe(callback->data,callback->len);
 	}
 	else
 	{
 		eraseRedisMap(conn->getSockfd());
-		eraseTcpMap(*index);
 	}
 }
 
 void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 {
-	int32_t *index = std::any_cast<int32_t>(conn->getContext());
+	auto callback = std::any_cast<RedisAsyncCallback>(conn->getContext());
 	if(conn->connected())
 	{
-		RedisAsyncContextPtr ac (new xRedisAsyncContext(conn->intputBuffer(),conn,conn->getSockfd()));
+		RedisAsyncContextPtr ac (new xRedisAsyncContext(conn->intputBuffer(),conn));
 		insertRedisMap(conn->getSockfd(),ac);
 		conn->sendPipe("*1\r\n$6\r\nASKING\r\n");
 
-		redisAsyncCallback asyncCb;
-		{
-			std::unique_lock<std::mutex> lk(rtx);
-			auto it = clusters.find(*index);
-			assert(it !=clusters.end());
-			asyncCb = std::move(it->second);
-			clusters.erase(*index);
-		}
-
 		{
 			std::unique_lock<std::mutex> lk(ac->getMutex());
-			ac->getCb().push_back(std::move(asyncCb));
+			ac->getCb().push_back(*callback);
 		}
 		
-		conn->sendPipe(asyncCb.data,asyncCb.len);
+		conn->sendPipe(callback->data,callback->len);
 	}
 	else
 	{
 		eraseRedisMap(conn->getSockfd());
-		eraseTcpMap(*index);
 	}
 }
 
-
-void xHiredis::clusterErrorConnCallBack(const std::any &context)
-{
-	LOG_WARN<<"cluster connect failure";
-	std::unique_lock<std::mutex> lk(rtx);
-	{
-		auto it = tcpClients.find(std::any_cast<int32_t>(context));
-		assert(it != tcpClients.end());
-		tcpClients.erase(it);
-	}
-
-	{
-		auto it = clusters.find(std::any_cast<int32_t>(context));
-		assert(it != clusters.end());
-		zfree(it->second.data);
-		clusters.erase(it);
-	}
-}
-
-void xHiredis::eraseTcpMap(int32_t context)
+void xHiredis::clearTcpClient()
 {
 	std::unique_lock<std::mutex> lk(rtx);
-	auto it =  tcpClients.find(context);
-	assert(it != tcpClients.end());
-	tcpClients.erase(it);
+	tcpClients.clear();
 }
 
 void xHiredis::eraseRedisMap(int32_t sockfd)
 {
 	std::unique_lock<std::mutex> lk(rtx);
-	auto it = redisAsyncs.find(sockfd);
-	assert(it != redisAsyncs.end());
-	redisAsyncs.erase(it);
+	auto it = redisAsyncContexts.find(sockfd);
+	assert(it != redisAsyncContexts.end());
+	redisAsyncContexts.erase(it);
 }
 
-void xHiredis::insertRedisMap(int32_t sockfd, const RedisAsyncContextPtr &ac)
+void xHiredis::insertRedisMap(int32_t sockfd,const RedisAsyncContextPtr &ac)
 {
 	std::unique_lock<std::mutex> lk(rtx);
-	redisAsyncs.insert(std::make_pair(sockfd,ac));
+	redisAsyncContexts.insert(std::make_pair(sockfd,ac));
 }
 
-void xHiredis::insertTcpMap(int32_t data,const TcpClientPtr &tc)
+void xHiredis::pushTcpClient(const TcpClientPtr &client)
 {
 	std::unique_lock<std::mutex> lk(rtx);
-	tcpClients.insert(std::make_pair(data,tc));
+	tcpClients.push_back(client);
 }
 
 void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
@@ -1783,8 +1737,8 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 	RedisAsyncContextPtr redisPtr;
 	{
 		std::unique_lock <std::mutex> lck(rtx);
-		auto it = redisAsyncs.find(conn->getSockfd());
-		assert(it != redisAsyncs.end());
+		auto it = redisAsyncContexts.find(conn->getSockfd());
+		assert(it != redisAsyncContexts.end());
 		redisPtr = it->second;
 	}
 
@@ -1813,26 +1767,18 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 			int32_t port = atoi(s+1);
 			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<ip<<" "<<port;
 			
-			redisAsyncCallback call;
+			RedisAsyncCallback call;
 			{
 				std::unique_lock<std::mutex> lk(redisPtr->getMutex());
 				assert(!redisPtr->getCb().empty());
 				call = std::move(redisPtr->getCb().front());
 				redisPtr->getCb().pop_front();
 			}	
-		
-			setCount();
-			TcpClientPtr client(new xTcpClient(pool.getNextLoop(),ip.c_str(),port,getCount()));
 
-			{
-				std::unique_lock<std::mutex> lk(rtx);
-				tcpClients.insert(std::make_pair(getCount(),client));
-				clusters.insert(std::make_pair(getCount(),std::move(call)));
-			}
+			TcpClientPtr client(new xTcpClient(pool.getNextLoop(),ip.c_str(),port,call));
+			pushTcpClient(client);
 
-			client->setConnectionErrorCallBack(std::bind(&xHiredis::clusterErrorConnCallBack,this,std::placeholders::_1));
 			client->setMessageCallback(std::bind(&xHiredis::redisReadCallBack,this,std::placeholders::_1,std::placeholders::_2));
-			
 			if(!strncmp(reply->str,"MOVED",5))
 			{
 				client->setConnectionCallback(std::bind(&xHiredis::clusterMoveConnCallBack,this,std::placeholders::_1));
@@ -1862,7 +1808,6 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 				 
 				freeReply(reply);
 		 }
-
 	 }
 }
 

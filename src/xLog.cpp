@@ -195,9 +195,6 @@ std::string xLogFile::getLogFileName(const std::string &basename, time_t *now)
 	return filename;
 }
 
-
-
-
 xAsyncLogging::xAsyncLogging(std::string baseName,size_t rollSize,int flushInterval)
 :baseName(baseName),
 flushInterval(flushInterval),

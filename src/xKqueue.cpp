@@ -11,9 +11,8 @@ const int kDeleted = 2;
 xKqueue::xKqueue(xEventLoop *loop)
 :events(64),
 loop(loop),
-kqueueFd(-1)
+kqueueFd(kqueue())
 {
-	kqueueFd = kqueue();
 	if (kqueueFd < 0)
 	{
 		LOG_WARN<<"create kqueueFd Failed error " << kqueueFd <<strerror(errno);

@@ -14,6 +14,7 @@ public:
 	{
 
 	}
+
 	~xFixedBuffer()
 	{
 

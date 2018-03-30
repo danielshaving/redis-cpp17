@@ -21,7 +21,14 @@ xPoll::~xPoll()
 
 void  xPoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
-	int32_t numEvents = ::poll(&*events.begin(), events.size(), msTime);
+	auto timerQueue = loop->getTimerQueue();
+	if(timerQueue->size() > 0 )
+	{
+		auto timer = timerQueue->head();
+		msTime = timer->interval / 1000;
+	}
+
+	int32_t numEvents = ::poll(&*events.begin(),events.size(),msTime);
 	int32_t savedErrno = errno;
 
 	if (numEvents > 0)
@@ -44,6 +51,8 @@ void  xPoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 		  	LOG_WARN<<"wait error"<<errno;
 		}
 	}
+
+	loop->handlerTimerQueue();
 
 }
 

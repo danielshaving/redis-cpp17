@@ -25,7 +25,7 @@ public:
 	void asyncAddServerUrl(const char *ip,const int16_t port);
 	redisReply *commandArgv(const RedisContextPtr &c,int32_t argc, char **inargv);
 	sds getUniqueLockId();
-	bool lock(const char *resource, const int32_t ttl, xLock &lock);
+	bool lock(const char *resource,const int32_t ttl, xLock &lock);
 	bool unlock(const xLock &lock);
 	void unlockInstance(const RedisContextPtr &c,const char *resource,const  char *val);
 	int32_t  lockInstance(const RedisContextPtr &c,const char *resource,const  char *val,const int32_t ttl);

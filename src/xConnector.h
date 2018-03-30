@@ -19,17 +19,16 @@ public:
 
 	void asyncStart();
 	void syncStart();
-
 	void restart();
 	void stop();
 
+	void startInLoop(const std::any &context);
 	void syncStartInLoop();
 	void asyncStartInLoop();
 	void stopInLoop();
 
 	void asyncConnect();
 	void syncConnect();
-
 	void connecting(int32_t sockfd);
 	void resetChannel();
 	void retry(int32_t sockfd);

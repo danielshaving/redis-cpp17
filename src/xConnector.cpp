@@ -29,6 +29,11 @@ void xConnector::asyncStart()
 	loop->runInLoop(std::bind(&xConnector::asyncStartInLoop,this));
 }
 
+void xConnector::startInLoop(const std::any &context)
+{
+	asyncStartInLoop();
+}
+
 void xConnector::syncStartInLoop()
 {
 	loop->assertInLoopThread();
@@ -81,7 +86,7 @@ int32_t  xConnector::removeAndResetChannel()
 	channel->disableAll();
 	channel->remove();
 	int32_t sockfd = channel->getfd();
-	loop->queueInLoop(std::bind(&xConnector::resetChannel, this));
+	loop->queueInLoop(std::bind(&xConnector::resetChannel,this));
 	return sockfd;
 }
 
@@ -103,8 +108,8 @@ void xConnector::retry(int32_t sockfd)
 		LOG_INFO << "Connector::retry - Retry connecting to "<<ip<<" "<<port
 				 << " in " << retryDelayMs << " milliseconds. ";
 		loop->runAfter(retryDelayMs/1000.0,nullptr,false,
-						std::bind(&xConnector::asyncStartInLoop, shared_from_this()));
-		retryDelayMs = std::min(retryDelayMs * 2, kMaxRetryDelayMs);
+						std::bind(&xConnector::startInLoop, shared_from_this(),std::placeholders::_1));
+		retryDelayMs = std::min(retryDelayMs * 2,kMaxRetryDelayMs);
 	}
 	else
 	{
@@ -174,7 +179,7 @@ void xConnector::handleError()
 void xConnector::asyncConnect()
 {
 	int32_t sockfd = socket.createSocket();
-	int32_t ret = socket.connect(sockfd, ip,port);
+	int32_t ret = socket.connect(sockfd,ip,port);
 	int32_t savedErrno = (ret == 0) ? 0 : errno;
 	switch (savedErrno)
 	{
@@ -185,12 +190,32 @@ void xConnector::asyncConnect()
 			socket.setSocketNonBlock(sockfd);
 			setState(kConnecting);
 			connecting(sockfd);
-			socket.setkeepAlive(sockfd,3);
+			socket.setkeepAlive(sockfd,1);;
 			break;
-		default:
-			LOG_WARN<<strerror(savedErrno);
+
+		case EAGAIN:
+		case EADDRINUSE:
+		case EADDRNOTAVAIL:
+		case ECONNREFUSED:
+		case ENETUNREACH:
+			retry(sockfd);
+			break;
+
+		case EACCES:
+		case EPERM:
+		case EAFNOSUPPORT:
+		case EALREADY:
+		case EBADF:
+		case EFAULT:
+		case ENOTSOCK:
+			LOG_ERROR << "connect error in xConnector::startInLoop " << savedErrno;
 			::close(sockfd);
-			setState(kDisconnected);
+			break;
+
+		default:
+			LOG_ERROR << "Unexpected error in xConnector::startInLoop " << savedErrno;
+			::close(sockfd);
+			// connectErrorCallback();
 			break;
 	}
 }

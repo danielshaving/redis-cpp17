@@ -17,9 +17,9 @@ void onConnection(const TcpConnectionPtr &conn)
 	}
 }
 
-void onMessage(const TcpConnectionPtr &conn, xBuffer *buf)
+void onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
-	conn->send(buf);
+	conn->send(buffer);
 }
 
 

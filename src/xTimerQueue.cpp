@@ -260,7 +260,6 @@ void   xTimerQueue::addTimerInLoop(xTimer *timer)
 	{
 		resetTimerfd(timerfd,timer->getExpiration());
 	}
-
 }
 
 void  xTimerQueue::handleRead()

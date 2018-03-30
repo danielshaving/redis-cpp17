@@ -1,6 +1,8 @@
 #include "xRedis.h"
 #include "xLog.h"
 
+
+/*
 xAsyncLogging *g_asyncLog = nullptr;
 void asyncOutput(const char *msg, int len)
 {
@@ -65,7 +67,7 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-
+*/
 
 
 

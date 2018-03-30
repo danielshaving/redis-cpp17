@@ -10,8 +10,9 @@ context(context),
 retry(false),
 connect(true)
 {
-	  connector->setNewConnectionCallback(std::bind(&xTcpClient::newConnection, this, std::placeholders::_1));
-	  connector->setConnectionErrorCallBack(std::bind(&xTcpClient::errorConnection,this));
+	enableRetry();
+	connector->setNewConnectionCallback(std::bind(&xTcpClient::newConnection, this, std::placeholders::_1));
+	connector->setConnectionErrorCallBack(std::bind(&xTcpClient::errorConnection,this));
 }
 
 namespace detail
@@ -50,7 +51,7 @@ xTcpClient::~xTcpClient()
 	else
 	{
 		 connector->stop();
-		 loop->runAfter(1, nullptr,false,std::bind(&detail::removeConnector,connector));
+		 loop->runAfter(1,nullptr,false,std::bind(&detail::removeConnector,connector));
 	}
 }
 

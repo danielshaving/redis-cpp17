@@ -14,6 +14,7 @@ public:
 	explicit xTimeStamp(int64_t microSecondsSinceEpochArg)
 	: microSecondsSinceEpoch(microSecondsSinceEpochArg)
 	{
+
 	}
 
 	int64_t getMicroSecondsSinceEpoch() const { return microSecondsSinceEpoch; }
@@ -55,7 +56,7 @@ class xTimer : noncopyable
 {
 public:
 	xTimer();
-	xTimer(xTimerCallback &&cb, xTimeStamp &&expiration,bool repeat,double interval,const std::any &context);
+	xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval,const std::any &context);
 	~xTimer();
 
 	xTimeStamp getExpiration() const  { return expiration;}
