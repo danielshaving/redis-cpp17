@@ -1822,7 +1822,7 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 			}	
 		
 			setCount();
-			TcpClientPtr client(new xTcpClient(pool.getNextLoop(),getCount()));
+			TcpClientPtr client(new xTcpClient(pool.getNextLoop(),ip.c_str(),port,getCount()));
 
 			{
 				std::unique_lock<std::mutex> lk(rtx);
@@ -1843,7 +1843,7 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 			}
 
 			freeReply(reply);
-			client->asyncConnect(ip.c_str(),port);
+			client->asyncConnect();
 		 }
 		 else
 		 {

@@ -12,6 +12,10 @@ public:
 	int32_t createSocket();
 	int32_t connect(int32_t sockfd,const std::string &ip, int16_t port);
 
+	struct sockaddr_in6 getPeerAddr(int32_t sockfd);
+	struct sockaddr_in6 getLocalAddr(int32_t sockfd);
+	bool isSelfConnect(int32_t sockfd);
+	int32_t getSocketError(int32_t sockfd);
 	int32_t getListenFd();
 	void setkeepAlive(int32_t fd,int32_t idle);
 	bool createTcpListenSocket(const std::string &ip,int16_t port);

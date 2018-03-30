@@ -2,6 +2,14 @@
 #include "xSocket.h"
 #include "xLog.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>  // snprintf
+#include <strings.h>  // bzero
+#include <sys/socket.h>
+#include <sys/uio.h>  // readv
+#include <unistd.h>
+
 
 xSocket::xSocket(const std::string &ip, int16_t port)
 {
@@ -24,6 +32,67 @@ xSocket::~xSocket()
 int32_t  xSocket::getListenFd()
 {
 	return listenSocketFd;
+}
+
+struct sockaddr_in6 xSocket::getLocalAddr(int32_t sockfd)
+{
+	struct sockaddr_in6 localaddr;
+	bzero(&localaddr, sizeof localaddr);
+	socklen_t addrlen = static_cast<socklen_t>(sizeof localaddr);
+	if (::getsockname(sockfd,(struct sockaddr*)&localaddr,&addrlen) < 0)
+	{
+		LOG_SYSERR << "sockets::getLocalAddr";
+	}
+	return localaddr;
+}
+
+struct sockaddr_in6 xSocket::getPeerAddr(int sockfd)
+{
+	struct sockaddr_in6 peeraddr;
+	bzero(&peeraddr, sizeof peeraddr);
+	socklen_t addrlen = static_cast<socklen_t>(sizeof peeraddr);
+	if (::getpeername(sockfd,(struct sockaddr*)&peeraddr,&addrlen) < 0)
+	{
+		LOG_SYSERR << "sockets::getPeerAddr";
+	}
+	return peeraddr;
+}
+
+bool xSocket::isSelfConnect(int32_t sockfd)
+{
+	struct sockaddr_in6 localaddr = getLocalAddr(sockfd);
+	struct sockaddr_in6 peeraddr = getPeerAddr(sockfd);
+	if (localaddr.sin6_family == AF_INET)
+	{
+		const struct sockaddr_in* laddr4 = reinterpret_cast<struct sockaddr_in*>(&localaddr);
+		const struct sockaddr_in* raddr4 = reinterpret_cast<struct sockaddr_in*>(&peeraddr);
+		return laddr4->sin_port == raddr4->sin_port
+			&& laddr4->sin_addr.s_addr == raddr4->sin_addr.s_addr;
+	}
+	else if (localaddr.sin6_family == AF_INET6)
+	{
+		return localaddr.sin6_port == peeraddr.sin6_port
+		&& memcmp(&localaddr.sin6_addr, &peeraddr.sin6_addr, sizeof localaddr.sin6_addr) == 0;
+	}
+	else
+	{
+	return false;
+	}
+}
+
+int32_t xSocket::getSocketError(int32_t sockfd)
+{
+	int optval;
+	socklen_t optlen = static_cast<socklen_t>(sizeof optval);
+
+	if (::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0)
+	{
+		return errno;
+	}
+	else
+	{
+		return optval;
+	}
 }
 
 bool xSocket::getpeerName(int32_t fd,std::string *ip, int16_t &port)

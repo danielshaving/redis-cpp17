@@ -1,36 +1,40 @@
 #include "xConnector.h"
 
-xConnector::xConnector(xEventLoop *loop)
+const int xConnector::kMaxRetryDelayMs;
+xConnector::xConnector(xEventLoop *loop,const char *ip,int16_t port)
  :loop(loop),
+  ip(ip),
+  port(port),
   state(kDisconnected),
-  isconnect(false)
+  connect(false),
+  retryDelayMs(kInitRetryDelayMs)
 {
 
 }
 
 xConnector::~xConnector()
 {
-
+	assert(!channel);
 }
 
-void xConnector::syncStart(const char *ip, int16_t port)
+void xConnector::syncStart()
 {
-	isconnect = true;
-	loop->runInLoop(std::bind(&xConnector::syncStartInLoop,this,ip,port));
+	connect = true;
+	loop->runInLoop(std::bind(&xConnector::syncStartInLoop,this));
 }
 
-void xConnector::asyncStart(const char *ip, int16_t port)
+void xConnector::asyncStart()
 {
-	isconnect = true;
-	loop->runInLoop(std::bind(&xConnector::asyncStartInLoop,this,ip,port));
+	connect = true;
+	loop->runInLoop(std::bind(&xConnector::asyncStartInLoop,this));
 }
 
-void xConnector::syncStartInLoop(const char *ip,int16_t port)
+void xConnector::syncStartInLoop()
 {
 	loop->assertInLoopThread();
-	if (isconnect)
+	if (connect)
 	{
-		syncConnect(ip,port);
+		syncConnect();
 	}
 	else
 	{
@@ -38,12 +42,12 @@ void xConnector::syncStartInLoop(const char *ip,int16_t port)
 	}
 }
 
-void xConnector::asyncStartInLoop(const char *ip, int16_t port)
+void xConnector::asyncStartInLoop()
 {
 	loop->assertInLoopThread();
-	if (isconnect)
+	if (connect)
 	{
-		asyncConnect(ip,port);
+		asyncConnect();
 	}
 	else
 	{
@@ -53,7 +57,7 @@ void xConnector::asyncStartInLoop(const char *ip, int16_t port)
 
 void xConnector::stop()
 {
-	isconnect= false;
+	connect= false;
 	loop->queueInLoop(std::bind(&xConnector::stopInLoop, this));
 }
 
@@ -83,22 +87,91 @@ int32_t  xConnector::removeAndResetChannel()
 
 void xConnector::connecting(int32_t sockfd)
 {
-	if(state == kConnecting)
+	assert(!channel);
+	channel.reset(new xChannel(loop, sockfd));
+	channel->setWriteCallback(std::bind(&xConnector::handleWrite, this));
+	channel->setErrorCallback(std::bind(&xConnector::handleError, this));
+	channel->enableWriting();
+}
+
+void xConnector::retry(int32_t sockfd)
+{
+	::close(sockfd);
+	setState(kDisconnected);
+	if (connect)
 	{
-		newConnectionCallback(sockfd);
+		LOG_INFO << "Connector::retry - Retry connecting to "<<ip<<" "<<port
+				 << " in " << retryDelayMs << " milliseconds. ";
+		loop->runAfter(retryDelayMs/1000.0,nullptr,false,
+						std::bind(&xConnector::asyncStartInLoop, shared_from_this()));
+		retryDelayMs = std::min(retryDelayMs * 2, kMaxRetryDelayMs);
 	}
 	else
 	{
-		LOG_ERROR<<"connect error";
+		LOG_DEBUG << "do not connect";
 	}
 }
 
-void xConnector::syncConnect(const char *ip,int16_t port)
+void xConnector::restart()
+{
+	loop->assertInLoopThread();
+	setState(kDisconnected);
+	retryDelayMs = kInitRetryDelayMs;
+	connect = true;
+	asyncStartInLoop();
+}
+
+void xConnector::syncConnect()
 {
 
 }
 
-void xConnector::asyncConnect(const char *ip, int16_t port)
+void xConnector::handleWrite()
+{
+	if(state == kConnecting)
+	{
+		int sockfd = removeAndResetChannel();
+		int err = socket.getSocketError(sockfd);
+		if (err)
+		{
+			retry(sockfd);
+		}
+		else if (socket.isSelfConnect(sockfd))
+		{
+			LOG_WARN << "Connector::handleWrite - Self connect";
+			retry(sockfd);
+		}
+		else
+		{
+			setState(kConnected);
+			if (connect)
+			{
+				newConnectionCallback(sockfd);
+			}
+			else
+			{
+				::close(sockfd);
+			}
+		}
+	}
+	else
+	{
+		assert(state == kDisconnected);
+	}
+}
+
+void xConnector::handleError()
+{
+	if (state == kConnecting)
+	{
+		int sockfd = removeAndResetChannel();
+		int err = socket.getSocketError(sockfd);
+		LOG_TRACE << "SO_ERROR = " << err << " " << strerror(err);
+		retry(sockfd);
+	}
+}
+
+void xConnector::asyncConnect()
 {
 	int32_t sockfd = socket.createSocket();
 	int32_t ret = socket.connect(sockfd, ip,port);
@@ -118,11 +191,6 @@ void xConnector::asyncConnect(const char *ip, int16_t port)
 			LOG_WARN<<strerror(savedErrno);
 			::close(sockfd);
 			setState(kDisconnected);
-
-			if(errorConnectionCallback)
-			{
-				errorConnectionCallback();
-			}
 			break;
 	}
 }

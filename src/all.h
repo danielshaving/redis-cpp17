@@ -58,7 +58,7 @@
 #include <netdb.h>
 #include <sys/wait.h>
 #include <any>
-
+#include <arpa/inet.h>
 
 #ifdef __APPLE__
 #include <sys/event.h>

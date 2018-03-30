@@ -581,13 +581,13 @@ void xCluster::eraseClusterNode(const std::string &ip ,int16_t port)
 	}
 }
 
-bool  xCluster::connSetCluster(const char *ip, int16_t port)
+bool  xCluster::connSetCluster(const char *ip,int16_t port)
 {
-	std::shared_ptr<xTcpClient> client(new xTcpClient(loop, this));
-	client->setConnectionCallback(std::bind(&xCluster::connCallBack, this, std::placeholders::_1));
-	client->setMessageCallback(std::bind(&xCluster::readCallBack, this, std::placeholders::_1, std::placeholders::_2));
+	std::shared_ptr<xTcpClient> client(new xTcpClient(loop,ip,port,this));
+	client->setConnectionCallback(std::bind(&xCluster::connCallBack,this,std::placeholders::_1));
+	client->setMessageCallback(std::bind(&xCluster::readCallBack,this,std::placeholders::_1, std::placeholders::_2));
 	client->setConnectionErrorCallBack(std::bind(&xCluster::connErrorCallBack, this));
-	client->asyncConnect(ip, port);
+	client->asyncConnect();
 	if(state)
 	{
 		clusterConns.push_back(client);

@@ -51,26 +51,18 @@ void xSentinel::connectSentinel()
 {
 	start = true;
 	xEventLoop loop;
-	xTcpClient client(&loop,this);
-	client.setConnectionCallback(std::bind(&xSentinel::connCallBack, this, std::placeholders::_1));
-	client.setMessageCallback( std::bind(&xSentinel::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	client.setConnectionErrorCallBack(std::bind(&xSentinel::connErrorCallBack, this));
-	this->loop = &loop;
-	this->client = & client;
 	this->loop = &loop;
 	loop.run();
 }
 
 void xSentinel::reconnectTimer(const std::any &context)
 {
-	LOG_INFO<<"Reconnect..........";
-	client->asyncConnect(ip.c_str(),port);
+
 }
 
 
 void xSentinel::connErrorCallBack()
 {
-
 	if(!isreconnect)
 	{
 		return ;

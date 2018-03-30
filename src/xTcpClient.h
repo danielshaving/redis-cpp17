@@ -8,14 +8,16 @@
 class xTcpClient: noncopyable
 {
 public:
-	xTcpClient();
-	xTcpClient(xEventLoop *loop,const std::any &context);
+	xTcpClient(xEventLoop *loop,const char *ip,int16_t port,const std::any &context);
 	~xTcpClient();
 
-	void syncConnect(const char *ip,int16_t port);
-	void asyncConnect(const char *ip,int16_t port);
+	void syncConnect();
+	void asyncConnect();
 	void disConnect();
 	void stop();
+
+	bool getRetry() { return retry; }
+	void enableRetry() { retry = true; }
 
 	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb); }
 	void setConnectionCallback(const ConnectionCallback &&cb) { connectionCallback = std::move(cb); }
@@ -36,7 +38,6 @@ private:
 	ConnectorPtr connector;
 	xEventLoop *loop;
 
-	bool isconnect;
 	int nextConnId;
 	mutable std::mutex mutex;
 	ConnectionErrorCallback connectionErrorCallBack;
@@ -46,6 +47,8 @@ private:
 
 	TcpConnectionPtr connection;
 	std::any context;
+	bool retry;
+	bool connect;
 
 
 };

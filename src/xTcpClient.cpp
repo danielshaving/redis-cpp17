@@ -2,17 +2,13 @@
 #include "xConnector.h"
 #include "xTcpConnection.h"
 
-xTcpClient::xTcpClient()
-{
-
-}
-
-xTcpClient::xTcpClient(xEventLoop *loop,const std::any &context)
-: connector(new xConnector(loop)),
+xTcpClient::xTcpClient(xEventLoop *loop,const char *ip,int16_t port,const std::any &context)
+:connector(new xConnector(loop,ip,port)),
 loop(loop),
-isconnect(false),
 nextConnId(0),
-context(context)
+context(context),
+retry(false),
+connect(true)
 {
 	  connector->setNewConnectionCallback(std::bind(&xTcpClient::newConnection, this, std::placeholders::_1));
 	  connector->setConnectionErrorCallBack(std::bind(&xTcpClient::errorConnection,this));
@@ -58,21 +54,21 @@ xTcpClient::~xTcpClient()
 	}
 }
 
-void xTcpClient::asyncConnect(const char *ip,int16_t port)
+void xTcpClient::asyncConnect()
 {
-	isconnect = true;
-	connector->asyncStart(ip,port);
+	connect = true;
+	connector->asyncStart();
 }
 
-void xTcpClient::syncConnect(const char *ip,int16_t port)
+void xTcpClient::syncConnect()
 {
-	isconnect = true;
-	connector->syncStart(ip,port);
+	connect = true;
+	connector->syncStart();
 }
 
 void xTcpClient::disConnect()
 {
-	isconnect = false;
+	connect = false;
 	{
 		std::unique_lock<std::mutex> lk(mutex);
 		if (connection)
@@ -84,7 +80,7 @@ void xTcpClient::disConnect()
 
 void xTcpClient::stop()
 {
-	isconnect = false;
+	connect = false;
 	connector->stop();
 }
 
@@ -116,5 +112,10 @@ void xTcpClient::removeConnection(const TcpConnectionPtr &conn)
 		assert(connection == conn);
 		connection.reset();
 	}
+
 	loop->queueInLoop(std::bind(&xTcpConnection::connectDestroyed, conn));
+	if (retry && connect)
+	{
+		connector->restart();
+	}
 }

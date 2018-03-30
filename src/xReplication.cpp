@@ -21,11 +21,6 @@ xReplication::~xReplication()
 void xReplication::connectMaster()
 {
 	xEventLoop loop;
-	xTcpClient client(&loop,this);
-	client.setConnectionCallback(std::bind(&xReplication::connCallBack, this, std::placeholders::_1));
-	client.setMessageCallback( std::bind(&xReplication::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	client.setConnectionErrorCallBack(std::bind(&xReplication::connErrorCallBack, this));
-	this->client = & client;
 	this->loop = &loop;
 	loop.run();
 }
@@ -200,8 +195,7 @@ void xReplication::connCallBack(const TcpConnectionPtr& conn)
 
 void xReplication::reconnectTimer(const std::any &context)
 {
-	LOG_INFO<<"reconnect..........";
-	client->asyncConnect(ip.c_str(),port);
+	client->asyncConnect();
 }
 
 void xReplication::connErrorCallBack()
@@ -223,6 +217,11 @@ void xReplication::replicationSetMaster(rObj *obj,int16_t port)
 		}
 	}
 
-	client->asyncConnect(this->ip.c_str(),this->port);
+	xTcpClient client(loop,ip.c_str(),port,this);
+	client.setConnectionCallback(std::bind(&xReplication::connCallBack, this, std::placeholders::_1));
+	client.setMessageCallback( std::bind(&xReplication::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
+	client.setConnectionErrorCallBack(std::bind(&xReplication::connErrorCallBack, this));
+	client.asyncConnect();
+	this->client = &client;
 }
 
