@@ -49,14 +49,15 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 		if (fin)
 		{
 			xHttpResponse resp;
-			httpReadCallback(context->getRequest(),&resp);
+			if(!httpReadCallback(&(context->getRequest()),&resp))
+			{
+				conn->shutdown();
+				break;
+			}
+
 			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::BINARY_FRAME,true,false);
 			conn->send(resp.intputBuffer());
 			context->reset();
-		}
-		else if(context->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
-		{
-
 		}
 		else if (context->getRequest().getOpCode() == xHttpRequest::PING_FRAME ||
 				context->getRequest().getOpCode() == xHttpRequest::PONG_FRAME )

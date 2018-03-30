@@ -37,7 +37,7 @@ void xHiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 	if(conn->connected())
 	{
 		RedisAsyncContextPtr ac (new xRedisAsyncContext(conn->intputBuffer(),conn,conn->getSockfd()));
-		hiredis.insertRedisMap(conn->getSockfd(), ac);
+		hiredis.insertRedisMap(conn->getSockfd(),ac);
 		connectCount++;
 		condition.notify_one();
 	}
@@ -48,8 +48,8 @@ void xHiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 			test_cond(true);
 		}
 
-		const std::any &context = conn->getContext();
-		hiredis.eraseTcpMap(std::any_cast<int32_t>(context));
+		int32_t *index = std::any_cast<int32_t>(conn->getContext());
+		hiredis.eraseTcpMap(*index);
 		hiredis.eraseRedisMap(conn->getSockfd());
 	}
 }
@@ -90,7 +90,7 @@ void xHiredisAsync::serverCron(const std::any &context)
 	{
 		test("Redis async close safe test");
 		{
-			//std::unique_lock<std::mutex> lk(hiredis.getMutex());
+			std::unique_lock<std::mutex> lk(hiredis.getMutex());
 			for(auto &it : hiredis.getClientMap())
 			{
 				it.second->disConnect();
@@ -108,6 +108,11 @@ void xHiredisAsync::serverCron(const std::any &context)
  	}
  	else
  	{
+		xLogger::setOutput(asyncOutput);
+		xAsyncLogging log("hiredis", 4096);
+		log.start();
+		g_asyncLog = &log;
+
  		test("Redis async Connect test ");
  		const char* ip = argv[1];
  		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
@@ -120,7 +125,7 @@ void xHiredisAsync::serverCron(const std::any &context)
 		test("Redis async multithreaded safe test ");
 
 		{
-			//std::unique_lock<std::mutex> lk(redisAsync.getHiredis()->getMutex());
+			std::unique_lock<std::mutex> lk(redisAsync.getHiredis()->getMutex());
 			auto  &redisMap = redisAsync.getHiredis()->getRedisMap();
 			int32_t count = 0;
 			for(auto it = redisMap.begin(); it != redisMap.end();)

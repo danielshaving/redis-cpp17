@@ -211,7 +211,7 @@ private:
 
 	xThreadPool pool;
 	bool clusterMode;
-	std::atomic<int> count;
+	int32_t count;
 	std::mutex rtx;
 };
 

@@ -1670,20 +1670,19 @@ count(0)
 
 void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 {
-	const std::any &context = conn->getContext();
-	int32_t index = std::any_cast<int32_t>(context);
+	int32_t *index = std::any_cast<int32_t>(conn->getContext());
 	if(conn->connected())
 	{
-		RedisAsyncContextPtr ac (new xRedisAsyncContext(conn->intputBuffer(),conn,conn->getSockfd()));
+		RedisAsyncContextPtr ac(new xRedisAsyncContext(conn->intputBuffer(),conn,conn->getSockfd()));
 		insertRedisMap(conn->getSockfd(),ac);
 		redisAsyncCallback asyncCb;
 
 		{
 			std::unique_lock<std::mutex> lk(rtx);
-			auto it = clusters.find(index);
+			auto it = clusters.find(*index);
 			assert(it !=clusters.end());
 			asyncCb = std::move(it->second);
-			clusters.erase(index);
+			clusters.erase(*index);
 		}
 
 		{
@@ -1696,15 +1695,13 @@ void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 	else
 	{
 		eraseRedisMap(conn->getSockfd());
-		eraseTcpMap(index);
+		eraseTcpMap(*index);
 	}
 }
 
 void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 {
-	const std::any &context = conn->getContext();
-	int32_t index = std::any_cast<int32_t>(context);
-
+	int32_t *index = std::any_cast<int32_t>(conn->getContext());
 	if(conn->connected())
 	{
 		RedisAsyncContextPtr ac (new xRedisAsyncContext(conn->intputBuffer(),conn,conn->getSockfd()));
@@ -1714,10 +1711,10 @@ void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 		redisAsyncCallback asyncCb;
 		{
 			std::unique_lock<std::mutex> lk(rtx);
-			auto it = clusters.find(index);
+			auto it = clusters.find(*index);
 			assert(it !=clusters.end());
 			asyncCb = std::move(it->second);
-			clusters.erase(index);
+			clusters.erase(*index);
 		}
 
 		{
@@ -1730,7 +1727,7 @@ void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 	else
 	{
 		eraseRedisMap(conn->getSockfd());
-		eraseTcpMap(index);
+		eraseTcpMap(*index);
 	}
 }
 

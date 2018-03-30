@@ -9,6 +9,16 @@ static int tests = 0, fails = 0;
 #define test(_s) { printf("#%02d ", ++tests); printf(_s); }
 #define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}
 
+
+xAsyncLogging *g_asyncLog;
+void asyncOutput(const char *msg, int len)
+{
+	printf("%s\n",msg);
+	g_asyncLog->append(msg, len);
+}
+
+
+
 class xHiredisAsync : noncopyable
 {
 public:
