@@ -41,7 +41,6 @@ xRedLock::xRedLock()
 		exit(-1);
 	}
 
-
 }
 
 xRedLock::~xRedLock()
@@ -49,7 +48,6 @@ xRedLock::~xRedLock()
 	sdsfree(continueLockScript);
 	sdsfree(unlockScript);
 	::close(fd);
-
 }
 
 sds xRedLock::getUniqueLockId()
@@ -73,7 +71,7 @@ sds xRedLock::getUniqueLockId()
 	return nullptr;
 }
 
-int32_t xRedLock::lockInstance(const RedisContextPtr &c,const char *resource,const  char *val,const int32_t ttl)
+int32_t xRedLock::lockInstance(const RedisContextPtr &c,const char *resource,const char *val,const int32_t ttl)
 {
 
 	redisReply *reply;
@@ -84,7 +82,7 @@ int32_t xRedLock::lockInstance(const RedisContextPtr &c,const char *resource,con
 		LOG_INFO<<"Set return "<<reply->str<<" [null == fail, OK == success]";
 	}
 
-	if (reply && reply->str && strcmp(reply->str, "OK") == 0)
+	if (reply && reply->str && strcmp(reply->str,"OK") == 0)
 	{
 		freeReply(reply);
 		return 1;

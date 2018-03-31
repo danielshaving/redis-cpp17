@@ -31,10 +31,10 @@ public:
 	bool isWriting() const { return events & kWriteEvent; }
 	bool isReading() const { return events & kReadEvent; }
 
-	int32_t  getEvents() { return events; }
-	int32_t  getfd() { return fd;}
+	int32_t getEvents() { return events; }
+	int32_t getfd() { return fd;}
 	void remove();
-	int32_t  getIndex() { return index; }
+	int32_t getIndex() { return index; }
 	xEventLoop *ownerLoop() { return loop; }
 
 private:

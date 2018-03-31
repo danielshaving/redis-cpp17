@@ -27,7 +27,6 @@ public:
     void clear();
 	bool connSetCluster(const char *ip,int16_t port);
 	void connectCluster();
-	void connErrorCallBack();
 	void readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
 	void connCallBack(const TcpConnectionPtr &conn);
 	void reconnectTimer(const std::any &context);
@@ -36,11 +35,11 @@ public:
 	bool getKeySlot(const std::string &name);
 	void structureProtocolSetCluster(const std::string &host,int16_t port,xBuffer &buffer,const TcpConnectionPtr &conn);
 	int32_t getSlotOrReply(const SessionPtr &session,rObj *o);
-	uint32_t keyHashSlot(char *key, int32_t keylen);
+	uint32_t keyHashSlot(char *key,int32_t keylen);
 	void syncClusterSlot();
 	void clusterRedirectClient(const SessionPtr &session,clusterNode *node,int32_t hashSlot,int32_t errCode);
 	bool replicationToNode(const std::deque<rObj*> &obj,const SessionPtr &session,
-		const std::string &ip,int16_t port,int8_t copy,int8_t replace,int32_t numKeys, int32_t firstKey);
+		const std::string &ip,int16_t port,int8_t copy,int8_t replace,int32_t numKeys,int32_t firstKey);
 	void delClusterImport(std::deque<rObj*> &robj);
 	
 	void eraseClusterNode(const std::string &ip,int16_t port);

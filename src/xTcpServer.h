@@ -10,7 +10,7 @@ class xTcpServer : noncopyable
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;
-	xTcpServer(xEventLoop *loop,std::string ip,int16_t port,const std::any &context);
+	xTcpServer(xEventLoop *loop,const char *ip,int16_t port,const std::any &context);
 	~xTcpServer();
 	void newConnection(int32_t sockfd);
 	void start();
@@ -24,7 +24,7 @@ public:
 	void setThreadNum(int16_t numThreads);
 
 	xEventLoop *getLoop() const { return loop; }
-	std::shared_ptr<xThreadPool> getThreadPool() { return threadPool; }
+	ThreadPoolPtr getThreadPool() { return threadPool; }
 
 	std::any *getContext() { return &context; }
 	const std::any &getContext() const { return context; }
@@ -32,8 +32,8 @@ public:
 
 private:
 	xEventLoop *loop;
-	std::unique_ptr<xAcceptor> 	acceptor;
-	std::shared_ptr<xThreadPool> 	threadPool;
+	AcceptorPtr acceptor;
+	ThreadPoolPtr threadPool;
 	ConnectionCallback connectionCallback;
 	MessageCallback messageCallback;
 	WriteCompleteCallback writeCompleteCallback;

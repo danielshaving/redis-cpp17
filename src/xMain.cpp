@@ -31,10 +31,11 @@ char *ascii_logo =
 
 int main(int argc, char *argv[])
 {
-	signal(SIGPIPE, SIG_IGN);
-	signal(SIGHUP, SIG_IGN);
+	signal(SIGPIPE,SIG_IGN);
+	signal(SIGHUP,SIG_IGN);
+
 	xLogger::setOutput(asyncOutput);
-	xAsyncLogging log("xredis", 4096);
+	xAsyncLogging log("redis",4096);
 	log.start();
 	g_asyncLog = &log;
 	printf("%s\n", ascii_logo);
@@ -54,7 +55,7 @@ int main(int argc, char *argv[])
 	}
 	else if (argc == 1)
 	{
-		xRedis redis("0.0.0.0", 6379, 0);
+		xRedis redis("0.0.0.0",6379,0);
 		redis.run();
 	}
 	else

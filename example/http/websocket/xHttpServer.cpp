@@ -46,7 +46,18 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 			break;
 		}
 
-		if (fin)
+		if(context->getRequest().getOpCode() == xHttpRequest::PING_FRAME ||
+						context->getRequest().getOpCode() == xHttpRequest::PONG_FRAME ||
+						context->getRequest().getOpCode() == xHttpRequest::CLOSE_FRAME)
+		{
+			conn->shutdown();
+			break;
+		}
+		else if(context->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
+		{
+
+		}
+		else if(fin)
 		{
 			xHttpResponse resp;
 			if(!httpReadCallback(&(context->getRequest()),&resp))
@@ -59,21 +70,14 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 			conn->send(resp.intputBuffer());
 			context->reset();
 		}
-		else if (context->getRequest().getOpCode() == xHttpRequest::PING_FRAME ||
-				context->getRequest().getOpCode() == xHttpRequest::PONG_FRAME )
-		{
-			conn->shutdown();
-		}
-		else if(context->getRequest().getOpCode() == xHttpRequest::CLOSE_FRAME)
-		{
-			conn->shutdown();
-		}
 		else
 		{
 			conn->shutdown();
 #ifdef __DEBUG__
+
 			assert(false);
 #endif
+			break;
 		}
 
 		buffer->retrieve(size);

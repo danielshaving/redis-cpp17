@@ -64,7 +64,7 @@ size_t xRdb::rioWrite(xRio *r,const void *buf,size_t len)
 {
 	while(len)
 	{
-		size_t bytesToWrite = (r->maxProcessingChunk && r->maxProcessingChunk < len)?r->maxProcessingChunk:len;
+		size_t bytesToWrite = (r->maxProcessingChunk && r->maxProcessingChunk < len) ? r->maxProcessingChunk:len;
 		if(r->updateFuc)
 		{
 			r->updateFuc(r,buf,bytesToWrite);

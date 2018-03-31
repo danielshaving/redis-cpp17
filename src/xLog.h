@@ -2,10 +2,10 @@
 #include "all.h"
 #include "xBuffer.h"
 
-const int kSmallBuffer = 4000;
-const int kLargeBuffer = 4000*10;
+const int32_t kSmallBuffer = 4000;
+const int32_t kLargeBuffer = 4000*10;
 
-template<int SIZE>
+template<int32_t SIZE>
 class xFixedBuffer : noncopyable
 {
 public:
@@ -30,7 +30,7 @@ public:
 	}
 
 	const char *getData() const { return data; }
-	int length() const { return static_cast<int>(cur - data); }
+	int32_t length() const { return static_cast<int32_t>(cur - data); }
 	char *current() { return cur; }
 	void add(size_t len) { cur += len; }
 
@@ -38,7 +38,7 @@ public:
 	void bzero(){ ::bzero(data,sizeof data); }
 
 	std::string toString() const { return std::string(data, length()); }
-	int  avail() const { return static_cast<int>(end() - cur); }
+	int32_t  avail() const { return static_cast<int32_t>(end() - cur); }
 	const char *end() const { return data + sizeof data; }
 	xStringPiece toStringPiece() const { return xStringPiece(data, length()); }
 
@@ -50,14 +50,14 @@ private:
 class AppendFile : noncopyable
 {
 public:
-	explicit AppendFile(std::string  &filename);
+	explicit AppendFile(std::string &filename);
 	~AppendFile();
-	void append(const char *logline, const size_t len);
+	void append(const char *logline,const size_t len);
 	void flush();
 	size_t getWrittenBytes() const { return writtenBytes; }
 
 	private:
-	size_t write(const char *logline, size_t len);
+	size_t write(const char *logline,size_t len);
 	FILE* fp;
 	char buffer[64*1024];
 	size_t writtenBytes;
@@ -70,35 +70,35 @@ class xLogFile : noncopyable
 	xLogFile(const std::string &basename,
 	  size_t rollSize,
 	  bool threadSafe = true,
-	  int flushInterval = 3,
-	  int checkEveryN = 1024);
+	  int32_t flushint32_terval = 3,
+	  int32_t checkEveryN = 1024);
 	~xLogFile();
 
-	void append(const char *logline, int len);
+	void append(const char *logline,int32_t len);
 	void flush();
 	bool rollFile();
 
 	private:
-	void append_unlocked(const char *logline, int len);
-	static std::string getLogFileName(const std::string& basename, time_t *now);
+	void append_unlocked(const char *logline,int32_t len);
+	static std::string getLogFileName(const std::string& basename,time_t *now);
 	const std::string basename;
 	const size_t rollSize;
-	const int flushInterval;
-	const int checkEveryN;
+	const int32_t flushint32_terval;
+	const int32_t checkEveryN;
 
-	int count;
+	int32_t count;
 	std::mutex mutex;
 	time_t startOfPeriod;
 	time_t lastRoll;
 	time_t lastFlush;
 	std::unique_ptr<AppendFile> file;
-	const static int kRollPerSeconds = 60*60*24;
+	const static int32_t kRollPerSeconds = 60*60*24;
 };
 
 class xAsyncLogging : noncopyable
 {
 public:
-	xAsyncLogging(std::string baseName,size_t rollSize,int flushInterval = 3);
+	xAsyncLogging(std::string baseName,size_t rollSize,int32_t flushint32_terval = 3);
 	~xAsyncLogging()
 	{
 		if(running)
@@ -118,7 +118,7 @@ public:
 		thread = new std::thread(std::bind(&xAsyncLogging::threadFunc,this));
 		thread->detach();
 	}
-	void append(const char *loline,int len);
+	void append(const char *loline,int32_t len);
 
 private:
 	void threadFunc();
@@ -127,7 +127,7 @@ private:
 	typedef std::vector<std::unique_ptr<Buffer>> BufferVector;
 	typedef std::unique_ptr<Buffer> BufferPtr;
 	std::string baseName;
-	const int flushInterval;
+	const int32_t flushint32_terval;
 	bool running;
 	size_t rollSize;
 	std::thread *thread;
@@ -141,13 +141,13 @@ private:
 class T
 {
  public:
-	T(const char* str)
-	: str(str), len(static_cast<int>(strlen(str))) { }
+	T(const char *str)
+	: str(str),len(static_cast<int32_t>(strlen(str))) { }
 	T(const std::string& str)
-	:str(str.data()), len(static_cast<int>(str.size())) { }
-	T(const char* str, unsigned len)
+	:str(str.data()),len(static_cast<int32_t>(str.size())) { }
+	T(const char *str,unsigned len)
 	:str(str),len(len) {}
-	const char* str;
+	const char *str;
 	const unsigned len;
 };
 
@@ -157,34 +157,35 @@ public:
 	typedef xLogStream self;
 	typedef xFixedBuffer<kSmallBuffer>  Buffer;
 
-	self& operator<<(bool v)
+	self &operator<<(bool v)
 	{
 		buffer.append(v ? "1" : "0", 1);
 		return *this;
 	}
 
-	self& operator<<(short);
-	self& operator<<(unsigned short);
-	self& operator<<(int);
-	self& operator<<(unsigned int);
-	self& operator<<(long);
-	self& operator<<(unsigned long);
-	self& operator<<(long long);
-	self& operator<<(unsigned long long);
-	self& operator<<(const void*);
-	self& operator<<(float v)
+	self &operator<<(short);
+	self &operator<<(unsigned short);
+	self &operator<<(int);
+	self &operator<<(unsigned int);
+	self &operator<<(long);
+	self &operator<<(unsigned long);
+	self &operator<<(long long);
+	self &operator<<(unsigned long long);
+
+	self &operator<<(const void*);
+	self &operator<<(float v)
 	{
 		*this << static_cast<double>(v);
 		return *this;
 	}
-	self& operator<<(double);
-	self& operator<<(char v)
+	self &operator<<(double);
+	self &operator<<(char v)
 	{
 		buffer.append(&v, 1);
 		return *this;
 	}
 
-	self& operator<<(const char *str)
+	self&operator<<(const char *str)
 	{
 		if (str)
 		{
@@ -197,52 +198,52 @@ public:
 		return *this;
 	}
 
-	self& operator<<(const unsigned char* str)
+	self &operator<<(const unsigned char* str)
 	{
 		return operator<<(reinterpret_cast<const char*>(str));
 	}
 
-	self& operator<<(const std::string& v)
+	self &operator<<(const std::string &v)
 	{
-		buffer.append(v.c_str(), v.size());
+		buffer.append(v.c_str(),v.size());
 		return *this;
 	}
 
-	self& operator<<(const xStringPiece& v)
+	self &operator<<(const xStringPiece &v)
 	{
-		buffer.append(v.data(), v.size());
+		buffer.append(v.data(),v.size());
 		return *this;
 	}
 
 
-	self& operator<<(const xBuffer& v)
+	self &operator<<(const xBuffer &v)
 	{
 		*this << v.toStringPiece();
 		return *this;
 	}
 
-	self& operator<<(const T & v)
+	self &operator<<(const T &v)
 	{
 		buffer.append(v.str, v.len);
 		return *this;
 	}
 
-	void append(const char *data, int len) { buffer.append(data, len); }
-	const Buffer& getBuffer() const { return buffer; }
+	void append(const char *data,int32_t len) { buffer.append(data,len); }
+	const Buffer &getBuffer() const { return buffer; }
 	void resetBuffer() { buffer.reset(); }
 public:
 	template<typename T>
 	void formatInteger(T);
 
 	Buffer buffer;
-	static const int kMaxNumericSize = 32;
+	static const int32_t kMaxNumericSize = 32;
 };
 
 class xLogger
 {
 public:
 	enum LogLevel
-	  {
+	{
 		TRACE,
 		DEBUG,
 		INFO,
@@ -250,50 +251,50 @@ public:
 		ERROR,
 		FATAL,
 		NUM_LOG_LEVELS,
-	  };
+	};
 
 	class xSourceFile
 	{
 	public:
-		template<int N>
+		template<int32_t N>
 		inline xSourceFile(const char (&arr)[N])
 		:data(arr),
 		 size(N-1)
 		{
-			const  char * slash = strrchr(data,'/');
+			const char *slash = strrchr(data,'/');
 			if(slash)
 			{
 				data = slash + 1;
-				size -= static_cast<int>(data - arr);
+				size -= static_cast<int32_t>(data - arr);
 			}
 		}
 
-		explicit xSourceFile(const  char *fileName)
+		explicit xSourceFile(const char *fileName)
 		:data(fileName)
 		{
-			const char * slash = strrchr(fileName,'/');
+			const char *slash = strrchr(fileName,'/');
 			if(slash)
 			{
 				data = slash + 1;
 			}
-			size = static_cast<int> (strlen(data));
+			size = static_cast<int32_t>(strlen(data));
 		}
 		const char * data;
-		int size;
+		int32_t size;
 	};
 
-	xLogger(xSourceFile file, int line);
-	xLogger(xSourceFile file, int line, LogLevel level);
-	xLogger(xSourceFile file, int line, LogLevel level, const char* func);
-	xLogger(xSourceFile file, int line, bool toAbort);
+	xLogger(xSourceFile file,int32_t line);
+	xLogger(xSourceFile file,int32_t line,LogLevel level);
+	xLogger(xSourceFile file,int32_t line,LogLevel level,const char *func);
+	xLogger(xSourceFile file,int32_t line,bool toAbort);
 	~xLogger();
 
-	xLogStream& stream() { return impl.stream; }
+	xLogStream &stream() { return impl.stream; }
 
 	static LogLevel logLevel();
 	static void setLogLevel(LogLevel level);
 
-	typedef void (*OutputFunc)(const char *msg, int len);
+	typedef void (*OutputFunc)(const char *msg,int32_t len);
 	typedef void (*FlushFunc)();
 
 	static void setOutput(OutputFunc);
@@ -304,13 +305,13 @@ private:
 	{
 	public:
 		 typedef xLogger::LogLevel LogLevel;
-		 xImpl(LogLevel level,int oldErrno,const xSourceFile &file, int line);
+		 xImpl(LogLevel level,int32_t oldErrno,const xSourceFile &file,int32_t line);
 		 void formatTime();
 		 void finish();
 
 		 xLogStream stream;
 		 LogLevel level;
-		 int line;
+		 int32_t line;
 		 xSourceFile baseName;
 	};
 	xImpl impl;
@@ -322,16 +323,19 @@ inline xLogger::LogLevel xLogger::logLevel()
   return g_logLevel;
 }
 
+
 #define LOG_TRACE if (xLogger::logLevel() <= xLogger::TRACE) \
   xLogger(__FILE__, __LINE__, xLogger::TRACE, __func__).stream()
 #define LOG_DEBUG if (xLogger::logLevel() <= xLogger::DEBUG) \
   xLogger(__FILE__, __LINE__, xLogger::DEBUG, __func__).stream()
-#define LOG_INFO xLogger(__FILE__, __LINE__).stream()
+#define LOG_INFO if (xLogger::logLevel() <= xLogger::INFO) \
+  xLogger(__FILE__, __LINE__).stream()
 #define LOG_WARN xLogger(__FILE__, __LINE__, xLogger::WARN).stream()
 #define LOG_ERROR xLogger(__FILE__, __LINE__, xLogger::ERROR).stream()
 #define LOG_FATAL xLogger(__FILE__, __LINE__, xLogger::FATAL).stream()
 #define LOG_SYSERR xLogger(__FILE__, __LINE__, false).stream()
 #define LOG_SYSFATAL xLogger(__FILE__, __LINE__, true).stream()
+
 
 
 

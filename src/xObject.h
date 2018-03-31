@@ -55,7 +55,7 @@ struct Hash
 
 struct Equal
 {
-	bool operator()(const rObj *x, const rObj *y) const
+	bool operator()(const rObj *x,const rObj *y) const
 	{
 		 return ((sdslen(x->ptr) == sdslen(y->ptr)) &&
             (memcmp(x->ptr, y->ptr, sdslen(y->ptr))== 0));
@@ -79,7 +79,7 @@ public:
 	void freeZsetObject(rObj *o);
 	void decrRefCount(rObj *o);
 
-	void addReplyBulkSds(xBuffer &buffer, sds s);
+	void addReplyBulkSds(xBuffer &buffer,sds s);
 	void addReplyMultiBulkLen(xBuffer &buffer,int32_t length);
 	void addReply(xBuffer &buffer,rObj *obj);
 	void addReplyString(xBuffer &buffer,const char *s,size_t len);
@@ -89,7 +89,7 @@ public:
 	void addReplyBulkLen(xBuffer &buffer,rObj *obj);
 	void addReplyBulk(xBuffer &buffer,rObj *obj);
 	void addReplyErrorFormat(xBuffer &buffer,const char *fmt, ...);
-	void addReplyBulkCBuffer(xBuffer &buffer,const char  *p,size_t len);
+	void addReplyBulkCBuffer(xBuffer &buffer,const char *p,size_t len);
 	void addReplyLongLong(xBuffer &buffer,size_t len);
 	void addReplySds(xBuffer &buffer,sds s);
 	void addReplyStatus(xBuffer &buffer,char *status);

@@ -30,7 +30,7 @@ void xTcpConnection::shutdown()
 	if (state == kConnected)
 	{
 		setState(kDisconnecting);
-		loop->runInLoop(std::bind(&xTcpConnection::shutdownInLoop, this));
+		loop->runInLoop(std::bind(&xTcpConnection::shutdownInLoop,this));
 	}
 }
 
@@ -39,14 +39,14 @@ void xTcpConnection::forceClose()
 	if (state == kConnected || state == kDisconnecting)
 	{
 		setState(kDisconnecting);
-		loop->queueInLoop(std::bind(&xTcpConnection::forceCloseInLoop, shared_from_this()));
+		loop->queueInLoop(std::bind(&xTcpConnection::forceCloseInLoop,shared_from_this()));
 	}
 }
 
 void xTcpConnection::forceCloseInLoop()
 {
   loop->assertInLoopThread();
-  if (state== kConnected   ||  state == kDisconnecting)
+  if (state== kConnected || state == kDisconnecting)
   {
         // as if we received 0 byte in handleRead();
         handleClose();
@@ -69,10 +69,10 @@ void xTcpConnection::handleRead()
 {
 	loop->assertInLoopThread();
 	int savedErrno = 0;
-	ssize_t n = recvBuff.readFd(channel->getfd(), &savedErrno);
+	ssize_t n = recvBuff.readFd(channel->getfd(),&savedErrno);
 	if (n > 0)
 	{
-		messageCallback(shared_from_this(), &recvBuff);
+		messageCallback(shared_from_this(),&recvBuff);
 	}
 	else if (n == 0)
 	{
@@ -81,7 +81,7 @@ void xTcpConnection::handleRead()
 	else
 	{
 		errno = savedErrno;
-		if(errno != ECONNRESET || errno !=  ETIMEDOUT)
+		if(errno != ECONNRESET || errno != ETIMEDOUT)
 		{
 #ifdef __DEBUG__
 			LOG_ERROR<<"TcpConnection::handleRead "<<errno;
@@ -108,7 +108,7 @@ void xTcpConnection::handleWrite()
 				channel->disableWriting();
 				if (writeCompleteCallback)
 				{
-					loop->queueInLoop(std::bind(writeCompleteCallback, shared_from_this()));
+					loop->queueInLoop(std::bind(writeCompleteCallback,shared_from_this()));
 				}
 				if (state == kDisconnecting)
 				{
@@ -131,6 +131,7 @@ void xTcpConnection::handleWrite()
 #endif
 	}
 }
+
 void xTcpConnection::handleClose()
 {
 	loop->assertInLoopThread();
@@ -180,9 +181,9 @@ void xTcpConnection::sendPipe(xBuffer *buf)
 }
 
 
-void xTcpConnection::sendPipe(const void *message, int len)
+void xTcpConnection::sendPipe(const void *message,int len)
 {
-    send(xStringPiece(static_cast<const char*>(message), len));
+    send(xStringPiece(static_cast<const char*>(message),len));
 }
 
 void xTcpConnection::sendPipe(const xStringPiece &message)
@@ -202,11 +203,10 @@ void xTcpConnection::sendPipe(const xStringPiece &message)
 	}
 }
 
-void xTcpConnection::send(const void *message, int len)
+void xTcpConnection::send(const void *message,int len)
 {
 	send(xStringPiece(static_cast<const char*>(message), len));
 }
-
 
 void xTcpConnection::send(const xStringPiece &message)
 {
@@ -233,7 +233,7 @@ void xTcpConnection::sendPipeInLoop(const xStringPiece &message)
 
 
 
-void xTcpConnection::sendPipeInLoop(const void *message, size_t len)
+void xTcpConnection::sendPipeInLoop(const void *message,size_t len)
 {
 	sendBuff.append(message,len);
 	if (!channel->isWriting())
@@ -242,13 +242,13 @@ void xTcpConnection::sendPipeInLoop(const void *message, size_t len)
 	}
 }
 
-void xTcpConnection::bindSendPipeInLoop(xTcpConnection *conn, const xStringPiece &message)
+void xTcpConnection::bindSendPipeInLoop(xTcpConnection *conn,const xStringPiece &message)
 {
 	conn->sendPipeInLoop(message.data(),message.size());
 }
 
 
-void xTcpConnection::bindSendInLoop(xTcpConnection *conn, const xStringPiece &message)
+void xTcpConnection::bindSendInLoop(xTcpConnection *conn,const xStringPiece &message)
 {
 	 conn->sendInLoop(message.data(),message.size());
 }
@@ -276,7 +276,7 @@ void xTcpConnection::sendInLoop(const xStringPiece &message)
 }
 
 
-void xTcpConnection::sendInLoop(const void *data, size_t len)
+void xTcpConnection::sendInLoop(const void *data,size_t len)
 {
 	loop->assertInLoopThread();
 	ssize_t nwrote = 0;
@@ -320,10 +320,10 @@ void xTcpConnection::sendInLoop(const void *data, size_t len)
 		    && oldLen < highWaterMark
 		    && highWaterMarkCallback)
 		{
-		  	loop->queueInLoop(std::bind(highWaterMarkCallback, shared_from_this(), oldLen + remaining));
+		  	loop->queueInLoop(std::bind(highWaterMarkCallback,shared_from_this(),oldLen + remaining));
 		}
 		
-		sendBuff.append(static_cast<const char*>(data)+nwrote, remaining);
+		sendBuff.append(static_cast<const char*>(data)+nwrote,remaining);
 		if (!channel->isWriting())
 		{
 		  	channel->enableWriting();

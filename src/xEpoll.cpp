@@ -26,7 +26,7 @@ xEpoll::~xEpoll()
 
 void  xEpoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
-	int32_t numEvents = ::epoll_wait(epollFd, &*events.begin(), static_cast<int32_t>(events.size()), msTime);
+	int32_t numEvents = ::epoll_wait(epollFd, &*events.begin(),static_cast<int32_t>(events.size()), msTime);
 	int32_t savedErrno = errno;
 
 	if (numEvents > 0)

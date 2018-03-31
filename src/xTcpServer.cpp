@@ -1,7 +1,7 @@
 #include "xTcpServer.h"
 #include "xTcpConnection.h"
 
-xTcpServer::xTcpServer(xEventLoop *loop,std::string ip,int16_t port,const std::any &context)
+xTcpServer::xTcpServer(xEventLoop *loop,const char *ip,int16_t port,const std::any &context)
 :loop(loop),
  acceptor(new xAcceptor(loop,ip,port)),
  threadPool(new xThreadPool(loop)),

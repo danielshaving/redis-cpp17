@@ -11,13 +11,14 @@ public:
 	xTcpClient(xEventLoop *loop,const char *ip,int16_t port,const std::any &context);
 	~xTcpClient();
 
-	void syncConnect();
+	bool syncConnect();
 	void asyncConnect();
 	void disConnect();
 	void stop();
 
 	bool getRetry() { return retry; }
 	void enableRetry() { retry = true; }
+	void closeRetry() { retry = false; }
 
 	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb); }
 	void setConnectionCallback(const ConnectionCallback &&cb) { connectionCallback = std::move(cb); }
@@ -49,6 +50,4 @@ private:
 	std::any context;
 	bool retry;
 	bool connect;
-
-
 };

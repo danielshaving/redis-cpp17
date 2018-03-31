@@ -11,18 +11,18 @@ retry(false),
 connect(true)
 {
 	enableRetry();
-	connector->setNewConnectionCallback(std::bind(&xTcpClient::newConnection, this, std::placeholders::_1));
+	connector->setNewConnectionCallback(std::bind(&xTcpClient::newConnection,this,std::placeholders::_1));
 	connector->setConnectionErrorCallBack(std::bind(&xTcpClient::errorConnection,this));
 }
 
 namespace detail
 {
-	void removeConnection(xEventLoop* loop, const TcpConnectionPtr& conn)
+	void removeConnection(xEventLoop *loop,const TcpConnectionPtr &conn)
 	{
-		loop->queueInLoop(std::bind(&xTcpConnection::connectDestroyed, conn));
+		loop->queueInLoop(std::bind(&xTcpConnection::connectDestroyed,conn));
 	}
 
-	void removeConnector(const ConnectorPtr& connector)
+	void removeConnector(const ConnectorPtr &connector)
 	{
 
 	}
@@ -61,10 +61,9 @@ void xTcpClient::asyncConnect()
 	connector->asyncStart();
 }
 
-void xTcpClient::syncConnect()
+bool xTcpClient::syncConnect()
 {
-	connect = true;
-	connector->syncStart();
+	return connector->syncStart();
 }
 
 void xTcpClient::disConnect()
@@ -96,7 +95,7 @@ void xTcpClient::newConnection(int32_t sockfd)
 	conn->setConnectionCallback(std::move(connectionCallback));
 	conn->setMessageCallback(std::move(messageCallback));
 	conn->setWriteCompleteCallback(std::move(writeCompleteCallback));
-	conn->setCloseCallback(std::bind(&xTcpClient::removeConnection, this,std::placeholders::_1));
+	conn->setCloseCallback(std::bind(&xTcpClient::removeConnection,this,std::placeholders::_1));
 	{
 		std::unique_lock<std::mutex> lk(mutex);
 		connection = conn;
@@ -114,7 +113,7 @@ void xTcpClient::removeConnection(const TcpConnectionPtr &conn)
 		connection.reset();
 	}
 
-	loop->queueInLoop(std::bind(&xTcpConnection::connectDestroyed, conn));
+	loop->queueInLoop(std::bind(&xTcpConnection::connectDestroyed,conn));
 	if (retry && connect)
 	{
 		connector->restart();

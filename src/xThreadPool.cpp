@@ -24,7 +24,7 @@ void xThreadPool::start(const ThreadInitCallback &cb)
 
 	for(int i = 0 ; i < numThreads; i++)
 	{
-		std::shared_ptr<xThread>  t(new xThread(cb));
+		std::shared_ptr<xThread> t(new xThread(cb));
 		threads.push_back(t);
 		loops.push_back(t->startLoop());
 	}
@@ -34,11 +34,10 @@ void xThreadPool::start(const ThreadInitCallback &cb)
 		cb(baseLoop);
 	}
 
-
 }
 
 
-xEventLoop* xThreadPool::getNextLoop()
+xEventLoop *xThreadPool::getNextLoop()
 {
 	baseLoop->assertInLoopThread();
 	assert(started);
@@ -57,10 +56,10 @@ xEventLoop* xThreadPool::getNextLoop()
 
 }
 
-xEventLoop* xThreadPool::getLoopForHash(size_t hashCode)
+xEventLoop *xThreadPool::getLoopForHash(size_t hashCode)
 {
 	baseLoop->assertInLoopThread();
-	xEventLoop* loop = baseLoop;
+	xEventLoop *loop = baseLoop;
 
 	if (!loops.empty())
 	{
@@ -71,11 +70,11 @@ xEventLoop* xThreadPool::getLoopForHash(size_t hashCode)
 
 std::vector<xEventLoop*> xThreadPool::getAllLoops()
 {
-	//baseLoop->assertInLoopThread();
+	baseLoop->assertInLoopThread();
 	assert(started);
 	if (loops.empty())
 	{
-		return std::vector<xEventLoop*>(1, baseLoop);
+		return std::vector<xEventLoop*>(1,baseLoop);
 	}
 	else
 	{

@@ -11,7 +11,7 @@ size_t convert(char buf[], T value)
 
 	do
 	{
-		int lsd = static_cast<int>(i % 10);
+		int32_t lsd = static_cast<int32_t>(i % 10);
 		i /= 10;
 		*p++ = zero[lsd];
 	} while (i != 0);
@@ -35,7 +35,7 @@ size_t convertHex(char buf[], uintptr_t value)
 
 	do
 	{
-		int lsd = static_cast<int>(i % 16);
+		int32_t lsd = static_cast<int32_t>(i % 16);
 		i /= 16;
 		*p++ = digitsHex[lsd];
 	} while (i != 0);
@@ -68,7 +68,7 @@ void AppendFile::append(const char *logline, const size_t len)
 		size_t x = write(logline + n, remain);
 		if (x == 0)
 		{
-			int err = ferror(fp);
+			int32_t err = ferror(fp);
 			if (err)
 			{
 				LOG_ERROR<<"AppendFile::append() failed "<< strerror(err);
@@ -101,11 +101,11 @@ size_t AppendFile::write(const char* logline, size_t len)
 xLogFile::xLogFile(const std::string &basename,
                  size_t rollSize,
                  bool threadSafe,
-                 int flushInterval,
-                 int checkEveryN)
+                 int32_t flushint32_terval,
+                 int32_t checkEveryN)
   : basename(basename),
     rollSize(rollSize),
-    flushInterval(flushInterval),
+    flushint32_terval(flushint32_terval),
     checkEveryN(checkEveryN),
     count(0),
     startOfPeriod(0),
@@ -121,7 +121,7 @@ xLogFile::~xLogFile()
 
 }
 
-void xLogFile::append(const char *logline, int len)
+void xLogFile::append(const char *logline, int32_t len)
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	append_unlocked(logline, len);
@@ -133,7 +133,7 @@ void xLogFile::flush()
 	file->flush();
 }
 
-void xLogFile::append_unlocked(const char *logline, int len)
+void xLogFile::append_unlocked(const char *logline, int32_t len)
 {
 
   file->append(logline, len);
@@ -153,7 +153,7 @@ void xLogFile::append_unlocked(const char *logline, int len)
 		{
 			rollFile();
 		}
-		else if (now - lastFlush > flushInterval)
+		else if (now - lastFlush > flushint32_terval)
 		{
 			lastFlush = now;
 			file->flush();
@@ -195,9 +195,9 @@ std::string xLogFile::getLogFileName(const std::string &basename, time_t *now)
 	return filename;
 }
 
-xAsyncLogging::xAsyncLogging(std::string baseName,size_t rollSize,int flushInterval)
+xAsyncLogging::xAsyncLogging(std::string baseName,size_t rollSize,int32_t flushint32_terval)
 :baseName(baseName),
-flushInterval(flushInterval),
+flushint32_terval(flushint32_terval),
 running(false),
 rollSize(rollSize),
 thread(nullptr),
@@ -210,7 +210,7 @@ buffers()
 	buffers.reserve(16);
 }
 
-void xAsyncLogging::append(const char *logline,int len)
+void xAsyncLogging::append(const char *logline,int32_t len)
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	if(currentBuffer->avail() > len)
@@ -256,7 +256,7 @@ void xAsyncLogging::threadFunc()
 			std::unique_lock<std::mutex> lk(mutex);
 			if(buffers.empty())
 			{
-				condition.wait_for(lk,std::chrono::seconds(flushInterval));
+				condition.wait_for(lk,std::chrono::seconds(flushint32_terval));
 			}
 
 			buffers.push_back(std::unique_ptr<Buffer>(currentBuffer.release()));
@@ -323,55 +323,55 @@ void xLogStream::formatInteger(T v)
 }
 
 
-xLogStream& xLogStream::operator<<(short v)
+xLogStream &xLogStream::operator<<(short v)
 {
 	*this << static_cast<int>(v);
 	return *this;
 }
 
-xLogStream& xLogStream::operator<<(unsigned short v)
+xLogStream &xLogStream::operator<<(unsigned short v)
 {
 	*this << static_cast<unsigned int>(v);
 	return *this;
 }
 
-xLogStream& xLogStream::operator<<(int v)
+xLogStream &xLogStream::operator<<(int v)
 {
 	formatInteger(v);
 	return *this;
 }
 
-xLogStream& xLogStream::operator<<(unsigned int v)
+xLogStream &xLogStream::operator<<(unsigned int v)
 {
 	formatInteger(v);
 	return *this;
 }
 
-xLogStream& xLogStream::operator<<(long v)
+xLogStream &xLogStream::operator<<(long v)
 {
 	formatInteger(v);
 	return *this;
 }
 
-xLogStream& xLogStream::operator<<(unsigned long v)
+xLogStream &xLogStream::operator<<(unsigned long v)
 {
 	formatInteger(v);
 	return *this;
 }
 
-xLogStream& xLogStream::operator<<(long long v)
+xLogStream &xLogStream::operator<<(long long v)
 {
 	formatInteger(v);
 	return *this;
 }
 
-xLogStream& xLogStream::operator<<(unsigned long long v)
+xLogStream &xLogStream::operator<<(unsigned long long v)
 {
 	formatInteger(v);
 	return *this;
 }
 
-xLogStream& xLogStream::operator<<(const void* p)
+xLogStream &xLogStream::operator<<(const void* p)
 {
 	uintptr_t v = reinterpret_cast<uintptr_t>(p);
 	if (buffer.avail() >= kMaxNumericSize)
@@ -386,16 +386,15 @@ xLogStream& xLogStream::operator<<(const void* p)
 }
 
 // FIXME: replace this with Grisu3 by Florian Loitsch.
-xLogStream& xLogStream::operator<<(double v)
+xLogStream &xLogStream::operator<<(double v)
 {
 	if (buffer.avail() >= kMaxNumericSize)
 	{
-		int len = snprintf(buffer.current(), kMaxNumericSize, "%.12g", v);
+		int32_t len = snprintf(buffer.current(), kMaxNumericSize, "%.12g", v);
 		buffer.add(len);
 	}
 	return *this;
 }
-
 
 
 xLogger::LogLevel initLogLevel()
@@ -421,10 +420,9 @@ const char* LogLevelName[xLogger::NUM_LOG_LEVELS] =
 };
 
 
-
-void defaultOutput(const char* msg, int len)
+void defaultOutput(const char* msg,int32_t len)
 {
-	size_t n = fwrite(msg, 1, len, stdout);
+	size_t n = fwrite(msg,1,len,stdout);
 	//FIXME check n
 	(void)n;
 	printf("%s\n",msg);
@@ -439,7 +437,7 @@ xLogger::OutputFunc g_output = defaultOutput;
 xLogger::FlushFunc g_flush = defaultFlush;
 
 
-xLogger::xImpl::xImpl(LogLevel level, int savedErrno, const xSourceFile &file, int line)
+xLogger::xImpl::xImpl(LogLevel level, int32_t savedErrno, const xSourceFile &file, int32_t line)
   : stream(),
     level(level),
     line(line),
@@ -455,9 +453,9 @@ void xLogger::xImpl::formatTime()
 	struct tm tm_time;
 	time_t now = time(0);
 	gmtime_r(&now, &tm_time);
-	int len = snprintf(t_time, sizeof(t_time), "%4d%02d%02d %02d:%02d:%02d",
-	tm_time.tm_year + 1900, tm_time.tm_mon + 1, tm_time.tm_mday,
-	tm_time.tm_hour + 8, tm_time.tm_min, tm_time.tm_sec);
+	int32_t len = snprintf(t_time,sizeof(t_time),"%4d%02d%02d %02d:%02d:%02d",
+	tm_time.tm_year + 1900,tm_time.tm_mon + 1,tm_time.tm_mday,
+	tm_time.tm_hour + 8,tm_time.tm_min,tm_time.tm_sec);
 	assert(len == 17); (void)len;
 	stream<<T(t_time,17);
 	stream<<"  ";
@@ -470,23 +468,23 @@ void xLogger::xImpl::finish()
 	stream << "  " << T(baseName.data,baseName.size)<< ':' << line<<"\r";
 }
 
-xLogger::xLogger(xSourceFile file, int line)
+xLogger::xLogger(xSourceFile file,int32_t line)
  :impl(INFO, 0, file, line)
 {
 }
 
-xLogger::xLogger(xSourceFile file, int line, LogLevel level, const char *func)
+xLogger::xLogger(xSourceFile file,int32_t line,LogLevel level,const char *func)
   : impl(level, 0, file, line)
 {
   impl.stream << func << ' ';
 }
 
-xLogger::xLogger(xSourceFile file, int line, LogLevel level)
+xLogger::xLogger(xSourceFile file,int32_t line,LogLevel level)
   : impl(level, 0, file, line)
 {
 }
 
-xLogger::xLogger(xSourceFile file, int line, bool toAbort)
+xLogger::xLogger(xSourceFile file,int32_t line,bool toAbort)
   : impl(toAbort?FATAL:ERROR, errno, file, line)
 {
 }
@@ -496,7 +494,7 @@ xLogger::~xLogger()
 {
 	impl.finish();
 	const xLogStream::Buffer& buf(stream().getBuffer());
-	g_output(buf.getData(), buf.length());
+	g_output(buf.getData(),buf.length());
 	if (impl.level == FATAL)
 	{
 		g_flush();

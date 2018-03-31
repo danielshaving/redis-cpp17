@@ -17,8 +17,8 @@ xSession::xSession(xRedis *redis,const TcpConnectionPtr &conn)
  fromMaster(false),
  fromSlave(false)
 {
-	command = redis->object.createStringObject(nullptr, REDIS_COMMAND_LENGTH);
-	clientConn->setMessageCallback(std::bind(&xSession::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
+	command = redis->object.createStringObject(nullptr,REDIS_COMMAND_LENGTH);
+	clientConn->setMessageCallback(std::bind(&xSession::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
 }
 
 xSession::xSession(xMemcached *memcahed,const TcpConnectionPtr &conn)
@@ -33,7 +33,7 @@ needle(xItem::makeItem(kLongestKey, 0, 0, 2, 0)),
 bytesRead(0),
 requestsProcessed(0)
 {
-	 clientConn->setMessageCallback(std::bind(&xSession::onMessage, this, std::placeholders::_1,std::placeholders::_2));
+	 clientConn->setMessageCallback(std::bind(&xSession::onMessage,this,std::placeholders::_1,std::placeholders::_2));
 }
 
 xSession::~xSession()
@@ -44,7 +44,7 @@ xSession::~xSession()
 	}
 }
 
-void xSession::readCallBack(const TcpConnectionPtr &clientConn, xBuffer *buffer)
+void xSession::readCallBack(const TcpConnectionPtr &clientConn,xBuffer *buffer)
 {
 	while(buffer->readableBytes() > 0 )
 	{
@@ -338,7 +338,7 @@ int32_t xSession::processInlineBuffer(xBuffer *buffer)
 		return REDIS_ERR;
     }
 
-	for (j = 0; j  < argc; j++)
+	for (j = 0; j < argc; j++)
 	{
 		if(j == 0)
 		{
@@ -361,7 +361,7 @@ int32_t xSession::processInlineBuffer(xBuffer *buffer)
 
 int32_t xSession::processMultibulkBuffer(xBuffer *buffer)
 {
-	const char * newline = nullptr;
+	const char *newline = nullptr;
 	int32_t pos = 0,ok;
 	int64_t ll = 0 ;
 	const char * queryBuf = buffer->peek();
@@ -475,7 +475,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *buffer)
 			}
 			else
 			{
-				rObj * obj = (rObj*)redis->object.createStringObject((char*)(queryBuf + pos),bulklen);
+				rObj *obj = (rObj*)redis->object.createStringObject((char*)(queryBuf + pos),bulklen);
 				obj->calHash();
 				commands.push_back(obj);
 			}
@@ -502,7 +502,7 @@ int32_t xSession::processMultibulkBuffer(xBuffer *buffer)
 
 struct xSession::Reader
 {
-	Reader(auto  &beg, auto end)
+	Reader(auto &beg,auto end)
 	  : first(beg),
 	    last(end)
 	{
@@ -510,11 +510,11 @@ struct xSession::Reader
 	}
 
 	template<typename T>
-	bool read(T* val)
+	bool read(T *val)
 	{
 		if (first == last) return false;
 		char* end = nullptr;
-		uint64_t x = strtoull((*first).data(), &end, 10);
+		uint64_t x = strtoull((*first).data(),&end,10);
 		if (end == (*first).end())
 		{
 			*val = static_cast<T>(x);
@@ -526,8 +526,8 @@ struct xSession::Reader
 	}
 
  private:
- 	std::vector<xStringPiece>::iterator  first;
-	std::vector<xStringPiece>::iterator  last;
+ 	std::vector<xStringPiece>::iterator first;
+	std::vector<xStringPiece>::iterator last;
 };
 
 
@@ -536,9 +536,9 @@ void xSession::receiveValue(xBuffer *buffer)
 	assert(currItem.get());
 	assert(state == kReceiveValue);
 
-	const size_t avail = std::min(buffer->readableBytes(), currItem->neededBytes());
+	const size_t avail = std::min(buffer->readableBytes(),currItem->neededBytes());
 	assert(currItem.unique());
-	currItem->append(buffer->peek(), avail);
+	currItem->append(buffer->peek(),avail);
 	buffer->retrieve(avail);
 	if (currItem->neededBytes() == 0)
 	{
@@ -559,12 +559,12 @@ void xSession::receiveValue(xBuffer *buffer)
 					}
 					else
 					{
-					   	 reply("NOT_FOUND\r\n");
+					   	reply("NOT_FOUND\r\n");
 					}
 				}
 				else
 				{
-				        reply("NOT_STORED\r\n");
+					reply("NOT_STORED\r\n");
 				}
 			}
 		}
@@ -632,16 +632,16 @@ bool xSession::processRequest(xStringPiece request)
 		}
 
 		xStringPiece tok;
-		const char * start = next;
-		const char* sp = static_cast<const char*>(memchr(start, ' ', end - start));
+		const char *start = next;
+		const char *sp = static_cast<const char*>(memchr(start, ' ', end - start));
 		if (sp)
 		{
-			tok.set(start, static_cast<int>(sp - start));
+			tok.set(start,static_cast<int>(sp - start));
 			next = sp;
 		}
 		else
 		{
-			tok.set(start, static_cast<int>(end - next));
+			tok.set(start,static_cast<int>(end - next));
 			next = end;
 		}
 		tokenizers.push_back(std::move(tok));
@@ -734,7 +734,7 @@ void xSession::reply(xStringPiece msg)
 	}
 }
 
-bool xSession::doUpdate(const std::string &command,auto &beg, auto end)
+bool xSession::doUpdate(const std::string &command,auto &beg,auto end)
 {
 	if (command == "set")
 		policy = xItem::kSet;
@@ -800,13 +800,13 @@ bool xSession::doUpdate(const std::string &command,auto &beg, auto end)
 	}
 	else
 	{
-		currItem = xItem::makeItem(key, flags, relExptime, bytes + 2, cas);
+		currItem = xItem::makeItem(key,flags,relExptime,bytes + 2,cas);
 		state = kReceiveValue;
 		return false;
 	}
 }
 
-void xSession::doDelete(const std::string &command,auto  &beg, auto end)
+void xSession::doDelete(const std::string &command,auto &beg,auto end)
 {
 	assert(command == "delete");
 	xStringPiece key = *beg;
@@ -860,7 +860,7 @@ void xSession::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 			}
 			else  // ASCII protocol
 			{
-				const char* crlf = buffer->findCRLF();
+				const char *crlf = buffer->findCRLF();
 				if (crlf)
 				{
 					int len = static_cast<int>(crlf - buffer->peek());

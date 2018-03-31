@@ -8,7 +8,7 @@
 class xConnector : noncopyable, public std::enable_shared_from_this<xConnector>
 {
 public:
-	typedef std::function<void (int32_t sockfd)> NewConnectionCallback;
+	typedef std::function<void(int32_t sockfd)> NewConnectionCallback;
 	typedef std::function<void()> ErrorConnectionCallback;
 
 	xConnector(xEventLoop *loop,const char *ip,int16_t port);
@@ -18,17 +18,20 @@ public:
 	void setConnectionErrorCallBack(const ErrorConnectionCallback &&cb) { errorConnectionCallback = std::move(cb); }
 
 	void asyncStart();
-	void syncStart();
+	bool syncStart();
 	void restart();
 	void stop();
 
-	void startInLoop(const std::any &context);
-	void syncStartInLoop();
+	bool syncStartInLoop();
 	void asyncStartInLoop();
+
+private:
+
+	void startInLoop(const std::any &context);
 	void stopInLoop();
 
 	void asyncConnect();
-	void syncConnect();
+	bool syncConnect();
 	void connecting(int32_t sockfd);
 	void resetChannel();
 	void retry(int32_t sockfd);
@@ -38,7 +41,6 @@ public:
 
 	int32_t  removeAndResetChannel();
 
-private:
   	enum States { kDisconnected, kConnecting, kConnected };
 	void setState(States  s) { state = s; }
 	static const int kMaxRetryDelayMs = 30*1000;

@@ -14,18 +14,18 @@ public:
 	void setThreadNum(int numThreads) { this->numThreads = numThreads; }
 	void start(const ThreadInitCallback &cb = ThreadInitCallback());
 
-	xEventLoop* getNextLoop();
-	xEventLoop* getLoopForHash(size_t hashCode);
+	xEventLoop *getNextLoop();
+	xEventLoop *getLoopForHash(size_t hashCode);
 	std::vector<xEventLoop*> getAllLoops();
 	bool getStarted() const { return started; }
 
 private:
 	xEventLoop *baseLoop;
-	bool	started;
+	bool started;
 	int	numThreads;
 	int	next;
 
-	std::vector<std::shared_ptr<xThread>>	threads;
+	std::vector<std::shared_ptr<xThread>> threads;
 	std::vector<xEventLoop*> loops;
 
 

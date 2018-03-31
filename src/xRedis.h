@@ -19,7 +19,7 @@
 class xRedis : noncopyable
 {
 public:
-	xRedis(const char *ip, int16_t port,int16_t threadCount,bool enbaledCluster = false);
+	xRedis(const char *ip,int16_t port,int16_t threadCount,bool enbaledCluster = false);
 	~xRedis();
 	
 	void initConfig();
@@ -37,7 +37,7 @@ public:
 
 	bool saveCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
 	bool pingCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
-	bool debugCommand(const std::deque <rObj*> &obj, const SessionPtr &session);
+	bool debugCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
 	bool flushdbCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
 	bool dbsizeCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
 	bool quitCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
@@ -58,12 +58,12 @@ public:
 	bool zrevrangeCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
 	bool zrangeGenericCommand(const std::deque <rObj*> &obj,const SessionPtr &session,int reverse);
 
-	bool lpushCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
-	bool lpopCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
-	bool lrangeCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
-	bool rpushCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
-	bool rpopCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
-	bool llenCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
+	bool lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool lpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool lrangeCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool rpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool rpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool llenCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
 	
 	bool scardCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
 	bool saddCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
@@ -91,9 +91,9 @@ public:
 	bool keysCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
 	bool bgsaveCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
 	bool memoryCommand(const std::deque <rObj*> &obj,const SessionPtr &session);
-	bool sentinelCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
-	bool migrateCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
-	bool ttlCommand(const std::deque<rObj*> &obj, const SessionPtr &session);
+	bool sentinelCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool migrateCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool ttlCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
 
 	int32_t rdbSaveBackground(const SessionPtr &session,bool enabled);
 	bool bgsave(const SessionPtr &session,bool enabled = false);

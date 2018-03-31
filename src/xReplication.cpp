@@ -8,7 +8,8 @@ xReplication::xReplication(xRedis *redis)
  salveLen(0),
  salveReadLen(0),
  slaveSyncEnabled(false),
- timer(nullptr)
+ timer(nullptr),
+ client(nullptr)
  {
 
  }
@@ -97,19 +98,19 @@ void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 		}
 		if (salveLen == salveReadLen)
 		{
-			redis->rdb.rdbSyncClose(fileName, fp);
+			redis->rdb.rdbSyncClose(fileName,fp);
 			redis->clearCommand();
 
 			if (redis->rdb.rdbLoad(fileName) == REDIS_OK)
 			{
 				salveLen = 0;
 				{
-					std::shared_ptr<xSession> session(new xSession(redis, conn));
+					std::shared_ptr<xSession> session(new xSession(redis,conn));
 					std::unique_lock <std::mutex> lck(redis->mtx);
 					redis->sessions[conn->getSockfd()] = session;
 				}
 
-				conn->send(redis->object.ok->ptr, sdslen(redis->object.ok->ptr));
+				conn->send(redis->object.ok->ptr,sdslen(redis->object.ok->ptr));
 				LOG_INFO << "replication load rdb success";
 			}
 			else
@@ -123,7 +124,7 @@ void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 	}
 }
 
-void xReplication::slaveCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
+void xReplication::slaveCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	while(buffer->readableBytes() >= sdslen(redis->object.ok->ptr))
 	{
@@ -131,7 +132,7 @@ void xReplication::slaveCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 		auto it = redis->slaveConns.find(conn->getSockfd());
 		if (it != redis->slaveConns.end())
 		{
-			if (memcmp(buffer->peek(), redis->object.ok->ptr, sdslen(redis->object.ok->ptr)) == 0)
+			if (memcmp(buffer->peek(),redis->object.ok->ptr,sdslen(redis->object.ok->ptr)) == 0)
 			{
 				buffer->retrieve(sdslen(redis->object.ok->ptr));
 				if (++redis->salveCount >= redis->slaveConns.size())
@@ -163,12 +164,12 @@ void xReplication::slaveCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 	}
 }
 
-void xReplication::connCallBack(const TcpConnectionPtr& conn)
+void xReplication::connCallBack(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
 		repliConn = conn;
-		socket.getpeerName(conn->getSockfd(),&(conn->ip),conn->port);
+		socket.getpeerName(conn->getSockfd(),conn->ip.c_str(),conn->port);
 		redis->masterHost = conn->ip;
 		redis->masterPort = conn->port ;
 		redis->masterfd = conn->getSockfd();
@@ -189,6 +190,7 @@ void xReplication::connCallBack(const TcpConnectionPtr& conn)
 		redis->repliEnabled = false;
 		std::unique_lock <std::mutex> lck(redis->mtx);
 		redis->sessions.erase(conn->getSockfd());
+		client.reset();
 		LOG_INFO<<"connect  master disconnect";
 	}
 }
@@ -196,11 +198,6 @@ void xReplication::connCallBack(const TcpConnectionPtr& conn)
 void xReplication::reconnectTimer(const std::any &context)
 {
 	client->asyncConnect();
-}
-
-void xReplication::connErrorCallBack()
-{
-	return;
 }
 
 void xReplication::replicationSetMaster(rObj *obj,int16_t port)
@@ -217,11 +214,10 @@ void xReplication::replicationSetMaster(rObj *obj,int16_t port)
 		}
 	}
 
-	xTcpClient client(loop,ip.c_str(),port,this);
-	client.setConnectionCallback(std::bind(&xReplication::connCallBack, this, std::placeholders::_1));
-	client.setMessageCallback( std::bind(&xReplication::readCallBack, this, std::placeholders::_1,std::placeholders::_2));
-	client.setConnectionErrorCallBack(std::bind(&xReplication::connErrorCallBack, this));
-	client.asyncConnect();
-	this->client = &client;
+	TcpClientPtr client(new xTcpClient(loop,ip.c_str(),port,this));
+	client->setConnectionCallback(std::bind(&xReplication::connCallBack,this,std::placeholders::_1));
+	client->setMessageCallback(std::bind(&xReplication::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
+	client->asyncConnect();
+	this->client = client;
 }
 

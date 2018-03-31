@@ -17,10 +17,10 @@ xConnector::~xConnector()
 	assert(!channel);
 }
 
-void xConnector::syncStart()
+bool xConnector::syncStart()
 {
 	connect = true;
-	loop->runInLoop(std::bind(&xConnector::syncStartInLoop,this));
+	return syncStartInLoop();
 }
 
 void xConnector::asyncStart()
@@ -34,12 +34,12 @@ void xConnector::startInLoop(const std::any &context)
 	asyncStartInLoop();
 }
 
-void xConnector::syncStartInLoop()
+bool xConnector::syncStartInLoop()
 {
 	loop->assertInLoopThread();
 	if (connect)
 	{
-		syncConnect();
+		return syncConnect();
 	}
 	else
 	{
@@ -81,7 +81,7 @@ void xConnector::resetChannel()
 	channel.reset();
 }
 
-int32_t  xConnector::removeAndResetChannel()
+int32_t xConnector::removeAndResetChannel()
 {
 	channel->disableAll();
 	channel->remove();
@@ -94,8 +94,8 @@ void xConnector::connecting(int32_t sockfd)
 {
 	assert(!channel);
 	channel.reset(new xChannel(loop, sockfd));
-	channel->setWriteCallback(std::bind(&xConnector::handleWrite, this));
-	channel->setErrorCallback(std::bind(&xConnector::handleError, this));
+	channel->setWriteCallback(std::bind(&xConnector::handleWrite,this));
+	channel->setErrorCallback(std::bind(&xConnector::handleError,this));
 	channel->enableWriting();
 }
 
@@ -108,7 +108,7 @@ void xConnector::retry(int32_t sockfd)
 		LOG_INFO << "Connector::retry - Retry connecting to "<<ip<<" "<<port
 				 << " in " << retryDelayMs << " milliseconds. ";
 		loop->runAfter(retryDelayMs/1000.0,nullptr,false,
-						std::bind(&xConnector::startInLoop, shared_from_this(),std::placeholders::_1));
+						std::bind(&xConnector::startInLoop,shared_from_this(),std::placeholders::_1));
 		retryDelayMs = std::min(retryDelayMs * 2,kMaxRetryDelayMs);
 	}
 	else
@@ -126,9 +126,10 @@ void xConnector::restart()
 	asyncStartInLoop();
 }
 
-void xConnector::syncConnect()
+bool xConnector::syncConnect()
 {
 
+	return true;
 }
 
 void xConnector::handleWrite()

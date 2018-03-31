@@ -235,7 +235,7 @@ void xRedis::connCallBack(const TcpConnectionPtr &conn)
 	if(conn->connected())
 	{
 		//socket.setTcpNoDelay(conn->getSockfd(),true);
-		socket.getpeerName(conn->getSockfd(),&(conn->ip),conn->port);
+		socket.getpeerName(conn->getSockfd(),conn->ip.c_str(),conn->port);
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		std::unique_lock <std::mutex> lck(mtx);
 #ifdef __DEBUG__

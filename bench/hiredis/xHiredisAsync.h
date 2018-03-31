@@ -4,7 +4,7 @@
 class xHiredisAsync : noncopyable
 {
 public:
-	xHiredisAsync(xEventLoop *loop,int threadCount,const char *ip,int16_t port);
+	xHiredisAsync(xEventLoop *loop,int8_t threadCount,const char *ip,int16_t port);
 	~xHiredisAsync();
 
 	void redisConnCallBack(const TcpConnectionPtr& conn);
@@ -14,7 +14,7 @@ public:
 	void setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
 
 private:
-	xHiredis  hiredis;
+	xHiredis hiredis;
 	std::atomic<int> connectCount;
 	xEventLoop *loop;
 	std::condition_variable condition;

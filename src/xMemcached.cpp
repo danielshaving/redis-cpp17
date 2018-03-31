@@ -2,7 +2,7 @@
 
 xMemcached::xMemcached(xEventLoop *loop,const Options &op)
 :loop(loop),
- server(loop,ops.ip,ops.port,nullptr),
+ server(loop,ops.ip.c_str(),ops.port,nullptr),
 ops(op),
 startTime(time(0))
 {

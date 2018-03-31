@@ -5,12 +5,12 @@ class xSocket : noncopyable
 {
 public:
 	xSocket();
-	xSocket(const std::string &ip, int16_t port);
+	xSocket(const char *ip,int16_t port);
 	~xSocket();
 
-	bool getpeerName(int32_t sockfd,std::string *ip, int16_t &port);
+	bool getpeerName(int32_t sockfd,const char *ip,int16_t port);
 	int32_t createSocket();
-	int32_t connect(int32_t sockfd,const std::string &ip, int16_t port);
+	int32_t connect(int32_t sockfd,const char *ip,int16_t port);
 
 	struct sockaddr_in6 getPeerAddr(int32_t sockfd);
 	struct sockaddr_in6 getLocalAddr(int32_t sockfd);
@@ -18,7 +18,7 @@ public:
 	int32_t getSocketError(int32_t sockfd);
 	int32_t getListenFd();
 	void setkeepAlive(int32_t fd,int32_t idle);
-	bool createTcpListenSocket(const std::string &ip,int16_t port);
+	bool createTcpListenSocket(const char *ip,int16_t port);
 	bool setSocketNonBlock(int32_t sockfd);
 	bool setSocketBlock(int32_t sockfd);
 	bool setTcpNoDelay(int32_t sockfd,bool on);

@@ -40,13 +40,13 @@ private:
 	int64_t microSecondsSinceEpoch;
 };
 
-inline xTimeStamp addTime(xTimeStamp timestamp, double seconds)
+inline xTimeStamp addTime(xTimeStamp timestamp,double seconds)
 {
 	int64_t delta = static_cast<int64_t>(seconds * xTimeStamp::kMicroSecondsPerSecond);
 	return xTimeStamp(timestamp.getMicroSecondsSinceEpoch() + delta);
 }
 
-inline double timeDifference(xTimeStamp high, xTimeStamp low)
+inline double timeDifference(xTimeStamp high,xTimeStamp low)
 {
 	int64_t diff = high.getMicroSecondsSinceEpoch() - low.getMicroSecondsSinceEpoch();
 	return static_cast<double>(diff) / xTimeStamp::kMicroSecondsPerSecond;

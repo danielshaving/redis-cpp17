@@ -12,7 +12,7 @@ public:
 	~xSentinel();
 	void connectSentinel();
 	void connErrorCallBack();
-	void readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer);
+	void readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
 	void connCallBack(const TcpConnectionPtr &conn);
 	void reconnectTimer(const std::any &context);
 

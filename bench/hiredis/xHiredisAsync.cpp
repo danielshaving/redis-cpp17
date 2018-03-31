@@ -103,7 +103,7 @@ void xHiredisAsync::serverCron(const std::any &context)
 }
 
 xAsyncLogging *g_asyncLog;
-void asyncOutput(const char *msg, int len)
+void asyncOutput(const char *msg,int len)
 {
 	printf("%s\n",msg);
 	g_asyncLog->append(msg, len);
@@ -118,14 +118,14 @@ void asyncOutput(const char *msg, int len)
  	else
  	{
 		xLogger::setOutput(asyncOutput);
-		xAsyncLogging log("hiredis", 4096);
+		xAsyncLogging log("hiredis",4096);
 		log.start();
 		g_asyncLog = &log;
 
- 		const char* ip = argv[1];
+ 		const char *ip = argv[1];
  		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
  		sessionCount = atoi(argv[3]);
- 		int threadCount = atoi(argv[4]);
+ 		int8_t threadCount = atoi(argv[4]);
  		xEventLoop loop;
 		xHiredisAsync async(&loop,threadCount,ip,port);
 
@@ -135,7 +135,7 @@ void asyncOutput(const char *msg, int len)
 
 		{
 			std::unique_lock<std::mutex> lk(async.getHiredis()->getMutex());
-			auto  &redisMap = async.getHiredis()->getRedis();
+			auto &redisMap = async.getHiredis()->getRedis();
 			int32_t count = 0;
 			for(auto it = redisMap.begin(); it != redisMap.end();)
 			{
@@ -145,7 +145,7 @@ void asyncOutput(const char *msg, int len)
 				}
 
 				auto redis = it->second;
-				std::thread::id  threadId = redis->getServerConn()->getLoop()->getThreadId();
+				std::thread::id threadId = redis->getServerConn()->getLoop()->getThreadId();
 
 				redis->redisAsyncCommand(std::bind(&xHiredisAsync::setCallback,
 						&async,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),

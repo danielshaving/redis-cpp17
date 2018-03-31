@@ -12,6 +12,8 @@ class xHiredisAsync;
 class xTcpClient;
 class xSession;
 class xItem;
+class xThreadPool;
+class xAcceptor;
 
 typedef std::shared_ptr<xHiredisAsync> HiredisAsyncPtr;
 typedef std::shared_ptr<xBuffer> xBufferPtr;
@@ -24,6 +26,8 @@ typedef std::shared_ptr<xTcpClient> TcpClientPtr;
 typedef std::shared_ptr<xSession>  SessionPtr;
 typedef std::shared_ptr<xItem> ItemPtr;
 typedef std::shared_ptr<const xItem> ConstItemPtr;
+typedef std::shared_ptr<xThreadPool> ThreadPoolPtr;
+typedef std::unique_ptr<xAcceptor> AcceptorPtr;
 
 typedef std::function<void (const std::any &)> xTimerCallback;
 typedef std::function<void (const TcpConnectionPtr&)> ConnectionCallback;

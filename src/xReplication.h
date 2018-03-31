@@ -15,7 +15,6 @@ public:
 	void connectMaster();
 	void replicationSetMaster(rObj *obj,int16_t port);
 
-	void connErrorCallBack();
 	void slaveCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
 	void readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
 	void connCallBack(const TcpConnectionPtr &conn);
@@ -29,7 +28,7 @@ public:
 public:
 	xRedis *redis;
 	xEventLoop *loop;
-	xTcpClient *client;
+	TcpClientPtr client;
 	std::string ip;
 	int32_t port;
 	int32_t replLen;
@@ -37,11 +36,11 @@ public:
 	xBuffer sendBuf;
 	int32_t connectCount;
 	xSocket socket;
-	FILE * fp ;
+	FILE *fp ;
 	int32_t salveLen;
 	int32_t salveReadLen;
 	TcpConnectionPtr repliConn;
 	xTimer *timer;
-	std::atomic<bool>  slaveSyncEnabled;
+	std::atomic<bool> slaveSyncEnabled;
 };
 

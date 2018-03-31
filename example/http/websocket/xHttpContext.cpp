@@ -138,7 +138,7 @@ bool xHttpContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,const char 
 	}
 	else
 	{
-		return false;
+		getRequest().setOpCodeType(xHttpRequest::CONTINUATION_FRAME);
 	}
 
 	size = len + pos;

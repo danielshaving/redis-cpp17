@@ -2,7 +2,7 @@
 #include "xRedis.h"
 
 
-rObj * xObjects::createObject(int32_t type, void *ptr)
+rObj * xObjects::createObject(int32_t type,void *ptr)
 {
 	rObj *o = (rObj*)zmalloc(sizeof(rObj));
 	o->encoding = REDIS_ENCODING_RAW;
@@ -24,7 +24,7 @@ int32_t xObjects::getLongLongFromObject(rObj *o,int64_t *target)
 	{
 		if (sdsEncodedObject(o))
 		{
-			if (string2ll(o->ptr, sdslen(o->ptr), &value) == 0) return REDIS_ERR;
+			if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0) return REDIS_ERR;
 		}
 		else
 		{
@@ -36,15 +36,16 @@ int32_t xObjects::getLongLongFromObject(rObj *o,int64_t *target)
 	return REDIS_OK;
 }
 
-int32_t xObjects::getLongLongFromObjectOrReply(xBuffer &buffer,rObj *o,int64_t *target, const char *msg)
+int32_t xObjects::getLongLongFromObjectOrReply(xBuffer &buffer,rObj *o,int64_t *target,const char *msg)
 {
     int64_t value;
-    if (getLongLongFromObject(o, &value) != REDIS_OK)
+    if (getLongLongFromObject(o,&value) != REDIS_OK)
     {
         if (msg != nullptr)
         {
             addReplyError(buffer,(char*)msg);
-        } else
+        }
+        else
         {
             addReplyError(buffer,"value is no an integer or out of range");
         }
@@ -55,14 +56,14 @@ int32_t xObjects::getLongLongFromObjectOrReply(xBuffer &buffer,rObj *o,int64_t *
 }
 
 
-int xObjects::getLongFromObjectOrReply(xBuffer &buffer,rObj *o,int32_t *target, const char *msg)
+int xObjects::getLongFromObjectOrReply(xBuffer &buffer,rObj *o,int32_t *target,const char *msg)
 {
 	int64_t value;
-	if (getLongLongFromObject(o, &value) != REDIS_OK)
+	if (getLongLongFromObject(o,&value) != REDIS_OK)
 	{
 		if (msg != nullptr) 
 		{
-			addReplyError(buffer, (char*)msg);
+			addReplyError(buffer,(char*)msg);
 		}
 		else 
 		{
@@ -98,10 +99,10 @@ rObj * xObjects::createStringObjectFromLongLong(int64_t value)
 	return o;
 }
 
-int32_t xObjects::getDoubleFromObjectOrReply(xBuffer &buffer,rObj *o,double *target, const char *msg)
+int32_t xObjects::getDoubleFromObjectOrReply(xBuffer &buffer,rObj *o,double *target,const char *msg)
 {
     double value;
-    if (getDoubleFromObject(o, &value) != REDIS_OK)
+    if (getDoubleFromObject(o,&value) != REDIS_OK)
     {
         if (msg != nullptr)
         {
@@ -118,7 +119,7 @@ int32_t xObjects::getDoubleFromObjectOrReply(xBuffer &buffer,rObj *o,double *tar
 }
 
 
-int xObjects::getDoubleFromObject(const rObj *o, double *target)
+int xObjects::getDoubleFromObject(const rObj *o,double *target)
 {
     double value;
     char *eptr;
@@ -194,7 +195,6 @@ void xObjects::freeZsetObject(rObj *o)
 }
 
 
-
 void xObjects::decrRefCount(rObj *o)
 {
 	switch(o->type)
@@ -211,7 +211,7 @@ void xObjects::decrRefCount(rObj *o)
 }
 
 
-xObjects::xObjects(xRedis * redis)
+xObjects::xObjects(xRedis *redis)
 :redis(redis)
 {
 

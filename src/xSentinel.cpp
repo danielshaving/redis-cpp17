@@ -2,7 +2,7 @@
 #include "xRedis.h"
 #include "xLog.h"
 
-xSentinel::xSentinel(xRedis * redis)
+xSentinel::xSentinel(xRedis *redis)
 :redis(redis),
  start(false),
  isreconnect(true),
@@ -11,27 +11,25 @@ xSentinel::xSentinel(xRedis * redis)
 
 }
 
-
 xSentinel::~xSentinel()
 {
 	
 }
 
-void xSentinel::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
+void xSentinel::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	
 }
-
 
 void xSentinel::connCallBack(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
 		this->conn = conn;
-		socket.getpeerName(conn->getSockfd(),&(conn->ip),conn->port);
+		socket.getpeerName(conn->getSockfd(),conn->ip.c_str(),conn->port);
 		{
 			std::unique_lock <std::mutex> lck(redis->sentinelMutex);
-			redis->slaveConns.insert(std::make_pair(conn->getSockfd(), conn));
+			redis->slaveConns.insert(std::make_pair(conn->getSockfd(),conn));
 		}
 		LOG_INFO<<"connect Sentinel suucess ";
 		

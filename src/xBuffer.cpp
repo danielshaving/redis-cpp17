@@ -1,6 +1,4 @@
-
 #include "xBuffer.h"
-
 
 const char xBuffer::kCRLF[] = "\r\n";
 const char xBuffer::CONTENT[] = "Content-Length";

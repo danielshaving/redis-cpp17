@@ -21,8 +21,8 @@ public:
 	void swap(xBuffer &rhs)
 	{
 		buffer.swap(rhs.buffer);
-		std::swap(readerIndex, rhs.readerIndex);
-		std::swap(writerIndex, rhs.writerIndex);
+		std::swap(readerIndex,rhs.readerIndex);
+		std::swap(writerIndex,rhs.writerIndex);
 	}
 
 	size_t readableBytes() const { return writerIndex - readerIndex; }
@@ -34,7 +34,7 @@ public:
 
 	const char *findCRLF() const
 	{
-		const char* crlf = std::search(peek(), beginWrite(), kCRLF, kCRLF+2);
+		const char* crlf = std::search(peek(),beginWrite(),kCRLF,kCRLF+2);
 		return crlf == beginWrite() ? nullptr : crlf;
 	}
 
@@ -42,19 +42,19 @@ public:
 	{
 		assert(peek() <= start);
 		assert(start <= beginWrite());
-		const char* crlf = std::search(start, beginWrite(), kCRLF, kCRLF+2);
+		const char* crlf = std::search(start,beginWrite(),kCRLF,kCRLF+2);
 		return crlf == beginWrite() ? nullptr : crlf;
 	}
 
 	const char *findEOL() const
 	{
-		const void *eol = memchr(peek(), '\n', readableBytes());
+		const void *eol = memchr(peek(),'\n',readableBytes());
 		return static_cast<const char*>(eol);
 	}
 
 	const char *findCONTENT() const
 	{
-		const char* content = std::search(peek(), beginWrite(), CONTENT, CONTENT+14);
+		const char* content = std::search(peek(),beginWrite(),CONTENT,CONTENT+14);
 		return content == beginWrite() ? nullptr : content;
 	}
 
@@ -62,7 +62,7 @@ public:
 	{
 		assert(peek() <= start);
 		assert(start <= beginWrite());
-		const void* eol = memchr(start, '\n', beginWrite() - start);
+		const void *eol = memchr(start,'\n',beginWrite() - start);
 		return static_cast<const char*>(eol);
 	}
 
@@ -125,7 +125,7 @@ public:
 	std::string retrieveAsString(size_t len)
 	{
 		assert(len <= readableBytes());
-		std::string result(peek(), len);
+		std::string result(peek(),len);
 		retrieve(len);
 		return result;
 	}
@@ -142,68 +142,68 @@ public:
 		append(str.data(), str.size());
 	}
 
-	void append(const void *data, size_t len)
+	void append(const void *data,size_t len)
 	{
-		append(static_cast<const char*>(data), len);
+		append(static_cast<const char*>(data),len);
 	}
 
 	void appendInt32(int32_t x)
 	{
 		int32_t be32 = x;
-		append(&be32, sizeof be32);
+		append(&be32,sizeof be32);
 	}
 
 	void appendInt64(int64_t x)
 	{
 		int64_t be64 = x;
-		append(&be64, sizeof be64);
+		append(&be64,sizeof be64);
 	}
 
 	void appendInt16(int16_t x)
 	{
 		int16_t be16 = x;
-		append(&be16, sizeof be16);
+		append(&be16,sizeof be16);
 	}
 
 	void appendInt8(int8_t x)
 	{
-		append(&x, sizeof x);
+		append(&x,sizeof x);
 	}
 
 	void appendUInt8(uint8_t x)
 	{
-		append(&x, sizeof x);
+		append(&x,sizeof x);
 	}
 
 	void prependInt64(int64_t x)
 	{
 		int64_t be64 = x;
-		prepend(&be64, sizeof be64);
+		prepend(&be64,sizeof be64);
 	}
 
 	void prependInt32(int32_t x)
 	{
 		int32_t be32 = x;
-		prepend(&be32, sizeof be32);
+		prepend(&be32,sizeof be32);
 	}
 
 	void prependInt16(int16_t x)
 	{
 		int16_t be16 = x;
-		prepend(&be16, sizeof be16);
+		prepend(&be16,sizeof be16);
 	}
 
 	void prependInt8(int8_t x)
 	{
-		prepend(&x, sizeof x);
+		prepend(&x,sizeof x);
 	}
 
 	void prependUInt8(uint8_t x)
 	{
-		prepend(&x, sizeof x);
+		prepend(&x,sizeof x);
 	}
 
-	void prepend(const void *data, size_t len)
+	void prepend(const void *data,size_t len)
 	{
 		assert(len <= prependableBytes());
 		readerIndex -= len;
@@ -211,16 +211,16 @@ public:
 		std::copy(d,d + len,begin() + readerIndex);
 	}
 
-	void preapend(const void *data, size_t len)
+	void preapend(const void *data,size_t len)
 	{
 		prepend(static_cast<const char*>(data),len);
 	}
 
-	void preapend(const char *data, size_t len)
+	void preapend(const char *data,size_t len)
 	{
 		ensureWritableBytes(len);
-		std::copy(prepeek(), prepeek() + writableBytes(), prepeek() + len);
-		std::copy(data, data + len, prepeek());
+		std::copy(prepeek(),prepeek() + writableBytes(),prepeek() + len);
+		std::copy(data,data + len,prepeek());
 		hasWritten(len);
 	}
 
@@ -233,8 +233,8 @@ public:
 		assert(writableBytes() >= len);
 	}
 
-	char* beginWrite() { return begin() + writerIndex; }
-	const char* beginWrite() const { return begin() + writerIndex; }
+	char *beginWrite() { return begin() + writerIndex; }
+	const char *beginWrite() const { return begin() + writerIndex; }
 
 	void hasWritten(size_t len)
 	{
@@ -280,7 +280,7 @@ public:
 	{
 		assert(readableBytes() >= sizeof(int64_t));
 		int64_t be64 = 0;
-		::memcpy(&be64, peek(), sizeof be64);
+		::memcpy(&be64,peek(),sizeof be64);
 		return be64;
 	}
 
@@ -288,7 +288,7 @@ public:
 	{
 		assert(readableBytes() >= sizeof(int32_t));
 		int32_t be32 = 0;
-		::memcpy(&be32, peek(), sizeof be32);
+		::memcpy(&be32,peek(),sizeof be32);
 		return be32;
 	}
 
@@ -296,7 +296,7 @@ public:
 	{
 		assert(readableBytes() >= sizeof(int16_t));
 		int16_t be16 = 0;
-		::memcpy(&be16, peek(), sizeof be16);
+		::memcpy(&be16,peek(),sizeof be16);
 		return be16;
 	}
 
@@ -309,7 +309,7 @@ public:
 
 	xStringPiece toStringPiece() const
 	{
-		return xStringPiece(peek(), static_cast<int32_t>(readableBytes()));
+		return xStringPiece(peek(),static_cast<int32_t>(readableBytes()));
 	}
 
 	void shrink(size_t reserve)
@@ -324,7 +324,7 @@ public:
 	{
 		return buffer.capacity();
 	}
-	ssize_t readFd(int32_t fd, int32_t* savedErrno);
+	ssize_t readFd(int32_t fd,int32_t *savedErrno);
 
 private:
 	char *begin() { return &*buffer.begin(); }

@@ -30,9 +30,9 @@ typedef struct redisReadTask : noncopyable
 } redisReadTask;
 
 redisReply *createReplyObject(int32_t type);
-redisReply *createString(const redisReadTask *task, const char *str, size_t len);
-redisReply *createArray(const redisReadTask *task, int32_t elements);
-redisReply *createInteger(const redisReadTask *task, int64_t value);
+redisReply *createString(const redisReadTask *task,const char *str,size_t len);
+redisReply *createArray(const redisReadTask *task,int32_t elements);
+redisReply *createInteger(const redisReadTask *task,int64_t value);
 redisReply *createNil(const redisReadTask *task);
 void freeReply(redisReply *reply);
 
@@ -48,8 +48,8 @@ typedef struct redisReplyObjectFunctions : noncopyable
 	}
 	
 	std::function<redisReply*(const redisReadTask*,const char*,size_t)> createStringFuc;
-	std::function<redisReply*(const redisReadTask*, int32_t)> createArrayFuc;
-	std::function<redisReply*(const redisReadTask*, int64_t)> createIntegerFuc;
+	std::function<redisReply*(const redisReadTask*,int32_t)> createArrayFuc;
+	std::function<redisReply*(const redisReadTask*,int64_t)> createIntegerFuc;
 	std::function<redisReply*(const redisReadTask*)> createNilFuc;
 	std::function<void (redisReply*)> freeObjectFuc;
 } redisFunc;
@@ -104,7 +104,7 @@ typedef struct redisAsyncCallback
 
 	}
 	char *data;
-	int32_t  len;
+	int32_t len;
 	RedisCallback cb;
 }RedisAsyncCallback;
 
@@ -121,7 +121,7 @@ public:
 	redisReply *redisCommand(xBuffer *buffer);
 	redisReply *redisCommand(const char *format,...);
 	redisReply *redisvCommand(const char *format,va_list ap);
-	redisReply *redisCommandArgv(int32_t argc, const char **argv,const size_t *argvlen);
+	redisReply *redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
 	int32_t redisAppendFormattedCommand(const char *cmd,size_t len);
 	int32_t redisAppendCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
 	void redisSetError(int32_t type,const char *str);
@@ -216,10 +216,10 @@ private:
 	std::mutex rtx;
 };
 
-int32_t redisFormatCommand(char **target, const char *format, ...);
-int32_t redisFormatCommandArgv(char **target, int32_t argc, const char **argv, const size_t *argvlen);
-int32_t redisvFormatCommand(char **target, const char *format, va_list ap);
+int32_t redisFormatCommand(char **target,const char *format,...);
+int32_t redisFormatCommandArgv(char **target,int32_t argc,const char **argv,const size_t *argvlen);
+int32_t redisvFormatCommand(char **target,const char *format, va_list ap);
 
-RedisContextPtr redisConnectWithTimeout(const char *ip, int16_t port, const struct timeval tv);
-RedisContextPtr redisConnect(const char *ip, int16_t port);
+RedisContextPtr redisConnectWithTimeout(const char *ip,int16_t port,const struct timeval tv);
+RedisContextPtr redisConnect(const char *ip,int16_t port);
 

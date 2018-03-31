@@ -32,7 +32,7 @@ public:
     void removeChannel(xChannel *channel);
     bool hasChannel(xChannel *channel);
     void cancelAfter(xTimer *timer);
-    xTimer *runAfter(double  when,const std::any &context,bool repeat,xTimerCallback &&cb);
+    xTimer *runAfter(double when,const std::any &context,bool repeat,xTimerCallback &&cb);
     void assertInLoopThread()
     {
 	  if (!isInLoopThread())
@@ -54,13 +54,13 @@ private:
     std::thread::id threadId;
     mutable std::mutex mutex;
 #ifdef __APPLE__
-    std::unique_ptr<xPoll>   epoller;
+    std::unique_ptr<xPoll> epoller;
     int op;
     int wakeupFd[2];
 #endif
 
 #ifdef __linux__
-	std::unique_ptr<xEpoll>   epoller;
+	std::unique_ptr<xEpoll> epoller;
     int wakeupFd;
 #endif
 
@@ -68,7 +68,7 @@ private:
     std::unique_ptr<xChannel> wakeupChannel;
     typedef std::vector<xChannel*> ChannelList;
     ChannelList activeChannels;
-    xChannel* currentActiveChannel;
+    xChannel *currentActiveChannel;
 	
     bool running;
     bool eventHandling;

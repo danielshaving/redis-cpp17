@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 
-xSocket::xSocket(const std::string &ip, int16_t port)
+xSocket::xSocket(const char *ip, int16_t port)
 {
 	listenSocketFd = -1;
 	onlineNumber = 0;
@@ -85,7 +85,7 @@ int32_t xSocket::getSocketError(int32_t sockfd)
 	int optval;
 	socklen_t optlen = static_cast<socklen_t>(sizeof optval);
 
-	if (::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0)
+	if (::getsockopt(sockfd,SOL_SOCKET,SO_ERROR,&optval,&optlen) < 0)
 	{
 		return errno;
 	}
@@ -95,14 +95,13 @@ int32_t xSocket::getSocketError(int32_t sockfd)
 	}
 }
 
-bool xSocket::getpeerName(int32_t fd,std::string *ip, int16_t &port)
+bool xSocket::getpeerName(int32_t fd,const char *ip,int16_t port)
 {
 	struct sockaddr_in sa;
 	socklen_t len = sizeof(sa);
-	if(!getpeername(fd, (struct sockaddr *)&sa, &len))
+	if(!getpeername(fd,(struct sockaddr *)&sa,&len))
 	{
-		char * inIp = inet_ntoa(sa.sin_addr);
-		*ip = inIp;
+		ip = inet_ntoa(sa.sin_addr);
 		port = ntohs(sa.sin_port);
 		return true;
 	}
@@ -117,17 +116,17 @@ int32_t  xSocket::createSocket()
 	return socket(AF_INET, SOCK_STREAM, 0);
 }
 
-int32_t  xSocket::connect(int32_t sockfd,const std::string &ip, int16_t port)
+int32_t  xSocket::connect(int32_t sockfd,const char *ip,int16_t port)
 {
 	struct sockaddr_in sin;
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
-	sin.sin_addr.s_addr = inet_addr(ip.c_str());
-	return  ::connect(sockfd, (struct sockaddr *)&sin, sizeof(sin));
+	sin.sin_addr.s_addr = inet_addr(ip);
+	return  ::connect(sockfd,(struct sockaddr *)&sin,sizeof(sin));
 }
 
-int32_t xSocket::setFlag(int32_t fd, int32_t flag)
+int32_t xSocket::setFlag(int32_t fd,int32_t flag)
 {
 	   int32_t ret = fcntl(fd, F_GETFD);
 	   return fcntl(fd, F_SETFD, ret | flag);
@@ -181,15 +180,15 @@ void  xSocket::setkeepAlive(int32_t fd,int32_t idle)
 #endif
 }
 
-bool xSocket::createTcpListenSocket(const std::string &ip,int16_t port)
+bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 {
     struct sockaddr_in serverAdress;
     serverAdress.sin_family = AF_INET;
     serverAdress.sin_port   = htons(port);
 
-    if (ip.length() > 0 )
+    if (ip)
     {
-        serverAdress.sin_addr.s_addr = inet_addr(ip.c_str());
+        serverAdress.sin_addr.s_addr = inet_addr(ip);
     }
     else
     {
