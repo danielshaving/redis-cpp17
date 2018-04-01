@@ -275,7 +275,6 @@ void xTcpConnection::sendInLoop(const xStringPiece &message)
 	sendInLoop(message.data(),message.size());
 }
 
-
 void xTcpConnection::sendInLoop(const void *data,size_t len)
 {
 	loop->assertInLoopThread();

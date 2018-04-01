@@ -14,7 +14,7 @@ public:
 	typedef std::vector<xChannel*> ChannelList;
 	typedef std::unordered_map<int32_t, xChannel*> ChannelMap;
 
-	xKqueue(xEventLoop * loop);
+	xKqueue(xEventLoop *loop);
 	~xKqueue();
 
 	void epollWait(ChannelList *activeChannels,int32_t msTime = 10);

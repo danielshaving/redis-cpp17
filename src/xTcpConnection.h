@@ -26,7 +26,7 @@ public:
 	void setWriteCompleteCallback(const WriteCompleteCallback &&cb)
 	{ writeCompleteCallback = std::move(cb); }
 
-	void setHighWaterMarkCallback(const HighWaterMarkCallback &&cb, size_t highWaterMark)
+	void setHighWaterMarkCallback(const HighWaterMarkCallback &&cb,size_t highWaterMark)
 	{ highWaterMarkCallback = std::move(cb); this->highWaterMark  = highWaterMark; }
 
 	void setCloseCallback(const CloseCallback &cb)
@@ -47,9 +47,9 @@ public:
 	
 	void sendPipe(const xStringPiece &message);
 	void sendPipe(xBuffer *message);
-	void sendPipe(const void *message, int32_t len);
+	void sendPipe(const void *message,int32_t len);
 
-  	void send(const void *message, int32_t len);
+  	void send(const void *message,int32_t len);
 	void send(xBuffer *message);
 	void send(const xStringPiece &message);
 
@@ -70,6 +70,10 @@ public:
 	xBuffer *outputBuffer() { return &sendBuff; }
 	xBuffer *intputBuffer() { return &recvBuff; }
 
+	const std::string &getip() const { return ip; }
+	int16_t &getport() { return port; }
+
+private:
 	xEventLoop *loop;
 	int32_t sockfd;
 	xBuffer recvBuff;
@@ -82,9 +86,8 @@ public:
 
 	size_t highWaterMark;
 	StateE state;
-	std::shared_ptr<xChannel> channel;
-	std::any  context;
+	ChannelPtr channel;
+	std::any context;
 	std::string ip;
 	int16_t  port;
-
 };

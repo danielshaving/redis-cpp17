@@ -218,7 +218,7 @@ private:
 
 int32_t redisFormatCommand(char **target,const char *format,...);
 int32_t redisFormatCommandArgv(char **target,int32_t argc,const char **argv,const size_t *argvlen);
-int32_t redisvFormatCommand(char **target,const char *format, va_list ap);
+int32_t redisvFormatCommand(char **target,const char *format,va_list ap);
 
 RedisContextPtr redisConnectWithTimeout(const char *ip,int16_t port,const struct timeval tv);
 RedisContextPtr redisConnect(const char *ip,int16_t port);

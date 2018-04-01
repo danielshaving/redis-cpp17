@@ -113,7 +113,33 @@ bool xSocket::getpeerName(int32_t fd,const char *ip,int16_t port)
 
 int32_t  xSocket::createSocket()
 {
-	return socket(AF_INET, SOCK_STREAM, 0);
+	return socket(AF_INET,SOCK_STREAM,0);
+}
+
+
+bool xSocket::connectWaitReady(int32_t fd,int32_t msec)
+{
+	struct pollfd   wfd[1];
+
+	wfd[0].fd = fd;
+	wfd[0].events = POLLOUT;
+
+
+	if (errno == EINPROGRESS)
+	{
+		int res;
+		 if ((res = ::poll(wfd,1,msec)) == -1)
+		 {
+			 return false;
+		 }
+		 else if(res == 0)
+		 {
+			 errno = ETIMEDOUT;
+			 return false;
+		 }
+	}
+
+	return true;
 }
 
 int32_t  xSocket::connect(int32_t sockfd,const char *ip,int16_t port)
@@ -128,8 +154,8 @@ int32_t  xSocket::connect(int32_t sockfd,const char *ip,int16_t port)
 
 int32_t xSocket::setFlag(int32_t fd,int32_t flag)
 {
-	   int32_t ret = fcntl(fd, F_GETFD);
-	   return fcntl(fd, F_SETFD, ret | flag);
+	int32_t ret = fcntl(fd, F_GETFD);
+	return fcntl(fd, F_SETFD, ret | flag);
 }
 
 bool xSocket::setTimeOut(int32_t sockfd,const struct timeval tv)
@@ -158,22 +184,22 @@ void  xSocket::setkeepAlive(int32_t fd,int32_t idle)
 	int32_t keepcnt = 3;
 	int32_t err = 0;
 
-	if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char*)&keepalive, sizeof(keepalive)) < 0)
+	if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE,(char*)&keepalive,sizeof(keepalive)) < 0)
 	{
 		LOG_DEBUG<<"SOL_SOCKET";
 	}
 
-	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, (char *)&keepidle, sizeof(keepidle)) < 0)
+	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,(char *)&keepidle,sizeof(keepidle)) < 0)
 	{
 		LOG_DEBUG<<"TCP_KEEPIDLE";
 	}
 
-	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL,(char *)&keepintvl, sizeof(keepintvl)) < 0)
+	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL,(char *)&keepintvl,sizeof(keepintvl)) < 0)
 	{
 		LOG_DEBUG<<"TCP_KEEPINTVL";
 	}
 
-	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,(char *)&keepcnt, sizeof(keepcnt)) < 0)
+	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,(char *)&keepcnt,sizeof(keepcnt)) < 0)
 	{
 		LOG_DEBUG<<"TCP_KEEPCNT";
 	}
@@ -186,7 +212,7 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
     serverAdress.sin_family = AF_INET;
     serverAdress.sin_port   = htons(port);
 
-    if (ip)
+    if(ip)
     {
         serverAdress.sin_addr.s_addr = inet_addr(ip);
     }
@@ -197,13 +223,13 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 
     listenSocketFd = socket(AF_INET, SOCK_STREAM, 0);
 
-    if (listenSocketFd < 0)
+    if(listenSocketFd < 0)
     {
         LOG_WARN<<"Create Tcp Socket Failed! "<< strerror(errno);
         return false;
     }
 
-    if (!setSocketNonBlock(listenSocketFd))
+    if(!setSocketNonBlock(listenSocketFd))
     {
 		LOG_WARN<<"Set listen socket  to non-block failed!";
 		return false;
@@ -211,7 +237,7 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 
     int32_t optval = 1;
 	
-	if (setsockopt(listenSocketFd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
+	if(::setsockopt(listenSocketFd,SOL_SOCKET,SO_REUSEPORT,&optval,sizeof(optval)) < 0)
     {
 		LOG_SYSERR<<"Set SO_REUSEPORT socket  failed! error "<<strerror(errno);
         close(listenSocketFd);
@@ -219,21 +245,21 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
     }
 	
   
-    if (setsockopt(listenSocketFd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
+    if(::setsockopt(listenSocketFd,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval)) < 0)
     {
 		LOG_SYSERR<<"Set SO_REUSEADDR socket  failed! error "<<strerror(errno);
 		close(listenSocketFd);
         return false;
     }
 
-    if (bind(listenSocketFd, (struct sockaddr*)&serverAdress, sizeof(serverAdress)) < 0 )
+    if(::bind(listenSocketFd, (struct sockaddr*)&serverAdress,sizeof(serverAdress)) < 0 )
     {
         LOG_SYSERR<<"Bind bind socket failed! error "<<strerror(errno);
         close(listenSocketFd);
         return false;
     }
 
-    if (listen(listenSocketFd, SOMAXCONN))
+    if(::listen(listenSocketFd,SOMAXCONN))
     {
         LOG_SYSERR<<"Listen listen socket failed! error "<<strerror(errno);
         close(listenSocketFd);
@@ -244,15 +270,16 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
     setsockopt(listenSocketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
 
     int32_t len = 65536;
-    setsockopt(listenSocketFd, SOL_SOCKET, SO_RCVBUF, (void*)&len, sizeof(len));
-    setsockopt(listenSocketFd, SOL_SOCKET, SO_SNDBUF, (void*)&len, sizeof(len));
+    setsockopt(listenSocketFd,SOL_SOCKET,SO_RCVBUF,(void*)&len,sizeof(len));
+    setsockopt(listenSocketFd,SOL_SOCKET,SO_SNDBUF,(void*)&len,sizeof(len));
 #endif
+
     return true;
 }
 
 
 
-bool xSocket::setTcpNoDelay(int32_t socketFd, bool on)
+bool xSocket::setTcpNoDelay(int32_t socketFd,bool on)
 {
 #ifdef __linux__
 	int32_t optval = on ? 1 : 0;
@@ -272,9 +299,11 @@ bool  xSocket::setSocketBlock(int32_t socketFd)
     opt = opt &~ O_NONBLOCK;
     if (fcntl(socketFd, F_SETFL, opt) < 0)
     {
-    	 LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+    	LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
+
+    return true;
 }
 
 
@@ -290,7 +319,7 @@ bool xSocket::setSocketNonBlock(int32_t socketFd)
     opt = opt | O_NONBLOCK;
     if (fcntl(socketFd, F_SETFL, opt) < 0)
     {
-    	 LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+    	LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
 

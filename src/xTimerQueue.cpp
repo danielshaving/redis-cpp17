@@ -189,11 +189,11 @@ xTimerQueue::xTimerQueue(xEventLoop *loop)
 :loop(loop)
 #ifdef __linux__
 ,timerfd(createTimerfd()),
-timerfdChannel(loop,timerfd)
+ timerfdChannel(loop,timerfd)
 #endif
 {
 #ifdef __linux__
-	timerfdChannel.setReadCallback(std::bind(&xTimerQueue::handleRead, this));
+	timerfdChannel.setReadCallback(std::bind(&xTimerQueue::handleRead,this));
 	timerfdChannel.enableReading();
 #endif
 }
@@ -208,7 +208,7 @@ xTimerQueue::~xTimerQueue()
 #endif
 }
 
-xTimer  * xTimerQueue::addTimer(double when, const std::any &context,bool repeat,xTimerCallback &&cb)
+xTimer *xTimerQueue::addTimer(double when,const std::any &context,bool repeat,xTimerCallback &&cb)
 {
 	xTimeStamp time(addTime(xTimeStamp::now(), when));
 	xTimer * timer = (xTimer*)zmalloc(sizeof(xTimer));
@@ -238,7 +238,7 @@ void xTimerQueue::cancelInloop(xTimer *timer)
 	}
 }
 
-void   xTimerQueue::addTimerInLoop(xTimer *timer)
+void xTimerQueue::addTimerInLoop(xTimer *timer)
 {
 	bool earliestChanged = false;
 	loop->assertInLoopThread();
@@ -262,7 +262,7 @@ void   xTimerQueue::addTimerInLoop(xTimer *timer)
 	}
 }
 
-void  xTimerQueue::handleRead()
+void xTimerQueue::handleRead()
 {
 	loop->assertInLoopThread();
 	xTimeStamp now(xTimeStamp::now());
@@ -302,9 +302,6 @@ void  xTimerQueue::handleRead()
 			it = nullptr;
 		}
 	}
-
 	vectors.clear();
-
-
 }
 

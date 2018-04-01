@@ -235,7 +235,7 @@ void xRedis::connCallBack(const TcpConnectionPtr &conn)
 	if(conn->connected())
 	{
 		//socket.setTcpNoDelay(conn->getSockfd(),true);
-		socket.getpeerName(conn->getSockfd(),conn->ip.c_str(),conn->port);
+		socket.getpeerName(conn->getSockfd(),conn->getip().c_str(),conn->getport());
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		std::unique_lock <std::mutex> lck(mtx);
 #ifdef __DEBUG__
@@ -482,8 +482,8 @@ bool xRedis::infoCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 			"# SlaveInfo \r\n"
 			"slave_ip:%s\r\n"
 			"slave_port:%d\r\n",
-			it.second->ip.c_str(),
-			it.second->port);
+			it.second->getip().c_str(),
+			it.second->getport());
 		}
 	}
 	
@@ -522,116 +522,116 @@ bool xRedis::echoCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 
 
 
-bool xRedis::authCommand(const std::deque <rObj*> &obj, const SessionPtr &session)
+bool xRedis::authCommand(const std::deque <rObj*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 1)
 	{
-		object.addReplyErrorFormat(session->clientBuffer, "unknown auth  error");
+		object.addReplyErrorFormat(session->clientBuffer,"unknown auth  error");
 		return false;
 	}
 
 	if (password.c_str() == nullptr)
 	{
-		object.addReplyError(session->clientBuffer, "client sent auth, but no password is set");
+		object.addReplyError(session->clientBuffer,"client sent auth, but no password is set");
 		return false;
 	}
 
 	if (!strcasecmp(obj[0]->ptr, password.c_str()))
 	{
 		session->authEnabled = true;
-		object.addReply(session->clientBuffer, object.ok);
+		object.addReply(session->clientBuffer,object.ok);
 	}
 	else
 	{
-		object.addReplyError(session->clientBuffer, "invalid password");
+		object.addReplyError(session->clientBuffer,"invalid password");
 	}
 
 
 	return false;
 }
 
-bool xRedis::configCommand(const std::deque <rObj*> &obj, const SessionPtr &session)
+bool xRedis::configCommand(const std::deque <rObj*> &obj,const SessionPtr &session)
 {
 
 	if (obj.size() > 3 ||  obj.size() == 0)
 	{
-		object.addReplyErrorFormat(session->clientBuffer, "unknown config  error");
+		object.addReplyErrorFormat(session->clientBuffer,"unknown config  error");
 		return false;
 	}
 
-	if (!strcasecmp(obj[0]->ptr, "set"))
+	if (!strcasecmp(obj[0]->ptr,"set"))
 	{
 		if (obj.size() != 3)
 		{
-			object.addReplyErrorFormat(session->clientBuffer, "Wrong number of arguments for CONFIG %s",(char*)obj[0]->ptr);
+			object.addReplyErrorFormat(session->clientBuffer,"Wrong number of arguments for CONFIG %s",(char*)obj[0]->ptr);
 			return false;
 		}
 
-		if (!strcasecmp(obj[1]->ptr, "requirepass"))
+		if (!strcasecmp(obj[1]->ptr,"requirepass"))
 		{
 			password = obj[2]->ptr;
 			authEnabled = true;
 			session->authEnabled = false;
-			object.addReply(session->clientBuffer, object.ok);
+			object.addReply(session->clientBuffer,object.ok);
 		}
 		else
 		{
-			object.addReplyErrorFormat(session->clientBuffer, "Invalid argument  for CONFIG SET '%s'",
+			object.addReplyErrorFormat(session->clientBuffer,"Invalid argument for CONFIG SET '%s'",
 				(char*)obj[1]->ptr);
 		}
 
 	}
 	else
 	{
-		object.addReplyError(session->clientBuffer, "config subcommand must be one of GET, SET, RESETSTAT, REWRITE");
+		object.addReplyError(session->clientBuffer,"config subcommand must be one of GET, SET, RESETSTAT, REWRITE");
 	}
 
 	return false;
 
 }
 
-bool xRedis::migrateCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
+bool xRedis::migrateCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {
 	if (obj.size() < 5)
 	{
-		object.addReplyErrorFormat(session->clientBuffer, "unknown migrate  error");
+		object.addReplyErrorFormat(session->clientBuffer,"unknown migrate  error");
 		return false;
 	}
 
 	if (!clusterEnabled)
 	{
-		object.addReplyError(session->clientBuffer, "this instance has cluster support disabled");
+		object.addReplyError(session->clientBuffer,"this instance has cluster support disabled");
 		return false;
 	}
 
 	int32_t firstKey = 3; /* Argument index of the first key. */
 	int32_t numKeys = 1;  /* By default only migrate the 'key' argument. */
 
-	int8_t copy = 0, replace = 0;
+	int8_t copy = 0,replace = 0;
 	char *password = nullptr;
 
 	for (int i = 5; i < obj.size(); i++)
 	{
 		int moreargs = i < obj.size() - 1;
-		if (!strcasecmp(obj[i]->ptr, "copy"))
+		if (!strcasecmp(obj[i]->ptr,"copy"))
 		{
 			copy = 1;
 		}
-		else if (!strcasecmp(obj[i]->ptr, "replace"))
+		else if (!strcasecmp(obj[i]->ptr,"replace"))
 		{
 			replace = 1;
 		}
-		else if (!strcasecmp(obj[i]->ptr, "auth"))
+		else if (!strcasecmp(obj[i]->ptr,"auth"))
 		{
 			if (!moreargs) 
 			{
-				object.addReply(session->clientBuffer, object.syntaxerr);
+				object.addReply(session->clientBuffer,object.syntaxerr);
 				return false;
 			}
 			i++;
 			password = obj[i]->ptr;
 		}
-		else if (!strcasecmp(obj[i]->ptr, "keys"))
+		else if (!strcasecmp(obj[i]->ptr,"keys"))
 		{
 			if (sdslen(obj[2]->ptr) != 0)
 			{
@@ -655,8 +655,8 @@ bool xRedis::migrateCommand(const std::deque<rObj*> &obj, const SessionPtr &sess
 	int32_t timeout;
 	int32_t dbid;
 	/* Sanity check */
-	if (object.getLongFromObjectOrReply(session->clientBuffer, obj[4], &timeout, nullptr) != REDIS_OK ||
-		object.getLongFromObjectOrReply(session->clientBuffer, obj[3], &dbid, nullptr) != REDIS_OK)
+	if (object.getLongFromObjectOrReply(session->clientBuffer,obj[4],&timeout,nullptr) != REDIS_OK ||
+		object.getLongFromObjectOrReply(session->clientBuffer,obj[3],&dbid,nullptr) != REDIS_OK)
 	{
 		return false;
 	}
@@ -665,7 +665,7 @@ bool xRedis::migrateCommand(const std::deque<rObj*> &obj, const SessionPtr &sess
 
 	if (object.getLongLongFromObject(obj[1], &port) != REDIS_OK)
 	{
-		object.addReplyErrorFormat(session->clientBuffer, "Invalid TCP port specified: %s",
+		object.addReplyErrorFormat(session->clientBuffer,"Invalid TCP port specified: %s",
 			(char*)obj[2]->ptr);
 		return false;
 	}
@@ -673,7 +673,7 @@ bool xRedis::migrateCommand(const std::deque<rObj*> &obj, const SessionPtr &sess
 	std::string ip = obj[0]->ptr;
 	if (this->ip == ip && this->port == port)
 	{
-		object.addReplyErrorFormat(session->clientBuffer, "migrate  self server error ");
+		object.addReplyErrorFormat(session->clientBuffer,"migrate  self server error ");
 		return false;
 	}
 	
@@ -683,11 +683,11 @@ bool xRedis::migrateCommand(const std::deque<rObj*> &obj, const SessionPtr &sess
 	return false;
 }
 
-bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &session)
+bool xRedis::clusterCommand(const std::deque <rObj*> &obj,const SessionPtr &session)
 {
 	if (!clusterEnabled)
 	{
-		object.addReplyError(session->clientBuffer, "this instance has cluster support disabled");
+		object.addReplyError(session->clientBuffer,"this instance has cluster support disabled");
 		return false;
 	}
 
@@ -695,7 +695,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 	{
 		if (obj.size() != 3)
 		{
-			object.addReplyErrorFormat(session->clientBuffer, "unknown cluster  error");
+			object.addReplyErrorFormat(session->clientBuffer,"unknown cluster error");
 			return false;
 		}
 
@@ -703,14 +703,14 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 
 		if (object.getLongLongFromObject(obj[2], &port) != REDIS_OK)
 		{
-			object.addReplyErrorFormat(session->clientBuffer, "Invalid TCP port specified: %s", (char*)obj[2]->ptr);
+			object.addReplyErrorFormat(session->clientBuffer,"Invalid TCP port specified: %s",(char*)obj[2]->ptr);
 			return false;
 		}
 
-		if (ip.c_str() && !memcmp(ip.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)) && this->port == port)
+		if (ip.c_str() && !memcmp(ip.c_str(),obj[1]->ptr,sdslen(obj[1]->ptr)) && this->port == port)
 		{
 			LOG_WARN << "cluster  meet  connect self error .";
-			object.addReplyErrorFormat(session->clientBuffer, "Don't connect self ");
+			object.addReplyErrorFormat(session->clientBuffer,"Don't connect self ");
 			return false;
 		}
 
@@ -718,29 +718,29 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto &it : clusterConns)
 			{
-				if (port == it.second->port && !memcmp(it.second->ip.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)))
+				if (port == it.second->getport() && !memcmp(it.second->getip().c_str(),obj[1]->ptr,sdslen(obj[1]->ptr)))
 				{
 					LOG_WARN << "cluster  meet  already exists .";
-					object.addReplyErrorFormat(session->clientBuffer, "cluster  meet  already exists ");
+					object.addReplyErrorFormat(session->clientBuffer,"cluster  meet  already exists ");
 					return false;
 				}
 			}
 		}
 		
-		if(!clus.connSetCluster(obj[1]->ptr, port))
+		if(!clus.connSetCluster(obj[1]->ptr,port))
 		{
 			object.addReplyErrorFormat(session->clientBuffer,"Invaild node address specified: %s:%s",(char*)obj[1]->ptr,(char*)obj[2]->ptr);
 			return false;
 		}
 		
 	}
-	else if (!strcasecmp(obj[0]->ptr, "connect") && obj.size() == 3)
+	else if (!strcasecmp(obj[0]->ptr,"connect") && obj.size() == 3)
 	{
 		int64_t  port;
 	
-		if (object.getLongLongFromObject(obj[2], &port) != REDIS_OK)
+		if (object.getLongLongFromObject(obj[2],&port) != REDIS_OK)
 		{
-			object.addReplyError(session->clientBuffer, "Invalid or out of range port");
+			object.addReplyError(session->clientBuffer,"Invalid or out of range port");
 			return  false;
 		}
 
@@ -748,14 +748,14 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto &it : clusterConns)
 			{
-				if (port == it.second->port && !memcmp(it.second->ip.c_str(), obj[1]->ptr, sdslen(obj[1]->ptr)))
+				if (port == it.second->getport() && !memcmp(it.second->getip().c_str(),obj[1]->ptr,sdslen(obj[1]->ptr)))
 				{
 					return false;
 				}
 			}
 		}
 	
-		clus.connSetCluster(obj[1]->ptr, port);
+		clus.connSetCluster(obj[1]->ptr,port);
 		return false;
 	}
 	else if(!strcasecmp(obj[0]->ptr, "info") && obj.size() == 1)
@@ -826,7 +826,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 	else if (!strcasecmp(obj[0]->ptr, "keyslot") && obj.size() == 2)
 	{
 		char * key = obj[1]->ptr;
-		object.addReplyLongLong(session->clientBuffer, clus.keyHashSlot((char*)key, sdslen(key)));
+		object.addReplyLongLong(session->clientBuffer,clus.keyHashSlot((char*)key,sdslen(key)));
 		return false;
 	}
 	else if (!strcasecmp(obj[0]->ptr, "setslot") && obj.size() >= 3)
@@ -858,12 +858,12 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 				fromIp = ip;
 				std::string port(space + 2,end);
 				int64_t value;
-				string2ll(port.c_str(), port.length(), &value);
+				string2ll(port.c_str(),port.length(),&value);
 				fromPort = value;
 			}
 			else
 			{
-				 object.addReply(session->clientBuffer, object.err);
+				 object.addReply(session->clientBuffer,object.err);
 				 return false;
 			}
 			
@@ -871,9 +871,9 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 			for(int32_t i  = 4; i < obj.size(); i++)
 			{
 				int32_t slot;
-				if ((slot = clus.getSlotOrReply(session, obj[i])) == -1)
+				if ((slot = clus.getSlotOrReply(session,obj[i])) == -1)
 				{
-					object.addReplyErrorFormat(session->clientBuffer, "Invalid slot %s",obj[i]->ptr);
+					object.addReplyErrorFormat(session->clientBuffer,"Invalid slot %s",obj[i]->ptr);
 					return false;
 				}
 				
@@ -1126,7 +1126,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj, const SessionPtr &ses
 	
 }
 
-void xRedis::structureRedisProtocol(xBuffer &buffer, std::deque<rObj*> &robjs)
+void xRedis::structureRedisProtocol(xBuffer &buffer,std::deque<rObj*> &robjs)
 {
 	int32_t len, j;
 	char buf[8];
@@ -1236,7 +1236,7 @@ void xRedis::clearFork()
 }
 
 
-int32_t xRedis::rdbSaveBackground(const SessionPtr &session, bool enabled)
+int32_t xRedis::rdbSaveBackground(const SessionPtr &session,bool enabled)
 {
 	if(rdbChildPid != -1)
 	{
@@ -1376,7 +1376,7 @@ bool xRedis::commandCommand(const std::deque <rObj*> &obj,const SessionPtr &sess
     }
  }
 
-bool xRedis::lpushCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
+bool xRedis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {
 	if (obj.size()  <  2)
 	{
@@ -1439,7 +1439,7 @@ bool xRedis::lpushCommand(const std::deque<rObj*> &obj, const SessionPtr &sessio
 	return true;
 }
 
-bool xRedis::lpopCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
+bool xRedis::lpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -1577,7 +1577,7 @@ bool xRedis::lrangeCommand(const std::deque<rObj*> &obj, const SessionPtr &sessi
 	return false;
 }
 
-bool xRedis::rpushCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
+bool xRedis::rpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {
 	if (obj.size()  <  2)
 	{
@@ -1640,7 +1640,7 @@ bool xRedis::rpushCommand(const std::deque<rObj*> &obj, const SessionPtr &sessio
 	return true;
 }
 
-bool xRedis::rpopCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
+bool xRedis::rpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {
 	if (obj.size()  !=  1)
 	{
@@ -1693,7 +1693,7 @@ bool xRedis::rpopCommand(const std::deque<rObj*> &obj, const SessionPtr &session
 	return false;
 }
 
-bool xRedis::llenCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
+bool xRedis::llenCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -1851,7 +1851,7 @@ bool xRedis::dbsizeCommand(const std::deque <rObj*> &obj,const SessionPtr &sessi
 	return true;
 }
 
-bool xRedis::removeCommand(rObj * obj)
+bool xRedis::removeCommand(rObj *obj)
 {
 	size_t hash = obj->hash;
 	int32_t index = hash  % kShards;
@@ -2862,7 +2862,7 @@ bool xRedis::zrangeGenericCommand(const std::deque <rObj*> &obj,const SessionPtr
 			if(reverse)
 			{
 				int count = 0;
-				for (auto iterr = iter->second.sortMap.rbegin(); iterr  != iter->second.sortMap.rend(); ++iterr )
+				for (auto iterr = iter->second.sortMap.rbegin(); iterr != iter->second.sortMap.rend(); ++iterr )
 				{
 					if (count++ >= start)
 					{
@@ -2883,7 +2883,7 @@ bool xRedis::zrangeGenericCommand(const std::deque <rObj*> &obj,const SessionPtr
 			else
 			{
 				int count = 0;
-				for (auto iterr  = iter->second.sortMap.begin(); iterr  != iter->second.sortMap.end(); ++iterr )
+				for (auto iterr  = iter->second.sortMap.begin(); iterr != iter->second.sortMap.end(); ++iterr )
 				{
 					if (count++ >= start)
 					{

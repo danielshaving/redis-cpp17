@@ -1557,12 +1557,12 @@ static int32_t redisContextTimeoutMsec(const struct timeval *timeout,int32_t *re
 int32_t xRedisContext::redisContextConnectTcp(const char *addr,int16_t port,const struct timeval *timeout)
 {	
 	int32_t rv;
-	struct addrinfo hints, *servinfo;
+	struct addrinfo hints,*servinfo;
 	memset(&hints,0,sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	char _port[6];
-	snprintf(_port, 6, "%d", port);
+	snprintf(_port, 6,"%d",port);
 
 	if ((rv = getaddrinfo(addr,_port,&hints,&servinfo)) != 0)
 	{
@@ -1596,7 +1596,7 @@ int32_t xRedisContext::redisContextConnectTcp(const char *addr,int16_t port,cons
 
 	socket.setSocketNonBlock(sockfd);
 
-	if( socket.connect(sockfd, addr,port) == -1)
+	if(socket.connect(sockfd, addr,port) == -1)
 	{
 	 	 if (errno == EHOSTUNREACH) 
 		 {
@@ -1643,7 +1643,7 @@ RedisContextPtr redisConnect(const char *ip,int16_t port)
 	return c;
 }
 
-RedisContextPtr  redisConnectWithTimeout(const char *ip,int16_t port,const struct timeval tv)
+RedisContextPtr redisConnectWithTimeout(const char *ip,int16_t port,const struct timeval tv)
 {
 	RedisContextPtr c (new xRedisContext);
 	c->setBlock();

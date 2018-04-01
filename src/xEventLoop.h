@@ -54,18 +54,19 @@ private:
     std::thread::id threadId;
     mutable std::mutex mutex;
 #ifdef __APPLE__
-    std::unique_ptr<xPoll> epoller;
+    PollPtr epoller;
     int op;
     int wakeupFd[2];
 #endif
 
 #ifdef __linux__
-	std::unique_ptr<xEpoll> epoller;
+    EpollPtr epoller;
     int wakeupFd;
 #endif
 
-    std::unique_ptr<xTimerQueue> timerQueue;
-    std::unique_ptr<xChannel> wakeupChannel;
+    TimerQueuePtr timerQueue;
+    ChannelPtr wakeupChannel;
+
     typedef std::vector<xChannel*> ChannelList;
     ChannelList activeChannels;
     xChannel *currentActiveChannel;
@@ -75,6 +76,7 @@ private:
     bool callingPendingFunctors;
     std::vector<Functor> functors;
     std::vector<Functor> pendingFunctors;
+
     xSocket socket;
 };
 

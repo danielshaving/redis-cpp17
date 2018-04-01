@@ -59,21 +59,21 @@ void xCluster::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 
 				for (auto &it : redis->clusterConns)
 				{
-					SessionPtr session(new xSession(redis, conn));
+					SessionPtr session(new xSession(redis,conn));
 					std::unique_lock <std::mutex> lck(redis->mtx);
 					redis->sessions[conn->getSockfd()] = session;
 				}
 
 
-				std::string ipPort = conn->ip + "::" + std::to_string(conn->port);
+				std::string ipPort = conn->getip() + "::" + std::to_string(conn->getport());
 				
 				for(auto &it : slotSets)
 				{
 					auto iter = clusterSlotNodes.find(it);
 					if(iter != clusterSlotNodes.end())
 					{
-						iter->second.ip = conn->ip;
-						iter->second.port = conn->port;
+						iter->second.ip = conn->getip();
+						iter->second.port = conn->getport();
 					}
 					else
 					{
@@ -98,13 +98,13 @@ void xCluster::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 				}
 				migratingSlosTos.erase(ipPort);
 				clear();
-				LOG_INFO <<"cluster migrate success "<< conn->ip <<" "<< conn->port;
+				LOG_INFO <<"cluster migrate success "<< conn->getip() <<" "<< conn->getport();
 			}
 		}
 		else
 		{
 			conn->forceClose();
-			LOG_INFO<<"cluster migrate failure "<<conn->ip<<" "<<conn->port;
+			LOG_INFO<<"cluster migrate failure "<<conn->getip()<<" "<<conn->getport();
 			break;
 		}
 		buffer->retrieve(sdslen(redis->object.ok->ptr));
@@ -252,7 +252,7 @@ bool  xCluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr 
 		std::unique_lock <std::mutex> lck(redis->clusterMutex);
 		for (auto &it : redis->clusterConns)
 		{
-			if (it.second->ip == ip && it.second->port == port)
+			if (it.second->getip() == ip && it.second->getport() == port)
 			{
 				clusterConn = it.second;
 				count++;
@@ -261,7 +261,7 @@ bool  xCluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr 
 
 		for (auto &it : clusterSlotNodes)
 		{
-			if (it.second.ip == ip && it.second.port == port)
+			if (it.second.ip== ip && it.second.port == port)
 			{
 				std::string nodeName = it.second.name;
 				auto it = migratingSlosTos.find(std::move(nodeName));
@@ -342,16 +342,16 @@ void xCluster::connCallBack(const TcpConnectionPtr &conn)
 			condition.notify_one();
 		}
 
-		socket.getpeerName(conn->getSockfd(),conn->ip.c_str(),conn->port);
+		socket.getpeerName(conn->getSockfd(),conn->getip().c_str(),conn->getport());
 
 		{
 			std::unique_lock <std::mutex> lck(redis->clusterMutex);
 			for (auto &it : redis->clusterConns)
 			{
-				structureProtocolSetCluster(it.second->ip, it.second->port, buffer,conn);
+				structureProtocolSetCluster(it.second->getip(),it.second->getport(),buffer,conn);
 			}
 
-			structureProtocolSetCluster(redis->ip, redis->port, buffer,conn);
+			structureProtocolSetCluster(redis->ip,redis->port,buffer,conn);
 			redis->clusterConns.insert(std::make_pair(conn->getSockfd(), conn));
 		}
 
@@ -361,7 +361,7 @@ void xCluster::connCallBack(const TcpConnectionPtr &conn)
 			redis->sessions[conn->getSockfd()] = session;
 		}
 
-		LOG_INFO <<"connect cluster success "<<"ip:"<<conn->ip<<" port:"<<conn->port;
+		LOG_INFO <<"connect cluster success "<<"ip:"<<conn->getip()<<" port:"<<conn->getport();
 
 	}
 	else
@@ -371,18 +371,18 @@ void xCluster::connCallBack(const TcpConnectionPtr &conn)
 			redis->clusterConns.erase(conn->getSockfd());
 			for (auto it = clusterConns.begin(); it != clusterConns.end(); ++it)
 			{
-				if ((*it)->getConnection()->ip == conn->ip && (*it)->getConnection()->port == conn->port)
+				if ((*it)->getConnection()->getip() == conn->getip() && (*it)->getConnection()->getport() == conn->getport())
 				{
 					clusterConns.erase(it);
 					break;
 				}
 			} 
-			eraseClusterNode(conn->ip,conn->port);
-			migratingSlosTos.erase(conn->ip + std::to_string(conn->port));
-			importingSlotsFroms.erase(conn->ip + std::to_string(conn->port));
+			eraseClusterNode(conn->getip(),conn->getport());
+			migratingSlosTos.erase(conn->getip() + std::to_string(conn->getport()));
+			importingSlotsFroms.erase(conn->getip() + std::to_string(conn->getport()));
 		}
 
-		LOG_INFO << "disconnect cluster "<<"ip:"<<conn->ip<<" port:"<<conn->port;
+		LOG_INFO << "disconnect cluster "<<"ip:"<<conn->getip()<<" port:"<<conn->getport();
 	}
 }
 

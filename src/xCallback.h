@@ -14,6 +14,11 @@ class xSession;
 class xItem;
 class xThreadPool;
 class xAcceptor;
+class xChannel;
+class xTimerQueue;
+class xPoll;
+class xEpoll;
+
 
 typedef std::shared_ptr<xHiredisAsync> HiredisAsyncPtr;
 typedef std::shared_ptr<xBuffer> xBufferPtr;
@@ -28,13 +33,17 @@ typedef std::shared_ptr<xItem> ItemPtr;
 typedef std::shared_ptr<const xItem> ConstItemPtr;
 typedef std::shared_ptr<xThreadPool> ThreadPoolPtr;
 typedef std::unique_ptr<xAcceptor> AcceptorPtr;
+typedef std::unique_ptr<xChannel> ChannelPtr;
+typedef std::unique_ptr<xTimerQueue> TimerQueuePtr;
+typedef std::unique_ptr<xPoll> PollPtr;
+typedef std::unique_ptr<xEpoll> EpollPtr;
 
 typedef std::function<void (const std::any &)> xTimerCallback;
 typedef std::function<void (const TcpConnectionPtr&)> ConnectionCallback;
 typedef std::function<void (const std::any &)> ConnectionErrorCallback;
 typedef std::function<void (const TcpConnectionPtr&)> CloseCallback;
 typedef std::function<void (const TcpConnectionPtr&)> WriteCompleteCallback;
-typedef std::function<void (const TcpConnectionPtr&, size_t)> HighWaterMarkCallback;
+typedef std::function<void (const TcpConnectionPtr&,size_t)> HighWaterMarkCallback;
 typedef std::function<void (const TcpConnectionPtr&,xBuffer*)> MessageCallback;
 
 

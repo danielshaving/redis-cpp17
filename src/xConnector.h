@@ -26,7 +26,6 @@ public:
 	void asyncStartInLoop();
 
 private:
-
 	void startInLoop(const std::any &context);
 	void stopInLoop();
 
@@ -39,10 +38,10 @@ private:
 	void handleWrite();
 	void handleError();
 
-	int32_t  removeAndResetChannel();
+	int32_t removeAndResetChannel();
 
-  	enum States { kDisconnected, kConnecting, kConnected };
-	void setState(States  s) { state = s; }
+  	enum States { kDisconnected,kConnecting,kConnected };
+	void setState(States s) { state = s; }
 	static const int kMaxRetryDelayMs = 30*1000;
 	static const int kInitRetryDelayMs = 500;
 

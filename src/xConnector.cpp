@@ -126,12 +126,6 @@ void xConnector::restart()
 	asyncStartInLoop();
 }
 
-bool xConnector::syncConnect()
-{
-
-	return true;
-}
-
 void xConnector::handleWrite()
 {
 	if(state == kConnecting)
@@ -220,3 +214,47 @@ void xConnector::asyncConnect()
 			break;
 	}
 }
+
+bool xConnector::syncConnect()
+{
+    int32_t blocking = 1;
+    int32_t sockfd = socket.createSocket();
+    if(sockfd == -1)
+    {
+    	return false;
+    }
+
+    if(!socket.setSocketNonBlock(sockfd))
+    {
+    	return false;
+    }
+
+    int32_t ret = socket.connect(sockfd,ip,port);
+    int32_t savedErrno = (ret == 0) ? 0 : errno;
+	if (savedErrno == EINPROGRESS && !blocking)
+	{
+
+	}
+	else
+	{
+		if(!socket.connectWaitReady(sockfd,kInitRetryDelayMs))
+		{
+			LOG_ERROR << "Unexpected error" << savedErrno <<" " << strerror(errno);
+			return false;
+		}
+	}
+
+    setState(kConnected);
+    if(!socket.setSocketBlock(sockfd))
+    {
+    	return false;
+    }
+
+    if(!socket.setTcpNoDelay(sockfd,true))
+    {
+    	return false;
+    }
+
+    return true;
+}
+

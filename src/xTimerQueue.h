@@ -15,8 +15,8 @@ public:
 	void dtor();
 	bool push(xTimer *e);
 	xTimer *pop();
-	bool  erase(xTimer *e);
-	int64_t   size();
+	bool erase(xTimer *e);
+	int64_t size();
 	xTimer *head();
 	void clear();
 	xTimer *top();
@@ -37,9 +37,10 @@ public:
 	void cancelTimer(xTimer *timer);
 	void cancelInloop(xTimer *timer);
 	void addTimerInLoop(xTimer *timer);
-  	xTimer  *addTimer(double  when,const std::any &context,bool repeat,xTimerCallback &&cb);
-  	static const int kMicroSecondsPerSecond = 1000 * 1000;
+  	xTimer *addTimer(double  when,const std::any &context,bool repeat,xTimerCallback &&cb);
   	xPriorityQueue *getPriority(){ return &pqueue; }
+
+	static const int kMicroSecondsPerSecond = 1000 * 1000;
 	
 private:
 	xEventLoop *loop;
@@ -48,5 +49,5 @@ private:
 #ifdef __linux__
 	xChannel timerfdChannel;
 #endif
-	std::vector<xTimer *> vectors;
+	std::vector<xTimer*> vectors;
 };

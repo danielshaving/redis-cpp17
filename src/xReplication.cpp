@@ -51,7 +51,7 @@ void xReplication::syncWithMaster(const TcpConnectionPtr &conn)
 	int32_t sockerr = 0;
    	socklen_t errlen = sizeof(sockerr);
 	/* Check for errors in the socket. */
-	if (getsockopt(conn->getSockfd(), SOL_SOCKET, SO_ERROR, &sockerr, &errlen) == -1)
+	if (getsockopt(conn->getSockfd(),SOL_SOCKET,SO_ERROR,&sockerr,&errlen) == -1)
 	   sockerr = errno;
 	if (sockerr) 
 	{
@@ -169,9 +169,9 @@ void xReplication::connCallBack(const TcpConnectionPtr &conn)
 	if(conn->connected())
 	{
 		repliConn = conn;
-		socket.getpeerName(conn->getSockfd(),conn->ip.c_str(),conn->port);
-		redis->masterHost = conn->ip;
-		redis->masterPort = conn->port ;
+		socket.getpeerName(conn->getSockfd(),conn->getip().c_str(),conn->getport());
+		redis->masterHost = conn->getip();
+		redis->masterPort = conn->getport();
 		redis->masterfd = conn->getSockfd();
 		redis->slaveEnabled = true;
 		redis->repliEnabled = true;

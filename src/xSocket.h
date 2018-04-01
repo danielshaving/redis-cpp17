@@ -24,6 +24,7 @@ public:
 	bool setTcpNoDelay(int32_t sockfd,bool on);
 	bool setTimeOut(int32_t sockfd,const struct timeval tc);
 	int32_t setFlag(int32_t fd, int32_t flag);
+	bool connectWaitReady(int32_t fd,int32_t msec);
 
 private:
 	int32_t  listenSocketFd;
