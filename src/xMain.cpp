@@ -1,7 +1,7 @@
 #include "xRedis.h"
 #include "xLog.h"
 
-xAsyncLogging *g_asyncLog = nullptr;
+xAsyncLogging *glog;
 void asyncOutput(const char *msg, int len)
 {
 	printf("%s\n",msg);
@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
 	xLogger::setOutput(asyncOutput);
 	xAsyncLogging log("redis",4096);
 	log.start();
-	g_asyncLog = &log;
-	printf("%s\n", ascii_logo);
+	glog = &log;
+	printf("%s\n",ascii_logo);
 
 	if(argc == 5)
 	{

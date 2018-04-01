@@ -375,26 +375,26 @@ class noncopyable
  protected:
   noncopyable(){}
  private:
-  noncopyable(const noncopyable&);
-  noncopyable& operator =(const noncopyable&);
+  noncopyable(const noncopyable &);
+  noncopyable& operator = (const noncopyable &);
 };
 
 class xStringArg
 {
 public:
-	xStringArg(const char * str)
+	xStringArg(const char *str)
 	:str(str)
 	{
 
 	}
-	xStringArg(const std::string & str)
+	xStringArg(const std::string &str)
 	:str(str.c_str())
 	{
 
 	}
-	const char * c_str() const { return str; }
+	const char *c_str() const { return str; }
 private:
-	const char * str;
+	const char *str;
 };
 
 
@@ -403,15 +403,19 @@ class xStringPiece
  public:
 	xStringPiece()
 	: ptr(nullptr), length(0) { }
-	xStringPiece(const char* str)
+
+	xStringPiece(const char *str)
 	: ptr(str), length(static_cast<int>(strlen(ptr))) { }
-	xStringPiece(const unsigned char* str)
-	: ptr(reinterpret_cast<const char*>(str)),
+
+	xStringPiece(const unsigned char *str)
+	: ptr(reinterpret_cast<const char *>(str)),
 	length(static_cast<int>(strlen(ptr))) { }
-	xStringPiece(const std::string& str)
+
+	xStringPiece(const std::string &str)
 	: ptr(str.data()), length(static_cast<int>(str.size())) { }
-	xStringPiece(const char* offset, int length)
-	: ptr(offset), length(length) { }
+
+	xStringPiece(const char* offset,int length)
+	: ptr(offset),length(length) { }
 
 	std::string as_string() const { return std::string(data(),size());}
 	const char* ptr;
@@ -419,10 +423,10 @@ class xStringPiece
 
 	bool empty() const { return length == 0; }
 
-	const char * begin() const  { return ptr; }
-	const char * end() const { return ptr + length; }
+	const char *begin() const  { return ptr; }
+	const char *end() const { return ptr + length; }
 	int size() const { return length; }
-	const char * data() const { return ptr; }
+	const char *data() const { return ptr; }
 
 	void removePrefix(int n)
 	{
@@ -436,13 +440,14 @@ class xStringPiece
 	}
 
 	void clear() { ptr = nullptr; length = 0; }
-	void set(const char* buffer, int len) { ptr = buffer; length = len; }
-	void set(const char* str)
+	void set(const char *buffer,int len) { ptr = buffer; length = len; }
+	void set(const char *str)
 	{
 		ptr = str;
 		length = static_cast<int>(strlen(str));
 	}
-	void set(const void* buffer, int len)
+
+	void set(const void *buffer,int len)
 	{
 		ptr = reinterpret_cast<const char*>(buffer);
 		length = len;
@@ -450,20 +455,20 @@ class xStringPiece
 
   	char operator[](int i) const { return ptr[i]; }
 
-
-	bool operator==(const xStringPiece& x) const
+	bool operator==(const xStringPiece &x) const
 	{
 	  	 return ((length == x.length) &&
-			   (memcmp(ptr, x.ptr, length) == 0));
-	 }
-	 bool operator!=(const xStringPiece& x) const
-	 {
-	  	 return !(*this == x);
-	 }
-
-	int compare(const xStringPiece& x) const
+			   (memcmp(ptr, x.ptr,length) == 0));
+	}
+	
+	bool operator!=(const xStringPiece &x) const
 	{
-		int r = memcmp(ptr, x.ptr, length < x.length ? length : x.length);
+	  	 return !(*this == x);
+	}
+
+	int compare(const xStringPiece &x) const
+	{
+		int r = memcmp(ptr,x.ptr,length < x.length ? length : x.length);
 		if (r == 0)
 		{
 			if (length < x.length) r = -1;
@@ -472,14 +477,15 @@ class xStringPiece
 
 		return r;
 	}
-	void copyToString(std::string* target) const
+
+	void copyToString(std::string *target) const
 	{
-		target->assign(ptr, length);
+		target->assign(ptr,length);
 	}
 
-	bool startsWith(const xStringPiece& x) const
+	bool startsWith(const xStringPiece &x) const
 	{
-		return ((length >= x.length) && (memcmp(ptr, x.ptr, x.length) == 0));
+		return ((length >= x.length) && (memcmp(ptr,x.ptr,x.length) == 0));
 	}
 };
 
