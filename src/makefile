@@ -18,8 +18,7 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread  -lz
-
+	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread  #-lz -lcurl
 ${CXXOBJS}:./%.o:../src/%.cpp
 	g++-7 -MMD -c -o $@ $< ${CFLAGS} 
 

@@ -5,7 +5,7 @@ xAsyncLogging *glog;
 void asyncOutput(const char *msg, int len)
 {
 	printf("%s\n",msg);
-	g_asyncLog->append(msg, len);
+	glog->append(msg, len);
 }
 
 char *ascii_logo =
