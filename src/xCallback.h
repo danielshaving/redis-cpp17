@@ -28,7 +28,7 @@ typedef std::shared_ptr<xRedisAsyncContext> RedisAsyncContextPtr;
 typedef std::shared_ptr<xTcpConnection> TcpConnectionPtr;
 typedef std::shared_ptr<xConnector> ConnectorPtr;
 typedef std::shared_ptr<xTcpClient> TcpClientPtr;
-typedef std::shared_ptr<xSession>  SessionPtr;
+typedef std::shared_ptr<xSession> SessionPtr;
 typedef std::shared_ptr<xItem> ItemPtr;
 typedef std::shared_ptr<const xItem> ConstItemPtr;
 typedef std::shared_ptr<xThreadPool> ThreadPoolPtr;

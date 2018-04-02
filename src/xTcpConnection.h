@@ -13,8 +13,8 @@ public:
 	xTcpConnection(xEventLoop *loop,int32_t sockfd,const std::any &context);
 	~xTcpConnection();
 
-	xEventLoop *getLoop();
-	int32_t  getSockfd();
+	xEventLoop *getLoop() { return loop; }
+	int32_t getSockfd() { return sockfd; }
 	void setState(StateE s) { state  = s; }
 
 	void setConnectionCallback(const ConnectionCallback &&cb)
@@ -31,11 +31,6 @@ public:
 
 	void setCloseCallback(const CloseCallback &cb)
 	{ closeCallback = cb; }
-
-	void handleRead();
-	void handleWrite();
-	void handleClose();
-	void handleError();
 
 	void sendInLoop(const void *message,size_t len);
 	void sendInLoop(const xStringPiece &message);
@@ -54,17 +49,30 @@ public:
 	void send(const xStringPiece &message);
 
 	bool disconnected() const { return state == kDisconnected; }
-	bool connected();
+	bool connected() { return state == kConnected; }
 	void forceCloseInLoop();
 	void connectEstablished();
+	void forceCloseWithDelay(double seconds);
+	void forceCloseDelay(const std::any &context);
 
 	void connectDestroyed();
 	void shutdown();
 	void shutdownInLoop();
 	void forceClose();
 	
+	void handleRead();
+	void handleWrite();
+	void handleClose();
+	void handleError();
+
+	void startReadInLoop();
+	void stopReadInLoop();
+
+	void startRead();
+	void stopRead();
+
 	std::any *getContext() { return &context; }
-	const std::any &getContext() const { return context; }
+	const std::any &getMutableContext() const { return context; }
 	void setContext(const std::any &context) { this->context = context; }
 
 	xBuffer *outputBuffer() { return &sendBuff; }
@@ -76,6 +84,8 @@ public:
 private:
 	xEventLoop *loop;
 	int32_t sockfd;
+	bool reading;
+
 	xBuffer recvBuff;
 	xBuffer sendBuff;
 	ConnectionCallback connectionCallback;

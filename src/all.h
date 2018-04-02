@@ -489,6 +489,52 @@ class xStringPiece
 	}
 };
 
+
+template<typename CLASS, typename... ARGS>
+class WeakCallback
+{
+public:
+
+	WeakCallback(const std::weak_ptr<CLASS> &object,
+			   const std::function<void (CLASS*, ARGS...)> &function)
+	: object(object),function(function)
+	{
+	}
+
+  // Default dtor, copy ctor and assignment are okay
+
+  void operator()(ARGS&&... args) const
+  {
+    std::shared_ptr<CLASS> ptr(object.lock());
+    if (ptr)
+    {
+      function(ptr.get(),std::forward<ARGS>(args)...);
+    }
+    // else
+    // {
+    //   LOG_TRACE << "expired";
+    // }
+  }
+
+private:
+	std::weak_ptr<CLASS> object;
+	std::function<void (CLASS*,ARGS...)> function;
+};
+
+template<typename CLASS, typename... ARGS>
+WeakCallback<CLASS, ARGS...> makeWeakCallback(const std::shared_ptr<CLASS> &object,
+                                              void (CLASS::*function)(ARGS...))
+{
+  return WeakCallback<CLASS, ARGS...>(object, function);
+}
+
+template<typename CLASS, typename... ARGS>
+WeakCallback<CLASS, ARGS...> makeWeakCallback(const std::shared_ptr<CLASS> &object,
+                                              void (CLASS::*function)(ARGS...) const)
+{
+  return WeakCallback<CLASS, ARGS...>(object, function);
+}
+
 static int tests = 0, fails = 0;
 #define test(_s) { printf("#%02d ", ++tests); printf(_s); }
 #define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}

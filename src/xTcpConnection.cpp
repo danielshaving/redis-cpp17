@@ -5,18 +5,19 @@
 xTcpConnection::xTcpConnection(xEventLoop *loop,int32_t sockfd,const std::any &context)
 :loop(loop),
  sockfd(sockfd),
+ reading(true),
  state(kConnecting),
  channel(new xChannel(loop,sockfd)),
  context(context)
 {
 	channel->setReadCallback(
-	  std::bind(&xTcpConnection::handleRead, this));
+	  std::bind(&xTcpConnection::handleRead,this));
 	channel->setWriteCallback(
-	  std::bind(&xTcpConnection::handleWrite, this));
+	  std::bind(&xTcpConnection::handleWrite,this));
 	channel->setCloseCallback(
-	  std::bind(&xTcpConnection::handleClose, this));
+	  std::bind(&xTcpConnection::handleClose,this));
 	channel->setErrorCallback(
-	  std::bind(&xTcpConnection::handleError, this));
+	  std::bind(&xTcpConnection::handleError,this));
 }
 
 xTcpConnection::~xTcpConnection()
@@ -45,12 +46,12 @@ void xTcpConnection::forceClose()
 
 void xTcpConnection::forceCloseInLoop()
 {
-  loop->assertInLoopThread();
-  if (state== kConnected || state == kDisconnecting)
-  {
-        // as if we received 0 byte in handleRead();
-        handleClose();
-  }
+	loop->assertInLoopThread();
+	if (state== kConnected || state == kDisconnecting)
+	{
+		// as if we received 0 byte in handleRead();
+		handleClose();
+	}
 }
 
 void xTcpConnection::shutdownInLoop()
@@ -60,7 +61,7 @@ void xTcpConnection::shutdownInLoop()
     {
         if (::shutdown(sockfd, SHUT_WR) < 0)
         {
-            //TRACE_ERR("sockets::shutdownWrite");
+            LOG_ERROR<<"sockets::shutdownWrite";
         }
     }
 }
@@ -143,24 +144,53 @@ void xTcpConnection::handleClose()
 	closeCallback(guardThis);
 }
 
+void xTcpConnection::startRead()
+{
+	loop->runInLoop(std::bind(&xTcpConnection::startReadInLoop,this));
+}
+
+void xTcpConnection::stopRead()
+{
+	loop->runInLoop(std::bind(&xTcpConnection::stopReadInLoop,this));
+}
+
+void xTcpConnection::startReadInLoop()
+{
+	loop->assertInLoopThread();
+	if (!reading || !channel->isReading())
+	{
+		channel->enableReading();
+		reading = true;
+	}
+}
+
+void xTcpConnection::stopReadInLoop()
+{
+	loop->assertInLoopThread();
+	if (reading || channel->isReading())
+	{
+		channel->disableReading();
+		reading = false;
+	}
+}
+
+void xTcpConnection::forceCloseDelay(const std::any &context)
+{
+	forceClose();
+}
+
+void xTcpConnection::forceCloseWithDelay(double seconds)
+{
+	if (state == kConnected || state == kDisconnecting)
+	{
+		setState(kDisconnecting);
+		loop->runAfter(seconds,nullptr,false,std::bind(&xTcpConnection::forceCloseDelay,shared_from_this(),std::placeholders::_1));
+	}
+}
+
 void xTcpConnection::handleError()
 {
-	//LOG_ERROR<<"handleError";
-}
 
-bool xTcpConnection::connected()
-{
-	return state == kConnected;
-}
-
-xEventLoop *xTcpConnection::getLoop()
-{
-	return loop;
-}
-
-int32_t xTcpConnection::getSockfd()
-{
-	return sockfd;
 }
 
 void xTcpConnection::sendPipe(xBuffer *buf)
@@ -173,13 +203,10 @@ void xTcpConnection::sendPipe(xBuffer *buf)
 		}
 		else
 		{
-			loop->runInLoop(
-						  std::bind(&bindSendPipeInLoop,
-								  this, buf->retrieveAllAsString()));
+			loop->runInLoop(std::bind(&bindSendPipeInLoop,this,buf->retrieveAllAsString()));
 		}
 	}
 }
-
 
 void xTcpConnection::sendPipe(const void *message,int len)
 {
@@ -196,16 +223,14 @@ void xTcpConnection::sendPipe(const xStringPiece &message)
 		}
 		else
 		{
-			loop->runInLoop(
-						  std::bind(&bindSendPipeInLoop,
-								  this, message.as_string()));
+			loop->runInLoop(std::bind(&bindSendPipeInLoop,this,message.as_string()));
 		}
 	}
 }
 
 void xTcpConnection::send(const void *message,int len)
 {
-	send(xStringPiece(static_cast<const char*>(message), len));
+	send(xStringPiece(static_cast<const char*>(message),len));
 }
 
 void xTcpConnection::send(const xStringPiece &message)
@@ -218,20 +243,15 @@ void xTcpConnection::send(const xStringPiece &message)
 		}
 		else
 		{
-		  	loop->runInLoop(
-				  std::bind(&bindSendInLoop,
-						  this, message.as_string()));
+		  	loop->runInLoop(std::bind(&bindSendInLoop,this,message.as_string()));
 		}
 	}
 }
-
 
 void xTcpConnection::sendPipeInLoop(const xStringPiece &message)
 {
 	sendPipeInLoop(message.data(),message.size());
 }
-
-
 
 void xTcpConnection::sendPipeInLoop(const void *message,size_t len)
 {
@@ -246,7 +266,6 @@ void xTcpConnection::bindSendPipeInLoop(xTcpConnection *conn,const xStringPiece 
 {
 	conn->sendPipeInLoop(message.data(),message.size());
 }
-
 
 void xTcpConnection::bindSendInLoop(xTcpConnection *conn,const xStringPiece &message)
 {
@@ -263,9 +282,7 @@ void xTcpConnection::send(xBuffer *buf)
 		}
 		else
 		{
-		  	loop->runInLoop(
-		    	  std::bind(&bindSendInLoop,
-		                  this, buf->retrieveAllAsString()));
+		  	loop->runInLoop(std::bind(&bindSendInLoop,this,buf->retrieveAllAsString()));
 		}
 	}
 }
@@ -295,7 +312,7 @@ void xTcpConnection::sendInLoop(const void *data,size_t len)
 			remaining = len - nwrote;
 			if (remaining == 0 && writeCompleteCallback)
 			{
-				loop->queueInLoop(std::bind(writeCompleteCallback, shared_from_this()));
+				loop->queueInLoop(std::bind(writeCompleteCallback,shared_from_this()));
 			}
 		}
 		else // nwrote < 0

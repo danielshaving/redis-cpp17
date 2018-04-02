@@ -8,7 +8,7 @@ class xAcceptor : noncopyable
 {
 public:
 	typedef std::function<void (int32_t sockfd)> NewConnectionCallback;
-	xAcceptor(xEventLoop* loop,const char *ip,int16_t port);
+	xAcceptor(xEventLoop *loop,const char *ip,int16_t port);
 	~xAcceptor();
 
 	void setNewConnectionCallback(const NewConnectionCallback &cb){ newConnectionCallback = cb; }
