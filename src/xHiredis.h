@@ -85,6 +85,7 @@ public:
 	size_t pos;
 	redisReadTask rstack[9];
 	redisFunc fn;
+	xBuffer buf;
 	xBuffer *buffer;
 };
 
@@ -116,9 +117,10 @@ public:
 	xRedisContext(xBuffer *buffer,int32_t sockfd);
 	~xRedisContext();
 
+	void clear();
+
 	int32_t redisvAppendCommand(const char *format,va_list ap);
 	int32_t redisAppendCommand(const char *cmd,size_t len);
-	redisReply *redisCommand(xBuffer *buffer);
 	redisReply *redisCommand(const char *format,...);
 	redisReply *redisvCommand(const char *format,va_list ap);
 	redisReply *redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
@@ -192,6 +194,7 @@ public:
 	void clusterAskConnCallBack(const TcpConnectionPtr &conn);
 	void clusterMoveConnCallBack(const TcpConnectionPtr &conn);
 	void redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);
+	void redisConnCallBack(const TcpConnectionPtr &conn);
 
 	void eraseRedisMap(int32_t sockfd);
 	void insertRedisMap(int32_t sockfd,const RedisAsyncContextPtr &ac);
@@ -204,9 +207,8 @@ public:
 
 	auto &getPool() { return pool; }
 	auto &getMutex() { return rtx; }
-	auto &getRedis() { return redisAsyncContexts; }
+	auto &getAsyncContext() { return redisAsyncContexts; }
 	auto &getTcpClient() { return tcpClients; }
-	auto &getRedisMap() { return redisAsyncContexts; }
 
 private:
 	xThreadPool pool;

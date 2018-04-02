@@ -11,7 +11,6 @@ xRedisReader::xRedisReader(xBuffer *buffer)
 
 xRedisReader::xRedisReader()
 {
-	xBuffer buf;
 	buffer = &buf;
 	pos = 0;
 	err = 0;
@@ -28,15 +27,17 @@ xRedisReader::~xRedisReader()
 xRedisContext::xRedisContext()
 :reader(new xRedisReader())
 {
-	flags &= ~REDIS_BLOCK;
-	err = 0;
-	errstr[0] = '\0';
-	fd = 0;
+	clear();
 }
 
 xRedisContext::xRedisContext(xBuffer *buffer,int32_t sockfd)
 :reader(new xRedisReader(buffer)),
  fd(sockfd)
+{
+	clear();
+}
+
+void xRedisContext::clear()
 {
 	flags &= ~REDIS_BLOCK;
 	err = 0;
@@ -285,7 +286,7 @@ const char * xRedisReader::readLine(int32_t * _len)
 
 const char * xRedisReader::readBytes(uint32_t bytes)
 {
-	const char * p;
+	const char *p;
 	if (buffer->readableBytes() - pos >= bytes)
 	{
 		p = buffer->peek() + pos;
@@ -921,7 +922,7 @@ int32_t xRedisContext::redisBufferRead()
 
 int32_t xRedisContext::redisGetReply(redisReply **reply)
 {
-	int32_t wdone	= 0;
+	int32_t wdone = 0;
 	redisReply *aux = nullptr;
 
 	if(redisGetReplyFromReader(&aux) == REDIS_ERR)
@@ -1321,15 +1322,11 @@ int32_t xRedisContext::redisvAppendCommand(const char *format, va_list ap)
 }
 
 
-redisReply *xRedisContext::redisCommand(xBuffer *buffer)
-{
-	return redisBlockForReply();
-}
 redisReply *xRedisContext::redisCommand(const char *format, ...)
 {
 	va_list ap;
-	redisReply *reply	= nullptr;
-	va_start(ap, format);
+	redisReply *reply = nullptr;
+	va_start(ap,format);
 	reply	= redisvCommand(format, ap);
 	va_end(ap);
 	return reply;
@@ -1703,6 +1700,21 @@ void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 	else
 	{
 		eraseRedisMap(conn->getSockfd());
+	}
+}
+
+void xHiredis::redisConnCallBack(const TcpConnectionPtr &conn)
+{
+	if(conn->connected())
+	{
+		RedisAsyncContextPtr context(new xRedisAsyncContext(conn->intputBuffer(),conn));
+		insertRedisMap(conn->getSockfd(),context);
+		LOG_INFO<<"redis connect "<<conn->getSockfd();
+	}
+	else
+	{
+		eraseRedisMap(conn->getSockfd());
+		LOG_INFO<<"redis disconnect "<<conn->getSockfd();
 	}
 }
 

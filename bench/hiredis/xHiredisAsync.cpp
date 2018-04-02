@@ -135,7 +135,7 @@ void asyncOutput(const char *msg,int len)
 
 		{
 			std::unique_lock<std::mutex> lk(async.getHiredis()->getMutex());
-			auto &redisMap = async.getHiredis()->getRedis();
+			auto &redisMap = async.getHiredis()->getAsyncContext();
 			int32_t count = 0;
 			for(auto it = redisMap.begin(); it != redisMap.end();)
 			{
