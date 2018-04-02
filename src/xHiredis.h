@@ -13,19 +13,19 @@ typedef struct redisReply : noncopyable
     int32_t type;
     int64_t integer;
     int32_t len;
-    char *str;
     size_t elements;
+    char *str;
     struct redisReply **element;
 }RedisReply;
 
-typedef std::function<void(const RedisAsyncContextPtr &ac,redisReply*,const std::any)> RedisCallbackFn;
+typedef std::function<void(const RedisAsyncContextPtr &context,redisReply*,const std::any)> RedisCallbackFn;
 typedef struct redisReadTask : noncopyable
 {
     int32_t type;
     int32_t elements;
     int32_t idx;
-    redisReply *obj;
     std::any privdata;
+    redisReply *obj;
     struct redisReadTask *parent;
 } redisReadTask;
 
@@ -61,9 +61,8 @@ public:
 	xRedisReader(xBuffer *buffer);
 	~xRedisReader();
 
-
 	int32_t redisReaderGetReply(redisReply **reply);
-	void redisReaderSetError(int32_t type, const char *str);
+	void redisReaderSetError(int32_t type,const char *str);
 	void redisReaderSetErrorProtocolByte(char byte);
 	void redisReaderSetErrorOOM();
 	void moveToNextTask();
@@ -77,16 +76,15 @@ public:
 	const char *readLine(int32_t *_len);
 
 	char errstr[128];
-	redisReply *reply;
-	std::any privdata;
-
+	redisReadTask rstack[9];
 	int32_t ridx;
 	int32_t err;
 	size_t pos;
-	redisReadTask rstack[9];
 	redisFunc fn;
 	xBuffer buf;
 	xBuffer *buffer;
+	redisReply *reply;
+	std::any privdata;
 };
 
 typedef struct redisCallback
@@ -117,8 +115,6 @@ public:
 	xRedisContext(xBuffer *buffer,int32_t sockfd);
 	~xRedisContext();
 
-	void clear();
-
 	int32_t redisvAppendCommand(const char *format,va_list ap);
 	int32_t redisAppendCommand(const char *cmd,size_t len);
 	redisReply *redisCommand(const char *format,...);
@@ -134,10 +130,11 @@ public:
 	int32_t redisBufferWrite(int32_t *done);
 	int32_t redisGetReply(redisReply **reply);
 	int32_t redisGetReplyFromReader(redisReply **reply);
-	int32_t redisContextConnectTcp(const char *addr, int16_t port,const struct timeval *timeout);
+	int32_t redisContextConnectTcp(const char *addr,int16_t port,const struct timeval *timeout);
 	int32_t redisAppendCommand(const char *format, ...);
 
 public:
+	void clear();
 	void setBlock();
 	void setConnected();
 	void setDisConnected();
@@ -148,8 +145,9 @@ public:
 	int32_t fd;
 	int8_t flags;
 	int16_t p;
-	RedisReaderPtr reader;
+
 	xBuffer sender;
+	RedisReaderPtr reader;
 };
 
 class xRedisAsyncContext : noncopyable
@@ -162,8 +160,8 @@ public:
 	void redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format,va_list ap);
 	void redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...);
 
-	int32_t redisGetReply(redisReply **reply) { return c->redisGetReply(reply); }
-	RedisContextPtr getRedisContext() { return c; }
+	int32_t redisGetReply(redisReply **reply) { return context->redisGetReply(reply); }
+	RedisContextPtr getRedisContext() { return context; }
 	TcpConnectionPtr getServerConn() { return serverConn; }
 	std::mutex &getMutex() { return mtx;}
 	RedisAsyncCallbackList &getCb() { return asyncCb; }
@@ -172,7 +170,7 @@ private:
 	int32_t err;
 	char *errstr;
 	std::any data;
-	RedisContextPtr c;
+	RedisContextPtr context;
 	TcpConnectionPtr serverConn;
 	RedisAsyncCallbackList asyncCb;
 	std::mutex mtx;
@@ -197,7 +195,7 @@ public:
 	void redisConnCallBack(const TcpConnectionPtr &conn);
 
 	void eraseRedisMap(int32_t sockfd);
-	void insertRedisMap(int32_t sockfd,const RedisAsyncContextPtr &ac);
+	void insertRedisMap(int32_t sockfd,const RedisAsyncContextPtr &context);
 
 	void pushTcpClient(const TcpClientPtr &client);
 	void clearTcpClient();
