@@ -1650,7 +1650,7 @@ xHiredis::xHiredis(xEventLoop *loop,bool clusterMode)
 :pool(loop),
 clusterMode(true)
 {
-
+	node = redisAsyncContexts.begin();
 }
 
 xHiredis::~xHiredis()
@@ -1727,7 +1727,7 @@ void xHiredis::eraseRedisMap(int32_t sockfd)
 	std::unique_lock<std::mutex> lk(rtx);
 	auto it = redisAsyncContexts.find(sockfd);
 	assert(it != redisAsyncContexts.end());
-	redisAsyncContexts.erase(it);
+	redisAsyncContexts.erase(it++);
 }
 
 void xHiredis::insertRedisMap(int32_t sockfd,const RedisAsyncContextPtr &ac)
@@ -1765,7 +1765,7 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 		 if(clusterMode && reply->type == REDIS_REPLY_ERROR &&
 				 (!strncmp(reply->str,"MOVED",5) || (!strncmp(reply->str,"ASK",3))))
 		 {	
-			char *p = reply->str, *s;
+			char *p = reply->str,*s;
 			int32_t slot;
 			s = strchr(p,' ');    
 			p = strchr(s+1,' ');  

@@ -208,12 +208,16 @@ public:
 	auto &getAsyncContext() { return redisAsyncContexts; }
 	auto &getTcpClient() { return tcpClients; }
 
+	auto &getIteratorNode() { return node; }
+
 private:
+	typedef std::unordered_map<int32_t,RedisAsyncContextPtr> RedisAsyncContext;
 	xThreadPool pool;
 	std::vector<TcpClientPtr> tcpClients;
-	std::unordered_map<int32_t,RedisAsyncContextPtr> redisAsyncContexts;
+	RedisAsyncContext redisAsyncContexts;
 	bool clusterMode;
 	std::mutex rtx;
+	RedisAsyncContext::iterator node;
 };
 
 int32_t redisFormatCommand(char **target,const char *format,...);
