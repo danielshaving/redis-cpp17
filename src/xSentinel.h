@@ -10,6 +10,7 @@ class xSentinel : noncopyable
 public:
 	xSentinel(xRedis * redis);
 	~xSentinel();
+
 	void connectSentinel();
 	void connErrorCallBack();
 	void readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer);

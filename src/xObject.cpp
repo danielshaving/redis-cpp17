@@ -2,7 +2,7 @@
 #include "xRedis.h"
 
 
-rObj * xObjects::createObject(int32_t type,void *ptr)
+rObj *xObjects::createObject(int32_t type,void *ptr)
 {
 	rObj *o = (rObj*)zmalloc(sizeof(rObj));
 	o->encoding = REDIS_ENCODING_RAW;
@@ -76,7 +76,7 @@ int xObjects::getLongFromObjectOrReply(xBuffer &buffer,rObj *o,int32_t *target,c
 	return REDIS_OK;
 }
 
-rObj * xObjects::createStringObjectFromLongLong(int64_t value)
+rObj *xObjects::createStringObjectFromLongLong(int64_t value)
 {
 	rObj *o;
 	if(value <=0 && value < REDIS_SHARED_INTEGERS)
@@ -152,7 +152,6 @@ int xObjects::getDoubleFromObject(const rObj *o,double *target)
     return REDIS_OK;
 }
 
-
 void xObjects::freeStringObject(rObj *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW)
@@ -185,7 +184,6 @@ void xObjects::freeSetObject(rObj *o)
     }
 }
 
-
 void xObjects::freeZsetObject(rObj *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW)
@@ -193,7 +191,6 @@ void xObjects::freeZsetObject(rObj *o)
         sdsfree((sds)o->ptr);
     }
 }
-
 
 void xObjects::decrRefCount(rObj *o)
 {
@@ -205,11 +202,9 @@ void xObjects::decrRefCount(rObj *o)
         case OBJ_ZSET: freeZsetObject(o); break;
         case OBJ_HASH: freeHashObject(o); break;
         default: LOG_ERROR<<"Unknown object type"; break;
-        
 	}
 	zfree(o);
 }
-
 
 xObjects::xObjects(xRedis *redis)
 :redis(redis)

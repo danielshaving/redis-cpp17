@@ -127,7 +127,7 @@ void xPoll::removeChannel(xChannel *channel)
 	}
 }
 
-void xPoll::fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const
+void xPoll::fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) const
 {
 	for(auto it = events.begin(); it != events.end() && numEvents > 0 ; ++it)
 	{

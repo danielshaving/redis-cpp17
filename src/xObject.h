@@ -41,7 +41,7 @@ typedef struct redisObject
 	unsigned type;
 	unsigned encoding;
 	size_t hash;
-	char  *ptr;
+	char *ptr;
 } rObj;
 
 
@@ -85,7 +85,7 @@ public:
 	void addReplyString(xBuffer &buffer,const char *s,size_t len);
 	void addReplyError(xBuffer &buffer,const char *str);
 	void addReplyErrorLength(xBuffer &buffer,const char *s,size_t len);
-	void addReplyLongLongWithPrefix(xBuffer &buffer,int64_t ll, char prefix);
+	void addReplyLongLongWithPrefix(xBuffer &buffer,int64_t ll,char prefix);
 	void addReplyBulkLen(xBuffer &buffer,rObj *obj);
 	void addReplyBulk(xBuffer &buffer,rObj *obj);
 	void addReplyErrorFormat(xBuffer &buffer,const char *fmt, ...);

@@ -2,26 +2,14 @@
 #include "xSocket.h"
 #include "xLog.h"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>  // snprintf
-#include <strings.h>  // bzero
-#include <sys/socket.h>
-#include <sys/uio.h>  // readv
-#include <unistd.h>
-
-
-xSocket::xSocket(const char *ip, int16_t port)
+xSocket::xSocket(const char *ip,int16_t port)
 {
-	listenSocketFd = -1;
-	onlineNumber = 0;
 	createTcpListenSocket(ip,port);
 }
 
 xSocket::xSocket()
 {
-	listenSocketFd = -1;
-	onlineNumber = 0;
+
 }
 
 xSocket::~xSocket()
@@ -29,7 +17,7 @@ xSocket::~xSocket()
 	::close(listenSocketFd);
 }
 
-int32_t  xSocket::getListenFd()
+int32_t xSocket::getListenFd()
 {
 	return listenSocketFd;
 }
@@ -210,7 +198,7 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 {
     struct sockaddr_in serverAdress;
     serverAdress.sin_family = AF_INET;
-    serverAdress.sin_port   = htons(port);
+    serverAdress.sin_port  = htons(port);
 
     if(ip)
     {
@@ -221,7 +209,7 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
         serverAdress.sin_addr.s_addr = htonl(INADDR_ANY);
     }
 
-    listenSocketFd = socket(AF_INET, SOCK_STREAM, 0);
+    listenSocketFd = socket(AF_INET,SOCK_STREAM,0);
 
     if(listenSocketFd < 0)
     {
@@ -231,7 +219,7 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 
     if(!setSocketNonBlock(listenSocketFd))
     {
-		LOG_WARN<<"Set listen socket  to non-block failed!";
+		LOG_WARN<<"Set listen socket to non-block failed!";
 		return false;
     }
 
@@ -239,8 +227,8 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 	
 	if(::setsockopt(listenSocketFd,SOL_SOCKET,SO_REUSEPORT,&optval,sizeof(optval)) < 0)
     {
-		LOG_SYSERR<<"Set SO_REUSEPORT socket  failed! error "<<strerror(errno);
-        close(listenSocketFd);
+		LOG_SYSERR<<"Set SO_REUSEPORT socket failed! error "<<strerror(errno);
+        ::close(listenSocketFd);
         return false;
     }
 	
@@ -248,14 +236,14 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
     if(::setsockopt(listenSocketFd,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval)) < 0)
     {
 		LOG_SYSERR<<"Set SO_REUSEADDR socket  failed! error "<<strerror(errno);
-		close(listenSocketFd);
+		::close(listenSocketFd);
         return false;
     }
 
     if(::bind(listenSocketFd, (struct sockaddr*)&serverAdress,sizeof(serverAdress)) < 0 )
     {
         LOG_SYSERR<<"Bind bind socket failed! error "<<strerror(errno);
-        close(listenSocketFd);
+        ::close(listenSocketFd);
         return false;
     }
 
@@ -267,7 +255,7 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
     }
 
 #ifdef __linux__
-    setsockopt(listenSocketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
+    setsockopt(listenSocketFd,IPPROTO_TCP,TCP_NODELAY,&optval,static_cast<socklen_t>(sizeof optval));
 
     int32_t len = 65536;
     setsockopt(listenSocketFd,SOL_SOCKET,SO_RCVBUF,(void*)&len,sizeof(len));
@@ -277,19 +265,17 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
     return true;
 }
 
-
-
 bool xSocket::setTcpNoDelay(int32_t socketFd,bool on)
 {
 #ifdef __linux__
 	int32_t optval = on ? 1 : 0;
-	::setsockopt(socketFd, IPPROTO_TCP, TCP_NODELAY,&optval, static_cast<socklen_t>(sizeof optval));
+	::setsockopt(socketFd,IPPROTO_TCP,TCP_NODELAY,&optval,static_cast<socklen_t>(sizeof optval));
 #endif
 }
 
-bool  xSocket::setSocketBlock(int32_t socketFd)
+bool xSocket::setSocketBlock(int32_t socketFd)
 {
-    int32_t opt = fcntl(socketFd, F_GETFL);
+    int32_t opt = fcntl(socketFd,F_GETFL);
     if (opt < 0)
     {
         LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
@@ -297,7 +283,7 @@ bool  xSocket::setSocketBlock(int32_t socketFd)
     }
 
     opt = opt &~ O_NONBLOCK;
-    if (fcntl(socketFd, F_SETFL, opt) < 0)
+    if (fcntl(socketFd,F_SETFL,opt) < 0)
     {
     	LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
@@ -309,7 +295,7 @@ bool  xSocket::setSocketBlock(int32_t socketFd)
 
 bool xSocket::setSocketNonBlock(int32_t socketFd)
 {
-    int32_t opt = fcntl(socketFd, F_GETFL);
+    int32_t opt = fcntl(socketFd,F_GETFL);
     if (opt < 0)
     {
         LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
@@ -317,7 +303,7 @@ bool xSocket::setSocketNonBlock(int32_t socketFd)
     }
 
     opt = opt | O_NONBLOCK;
-    if (fcntl(socketFd, F_SETFL, opt) < 0)
+    if (fcntl(socketFd,F_SETFL,opt) < 0)
     {
     	LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;

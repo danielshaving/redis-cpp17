@@ -2,7 +2,7 @@
 #include "xLog.h"
 
 xAsyncLogging *glog;
-void asyncOutput(const char *msg, int len)
+void asyncOutput(const char *msg,int32_t len)
 {
 	printf("%s\n",msg);
 	glog->append(msg, len);
@@ -29,7 +29,7 @@ char *ascii_logo =
 
 
 
-int main(int argc, char *argv[])
+int main(int argc,char *argv[])
 {
 	signal(SIGPIPE,SIG_IGN);
 	signal(SIGHUP,SIG_IGN);
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		fprintf(stderr, "Usage: client <host_ip> <port> <threads> <cluster>\n");
+		fprintf(stderr,"Usage: client <host_ip> <port> <threads> <cluster>\n");
 	}
 
 	return 0;

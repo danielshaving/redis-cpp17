@@ -298,7 +298,7 @@ bool xRedis::subscribeCommand(const std::deque <rObj*> &obj,const SessionPtr &se
 		return false;
 	}
 
-	bool  retval;
+	bool retval;
 	int sub = 0;
 	for (int i = 0; i < obj.size(); i++)
 	{

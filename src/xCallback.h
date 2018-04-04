@@ -18,11 +18,12 @@ class xChannel;
 class xTimerQueue;
 class xPoll;
 class xEpoll;
+class xThread;
 
 
 typedef std::shared_ptr<xHiredisAsync> HiredisAsyncPtr;
 typedef std::shared_ptr<xBuffer> xBufferPtr;
-typedef std::shared_ptr<xRedisReader>  RedisReaderPtr;
+typedef std::shared_ptr<xRedisReader> RedisReaderPtr;
 typedef std::shared_ptr<xRedisContext> RedisContextPtr;
 typedef std::shared_ptr<xRedisAsyncContext> RedisAsyncContextPtr;
 typedef std::shared_ptr<xTcpConnection> TcpConnectionPtr;
@@ -37,6 +38,7 @@ typedef std::unique_ptr<xChannel> ChannelPtr;
 typedef std::unique_ptr<xTimerQueue> TimerQueuePtr;
 typedef std::unique_ptr<xPoll> PollPtr;
 typedef std::unique_ptr<xEpoll> EpollPtr;
+typedef std::shared_ptr<xThread> ThreadPtr;
 
 typedef std::function<void (const std::any &)> xTimerCallback;
 typedef std::function<void (const TcpConnectionPtr&)> ConnectionCallback;

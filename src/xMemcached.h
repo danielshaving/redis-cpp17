@@ -68,5 +68,4 @@ private:
 	const static int kShards = 4096;
 	std::array<MapWithLock,kShards> shards;
 	xTcpServer server;
-
 };

@@ -181,8 +181,8 @@ public:
 	std::atomic<int32_t> slavefd;
 	std::atomic<int32_t> salveCount;
 
-	std::condition_variable  expireCondition;
-	std::condition_variable  forkCondition;
+	std::condition_variable expireCondition;
+	std::condition_variable forkCondition;
 
 	xBuffer slaveCached;
 	xBuffer clusterMigratCached;

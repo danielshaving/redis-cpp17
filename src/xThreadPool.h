@@ -1,5 +1,6 @@
 #pragma once
 #include "all.h"
+#include "xCallback.h"
 
 class xThread;
 class xEventLoop;
@@ -25,7 +26,7 @@ private:
 	int	numThreads;
 	int	next;
 
-	std::vector<std::shared_ptr<xThread>> threads;
+	std::vector<ThreadPtr> threads;
 	std::vector<xEventLoop*> loops;
 
 

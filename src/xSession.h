@@ -54,7 +54,9 @@ public:
 	xRedis *redis;
 	xMemcached *memcached;
 
-	rObj * command;
+	rObj *command;
+	std::deque<rObj*> commands;
+
 	int32_t reqtype;
 	int32_t multibulklen;
 	int64_t bulklen;
@@ -62,7 +64,7 @@ public:
 	xBuffer clientBuffer;
 	xBuffer slaveBuffer;
 	xBuffer pubsubBuffer;
-	std::deque<rObj*> commands;
+
 	TcpConnectionPtr clientConn;
 
 	State state;
@@ -80,6 +82,5 @@ public:
 	bool fromMaster;
 	bool fromSlave;
 	bool noreply;
-
 };
 

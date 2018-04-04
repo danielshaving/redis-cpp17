@@ -30,10 +30,10 @@ public:
 		return xTimeStamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
 	}
 
-	  static xTimeStamp invalid()
-	  {
-	    	return xTimeStamp();
-	  }
+	static xTimeStamp invalid()
+	{
+		return xTimeStamp();
+	}
 
 	static const int kMicroSecondsPerSecond = 1000 * 1000;
 private:
@@ -55,18 +55,17 @@ inline double timeDifference(xTimeStamp high,xTimeStamp low)
 class xTimer : noncopyable
 {
 public:
-	xTimer();
 	xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval,const std::any &context);
 	~xTimer();
 
-	xTimeStamp getExpiration() const  { return expiration;}
+	xTimeStamp getExpiration() const { return expiration; }
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
 	void restart(xTimeStamp now);
 	void run();
 
 public:	
 	int64_t index;
-	bool	repeat;
+	bool repeat;
 	double interval;
 	xTimeStamp expiration;
 	xTimerCallback callback;
