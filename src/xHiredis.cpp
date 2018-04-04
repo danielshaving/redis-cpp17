@@ -1742,6 +1742,19 @@ void xHiredis::pushTcpClient(const TcpClientPtr &client)
 	tcpClients.push_back(client);
 }
 
+auto &xHiredis::getIteratorNode()
+{
+	if(node == redisAsyncContexts.end())
+	{
+		node = redisAsyncContexts.begin();
+	}
+
+	auto it = node;
+	node ++;
+
+	return it;
+}
+
 void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	RedisAsyncContextPtr redisPtr;

@@ -208,7 +208,7 @@ public:
 	auto &getAsyncContext() { return redisAsyncContexts; }
 	auto &getTcpClient() { return tcpClients; }
 
-	auto &getIteratorNode() { return node; }
+	auto &getIteratorNode();
 
 private:
 	typedef std::unordered_map<int32_t,RedisAsyncContextPtr> RedisAsyncContext;
