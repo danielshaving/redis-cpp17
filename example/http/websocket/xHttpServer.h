@@ -8,7 +8,7 @@ class xEventLoop;
 class xHttpServer : noncopyable
 {
 public:
-	typedef std::function<bool(xHttpRequest *,xHttpResponse *)> HttpReadCallBack;
+	typedef std::function<bool(xHttpRequest *,const TcpConnectionPtr &)> HttpReadCallBack;
 	typedef std::function<void(const TcpConnectionPtr &)> HttpConnCallBack;
 	xHttpServer(xEventLoop *loop,const char *ip,uint16_t  port);
 	~xHttpServer();

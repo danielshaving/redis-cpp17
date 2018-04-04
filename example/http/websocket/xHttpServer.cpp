@@ -59,15 +59,11 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 		}
 		else if(fin)
 		{
-			xHttpResponse resp;
-			if(!httpReadCallback(&(context->getRequest()),&resp))
+			if(!httpReadCallback(&(context->getRequest()),conn))
 			{
 				conn->shutdown();
 				break;
 			}
-
-			context->wsFrameBuild(resp.intputBuffer(),xHttpRequest::BINARY_FRAME,true,false);
-			conn->send(resp.intputBuffer());
 			context->reset();
 		}
 		else

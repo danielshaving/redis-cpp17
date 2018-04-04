@@ -22,10 +22,13 @@ void onConnection(const TcpConnectionPtr &conn)
 	}
 }
 
-void onMessage(xHttpRequest &rep,xHttpResponse *resp)
+void onMessage(xHttpRequest &rep,const TcpConnectionPtr &conn)
 {
-	auto &buffer =  rep.getParseString();
-	resp->appendBuffer(buffer.data(),buffer.size());
+	auto context = std::any_cast<xHttpContext>(conn->getContext());
+	xBuffer sendBuf;
+	sendBuf.append(rep.getParseString().c_str(),rep.getParseString().size());
+	context->wsFrameBuild(sendBuf,xHttpRequest::BINARY_FRAME,true,false);
+	conn->send(&sendBuf);
 }
 
 int main(int argc, char* argv[])
