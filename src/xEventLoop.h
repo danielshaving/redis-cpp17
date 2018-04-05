@@ -32,7 +32,6 @@ public:
     void removeChannel(xChannel *channel);
     bool hasChannel(xChannel *channel);
     void cancelAfter(xTimer *timer);
-    xTimer *runAfter(double when,const std::any &context,bool repeat,xTimerCallback &&cb);
     void assertInLoopThread()
     {
 	  if (!isInLoopThread())
@@ -41,6 +40,7 @@ public:
 	  }
     }
 
+    xTimer *runAfter(double when,const std::any &context,bool repeat,xTimerCallback &&cb);
     void handlerTimerQueue() { timerQueue->handleRead(); }
     xPriorityQueue *getTimerQueue() { return timerQueue->getPriority(); }
     bool isInLoopThread() const { return threadId == std::this_thread::get_id(); }

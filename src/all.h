@@ -397,7 +397,6 @@ private:
 	const char *str;
 };
 
-
 class xStringPiece
 {
  public:
@@ -405,16 +404,16 @@ class xStringPiece
 	: ptr(nullptr), length(0) { }
 
 	xStringPiece(const char *str)
-	: ptr(str), length(static_cast<int>(strlen(ptr))) { }
+	: ptr(str), length(static_cast<int32_t>(strlen(ptr))) { }
 
 	xStringPiece(const unsigned char *str)
 	: ptr(reinterpret_cast<const char *>(str)),
 	length(static_cast<int>(strlen(ptr))) { }
 
 	xStringPiece(const std::string &str)
-	: ptr(str.data()), length(static_cast<int>(str.size())) { }
+	: ptr(str.data()), length(static_cast<int32_t>(str.size())) { }
 
-	xStringPiece(const char* offset,int length)
+	xStringPiece(const char* offset,int32_t length)
 	: ptr(offset),length(length) { }
 
 	std::string as_string() const { return std::string(data(),size());}
@@ -425,35 +424,35 @@ class xStringPiece
 
 	const char *begin() const  { return ptr; }
 	const char *end() const { return ptr + length; }
-	int size() const { return length; }
+	int32_t size() const { return length; }
 	const char *data() const { return ptr; }
 
-	void removePrefix(int n)
+	void removePrefix(int32_t n)
 	{
 		ptr += n;
 		length -= n;
 	}
 
-	void removeSuffix(int n)
+	void removeSuffix(int32_t n)
 	{
 		length -= n;
 	}
 
 	void clear() { ptr = nullptr; length = 0; }
-	void set(const char *buffer,int len) { ptr = buffer; length = len; }
+	void set(const char *buffer,int32_t len) { ptr = buffer; length = len; }
 	void set(const char *str)
 	{
 		ptr = str;
 		length = static_cast<int>(strlen(str));
 	}
 
-	void set(const void *buffer,int len)
+	void set(const void *buffer,int32_t len)
 	{
 		ptr = reinterpret_cast<const char*>(buffer);
 		length = len;
 	}
 
-  	char operator[](int i) const { return ptr[i]; }
+  	char operator[](int32_t i) const { return ptr[i]; }
 
 	bool operator==(const xStringPiece &x) const
 	{
@@ -474,7 +473,6 @@ class xStringPiece
 			if (length < x.length) r = -1;
 			else if (length > x.length) r = +1;
 		}
-
 		return r;
 	}
 
@@ -488,52 +486,6 @@ class xStringPiece
 		return ((length >= x.length) && (memcmp(ptr,x.ptr,x.length) == 0));
 	}
 };
-
-
-template<typename CLASS, typename... ARGS>
-class WeakCallback
-{
-public:
-
-	WeakCallback(const std::weak_ptr<CLASS> &object,
-			   const std::function<void (CLASS*, ARGS...)> &function)
-	: object(object),function(function)
-	{
-	}
-
-  // Default dtor, copy ctor and assignment are okay
-
-  void operator()(ARGS&&... args) const
-  {
-    std::shared_ptr<CLASS> ptr(object.lock());
-    if (ptr)
-    {
-      function(ptr.get(),std::forward<ARGS>(args)...);
-    }
-    // else
-    // {
-    //   LOG_TRACE << "expired";
-    // }
-  }
-
-private:
-	std::weak_ptr<CLASS> object;
-	std::function<void (CLASS*,ARGS...)> function;
-};
-
-template<typename CLASS, typename... ARGS>
-WeakCallback<CLASS, ARGS...> makeWeakCallback(const std::shared_ptr<CLASS> &object,
-                                              void (CLASS::*function)(ARGS...))
-{
-  return WeakCallback<CLASS, ARGS...>(object, function);
-}
-
-template<typename CLASS, typename... ARGS>
-WeakCallback<CLASS, ARGS...> makeWeakCallback(const std::shared_ptr<CLASS> &object,
-                                              void (CLASS::*function)(ARGS...) const)
-{
-  return WeakCallback<CLASS, ARGS...>(object, function);
-}
 
 static int tests = 0, fails = 0;
 #define test(_s) { printf("#%02d ", ++tests); printf(_s); }

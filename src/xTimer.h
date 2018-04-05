@@ -30,6 +30,7 @@ public:
 		return xTimeStamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
 	}
 
+	std::string toString() const;
 	static xTimeStamp invalid()
 	{
 		return xTimeStamp();

@@ -36,6 +36,17 @@ void xTimer::restart(xTimeStamp now)
 	}
 }
 
+
+
+std::string xTimeStamp::toString() const
+{
+	char buf[32] = {0};
+	int64_t seconds = microSecondsSinceEpoch / kMicroSecondsPerSecond;
+	int64_t microseconds = microSecondsSinceEpoch % kMicroSecondsPerSecond;
+	snprintf(buf, sizeof(buf)-1, "%" PRId64 ".%06" PRId64 "", seconds, microseconds);
+	return buf;
+}
+
 std::string xTimeStamp::toFormattedString(bool showMicroseconds) const
 {
 	char buf[32] = {0};
