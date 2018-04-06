@@ -37,8 +37,8 @@ public:
 	bool connectWaitReady(int32_t fd,int32_t msec);
 
 private:
-	int32_t  listenSocketFd;
-	int32_t  onlineNumber;
+	int32_t listenSocketFd;
+	int32_t onlineNumber;
 	bool protocol;
 
 };

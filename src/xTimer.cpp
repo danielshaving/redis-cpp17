@@ -1,11 +1,16 @@
 #include "xTimer.h"
 
-xTimer::xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval)
-:index(-1),
-repeat(repeat),
-interval(interval),
-expiration(std::move(expiration)),
-callback(std::move(cb))
+
+ std::atomic<int64_t> xTimer::numCreated = 0;
+
+xTimer::xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,
+	bool repeat,double interval)
+	:index(-1),
+	repeat(repeat),
+	interval(interval),
+	expiration(std::move(expiration)),
+	callback(std::move(cb)),
+	sequence(++numCreated)
 {
 	
 }
@@ -24,7 +29,7 @@ void xTimer::restart(xTimeStamp now)
 {
 	if (repeat)
 	{
-		expiration = addTime(now, interval);
+		expiration = addTime(now,interval);
 	}
 	else
 	{

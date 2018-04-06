@@ -39,7 +39,7 @@ private:
 	ConnectorPtr connector;
 	xEventLoop *loop;
 
-	int nextConnId;
+	int32_t nextConnId;
 	mutable std::mutex mutex;
 	ConnectionErrorCallback connectionErrorCallBack;
 	ConnectionCallback connectionCallback;

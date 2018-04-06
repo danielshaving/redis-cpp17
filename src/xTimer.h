@@ -3,7 +3,8 @@
 #include "xZmalloc.h"
 #include "xCallback.h"
 
-class xTimeStamp
+class xTimeStamp //: public std::equality_comparable<xTimeStamp>,
+                   //public std::less_than_comparable<xTimeStamp>
 {
 public:
 	xTimeStamp()
@@ -20,8 +21,11 @@ public:
 
 	int64_t getMicroSecondsSinceEpoch() const { return microSecondsSinceEpoch; }
 	time_t secondsSinceEpoch() const
-	{ return static_cast<time_t>(microSecondsSinceEpoch / kMicroSecondsPerSecond); }
+	{ 
+		return static_cast<time_t>(microSecondsSinceEpoch / kMicroSecondsPerSecond); 
+	}
 
+	bool valid() const { return microSecondsSinceEpoch > 0; }
 	std::string toFormattedString(bool showMicroseconds = true) const;
 	static xTimeStamp now()
 	{
@@ -32,15 +36,24 @@ public:
 	}
 
 	std::string toString() const;
-	static xTimeStamp invalid()
-	{
-		return xTimeStamp();
-	}
 
-	static const int kMicroSecondsPerSecond = 1000 * 1000;
+	static xTimeStamp invalid() { return xTimeStamp(); }
+	static const int32_t kMicroSecondsPerSecond = 1000 * 1000;
+
 private:
 	int64_t microSecondsSinceEpoch;
 };
+
+
+inline bool operator<(xTimeStamp lhs,xTimeStamp rhs)
+{
+	return lhs.getMicroSecondsSinceEpoch() < rhs.getMicroSecondsSinceEpoch();
+}
+
+inline bool operator==(xTimeStamp lhs,xTimeStamp rhs)
+{
+	return lhs.getMicroSecondsSinceEpoch() == rhs.getMicroSecondsSinceEpoch();
+}
 
 inline xTimeStamp addTime(xTimeStamp timestamp,double seconds)
 {
@@ -57,22 +70,28 @@ inline double timeDifference(xTimeStamp high,xTimeStamp low)
 class xTimer : noncopyable
 {
 public:
-	explicit xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,
+	xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,
 		bool repeat,double interval);
 	~xTimer();
 
-	xTimeStamp getExpiration() const { return expiration; }
+	int64_t getSequence() { return sequence; }
+	auto getExpiration() const { return expiration; }
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
+	bool getRepeat() { return repeat; }
+	void setSequence(int64_t seq) { sequence = seq; }
+
 	void restart(xTimeStamp now);
 	void run();
-	bool getRepeat() { return repeat; }
 
 private:	
 	int64_t index;
 	bool repeat;
 	double interval;
+	int64_t sequence;
 	xTimeStamp expiration;
 	xTimerCallback callback;
+
+	static std::atomic<int64_t> numCreated;
 };
 
 

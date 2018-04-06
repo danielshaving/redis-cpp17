@@ -5,7 +5,7 @@
 #include "xSocket.h"
 #include "xLog.h"
 
-class xConnector : noncopyable,public std::enable_shared_from_this<xConnector>
+class xConnector : noncopyable , public std::enable_shared_from_this<xConnector>
 {
 public:
 	typedef std::function<void(int32_t sockfd)> NewConnectionCallback;

@@ -6,7 +6,7 @@
 class xChannel;
 class xEventLoop;
 
-class xPoll:noncopyable
+class xPoll : noncopyable
 {
 public:
 	typedef std::vector<struct pollfd> EventList;

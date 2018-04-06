@@ -39,30 +39,37 @@ public:
 	xTimerQueue(xEventLoop *loop);
 	~xTimerQueue();
 
-	void handleRead();
 	void cancelTimer(xTimer *timer);
-	void cancelInloop(xTimer *timer);
-	void addTimerInLoop(xTimer *timer);
-
   	xTimer *addTimer(double when,bool repeat,xTimerCallback &&cb);
-  	xPriorityQueue *getPriority() { return &queue; }
+  	void handleRead();
+  	auto *getPriority() { return &queue; }
 	
 private:
 	xEventLoop *loop;
 	xPriorityQueue queue;
-	int timerfd;
+	int32_t timerfd;
 #ifdef __linux__
 	xChannel timerfdChannel;
 #endif
-	std::vector<xTimer*> vectors;
+	std::vector<xTimer*> timers;
+	int64_t sequence;
+
+	void cancelInloop(xTimer *timer);
+	void addTimerInLoop(xTimer *timer);
 
 	typedef std::pair<xTimeStamp,xTimer*> Entry;
 	typedef std::set<Entry> TimerList;
 	typedef std::pair<xTimer*,int64_t> ActiveTimer;
 	typedef std::set<ActiveTimer> ActiveTimerSet;
-	TimerList timers;
+	TimerList timerLists;
 
-	static const int kMicroSecondsPerSecond = 1000 * 1000;
+	std::vector<Entry> getExpired(xTimeStamp now);
+	void reset(const std::vector<Entry> &expired,xTimeStamp now);
+	bool insert(xTimer *timer);
+
+	ActiveTimerSet activeTimers;
+	bool callingExpiredTimers;
+	ActiveTimerSet cancelingTimers;
 };
 
 
