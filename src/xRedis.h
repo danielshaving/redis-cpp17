@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xAll.h"
 #include "xEventLoop.h"
 #include "xTcpConnection.h"
 #include "xBuffer.h"
@@ -23,10 +23,10 @@ public:
 	~xRedis();
 	
 	void initConfig();
-	void timeOut(const std::any &context);
-	void serverCron(const std::any &context);
-	void slaveRepliTimeOut(const std::any &context);
-	void setExpireTimeOut(const std::any &context);
+	void timeOut();
+	void serverCron();
+	void slaveRepliTimeOut(int32_t context);
+	void setExpireTimeOut(rObj *context);
    	void forkWait();
 
 	void run();
@@ -99,7 +99,7 @@ public:
 	bool bgsave(const SessionPtr &session,bool enabled = false);
 	bool save(const SessionPtr &session);
 	bool removeCommand(rObj *obj);
-	bool clearClusterMigradeCommand(std::any *data);
+	bool clearClusterMigradeCommand();
 	void clearFork();
 	void clearCommand();
 	void clear();
@@ -178,7 +178,7 @@ public:
 	std::atomic<bool> forkEnabled;
 	std::atomic<int32_t> forkCondWaitCount;
 	std::atomic<int32_t> rdbChildPid;
-	std::atomic<int32_t> slavefd;
+	int32_t slavefd;
 	std::atomic<int32_t> salveCount;
 
 	std::condition_variable expireCondition;

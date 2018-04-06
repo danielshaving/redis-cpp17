@@ -29,7 +29,7 @@ void xConnector::asyncStart()
 	loop->runInLoop(std::bind(&xConnector::asyncStartInLoop,this));
 }
 
-void xConnector::startInLoop(const std::any &context)
+void xConnector::startInLoop()
 {
 	asyncStartInLoop();
 }
@@ -107,8 +107,8 @@ void xConnector::retry(int32_t sockfd)
 	{
 		LOG_INFO << "Connector::retry - Retry connecting to "<<ip<<" "<<port
 				 << " in " << retryDelayMs << " milliseconds. ";
-		loop->runAfter(retryDelayMs/1000.0,nullptr,false,
-						std::bind(&xConnector::startInLoop,shared_from_this(),std::placeholders::_1));
+		loop->runAfter(retryDelayMs/1000.0,false,
+						std::bind(&xConnector::startInLoop,shared_from_this()));
 		retryDelayMs = std::min(retryDelayMs * 2,kMaxRetryDelayMs);
 	}
 	else

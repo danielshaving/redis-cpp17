@@ -51,7 +51,7 @@ xTcpClient::~xTcpClient()
 	else
 	{
 		 connector->stop();
-		 loop->runAfter(1,nullptr,false,std::bind(&detail::removeConnector,connector));
+		 loop->runAfter(1,false,std::bind(&detail::removeConnector,connector));
 	}
 }
 

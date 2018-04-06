@@ -1,4 +1,3 @@
-#include "all.h"
 #include "xEventLoop.h"
 #include "xLog.h"
 
@@ -82,12 +81,12 @@ void xEventLoop::cancelAfter(xTimer *timer)
 	timerQueue->cancelTimer(timer);
 }
 
-xTimer * xEventLoop::runAfter(double when,const std::any &context,bool repeat,xTimerCallback&& cb)
+xTimer *xEventLoop::runAfter(double when,bool repeat,xTimerCallback&& cb)
 {
-	return timerQueue->addTimer(when,context,repeat,std::move(cb));
+	return timerQueue->addTimer(when,repeat,std::move(cb));
 }
 
-bool xEventLoop::hasChannel(xChannel* channel)
+bool xEventLoop::hasChannel(xChannel *channel)
 {
 	assert(channel->ownerLoop() == this);
 	assertInLoopThread();
@@ -123,11 +122,11 @@ void xEventLoop::wakeup()
 {
   uint64_t one = 1;
 #ifdef __linux__
-  ssize_t n = ::write(wakeupFd, &one, sizeof one);
+  ssize_t n = ::write(wakeupFd,&one,sizeof one);
 #endif
 
 #ifdef __APPLE__
-  ssize_t n = ::write(wakeupFd[0], &one, sizeof one);
+  ssize_t n = ::write(wakeupFd[0],&one,sizeof one);
 #endif
 
   if (n != sizeof one)
@@ -190,9 +189,9 @@ void xEventLoop::run()
 		activeChannels.clear();
 		epoller->epollWait(&activeChannels);
 		eventHandling = true;
-		for (auto it = activeChannels.begin();it != activeChannels.end(); ++it)
+		for(auto &it : activeChannels)
 		{
-			currentActiveChannel = *it;
+			currentActiveChannel = it;
 			currentActiveChannel->handleEvent();
 		}
 

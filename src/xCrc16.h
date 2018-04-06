@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xAll.h"
 
 /*
  * Copyright 2001-2010 Georges Menie (www.menie.org)

@@ -76,7 +76,6 @@ void xSentinel::connErrorCallBack()
 	}
 	
 	++connectCount;
-	loop->runAfter(5,nullptr,false,std::bind(&xSentinel::reconnectTimer,this,std::placeholders::_1));
 }
 
 

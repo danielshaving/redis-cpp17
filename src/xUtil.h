@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xAll.h"
 #include "xSha1.h"
 
 
@@ -27,4 +27,6 @@ std::string base64Encode(unsigned char const*, unsigned int len);
 std::string base64Decode(std::string const& s);
 
 
-
+static int tests = 0, fails = 0;
+#define test(_s) { printf("#%02d ", ++tests); printf(_s); }
+#define test_cond(_c) if(_c) printf("\033[0;32mPASSED\033[0;0m\n"); else {printf("\033[0;31mFAILED\033[0;0m\n"); fails++;}

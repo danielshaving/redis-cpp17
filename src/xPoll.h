@@ -1,6 +1,6 @@
 #pragma once
 #ifdef __APPLE__
-#include "all.h"
+#include "xAll.h"
 #include "xLog.h"
 
 class xChannel;

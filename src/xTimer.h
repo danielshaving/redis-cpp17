@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xAll.h"
 #include "xZmalloc.h"
 #include "xCallback.h"
 
@@ -7,8 +7,9 @@ class xTimeStamp
 {
 public:
 	xTimeStamp()
-	: microSecondsSinceEpoch(0)
+	:microSecondsSinceEpoch(0)
 	{
+
 	}
 
 	explicit xTimeStamp(int64_t microSecondsSinceEpochArg)
@@ -56,21 +57,22 @@ inline double timeDifference(xTimeStamp high,xTimeStamp low)
 class xTimer : noncopyable
 {
 public:
-	xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval,const std::any &context);
+	explicit xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,
+		bool repeat,double interval);
 	~xTimer();
 
 	xTimeStamp getExpiration() const { return expiration; }
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
 	void restart(xTimeStamp now);
 	void run();
+	bool getRepeat() { return repeat; }
 
-public:	
+private:	
 	int64_t index;
 	bool repeat;
 	double interval;
 	xTimeStamp expiration;
 	xTimerCallback callback;
-	std::any context;
 };
 
 

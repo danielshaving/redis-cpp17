@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xAll.h"
 
 
 class xBuffer;
@@ -40,7 +40,7 @@ typedef std::unique_ptr<xPoll> PollPtr;
 typedef std::unique_ptr<xEpoll> EpollPtr;
 typedef std::shared_ptr<xThread> ThreadPtr;
 
-typedef std::function<void (const std::any &)> xTimerCallback;
+typedef std::function<void ()> xTimerCallback;
 typedef std::function<void (const TcpConnectionPtr&)> ConnectionCallback;
 typedef std::function<void (const std::any &)> ConnectionErrorCallback;
 typedef std::function<void (const TcpConnectionPtr&)> CloseCallback;

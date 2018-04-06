@@ -1,4 +1,3 @@
-#include "all.h"
 #include "xEventLoop.h"
 #include "xTcpConnection.h"
 
@@ -174,7 +173,7 @@ void xTcpConnection::stopReadInLoop()
 	}
 }
 
-void xTcpConnection::forceCloseDelay(const std::any &context)
+void xTcpConnection::forceCloseDelay()
 {
 	forceClose();
 }
@@ -184,7 +183,7 @@ void xTcpConnection::forceCloseWithDelay(double seconds)
 	if (state == kConnected || state == kDisconnecting)
 	{
 		setState(kDisconnecting);
-		loop->runAfter(seconds,nullptr,false,std::bind(&xTcpConnection::forceCloseDelay,shared_from_this(),std::placeholders::_1));
+		loop->runAfter(seconds,false,std::bind(&xTcpConnection::forceCloseDelay,shared_from_this()));
 	}
 }
 

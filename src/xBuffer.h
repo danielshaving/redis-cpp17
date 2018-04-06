@@ -1,6 +1,7 @@
 #pragma once
 
-#include "all.h"
+#include "xAll.h"
+#include "xStringPiece.h"
 
 class xBuffer : noncopyable
 {

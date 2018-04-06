@@ -14,7 +14,7 @@ void xMemcached::start()
 	server.start();
 }
 
-void xMemcached::quit(const std::any &context)
+void xMemcached::quit()
 {
 	loop->quit();
 }
@@ -26,7 +26,7 @@ void xMemcached::run()
 
 void xMemcached::stop()
 {
-	 loop->runAfter(3.0, nullptr,false,std::bind(&xMemcached::quit,this,std::placeholders::_1));
+	 loop->runAfter(3.0,false,std::bind(&xMemcached::quit,this));
 }
 
 bool xMemcached::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy, bool *exists)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "all.h"
+#include "xAll.h"
 #include "xBuffer.h"
 #include "xCallback.h"
 #include "xChannel.h"
@@ -53,7 +53,7 @@ public:
 	void forceCloseInLoop();
 	void connectEstablished();
 	void forceCloseWithDelay(double seconds);
-	void forceCloseDelay(const std::any &context);
+	void forceCloseDelay();
 
 	void connectDestroyed();
 	void shutdown();

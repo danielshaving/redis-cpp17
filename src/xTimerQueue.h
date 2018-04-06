@@ -1,6 +1,6 @@
 #pragma once
 
-#include "all.h"
+#include "xAll.h"
 #include "xChannel.h"
 #include "xCallback.h"
 #include "xTimer.h"
@@ -44,10 +44,8 @@ public:
 	void cancelInloop(xTimer *timer);
 	void addTimerInLoop(xTimer *timer);
 
-  	xTimer *addTimer(double when,const std::any &context,bool repeat,xTimerCallback &&cb);
+  	xTimer *addTimer(double when,bool repeat,xTimerCallback &&cb);
   	xPriorityQueue *getPriority() { return &queue; }
-
-	static const int kMicroSecondsPerSecond = 1000 * 1000;
 	
 private:
 	xEventLoop *loop;
@@ -57,4 +55,14 @@ private:
 	xChannel timerfdChannel;
 #endif
 	std::vector<xTimer*> vectors;
+
+	typedef std::pair<xTimeStamp,xTimer*> Entry;
+	typedef std::set<Entry> TimerList;
+	typedef std::pair<xTimer*,int64_t> ActiveTimer;
+	typedef std::set<ActiveTimer> ActiveTimerSet;
+	TimerList timers;
+
+	static const int kMicroSecondsPerSecond = 1000 * 1000;
 };
+
+

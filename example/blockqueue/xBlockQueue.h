@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xAll.h"
 
 template<typename T>
 class xBlockingQueue : noncopyable

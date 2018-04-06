@@ -610,8 +610,9 @@ int32_t xRdb::rdbLoadExpire(xRio *rdb,int32_t type)
 		key->calHash();
 		key->type = OBJ_EXPIRE;
 		std::unique_lock <std::mutex> lck(redis->expireMutex);
-		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000, key, false, std::bind(&xRedis::setExpireTimeOut, redis, std::placeholders::_1));
-		redis->expireTimers.insert(std::make_pair(key, timer));
+		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000,false,
+			std::bind(&xRedis::setExpireTimeOut,redis,key));
+		redis->expireTimers.insert(std::make_pair(key,timer));
 	}
 	else
 	{
@@ -1184,8 +1185,8 @@ int32_t xRdb::rdbRestoreExpire(rObj *key,xRio *rdb,int32_t type)
 		key->type = OBJ_EXPIRE;
 		std::unique_lock <std::mutex> lck(redis->expireMutex);
 		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000,
-				key, false, std::bind(&xRedis::setExpireTimeOut, redis, std::placeholders::_1));
-		redis->expireTimers.insert(std::make_pair(key, timer));
+			false,std::bind(&xRedis::setExpireTimeOut,redis,key));
+		redis->expireTimers.insert(std::make_pair(key,timer));
 	}
 	else
 	{

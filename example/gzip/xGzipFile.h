@@ -1,7 +1,5 @@
 #pragma once
-#include "all.h"
-
-
+#include "xAll.h"
 #include <zlib.h>
 
 class xGzipFile : noncopyable

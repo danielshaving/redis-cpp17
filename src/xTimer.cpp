@@ -1,12 +1,11 @@
 #include "xTimer.h"
 
-xTimer::xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval,const std::any &context)
+xTimer::xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval)
 :index(-1),
 repeat(repeat),
 interval(interval),
 expiration(std::move(expiration)),
-callback(std::move(cb)),
-context(context)
+callback(std::move(cb))
 {
 	
 }
@@ -18,10 +17,7 @@ xTimer::~xTimer()
 
 void xTimer::run()
 {
-	if(callback)
-	{
-		callback(context);
-	}
+	callback();
 }
 
 void xTimer::restart(xTimeStamp now)

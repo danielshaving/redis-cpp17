@@ -62,9 +62,9 @@ bool xPriorityQueue::erase(xTimer *e)
 		xTimer *last = p[--n];
 		int64_t parent = (*(int64_t *)e - 1) / 2;
 		if (*(int64_t *)e > 0 && (p[parent]->getWhen() > last->getWhen()) > 0)
-			shiftUp(*(int64_t *)e, last);
+			shiftUp(*(int64_t *)e,last);
 		else
-			shiftDown(*(int64_t *)e, last);
+			shiftDown(*(int64_t *)e,last);
 		*(int64_t *)e = -1;
 
 		return 0;
@@ -135,6 +135,7 @@ int64_t createTimerfd()
   {	
   	assert(false);
   }
+
   return timerfd;
 }
 #endif
@@ -207,11 +208,11 @@ xTimerQueue::~xTimerQueue()
 #endif
 }
 
-xTimer *xTimerQueue::addTimer(double when,const std::any &context,bool repeat,xTimerCallback &&cb)
+xTimer *xTimerQueue::addTimer(double when,bool repeat,xTimerCallback &&cb)
 {
 	xTimeStamp time(addTime(xTimeStamp::now(),when));
 	xTimer *timer = (xTimer*)zmalloc(sizeof(xTimer));
-	new(timer)xTimer(std::move(cb), std::move(time),repeat,when,context);
+	new(timer)xTimer(std::move(cb),std::move(time),repeat,when);
 	loop->runInLoop(std::bind(&xTimerQueue::addTimerInLoop,this,timer));
 	return timer;
 }
@@ -228,7 +229,7 @@ void xTimerQueue::cancelInloop(xTimer *timer)
 		return ;
 	}
 
-	queue.erase(timer);
+	assert(queue.erase(timer) == 0);
 	timer->~xTimer();
 	zfree(timer);
 
@@ -288,7 +289,7 @@ void xTimerQueue::handleRead()
 
 	for(auto &it : vectors)
 	{
-		if(it->repeat)
+		if(it->getRepeat())
 		{
 			it->restart(now);
 			resetTimerfd(timerfd, now);

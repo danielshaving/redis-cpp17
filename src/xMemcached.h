@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xAll.h"
 #include "xTcpConnection.h"
 #include "xTcpServer.h"
 #include "xZmalloc.h"
@@ -20,7 +20,7 @@ public:
 	~xMemcached();
 
 	void setThreadNum();
-	void quit(const std::any &context);
+	void quit();
 	void start();
 	void stop();
 	void run();

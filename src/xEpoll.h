@@ -1,6 +1,7 @@
 #pragma once
 #ifdef __linux__
-#include "all.h"
+#include "xAll.h"
+#include "xStringPiece.h"
 #include "xLog.h"
 
 class xChannel;
