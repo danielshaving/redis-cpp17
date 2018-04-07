@@ -97,7 +97,7 @@ bool xHttpContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,const char 
 	}
 	else
 	{
-		conn->shutdown();
+		conn->forceClose();
 	}
 
 	uint8_t mask[4];
@@ -129,7 +129,7 @@ bool xHttpContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,const char 
 	}
 	else
 	{
-		conn->shutdown();
+		conn->forceClose();
 	}
 
 	if(fin)
@@ -193,7 +193,7 @@ bool xHttpContext::wsFrameBuild(xBuffer *buffer,xHttpRequest::WebSocketType fram
 	uint8_t head = (uint8_t)framType | (ok ? 0x80 : 0x00);
 	buffer->prependInt8(head);
 
-	 return true;
+	return true;
  }
 
 bool xHttpContext::parseRequest(xBuffer *buffer)

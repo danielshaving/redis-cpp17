@@ -36,6 +36,13 @@ void xHttpServer::onConnection(const TcpConnectionPtr &conn)
 void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	auto context = std::any_cast<xHttpContext>(conn->getContext());
+	if(buffer->readableBytes() > 1024)
+	{
+		LOG_WARN<<"xHttpServer::onMessage length > 1024";
+		conn->forceClose();
+		return ;
+	}
+
 	while(buffer->readableBytes() > 0)
 	{
 		size_t size = 0;
@@ -50,7 +57,8 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 						context->getRequest().getOpCode() == xHttpRequest::PONG_FRAME ||
 						context->getRequest().getOpCode() == xHttpRequest::CLOSE_FRAME)
 		{
-			conn->shutdown();
+			conn->forceClose();
+			LOG_WARN<<"xHttpServer::onMessage type error";
 			break;
 		}
 		else if(context->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
@@ -61,14 +69,14 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 		{
 			if(!httpReadCallback(&(context->getRequest()),conn))
 			{
-				conn->shutdown();
+				conn->forceClose();
 				break;
 			}
 			context->reset();
 		}
 		else
 		{
-			conn->shutdown();
+			conn->forceClose();
 #ifdef __DEBUG__
 
 			assert(false);
@@ -87,7 +95,7 @@ void xHttpServer::onHandeShake(const TcpConnectionPtr &conn,xBuffer *buffer)
 			context->getRequest().getMethod() != xHttpRequest::kGet)
 	{
 		conn->send("HTTP/1.1 400 Bad Request\r\n\r\n");
-		conn->shutdown();
+		conn->forceClose();
 	}
 
 	if(context->gotAll())
@@ -97,7 +105,7 @@ void xHttpServer::onHandeShake(const TcpConnectionPtr &conn,xBuffer *buffer)
 	}
 	else
 	{
-		conn->shutdown();
+		conn->forceClose();
 	}
 }
 
@@ -107,7 +115,8 @@ void xHttpServer::onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req
 	auto iter = headers.find("Sec-WebSocket-Key");
 	if(iter == headers.end())
 	{
-		conn->shutdown();
+		LOG_WARN<<"xHttpServer::onRequest error";
+		conn->forceClose();
 		return ;
 	}
 

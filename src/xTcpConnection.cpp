@@ -58,7 +58,7 @@ void xTcpConnection::shutdownInLoop()
     loop->assertInLoopThread();
     if (!channel->isWriting())
     {
-        if (::shutdown(sockfd, SHUT_WR) < 0)
+        if (::shutdown(sockfd,SHUT_WR) < 0)
         {
             LOG_ERROR<<"sockets::shutdownWrite";
         }

@@ -73,7 +73,6 @@ void xRedis::replyCheck()
 
 void xRedis::serverCron()
 {
-	LOG_INFO<<"serverCron";
 	if(rdbChildPid != -1)
 	{
 		pid_t pid;

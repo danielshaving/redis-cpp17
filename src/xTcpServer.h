@@ -26,7 +26,7 @@ public:
 	xEventLoop *getLoop() const { return loop; }
 	ThreadPoolPtr getThreadPool() { return threadPool; }
 
-	std::any *getContext() { return &context; }
+	std::any *getMutableContext() { return &context; }
 	const std::any &getContext() const { return context; }
 	void setContext(const std::any &context) { this->context = context; }
 

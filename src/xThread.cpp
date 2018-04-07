@@ -4,7 +4,7 @@
 xThread::xThread(const ThreadInitCallback &cb)
 :loop(nullptr),
  exiting(false),
- callback(cb)
+ callback(std::move(cb))
 {
 
 }
@@ -24,7 +24,6 @@ xEventLoop *xThread::startLoop()
 		{
 			condition.wait(lk);
 		}
-
 	}
 	return loop;
 
@@ -46,5 +45,4 @@ void xThread::threadFunc()
 	}
 
 	xloop.run();
-	loop = nullptr;
 }

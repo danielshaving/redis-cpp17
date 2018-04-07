@@ -11,7 +11,7 @@ class xPoll : noncopyable
 public:
 	typedef std::vector<struct pollfd> EventList;
 	typedef std::vector<xChannel*> ChannelList;
-	typedef std::unordered_map<int32_t, xChannel*> 	ChannelMap;
+	typedef std::unordered_map<int32_t, xChannel*> ChannelMap;
 
 	xPoll(xEventLoop *loop);
 	~xPoll();

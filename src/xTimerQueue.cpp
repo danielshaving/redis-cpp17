@@ -360,14 +360,12 @@ bool xTimerQueue::insert(xTimer *timer)
 	}
 
 	{
-		std::pair<TimerList::iterator,bool> result
-		  = timerLists.insert(Entry(when,timer));
+		std::pair<TimerList::iterator,bool> result = timerLists.insert(Entry(when,timer));
 		assert(result.second); (void)result;
 	}
 
 	{
-		std::pair<ActiveTimerSet::iterator,bool> result
-		  = activeTimers.insert(ActiveTimer(timer,timer->getSequence()));
+		std::pair<ActiveTimerSet::iterator,bool> result  = activeTimers.insert(ActiveTimer(timer,timer->getSequence()));
 		assert(result.second); (void)result;
 	}
 

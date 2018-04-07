@@ -1258,20 +1258,27 @@ int32_t redisFormatCommand(char **target,const char *format, ...)
     return len;
 }
 
-void xRedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, va_list ap)
+int xRedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, va_list ap)
 {
 	char *cmd;
 	int32_t len;
 	len = redisvFormatCommand(&cmd,format,ap);
+	if (len < 0)
+	{
+		return REDIS_ERR;
+	}
 	__redisAsyncCommand(fn,privdata,cmd,len);
+
+	return REDIS_OK;
 }
 
-void xRedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...)
+int xRedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...)
 {
 	va_list ap;
 	va_start(ap,format);
-	redisvAsyncCommand(fn,privdata,format,ap);
+	int status = redisvAsyncCommand(fn,privdata,format,ap);
 	va_end(ap);
+	return status;
 }
 
 redisReply *xRedisContext::redisBlockForReply()
@@ -1660,7 +1667,7 @@ xHiredis::~xHiredis()
 
 void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 {
-	auto callback = std::any_cast<RedisAsyncCallback>(conn->getContext());
+	auto callback = std::any_cast<RedisAsyncCallback>(conn->getMutableContext());
 	if(conn->connected())
 	{
 		RedisAsyncContextPtr ac(new xRedisAsyncContext(conn->intputBuffer(),conn));
@@ -1681,7 +1688,7 @@ void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 
 void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 {
-	auto callback = std::any_cast<RedisAsyncCallback>(conn->getContext());
+	auto callback = std::any_cast<RedisAsyncCallback>(conn->getMutableContext());
 	if(conn->connected())
 	{
 		RedisAsyncContextPtr ac (new xRedisAsyncContext(conn->intputBuffer(),conn));

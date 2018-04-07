@@ -23,8 +23,8 @@ public:
 private:
 	xEventLoop *baseLoop;
 	bool started;
-	int	numThreads;
-	int	next;
+	int32_t	numThreads;
+	int32_t	next;
 
 	std::vector<ThreadPtr> threads;
 	std::vector<xEventLoop*> loops;

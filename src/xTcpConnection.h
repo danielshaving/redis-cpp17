@@ -71,8 +71,8 @@ public:
 	void startRead();
 	void stopRead();
 
-	std::any *getContext() { return &context; }
-	const std::any &getMutableContext() const { return context; }
+	std::any *getMutableContext() { return &context; }
+	const std::any &getContext() const { return context; }
 	void setContext(const std::any &context) { this->context = context; }
 
 	xBuffer *outputBuffer() { return &sendBuff; }

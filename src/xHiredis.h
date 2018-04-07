@@ -157,8 +157,8 @@ public:
 	~xRedisAsyncContext();
 
 	void  __redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,char *cmd,size_t len);
-	void redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format,va_list ap);
-	void redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...);
+	int redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format,va_list ap);
+	int redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...);
 
 	int32_t redisGetReply(redisReply **reply) { return context->redisGetReply(reply); }
 	RedisContextPtr getRedisContext() { return context; }

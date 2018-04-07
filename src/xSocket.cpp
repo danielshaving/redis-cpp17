@@ -3,7 +3,7 @@
 
 xSocket::xSocket(const char *ip,int16_t port)
 {
-	createTcpListenSocket(ip,port);
+	assert(createTcpListenSocket(ip,port));
 }
 
 xSocket::xSocket()
@@ -13,12 +13,12 @@ xSocket::xSocket()
 
 xSocket::~xSocket()
 {
-	::close(listenSocketFd);
+	::close(listenFd);
 }
 
 int32_t xSocket::getListenFd()
 {
-	return listenSocketFd;
+	return listenFd;
 }
 
 struct sockaddr_in6 xSocket::getLocalAddr(int32_t sockfd)
@@ -102,7 +102,6 @@ int32_t  xSocket::createSocket()
 {
 	return socket(AF_INET,SOCK_STREAM,0);
 }
-
 
 bool xSocket::connectWaitReady(int32_t fd,int32_t msec)
 {
@@ -208,15 +207,15 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
         serverAdress.sin_addr.s_addr = htonl(INADDR_ANY);
     }
 
-    listenSocketFd = socket(AF_INET,SOCK_STREAM,0);
+    listenFd = socket(AF_INET,SOCK_STREAM,0);
 
-    if(listenSocketFd < 0)
+    if(listenFd < 0)
     {
         LOG_WARN<<"Create Tcp Socket Failed! "<< strerror(errno);
         return false;
     }
 
-    if(!setSocketNonBlock(listenSocketFd))
+    if(!setSocketNonBlock(listenFd))
     {
 		LOG_WARN<<"Set listen socket to non-block failed!";
 		return false;
@@ -224,41 +223,41 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 
     int32_t optval = 1;
 	
-	if(::setsockopt(listenSocketFd,SOL_SOCKET,SO_REUSEPORT,&optval,sizeof(optval)) < 0)
+	if(::setsockopt(listenFd,SOL_SOCKET,SO_REUSEPORT,&optval,sizeof(optval)) < 0)
     {
 		LOG_SYSERR<<"Set SO_REUSEPORT socket failed! error "<<strerror(errno);
-        ::close(listenSocketFd);
+        ::close(listenFd);
         return false;
     }
 	
   
-    if(::setsockopt(listenSocketFd,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval)) < 0)
+    if(::setsockopt(listenFd,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval)) < 0)
     {
 		LOG_SYSERR<<"Set SO_REUSEADDR socket  failed! error "<<strerror(errno);
-		::close(listenSocketFd);
+		::close(listenFd);
         return false;
     }
 
-    if(::bind(listenSocketFd, (struct sockaddr*)&serverAdress,sizeof(serverAdress)) < 0 )
+    if(::bind(listenFd,(struct sockaddr*)&serverAdress,sizeof(serverAdress)) < 0 )
     {
         LOG_SYSERR<<"Bind bind socket failed! error "<<strerror(errno);
-        ::close(listenSocketFd);
+        ::close(listenFd);
         return false;
     }
 
-    if(::listen(listenSocketFd,SOMAXCONN))
+    if(::listen(listenFd,SOMAXCONN))
     {
         LOG_SYSERR<<"Listen listen socket failed! error "<<strerror(errno);
-        close(listenSocketFd);
+        close(listenFd);
         return false;
     }
 
 #ifdef __linux__
-    setsockopt(listenSocketFd,IPPROTO_TCP,TCP_NODELAY,&optval,static_cast<socklen_t>(sizeof optval));
+    setsockopt(listenFd,IPPROTO_TCP,TCP_NODELAY,&optval,static_cast<socklen_t>(sizeof optval));
 
     int32_t len = 65536;
-    setsockopt(listenSocketFd,SOL_SOCKET,SO_RCVBUF,(void*)&len,sizeof(len));
-    setsockopt(listenSocketFd,SOL_SOCKET,SO_SNDBUF,(void*)&len,sizeof(len));
+    setsockopt(listenFd,SOL_SOCKET,SO_RCVBUF,(void*)&len,sizeof(len));
+    setsockopt(listenFd,SOL_SOCKET,SO_SNDBUF,(void*)&len,sizeof(len));
 #endif
 
     return true;

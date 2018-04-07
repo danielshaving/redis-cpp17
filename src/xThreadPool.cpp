@@ -48,7 +48,7 @@ xEventLoop *xThreadPool::getNextLoop()
 		++next;
 		if (next >= loops.size())
 		{
-		  next = 0;
+			next = 0;
 		}
 	}
 	return loop;
