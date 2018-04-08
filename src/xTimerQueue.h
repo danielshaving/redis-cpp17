@@ -43,7 +43,8 @@ public:
   	xTimer *addTimer(double when,bool repeat,xTimerCallback &&cb);
   	void handleRead();
   	auto *getPriority() { return &queue; }
-	
+  	xTimer *getTimerBegin();
+
 private:
 	xEventLoop *loop;
 	xPriorityQueue queue;

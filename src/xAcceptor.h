@@ -11,7 +11,7 @@ public:
 	xAcceptor(xEventLoop *loop,const char *ip,int16_t port);
 	~xAcceptor();
 
-	void setNewConnectionCallback(const NewConnectionCallback &cb){ newConnectionCallback = cb; }
+	void setNewConnectionCallback(const NewConnectionCallback &&cb) { newConnectionCallback = std::move(cb); }
 	bool getlistenning() const { return listenning; }
 	void listen();
 	void handleRead();

@@ -70,8 +70,7 @@ inline double timeDifference(xTimeStamp high,xTimeStamp low)
 class xTimer : noncopyable
 {
 public:
-	xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,
-		bool repeat,double interval);
+	xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval);
 	~xTimer();
 
 	int64_t getSequence() { return sequence; }
@@ -83,6 +82,7 @@ public:
 	void restart(xTimeStamp now);
 	void run();
 
+	double getInterval(){ return interval; }
 private:	
 	int64_t index;
 	bool repeat;
@@ -90,7 +90,6 @@ private:
 	int64_t sequence;
 	xTimeStamp expiration;
 	xTimerCallback callback;
-
 	static std::atomic<int64_t> numCreated;
 };
 

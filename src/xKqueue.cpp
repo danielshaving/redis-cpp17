@@ -24,21 +24,21 @@ xKqueue::~xKqueue()
 	::close(kqueueFd);
 }
 
-void  xKqueue::epollWait(ChannelList *activeChannels,int msTime)
+void xKqueue::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
     struct timespec timeout;
 	timeout.tv_sec = msTime;
 	timeout.tv_nsec = 0;
 
 	auto timerQueue = loop->getTimerQueue();
-	if(timerQueue->size() > 0 )
+	auto timer = timerQueue->getTimerBegin();
+	if (timer)
 	{
-		auto timer = timerQueue->head();
-		timeout.tv_sec = timer->interval;
+		timeout.tv_sec = timer->getInterval();
 	}
 
-	int numEvents = ::kevent(kqueueFd, nullptr,0,&*events.begin(), static_cast<int>(events.size()), &timeout);
-	int savedErrno = errno;
+	int32_t numEvents = ::kevent(kqueueFd,nullptr,0,&*events.begin(),static_cast<int32_t>(events.size()),&timeout);
+	int32_t savedErrno = errno;
 	if (numEvents > 0)
 	{
 		fillActiveChannels(numEvents, activeChannels);

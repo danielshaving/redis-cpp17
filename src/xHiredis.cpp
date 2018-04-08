@@ -78,7 +78,7 @@ xRedisAsyncContext::~xRedisAsyncContext()
 {
 	for(auto &it : asyncCb)
 	{
-		if(it.data)
+		if (it.data)
 		{
 			zfree(it.data);
 		}
@@ -303,7 +303,7 @@ void freeReply(redisReply *reply)
 	redisReply *r = reply;
 	size_t j;
 
-	if(r == nullptr)
+	if (r == nullptr)
 	{
 		return ;
 	}
@@ -470,7 +470,7 @@ static char *nextArgument(char *start,char **str,size_t *len)
 }
 
 
-void xRedisContext::redisSetError(int32_t type,const char * str)
+void xRedisContext::redisSetError(int32_t type,const char *str)
 {
 	size_t	len;
 	err = type;
@@ -574,7 +574,7 @@ int32_t xRedisReader::processBulkItem()
 	int32_t success = 0;
 
 	p = buffer->peek() + pos;
-	s = seekNewline(p, buffer->readableBytes() - pos);
+	s = seekNewline(p,buffer->readableBytes() - pos);
 
 	if (s != nullptr)
 	{

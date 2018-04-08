@@ -27,9 +27,9 @@ public:
 
  private:
 	ChannelMap channels;
-	EventList 	events;
-	xEventLoop  *loop;
-	int kqueueFd;
+	EventList events;
+	xEventLoop *loop;
+	int32_t kqueueFd;
 };
 
 #endif

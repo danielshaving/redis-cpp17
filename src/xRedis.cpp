@@ -28,7 +28,7 @@ slavefd(-1)
 	loadDataFromDisk();
 	server.setConnectionCallback(std::bind(&xRedis::connCallBack,this,std::placeholders::_1));
 	server.setThreadNum(threadCount);
-	if(threadCount > 1)
+	if (threadCount > 1)
 	{
 		this->threadCount = threadCount;
 		zmalloc_enable_thread_safeness();
@@ -73,7 +73,7 @@ void xRedis::replyCheck()
 
 void xRedis::serverCron()
 {
-	if(rdbChildPid != -1)
+	if (rdbChildPid != -1)
 	{
 		pid_t pid;
 		int32_t statloc;
@@ -90,18 +90,18 @@ void xRedis::serverCron()
 				if (!bysignal && exitcode == 0)
 				{
 					LOG_INFO<<"background saving terminated with success";
-					if(slavefd != -1)
+					if (slavefd != -1)
 					{
 
 					std::unique_lock <std::mutex> lck(slaveMutex);
 					auto it = slaveConns.find(slavefd);
-					if(it == slaveConns.end())
+					if (it == slaveConns.end())
 					{
 						LOG_WARN<<"master sync send failure";
 					}
 					else
 					{
-						if(!rdb.rdbReplication("dump.rdb",it->second))
+						if (!rdb.rdbReplication("dump.rdb",it->second))
 						{
 							it->second->forceClose();
 							LOG_WARN<<"master sync send failure";

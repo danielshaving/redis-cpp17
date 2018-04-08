@@ -210,7 +210,6 @@ xTimerQueue::~xTimerQueue()
 	{
 		zfree(it.second);
 	}
-
 }
 
 xTimer *xTimerQueue::addTimer(double when,bool repeat,xTimerCallback &&cb)
@@ -288,6 +287,16 @@ void xTimerQueue::addTimerInLoop(xTimer *timer)
 	}
 }
 
+xTimer *xTimerQueue::getTimerBegin()
+{
+	if(timerLists.empty())
+	{
+		return nullptr;
+	}
+
+	return timerLists.begin()->second;
+}
+
 void xTimerQueue::handleRead()
 {
 	loop->assertInLoopThread();
@@ -343,7 +352,6 @@ void xTimerQueue::handleRead()
 	callingExpiredTimers = false;
 
 	reset(expired,now);
-
 }
 
 bool xTimerQueue::insert(xTimer *timer)
@@ -365,7 +373,7 @@ bool xTimerQueue::insert(xTimer *timer)
 	}
 
 	{
-		std::pair<ActiveTimerSet::iterator,bool> result  = activeTimers.insert(ActiveTimer(timer,timer->getSequence()));
+		std::pair<ActiveTimerSet::iterator,bool> result = activeTimers.insert(ActiveTimer(timer,timer->getSequence()));
 		assert(result.second); (void)result;
 	}
 

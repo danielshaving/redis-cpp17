@@ -19,13 +19,13 @@ xPoll::~xPoll()
 
 }
 
-void  xPoll::epollWait(ChannelList *activeChannels,int32_t msTime)
+void xPoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
 	auto timerQueue = loop->getTimerQueue();
-	if(timerQueue->size() > 0 )
+	auto timer = timerQueue->getTimerBegin();
+	if (timer)
 	{
-		auto timer = timerQueue->head();
-		msTime = timer->interval / 1000;
+		msTime = timer->getInterval() / 1000;
 	}
 
 	int32_t numEvents = ::poll(&*events.begin(),events.size(),msTime);
@@ -33,7 +33,7 @@ void  xPoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 
 	if (numEvents > 0)
 	{
-		fillActiveChannels(numEvents, activeChannels);
+		fillActiveChannels(numEvents,activeChannels);
 		if (numEvents == events.size())
 		{
 			events.resize(events.size()*2);
@@ -53,7 +53,6 @@ void  xPoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 	}
 
 	loop->handlerTimerQueue();
-
 }
 
 bool xPoll::hasChannel(xChannel *channel)

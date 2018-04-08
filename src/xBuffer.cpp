@@ -5,7 +5,7 @@ const char xBuffer::CONTENT[] = "Content-Length";
 const size_t xBuffer::kCheapPrepend;
 const size_t xBuffer::kInitialSize;
 
-ssize_t xBuffer::readFd(int32_t fd, int32_t *savedErrno)
+ssize_t xBuffer::readFd(int32_t fd,int32_t *savedErrno)
 {
 	char extrabuf[65536];
 	struct iovec vec[2];

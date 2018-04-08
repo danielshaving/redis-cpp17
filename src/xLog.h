@@ -47,11 +47,11 @@ private:
 	char *cur;
 };
 
-class AppendFile : noncopyable
+class xAppendFile : noncopyable
 {
 public:
-	explicit AppendFile(std::string &filename);
-	~AppendFile();
+	explicit xAppendFile(std::string &filename);
+	~xAppendFile();
 	void append(const char *logline,const size_t len);
 	void flush();
 	size_t getWrittenBytes() const { return writtenBytes; }
@@ -78,7 +78,7 @@ class xLogFile : noncopyable
 	void flush();
 	bool rollFile();
 
-	private:
+private:
 	void append_unlocked(const char *logline,int32_t len);
 	static std::string getLogFileName(const std::string& basename,time_t *now);
 	const std::string basename;
@@ -91,7 +91,7 @@ class xLogFile : noncopyable
 	time_t startOfPeriod;
 	time_t lastRoll;
 	time_t lastFlush;
-	std::unique_ptr<AppendFile> file;
+	std::unique_ptr<xAppendFile> file;
 	const static int32_t kRollPerSeconds = 60*60*24;
 };
 

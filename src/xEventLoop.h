@@ -42,7 +42,7 @@ public:
 
     xTimer *runAfter(double when,bool repeat,xTimerCallback &&cb);
     void handlerTimerQueue() { timerQueue->handleRead(); }
-    xPriorityQueue *getTimerQueue() { return timerQueue->getPriority(); }
+    TimerQueuePtr getTimerQueue() { return timerQueue; }
     bool isInLoopThread() const { return threadId == std::this_thread::get_id(); }
     bool geteventHandling() const { return eventHandling; }
     std::thread::id getThreadId() const { return threadId; }

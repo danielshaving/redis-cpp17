@@ -46,7 +46,7 @@ size_t convertHex(char buf[], uintptr_t value)
 	return p - buf;
 }
 
-AppendFile::AppendFile(std::string  &filename)
+xAppendFile::xAppendFile(std::string  &filename)
   : fp(::fopen(filename.c_str(), "ae")),  // 'e' for O_CLOEXEC
     writtenBytes(0)
 {
@@ -54,12 +54,12 @@ AppendFile::AppendFile(std::string  &filename)
 	::setbuffer(fp, buffer, sizeof buffer);
 }
 
-AppendFile::~AppendFile()
+xAppendFile::~xAppendFile()
 {
 	::fclose(fp);
 }
 
-void AppendFile::append(const char *logline, const size_t len)
+void xAppendFile::append(const char *logline, const size_t len)
 {
 	size_t n = write(logline, len);
 	size_t remain = len - n;
@@ -71,7 +71,7 @@ void AppendFile::append(const char *logline, const size_t len)
 			int32_t err = ferror(fp);
 			if (err)
 			{
-				LOG_ERROR<<"AppendFile::append() failed "<< strerror(err);
+				LOG_ERROR<<"xAppendFile::append() failed "<< strerror(err);
 			}
 			break;
 		}
@@ -82,12 +82,12 @@ void AppendFile::append(const char *logline, const size_t len)
 	writtenBytes += len;
 }
 
-void AppendFile::flush()
+void xAppendFile::flush()
 {
 	::fflush(fp);
 }
 
-size_t AppendFile::write(const char* logline, size_t len)
+size_t xAppendFile::write(const char* logline, size_t len)
 {
 #ifdef __linux__
   return ::fwrite_unlocked(logline, 1, len, fp);
@@ -173,7 +173,7 @@ bool xLogFile::rollFile()
 		lastRoll = now;
 		lastFlush = now;
 		startOfPeriod = start;
-		file.reset(new AppendFile(filename));
+		file.reset(new xAppendFile(filename));
 		return true;
 	}
 	return false;
@@ -304,13 +304,9 @@ void xAsyncLogging::threadFunc()
 
 		buffersToWrite.clear();
 		output.flush();
-
-
 	}
 	output.flush();
-
 }
-
 
 template<typename T>
 void xLogStream::formatInteger(T v)
@@ -321,7 +317,6 @@ void xLogStream::formatInteger(T v)
 		buffer.add(len);
 	}
 }
-
 
 xLogStream &xLogStream::operator<<(short v)
 {
@@ -409,7 +404,7 @@ xLogger::LogLevel initLogLevel()
 
 xLogger::LogLevel g_logLevel = initLogLevel();
 
-const char* LogLevelName[xLogger::NUM_LOG_LEVELS] =
+const char *LogLevelName[xLogger::NUM_LOG_LEVELS] =
 {
   "TRACE ",
   "DEBUG ",
@@ -436,8 +431,7 @@ void defaultFlush()
 xLogger::OutputFunc g_output = defaultOutput;
 xLogger::FlushFunc g_flush = defaultFlush;
 
-
-xLogger::xImpl::xImpl(LogLevel level, int32_t savedErrno, const xSourceFile &file, int32_t line)
+xLogger::xImpl::xImpl(LogLevel level,int32_t savedErrno,const xSourceFile &file,int32_t line)
   : stream(),
     level(level),
     line(line),
@@ -471,6 +465,7 @@ void xLogger::xImpl::finish()
 xLogger::xLogger(xSourceFile file,int32_t line)
  :impl(INFO, 0, file, line)
 {
+
 }
 
 xLogger::xLogger(xSourceFile file,int32_t line,LogLevel level,const char *func)
@@ -482,18 +477,20 @@ xLogger::xLogger(xSourceFile file,int32_t line,LogLevel level,const char *func)
 xLogger::xLogger(xSourceFile file,int32_t line,LogLevel level)
   : impl(level, 0, file, line)
 {
+
 }
 
 xLogger::xLogger(xSourceFile file,int32_t line,bool toAbort)
   : impl(toAbort?FATAL:ERROR, errno, file, line)
 {
+
 }
 
 
 xLogger::~xLogger()
 {
 	impl.finish();
-	const xLogStream::Buffer& buf(stream().getBuffer());
+	const xLogStream::Buffer &buf(stream().getBuffer());
 	g_output(buf.getData(),buf.length());
 	if (impl.level == FATAL)
 	{

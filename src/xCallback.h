@@ -35,7 +35,7 @@ typedef std::shared_ptr<const xItem> ConstItemPtr;
 typedef std::shared_ptr<xThreadPool> ThreadPoolPtr;
 typedef std::unique_ptr<xAcceptor> AcceptorPtr;
 typedef std::unique_ptr<xChannel> ChannelPtr;
-typedef std::unique_ptr<xTimerQueue> TimerQueuePtr;
+typedef std::shared_ptr<xTimerQueue> TimerQueuePtr;
 typedef std::unique_ptr<xPoll> PollPtr;
 typedef std::unique_ptr<xEpoll> EpollPtr;
 typedef std::shared_ptr<xThread> ThreadPtr;

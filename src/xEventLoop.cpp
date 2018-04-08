@@ -32,7 +32,7 @@ xEventLoop::xEventLoop()
  eventHandling(false),
  callingPendingFunctors(false)
 {
-	wakeupChannel->setReadCallback(std::bind(&xEventLoop::handleRead, this));
+	wakeupChannel->setReadCallback(std::bind(&xEventLoop::handleRead,this));
 	wakeupChannel->enableReading();
 }
 
