@@ -1727,6 +1727,7 @@ void xHiredis::clearTcpClient()
 {
 	std::unique_lock<std::mutex> lk(rtx);
 	tcpClients.clear();
+	node = redisAsyncContexts.begin();
 }
 
 void xHiredis::eraseRedisMap(int32_t sockfd)
@@ -1734,7 +1735,12 @@ void xHiredis::eraseRedisMap(int32_t sockfd)
 	std::unique_lock<std::mutex> lk(rtx);
 	auto it = redisAsyncContexts.find(sockfd);
 	assert(it != redisAsyncContexts.end());
-	redisAsyncContexts.erase(it++);
+	if(it == node)
+	{
+		node++;
+	}
+	
+	redisAsyncContexts.erase(it);
 }
 
 void xHiredis::insertRedisMap(int32_t sockfd,const RedisAsyncContextPtr &ac)
@@ -1749,7 +1755,7 @@ void xHiredis::pushTcpClient(const TcpClientPtr &client)
 	tcpClients.push_back(client);
 }
 
-auto &xHiredis::getIteratorNode()
+RedisAsyncContextPtr xHiredis::getIteratorNode()
 {
 	if(node == redisAsyncContexts.end())
 	{
@@ -1759,7 +1765,7 @@ auto &xHiredis::getIteratorNode()
 	auto it = node;
 	node ++;
 
-	return it;
+	return it->second;
 }
 
 void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
