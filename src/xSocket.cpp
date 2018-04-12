@@ -28,7 +28,7 @@ struct sockaddr_in6 xSocket::getLocalAddr(int32_t sockfd)
 	socklen_t addrlen = static_cast<socklen_t>(sizeof localaddr);
 	if (::getsockname(sockfd,(struct sockaddr*)&localaddr,&addrlen) < 0)
 	{
-		LOG_SYSERR << "sockets::getLocalAddr";
+		LOG_SYSERR << "xSocket::getLocalAddr";
 	}
 	return localaddr;
 }
@@ -40,7 +40,7 @@ struct sockaddr_in6 xSocket::getPeerAddr(int sockfd)
 	socklen_t addrlen = static_cast<socklen_t>(sizeof peeraddr);
 	if (::getpeername(sockfd,(struct sockaddr*)&peeraddr,&addrlen) < 0)
 	{
-		LOG_SYSERR << "sockets::getPeerAddr";
+		LOG_SYSERR << "xSocket::getPeerAddr";
 	}
 	return peeraddr;
 }
@@ -51,8 +51,8 @@ bool xSocket::isSelfConnect(int32_t sockfd)
 	struct sockaddr_in6 peeraddr = getPeerAddr(sockfd);
 	if (localaddr.sin6_family == AF_INET)
 	{
-		const struct sockaddr_in* laddr4 = reinterpret_cast<struct sockaddr_in*>(&localaddr);
-		const struct sockaddr_in* raddr4 = reinterpret_cast<struct sockaddr_in*>(&peeraddr);
+		const struct sockaddr_in *laddr4 = reinterpret_cast<struct sockaddr_in*>(&localaddr);
+		const struct sockaddr_in *raddr4 = reinterpret_cast<struct sockaddr_in*>(&peeraddr);
 		return laddr4->sin_port == raddr4->sin_port
 			&& laddr4->sin_addr.s_addr == raddr4->sin_addr.s_addr;
 	}
@@ -82,19 +82,55 @@ int32_t xSocket::getSocketError(int32_t sockfd)
 	}
 }
 
-bool xSocket::getpeerName(int32_t fd,const char *ip,int16_t port)
+void xSocket::toIpPort(char *buf,size_t size,const struct sockaddr *addr)
 {
-	struct sockaddr_in sa;
-	socklen_t len = sizeof(sa);
-	if(!getpeername(fd,(struct sockaddr *)&sa,&len))
+	toIp(buf,size, addr);
+	size_t end = ::strlen(buf);
+	const struct sockaddr_in* addr4 = (const struct sockaddr_in*)(addr);
+	uint16_t port = networkToHost16(addr4->sin_port);
+	assert(size > end);
+	snprintf(buf+end, size-end, ":%u", port);
+}
+
+void xSocket::toPort(uint16_t *port,const struct sockaddr *addr)
+{
+	const struct sockaddr_in *addr4 = (const struct sockaddr_in*)(addr);
+	*port = networkToHost16(addr4->sin_port);
+}
+
+void xSocket::toIp(char *buf,size_t size,const struct sockaddr *addr)
+{
+	if (addr->sa_family == AF_INET)
 	{
-		ip = inet_ntoa(sa.sin_addr);
-		port = ntohs(sa.sin_port);
-		return true;
+		assert(size >= INET_ADDRSTRLEN);
+		const struct sockaddr_in* addr4 = (const struct sockaddr_in*)(addr);
+		::inet_ntop(AF_INET,&addr4->sin_addr, buf, static_cast<socklen_t>(size));
 	}
-	else
+	else if (addr->sa_family == AF_INET6)
 	{
-		return false;
+		assert(size >= INET6_ADDRSTRLEN);
+		const struct sockaddr_in6* addr6 =  (const struct sockaddr_in6*)(addr);
+		::inet_ntop(AF_INET6,&addr6->sin6_addr, buf, static_cast<socklen_t>(size));
+	}
+}
+
+void xSocket::fromIpPort(const char *ip,uint16_t port,struct sockaddr_in *addr)
+{
+	addr->sin_family = AF_INET;
+	addr->sin_port = hostToNetwork16(port);
+	if (::inet_pton(AF_INET,ip,&addr->sin_addr) <= 0)
+	{
+		LOG_SYSERR << "xSocket::fromIpPort";
+	}
+}
+
+void xSocket::fromIpPort(const char *ip, uint16_t port,struct sockaddr_in6 *addr)
+{
+	addr->sin6_family = AF_INET6;
+	addr->sin6_port = hostToNetwork16(port);
+	if (::inet_pton(AF_INET6,ip,&addr->sin6_addr) <= 0)
+	{
+		LOG_SYSERR << "xSocket::fromIpPort";
 	}
 }
 
@@ -106,10 +142,8 @@ int32_t  xSocket::createSocket()
 bool xSocket::connectWaitReady(int32_t fd,int32_t msec)
 {
 	struct pollfd   wfd[1];
-
 	wfd[0].fd = fd;
 	wfd[0].events = POLLOUT;
-
 
 	if (errno == EINPROGRESS)
 	{
@@ -131,7 +165,7 @@ bool xSocket::connectWaitReady(int32_t fd,int32_t msec)
 int32_t  xSocket::connect(int32_t sockfd,const char *ip,int16_t port)
 {
 	struct sockaddr_in sin;
-	memset(&sin, 0, sizeof(sin));
+	memset(&sin,0,sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = inet_addr(ip);

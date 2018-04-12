@@ -78,8 +78,11 @@ public:
 	xBuffer *outputBuffer() { return &sendBuff; }
 	xBuffer *intputBuffer() { return &recvBuff; }
 
-	const std::string &getip() const { return ip; }
-	int16_t &getport() { return port; }
+	const char *getip() { return ip; }
+	uint16_t getport() { return port; }
+
+	void setip(const char *ip) { this->ip = ip; }
+	void setport(uint16_t port) { this->port = port; }
 
 private:
 	xEventLoop *loop;
@@ -98,6 +101,6 @@ private:
 	StateE state;
 	ChannelPtr channel;
 	std::any context;
-	std::string ip;
-	int16_t  port;
+	const char *ip;
+	uint16_t  port;
 };

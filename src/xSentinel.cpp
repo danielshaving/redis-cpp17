@@ -26,7 +26,6 @@ void xSentinel::connCallBack(const TcpConnectionPtr &conn)
 	if(conn->connected())
 	{
 		this->conn = conn;
-		socket.getpeerName(conn->getSockfd(),conn->getip().c_str(),conn->getport());
 		{
 			std::unique_lock <std::mutex> lck(redis->sentinelMutex);
 			redis->slaveConns.insert(std::make_pair(conn->getSockfd(),conn));

@@ -234,7 +234,15 @@ void xRedis::connCallBack(const TcpConnectionPtr &conn)
 	if(conn->connected())
 	{
 		//socket.setTcpNoDelay(conn->getSockfd(),true);
-		socket.getpeerName(conn->getSockfd(),conn->getip().c_str(),conn->getport());
+
+		char buf[64] = "";
+		uint16_t port = 0;
+		auto addr = socket.getPeerAddr(conn->getSockfd());
+		socket.toIp(buf,sizeof(buf),(const  struct sockaddr *)&addr);
+		socket.toPort(&port,(const struct sockaddr *)&addr);
+		conn->setip(buf);
+		conn->setport(port);
+
 		std::shared_ptr<xSession> session (new xSession(this,conn));
 		std::unique_lock <std::mutex> lck(mtx);
 #ifdef __DEBUG__
@@ -481,7 +489,7 @@ bool xRedis::infoCommand(const std::deque <rObj*> &obj,const SessionPtr &session
 			"# SlaveInfo \r\n"
 			"slave_ip:%s\r\n"
 			"slave_port:%d\r\n",
-			it.second->getip().c_str(),
+			it.second->getip(),
 			it.second->getport());
 		}
 	}
@@ -717,7 +725,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj,const SessionPtr &sess
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto &it : clusterConns)
 			{
-				if (port == it.second->getport() && !memcmp(it.second->getip().c_str(),obj[1]->ptr,sdslen(obj[1]->ptr)))
+				if (port == it.second->getport() && !memcmp(it.second->getip(),obj[1]->ptr,sdslen(obj[1]->ptr)))
 				{
 					LOG_WARN << "cluster  meet  already exists .";
 					object.addReplyErrorFormat(session->clientBuffer,"cluster  meet  already exists ");
@@ -747,7 +755,7 @@ bool xRedis::clusterCommand(const std::deque <rObj*> &obj,const SessionPtr &sess
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto &it : clusterConns)
 			{
-				if (port == it.second->getport() && !memcmp(it.second->getip().c_str(),obj[1]->ptr,sdslen(obj[1]->ptr)))
+				if (port == it.second->getport() && !memcmp(it.second->getip(),obj[1]->ptr,sdslen(obj[1]->ptr)))
 				{
 					return false;
 				}

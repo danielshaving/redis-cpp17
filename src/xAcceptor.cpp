@@ -21,10 +21,10 @@
  void xAcceptor::handleRead()
  {
 	loop->assertInLoopThread();
-	struct sockaddr_in address;
+	struct sockaddr_in6 address;
 	socklen_t len = sizeof(address);
 #ifdef __linux__
-	int32_t connfd = ::accept4(listenfd,sockaddr_cast(address),
+	int32_t connfd = ::accept4(listenfd,(struct sockaddr*)&address,
 	                         &len,SOCK_NONBLOCK | SOCK_CLOEXEC);
 #endif
 

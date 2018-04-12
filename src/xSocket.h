@@ -19,8 +19,13 @@ public:
 
 	struct sockaddr_in6 getPeerAddr(int32_t sockfd);
 	struct sockaddr_in6 getLocalAddr(int32_t sockfd);
+	void toIpPort(char *buf,size_t size,const struct sockaddr *addr);
+	void toIp(char *buf,size_t size,const struct sockaddr *addr);
+	void toPort(uint16_t *port,const struct sockaddr *addr);
 
-	bool getpeerName(int32_t sockfd,const char *ip,int16_t port);
+	void fromIpPort(const char *ip,uint16_t port,struct sockaddr_in *addr);
+	void fromIpPort(const char *ip,uint16_t port,struct sockaddr_in6 *addr);
+
 	int32_t createSocket();
 	int32_t connect(int32_t sockfd,const char *ip,int16_t port);
 

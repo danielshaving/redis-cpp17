@@ -169,7 +169,13 @@ void xReplication::connCallBack(const TcpConnectionPtr &conn)
 	if(conn->connected())
 	{
 		repliConn = conn;
-		socket.getpeerName(conn->getSockfd(),conn->getip().c_str(),conn->getport());
+		char buf[64] = "";
+		uint16_t port = 0;
+		auto addr = socket.getPeerAddr(conn->getSockfd());
+		socket.toIp(buf,sizeof(buf),(const  struct sockaddr *)&addr);
+		socket.toPort(&port,(const struct sockaddr *)&addr);
+		conn->setip(buf);
+		conn->setport(port);
 		redis->masterHost = conn->getip();
 		redis->masterPort = conn->getport();
 		redis->masterfd = conn->getSockfd();

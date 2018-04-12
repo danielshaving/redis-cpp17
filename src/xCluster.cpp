@@ -64,8 +64,8 @@ void xCluster::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 					redis->sessions[conn->getSockfd()] = session;
 				}
 
-
-				std::string ipPort = conn->getip() + "::" + std::to_string(conn->getport());
+				std::string ip = conn->getip();
+				std::string ipPort = ip + "::" + std::to_string(conn->getport());
 				
 				for(auto &it : slotSets)
 				{
@@ -342,7 +342,13 @@ void xCluster::connCallBack(const TcpConnectionPtr &conn)
 			condition.notify_one();
 		}
 
-		socket.getpeerName(conn->getSockfd(),conn->getip().c_str(),conn->getport());
+		char buf[64] = "";
+		uint16_t port = 0;
+		auto addr = socket.getPeerAddr(conn->getSockfd());
+		socket.toIp(buf,sizeof(buf),(const  struct sockaddr *)&addr);
+		socket.toPort(&port,(const struct sockaddr *)&addr);
+		conn->setip(buf);
+		conn->setport(port);
 
 		{
 			std::unique_lock <std::mutex> lck(redis->clusterMutex);
