@@ -109,12 +109,40 @@ public:
 	void clearPubSubState(int32_t sockfd);
 	void clearCommand(std::deque<rObj*> &commands);
 	size_t getDbsize();
+	size_t getExpireSize();
+	int64_t getExpire(rObj *obj);
 	void structureRedisProtocol(xBuffer &buffer,std::deque<rObj*> &robjs);
 	bool getClusterMap(rObj *command);
 	auto &getHandlerCommandMap() { return handlerCommands; }
 	rObj *createDumpPayload(rObj *dump);
 
 public:
+	auto *getEventLoop() { return &loop; }
+	auto *getObject() { return &object; }
+	auto *getRdb() { return &rdb; }
+	auto *getCluster() { return &clus; }
+	auto *getReplication() { return &repli; }
+
+	auto &getRedisShards() { return redisShards; }
+	auto &getSession() { return sessions; }
+	auto &getClusterConn() { return clusterConns; }
+	auto &getRepliTimer() { return repliTimers; }
+	auto &getSlaveConn() { return slaveConns; }
+	auto &getExpireTimer() { return expireTimers; }
+
+	auto &getClusterMutex() { return clusterMutex; }
+	auto &getSlaveMutex() { return slaveMutex; }
+	auto &getExpireMutex() { return expireMutex; }
+	auto &getMutex() { return mtx; }
+	auto &getForkMutex() { return forkMutex; }
+	auto &pubSubMutex() { return pubsubMutex; }
+
+	std::string getIp() { return ip; }
+	int16_t getPort() { return port; }
+
+public:
+	const static int32_t kShards = 4096;
+
 	typedef std::function<bool(const std::deque<rObj*>&,SessionPtr)> CommandFunc;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> StringMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal>,Hash,Equal> HashMap;
@@ -135,15 +163,15 @@ public:
 	std::unordered_set<rObj*,Hash,Equal> replyCommands;
 	std::unordered_set<rObj*,Hash,Equal> cluterCommands;
 	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommands;
-	std::unordered_map<int32_t,SessionPtr> sessions;
 
+private:
+	std::unordered_map<int32_t,SessionPtr> sessions;
 	std::unordered_map<int32_t,TcpConnectionPtr> slaveConns;
 	std::unordered_map<int32_t,TcpConnectionPtr> clusterConns;
 	std::unordered_map<int32_t,xTimer*> repliTimers;
 	std::unordered_map<rObj*,xTimer*,Hash,Equal> expireTimers;
 	std::unordered_map<rObj*,std::unordered_map<int32_t,TcpConnectionPtr>,Hash,Equal> pubsubs;
 
-	const static int32_t kShards = 4096;
 	struct RedisMapLock
 	{		
 		RedisMap redis;
@@ -152,7 +180,7 @@ public:
 		ListMap listMap;
 		ZsetMap zsetMap;
 		SetMap setMap;
-		mutable std::mutex mtx;
+		std::mutex mtx;
 	};
 
 	std::array<RedisMapLock,kShards> redisShards;
@@ -168,6 +196,7 @@ public:
 	std::mutex forkMutex;
 	std::mutex pubsubMutex;
 
+public:
 	std::atomic<bool> clusterEnabled;
 	std::atomic<bool> slaveEnabled;
 	std::atomic<bool> authEnabled;
@@ -179,8 +208,10 @@ public:
 	std::atomic<bool> forkEnabled;
 	std::atomic<int32_t> forkCondWaitCount;
 	std::atomic<int32_t> rdbChildPid;
-	int32_t slavefd;
 	std::atomic<int32_t> salveCount;
+
+	int32_t slavefd;
+	int32_t masterfd;
 
 	std::condition_variable expireCondition;
 	std::condition_variable forkCondition;
@@ -188,17 +219,10 @@ public:
 	xBuffer slaveCached;
 	xBuffer clusterMigratCached;
 	xBuffer clusterImportCached;
-	
-	xObjects object;
-	xReplication repli;
-	xSentinel senti;
-	xCluster clus;
-	xRdb rdb;
-	xSocket socket;
 
 	std::string ip;
 	std::string password;
- 	std::string masterHost;
+	std::string masterHost;
 	std::string ipPort;
 	std::string master;
 	std::string slave;
@@ -206,7 +230,17 @@ public:
 	int16_t port;
 	int16_t threadCount;
 	int32_t masterPort;
-	int32_t masterfd;
+
+	int32_t dbnum;
+
+private:
+	xObjects object;
+	xReplication repli;
+	xSentinel senti;
+	xCluster clus;
+	xRdb rdb;
+	xSocket socket;
+
 
 };
 

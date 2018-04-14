@@ -217,7 +217,7 @@
 
 /* The current RDB version. When the format changes in a way that is no longer
  * backward compatible this number gets incremented. */
-#define REDIS_RDB_VERSION 1
+#define REDIS_RDB_VERSION 9
 
 /* Defines related to the dump file format. To store 32 bits lengthgths for short
  * keys requires a lot of space, so we check the most significant 2 bits of
@@ -282,6 +282,13 @@
 #define REDIS_RDB_SORTSET 105
 
 #define REDIS_EXPIRE_TIME 109
+
+#define RDB_6BITLEN 0
+#define RDB_14BITLEN 1
+#define RDB_32BITLEN 0x80
+#define RDB_64BITLEN 0x81
+#define RDB_ENCVAL 3
+#define RDB_LENERR UINT64_MAX
 
 
 #define RDB_OPCODE_EOF 110
@@ -367,6 +374,44 @@
 #define CLUSTER_SYNC 0
 #define CLUSTER_SYNCING  1
 #define CLUSTER_SYNCED 2
+
+#define CONFIG_DEFAULT_SLOWLOG_LOG_SLOWER_THAN 10000
+#define CONFIG_DEFAULT_SLOWLOG_MAX_LEN 128
+#define CONFIG_DEFAULT_MAX_CLIENTS 10000
+#define CONFIG_AUTHPASS_MAX_LEN 512
+#define CONFIG_DEFAULT_SLAVE_PRIORITY 100
+#define CONFIG_DEFAULT_REPL_TIMEOUT 60
+#define CONFIG_DEFAULT_REPL_PING_SLAVE_PERIOD 10
+#define CONFIG_RUN_ID_SIZE 40
+
+
+#define OBJ_ENCODING_RAW 0     /* Raw representation */
+#define OBJ_ENCODING_INT 1     /* Encoded as integer */
+#define OBJ_ENCODING_HT 2      /* Encoded as hash table */
+#define OBJ_ENCODING_ZIPMAP 3  /* Encoded as zipmap */
+#define OBJ_ENCODING_LINKEDLIST 4 /* No longer used: old list encoding. */
+#define OBJ_ENCODING_ZIPLIST 5 /* Encoded as ziplist */
+#define OBJ_ENCODING_INTSET 6  /* Encoded as intset */
+#define OBJ_ENCODING_SKIPLIST 7  /* Encoded as skiplist */
+#define OBJ_ENCODING_EMBSTR 8  /* Embedded sds string encoding */
+#define OBJ_ENCODING_QUICKLIST 9 /* Encoded as linked list of ziplists */
+#define OBJ_ENCODING_STREAM 10 /* Encoded as a radix tree of listpacks */
+
+#define RDB_SAVE_NONE 0
+#define RDB_SAVE_AOF_PREAMBLE (1<<0)
+
+
+#define LONG_STR_SIZE      21          /* Bytes needed for long -> str + '\0' */
+
+#define RDB_OPCODE_MODULE_AUX 247   /* Module auxiliary data. */
+#define RDB_OPCODE_IDLE       248   /* LRU idle time. */
+#define RDB_OPCODE_FREQ       249   /* LFU frequency. */
+#define RDB_OPCODE_AUX        250   /* RDB aux field. */
+#define RDB_OPCODE_RESIZEDB   251   /* Hash table resize hint. */
+#define RDB_OPCODE_EXPIRETIME_MS 252    /* Expire time in milliseconds. */
+#define RDB_OPCODE_EXPIRETIME 253       /* Old expire time in seconds. */
+#define RDB_OPCODE_SELECTDB   254   /* DB number of the following keys. */
+#define RDB_OPCODE_EOF        255   /* End of the RDB file. */
 
 #define sdsEncodedObject(objptr) (objptr->encoding == REDIS_ENCODING_RAW || objptr->encoding == REDIS_ENCODING_EMBSTR)
 #define UNUSED(V) ((void) V)

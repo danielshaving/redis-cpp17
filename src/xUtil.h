@@ -7,9 +7,9 @@
 #define memrev32ifbe(p) memrev32(p)
 #define memrev64ifbe(p) memrev64(p)
 
-long long ustime(void);
-long long mstime(void);
-long long setime(void);
+int64_t ustime(void);
+int64_t mstime(void);
+int64_t setime(void);
 
 
 uint32_t dictGenHashFunction(const void *key, int32_t len) ;

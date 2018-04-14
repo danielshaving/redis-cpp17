@@ -22,16 +22,16 @@ size_t convert(char buf[], T value)
 	}
 
 	*p = '\0';
-	std::reverse(buf, p);
+	std::reverse(buf,p);
 
 	return p - buf;
 }
 
 
-size_t convertHex(char buf[], uintptr_t value)
+size_t convertHex(char buf[],uintptr_t value)
 {
 	uintptr_t i = value;
-	char* p = buf;
+	char *p = buf;
 
 	do
 	{
@@ -41,17 +41,17 @@ size_t convertHex(char buf[], uintptr_t value)
 	} while (i != 0);
 
 	*p = '\0';
-	std::reverse(buf, p);
+	std::reverse(buf,p);
 
 	return p - buf;
 }
 
-xAppendFile::xAppendFile(std::string  &filename)
-  : fp(::fopen(filename.c_str(), "ae")),  // 'e' for O_CLOEXEC
+xAppendFile::xAppendFile(std::string &filename)
+  : fp(::fopen(filename.c_str(),"ae")),  // 'e' for O_CLOEXEC
     writtenBytes(0)
 {
 	assert(fp);
-	::setbuffer(fp, buffer, sizeof buffer);
+	::setbuffer(fp,buffer,sizeof(buffer));
 }
 
 xAppendFile::~xAppendFile()
@@ -59,7 +59,7 @@ xAppendFile::~xAppendFile()
 	::fclose(fp);
 }
 
-void xAppendFile::append(const char *logline, const size_t len)
+void xAppendFile::append(const char *logline,const size_t len)
 {
 	size_t n = write(logline, len);
 	size_t remain = len - n;
@@ -87,14 +87,14 @@ void xAppendFile::flush()
 	::fflush(fp);
 }
 
-size_t xAppendFile::write(const char* logline, size_t len)
+size_t xAppendFile::write(const char* logline,size_t len)
 {
 #ifdef __linux__
-  return ::fwrite_unlocked(logline, 1, len, fp);
+  return ::fwrite_unlocked(logline,1,len,fp);
 #endif
 
 #ifdef __APPLE__
-  return ::fwrite(logline, 1, len, fp);
+  return ::fwrite(logline,1,len,fp);
 #endif
 }
 
@@ -213,14 +213,14 @@ buffers()
 void xAsyncLogging::append(const char *logline,int32_t len)
 {
 	std::unique_lock<std::mutex> lk(mutex);
-	if(currentBuffer->avail() > len)
+	if (currentBuffer->avail() > len)
 	{
 		currentBuffer->append(logline,len);
 	}
 	else
 	{
 		buffers.push_back(std::unique_ptr<Buffer>(currentBuffer.release()));
-		if(nextBuffer)
+		if (nextBuffer)
 		{
 			currentBuffer = std::move(nextBuffer);
 		}
@@ -254,16 +254,16 @@ void xAsyncLogging::threadFunc()
 		assert(buffersToWrite.empty());
 		{
 			std::unique_lock<std::mutex> lk(mutex);
-			if(buffers.empty())
+			if (buffers.empty())
 			{
 				condition.wait_for(lk,std::chrono::seconds(flushint32_terval));
 			}
 
 			buffers.push_back(std::unique_ptr<Buffer>(currentBuffer.release()));
-			currentBuffer  = std::move(newBuffer1);
+			currentBuffer = std::move(newBuffer1);
 			buffersToWrite.swap(buffers);
 
-			if(!nextBuffer)
+			if (!nextBuffer)
 			{
 				nextBuffer = std::move(newBuffer2);
 			}
@@ -271,7 +271,7 @@ void xAsyncLogging::threadFunc()
 
 		assert(!buffersToWrite.empty());
 
-		if(buffersToWrite.size() > 25)
+		if (buffersToWrite.size() > 25)
 		{
 
 		}

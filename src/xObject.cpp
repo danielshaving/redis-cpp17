@@ -545,9 +545,9 @@ void xObjects::createSharedObjects()
 	}
 
 	char buf[8];
-	int32_t len = ll2string(buf,sizeof(buf),redis->port);
+	int32_t len = ll2string(buf,sizeof(buf),redis->getPort());
 	rPort = createStringObject(buf,len);
-	rIp = createStringObject((char*)(redis->ip.c_str()),redis->ip.length());
+	rIp = createStringObject((char*)(redis->getIp().c_str()),redis->getIp().length());
 
 #define REGISTER_REDIS_COMMAND(msgId, func) \
     msgId->calHash(); \

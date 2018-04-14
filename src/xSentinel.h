@@ -8,7 +8,7 @@ class xRedis;
 class xSentinel : noncopyable
 {
 public:
-	xSentinel(xRedis * redis);
+	xSentinel(xRedis *redis);
 	~xSentinel();
 
 	void connectSentinel();

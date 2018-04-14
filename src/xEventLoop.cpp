@@ -36,7 +36,6 @@ xEventLoop::xEventLoop()
 	wakeupChannel->enableReading();
 }
 
-
 void xEventLoop::abortNotInLoopThread()
 {
 	assert(false);
@@ -97,11 +96,11 @@ void  xEventLoop::handleRead()
 {
 	uint64_t one = 1;
 #ifdef __linux__	
-	ssize_t n = ::read(wakeupFd, &one, sizeof one);
+	ssize_t n = ::read(wakeupFd,&one,sizeof one);
 #endif
 
 #ifdef __APPLE__
-	ssize_t n = ::read(wakeupFd[1], &one, sizeof one);
+	ssize_t n = ::read(wakeupFd[1],&one,sizeof one);
 #endif
 	if (n != sizeof one)
 	{

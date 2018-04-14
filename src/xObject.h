@@ -19,7 +19,7 @@ typedef struct redisObject
 		hash = dictGenHashFunction(ptr,sdslen(ptr));
 	}
 
-	bool operator <(const redisObject &r) const
+	bool operator < (const redisObject &r) const
 	{
 		int32_t cmp = memcmp(ptr,r.ptr,sdslen(ptr));
 		if( cmp < 0)
@@ -57,8 +57,8 @@ struct Equal
 {
 	bool operator()(const rObj *x,const rObj *y) const
 	{
-		 return ((sdslen(x->ptr) == sdslen(y->ptr)) &&
-            (memcmp(x->ptr, y->ptr, sdslen(y->ptr))== 0));
+		return ((sdslen(x->ptr) == sdslen(y->ptr)) &&
+				(memcmp(x->ptr, y->ptr, sdslen(y->ptr))== 0));
 	}
 };
 

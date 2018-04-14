@@ -27,8 +27,8 @@ void xSentinel::connCallBack(const TcpConnectionPtr &conn)
 	{
 		this->conn = conn;
 		{
-			std::unique_lock <std::mutex> lck(redis->sentinelMutex);
-			redis->slaveConns.insert(std::make_pair(conn->getSockfd(),conn));
+			std::unique_lock <std::mutex> lck(redis->getSlaveMutex());
+			redis->getSlaveConn().insert(std::make_pair(conn->getSockfd(),conn));
 		}
 		LOG_INFO<<"connect Sentinel suucess ";
 		
@@ -36,8 +36,8 @@ void xSentinel::connCallBack(const TcpConnectionPtr &conn)
 	else
 	{
 		{
-			std::unique_lock <std::mutex> lck(redis->sentinelMutex);
-			redis->slaveConns.erase(conn->getSockfd());
+			std::unique_lock <std::mutex> lck(redis->getSlaveMutex());
+			redis->getSlaveConn().erase(conn->getSockfd());
 		}
 		LOG_INFO<<"disconnect sentinel ";
 	}

@@ -35,12 +35,13 @@ void xCluster::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	while (buffer->readableBytes() > 0)
 	{
-		if (!memcmp(buffer->peek(), redis->object.ok->ptr, sdslen(redis->object.ok->ptr)))
+		if (!memcmp(buffer->peek(),redis->getObject()->ok->ptr,sdslen(redis->getObject()->ok->ptr)))
 		{
 			LOG_INFO<<"reply to cluster ok";
 
-			std::unique_lock <std::mutex> lck(redis->clusterMutex);
-			if (++replyCount == redis->clusterConns.size())
+			std::unique_lock <std::mutex> lck(redis->getClusterMutex());
+			auto &clusterConn = redis->getClusterConn();
+			if (++replyCount == clusterConn.size())
 			{
 				redis->clusterRepliMigratEnabled = false;
 				if (redis->clusterMigratCached.readableBytes() > 0)
@@ -57,11 +58,12 @@ void xCluster::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 
 				replyCount = 0;
 
-				for (auto &it : redis->clusterConns)
+				for (auto &it : clusterConn)
 				{
 					SessionPtr session(new xSession(redis,conn));
-					std::unique_lock <std::mutex> lck(redis->mtx);
-					redis->sessions[conn->getSockfd()] = session;
+					std::unique_lock <std::mutex> lck(redis->getMutex());
+					auto &sessions = redis->getSession();
+					sessions[conn->getSockfd()] = session;
 				}
 
 				std::string ip = conn->getip();
@@ -82,7 +84,8 @@ void xCluster::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 
 				}
 
-				for(auto &it : redis->redisShards)
+				auto &redisShards = redis->getRedisShards();
+				for(auto &it : redisShards)
 				{
 					auto &mu = it.mtx;
 					auto &map = it.redis;
@@ -107,7 +110,7 @@ void xCluster::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 			LOG_INFO<<"cluster migrate failure "<<conn->getip()<<" "<<conn->getport();
 			break;
 		}
-		buffer->retrieve(sdslen(redis->object.ok->ptr));
+		buffer->retrieve(sdslen(redis->getObject()->ok->ptr));
 	}
 }
 
@@ -115,24 +118,24 @@ void xCluster::clusterRedirectClient(const SessionPtr &session,clusterNode *n,in
 {
 	if (errCode == CLUSTER_REDIR_CROSS_SLOT)
 	{
-		redis->object.addReplySds(session->clientBuffer, sdsnew("-CROSSSLOT Keys in request don't hash to the same slot\r\n"));
+		redis->getObject()->addReplySds(session->clientBuffer, sdsnew("-CROSSSLOT Keys in request don't hash to the same slot\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_UNSTABLE)
 	{
-		redis->object.addReplySds(session->clientBuffer,sdsnew("-TRYAGAIN Multiple keys request during rehashing of slot\r\n"));
+		redis->getObject()->addReplySds(session->clientBuffer,sdsnew("-TRYAGAIN Multiple keys request during rehashing of slot\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_DOWN_STATE)
 	{
-		redis->object.addReplySds(session->clientBuffer,sdsnew("-CLUSTERDOWN The cluster is down\r\n"));
+		redis->getObject()->addReplySds(session->clientBuffer,sdsnew("-CLUSTERDOWN The cluster is down\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_DOWN_UNBOUND)
 	{
-		redis->object.addReplySds(session->clientBuffer,sdsnew("-CLUSTERDOWN Hash slot not served\r\n"));
+		redis->getObject()->addReplySds(session->clientBuffer,sdsnew("-CLUSTERDOWN Hash slot not served\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_MOVED ||
 		errCode == CLUSTER_REDIR_ASK)
 	{
-		redis->object.addReplySds(session->clientBuffer,sdscatprintf(sdsempty(),
+		redis->getObject()->addReplySds(session->clientBuffer,sdscatprintf(sdsempty(),
 			"-%s %d %s:%d\r\n",
 			(errCode == CLUSTER_REDIR_ASK) ? "ASK" : "MOVED",
 			hashSlot, n->ip.c_str(), n->port));
@@ -146,7 +149,8 @@ void xCluster::clusterRedirectClient(const SessionPtr &session,clusterNode *n,in
 
 void xCluster::syncClusterSlot()
 {
-    for (auto &it : redis->clusterConns)
+	auto clusterConn = redis->getClusterConn();
+    for (auto &it : clusterConn)
     {
         redis->structureRedisProtocol(buffer, commands);
         it.second->send(&buffer);
@@ -182,10 +186,10 @@ int32_t xCluster::getSlotOrReply(const SessionPtr &session,rObj *o)
 {
 	int64_t slot;
 
-	if (redis->object.getLongLongFromObject(o,&slot) != REDIS_OK ||
+	if (redis->getObject()->getLongLongFromObject(o,&slot) != REDIS_OK ||
 		slot < 0 || slot >= CLUSTER_SLOTS)
 	{
-		redis->object.addReplyError(session->clientBuffer, "Invalid or out of range slot");
+		redis->getObject()->addReplyError(session->clientBuffer, "Invalid or out of range slot");
 		return  REDIS_ERR;
 	}
 	return (int32_t)slot;
@@ -193,14 +197,14 @@ int32_t xCluster::getSlotOrReply(const SessionPtr &session,rObj *o)
 
 void xCluster::structureProtocolSetCluster(const std::string &ip,int16_t port,xBuffer &buffer,const TcpConnectionPtr &conn)
 {
-    commands.push_back(redis->object.cluster);
-	commands.push_back(redis->object.connect);
+    commands.push_back(redis->getObject()->cluster);
+	commands.push_back(redis->getObject()->connect);
 
-	char buf[8];
+	char buf[32];
 	int32_t len = ll2string(buf,sizeof(buf),port);
-	commands.push_back(redis->object.createStringObject((char*)(ip.c_str()),ip.length()));
-	commands.push_back(redis->object.createStringObject(buf, len));
-	redis->structureRedisProtocol(buffer, commands);
+	commands.push_back(redis->getObject()->createStringObject((char*)(ip.c_str()),ip.length()));
+	commands.push_back(redis->getObject()->createStringObject(buf,len));
+	redis->structureRedisProtocol(buffer,commands);
 	conn->send(&buffer);
 	redis->clearCommand(commands);
 	clear();
@@ -208,9 +212,10 @@ void xCluster::structureProtocolSetCluster(const std::string &ip,int16_t port,xB
 
 void xCluster::delClusterImport(std::deque<rObj*> &robj)
 {
-	for (auto &it : redis->clusterConns)
+	auto &clusterConn = redis->getClusterConn();
+	for (auto &it : clusterConn)
 	{
-		redis->structureRedisProtocol(buffer, robj);
+		redis->structureRedisProtocol(buffer,robj);
 		it.second->send(&buffer);
 		clear();
 	}
@@ -240,21 +245,22 @@ void xCluster::clear()
 	buffer.retrieveAll();
 }
 
-bool  xCluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr &session,
+bool xCluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr &session,
 	const std::string &ip,int16_t port,int8_t copy,int8_t replace,int32_t numKeys,int32_t firstKey)
 {
 	clear();
 
-	TcpConnectionPtr clusterConn;
+	TcpConnectionPtr conn;
 	int8_t count;
 
 	{
-		std::unique_lock <std::mutex> lck(redis->clusterMutex);
-		for (auto &it : redis->clusterConns)
+		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
+		auto &clusterConn = redis->getClusterConn();
+		for (auto &it : clusterConn)
 		{
 			if (it.second->getip() == ip && it.second->getport() == port)
 			{
-				clusterConn = it.second;
+				conn = it.second;
 				count++;
 			}
 		}
@@ -281,20 +287,20 @@ bool  xCluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr 
 
 	if (copy == 0)
 	{
-		std::unique_lock <std::mutex> lck(redis->clusterMutex);
+		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 		for (int j = 0; j < numKeys; j++)
 		{
-			clusterDelKeys.push_back(redis->object.createStringObject(obj[firstKey + j]->ptr,sdslen(obj[firstKey + j]->ptr)));
+			clusterDelKeys.push_back(redis->getObject()->createStringObject(obj[firstKey + j]->ptr,sdslen(obj[firstKey + j]->ptr)));
 		}
 	}
 
 	if (!strcasecmp(obj[2]->ptr, ""))
 	{
-		std::unique_lock <std::mutex> lck(redis->clusterMutex);
+		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 		for (auto &it : clusterDelKeys)
 		{
 			char *key = it->ptr;
-			int32_t hashslot = redis->clus.keyHashSlot(key,sdslen(key));
+			int32_t hashslot = keyHashSlot(key,sdslen(key));
 			auto iter = slotSets.find(hashslot);
 			if (iter == slotSets.end())
 			{
@@ -307,14 +313,14 @@ bool  xCluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr 
 				return false;
 			}
 
-			clusterConn->sendPipe(dump->ptr);
+			conn->sendPipe(dump->ptr);
 		}
 	}
 	else
 	{
-		std::unique_lock <std::mutex> lck(redis->clusterMutex);
+		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 		char *key = obj[2]->ptr;
-		int32_t hashslot = redis->clus.keyHashSlot(key,sdslen(key));
+		int32_t hashslot = keyHashSlot(key,sdslen(key));
 		auto iter = slotSets.find(hashslot);
 		if (iter == slotSets.end())
 		{
@@ -326,7 +332,7 @@ bool  xCluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr 
 		{
 			return false;
 		}
-		clusterConn->sendPipe(dump->ptr);
+		conn->sendPipe(dump->ptr);
 	}
 	LOG_INFO<<"cluster send  success";
 }
@@ -338,33 +344,35 @@ void xCluster::connCallBack(const TcpConnectionPtr &conn)
 		isConnect = true;
 		state = false;
 		{
-			std::unique_lock <std::mutex> lck(mtx);
+			std::unique_lock <std::mutex> lck(redis->getMutex());
 			condition.notify_one();
 		}
 
 		char buf[64] = "";
 		uint16_t port = 0;
 		auto addr = socket.getPeerAddr(conn->getSockfd());
-		socket.toIp(buf,sizeof(buf),(const  struct sockaddr *)&addr);
+		socket.toIp(buf,sizeof(buf),(const struct sockaddr *)&addr);
 		socket.toPort(&port,(const struct sockaddr *)&addr);
 		conn->setip(buf);
 		conn->setport(port);
 
 		{
-			std::unique_lock <std::mutex> lck(redis->clusterMutex);
-			for (auto &it : redis->clusterConns)
+			std::unique_lock <std::mutex> lck(redis->getClusterMutex());
+			auto &clusterConn = redis->getClusterConn();
+			for (auto &it : clusterConn)
 			{
 				structureProtocolSetCluster(it.second->getip(),it.second->getport(),buffer,conn);
 			}
 
-			structureProtocolSetCluster(redis->ip,redis->port,buffer,conn);
-			redis->clusterConns.insert(std::make_pair(conn->getSockfd(), conn));
+			structureProtocolSetCluster(redis->getIp(),redis->getPort(),buffer,conn);
+			redis->getClusterConn().insert(std::make_pair(conn->getSockfd(), conn));
 		}
 
-		SessionPtr  session(new xSession(redis, conn));
+		SessionPtr session(new xSession(redis,conn));
 		{
-			std::unique_lock <std::mutex> lck(redis->mtx);
-			redis->sessions[conn->getSockfd()] = session;
+			std::unique_lock <std::mutex> lck(redis->getMutex());
+			auto &sessions = redis->getSession();
+			sessions[conn->getSockfd()] = session;
 		}
 
 		LOG_INFO <<"connect cluster success "<<"ip:"<<conn->getip()<<" port:"<<conn->getport();
@@ -373,13 +381,13 @@ void xCluster::connCallBack(const TcpConnectionPtr &conn)
 	else
 	{
 		{
-			std::unique_lock <std::mutex> lck(redis->clusterMutex);
-			redis->clusterConns.erase(conn->getSockfd());
+			std::unique_lock <std::mutex> lck(redis->getClusterMutex());
+			redis->getClusterConn().erase(conn->getSockfd());
 			for (auto it = clusterConns.begin(); it != clusterConns.end(); ++it)
 			{
 				if ((*it)->getConnection()->getip() == conn->getip() && (*it)->getConnection()->getport() == conn->getport())
 				{
-					clusterConns.erase(it);
+					it = clusterConns.erase(it);
 					break;
 				}
 			} 
@@ -393,7 +401,7 @@ void xCluster::connCallBack(const TcpConnectionPtr &conn)
 }
 
 
-clusterNode  *xCluster::checkClusterSlot(int32_t slot)
+clusterNode *xCluster::checkClusterSlot(int32_t slot)
 {
 	auto it = clusterSlotNodes.find(slot);
 	if(it == clusterSlotNodes.end())
@@ -415,19 +423,19 @@ void xCluster::eraseImportingSlot(const std::string &name)
 
 void xCluster::addSlotDeques(rObj *slot,const std::string &name)
 {
-	commands.push_back(redis->object.cluster);
-	commands.push_back(redis->object.addsync);
-	commands.push_back(redis->object.createStringObject(slot->ptr,sdslen(slot->ptr)));
-	commands.push_back(redis->object.rIp);
-	commands.push_back(redis->object.rPort);
-	commands.push_back(redis->object.createStringObject((char*)(name.c_str()),name.length()));
+	commands.push_back(redis->getObject()->cluster);
+	commands.push_back(redis->getObject()->addsync);
+	commands.push_back(redis->getObject()->createStringObject(slot->ptr,sdslen(slot->ptr)));
+	commands.push_back(redis->getObject()->rIp);
+	commands.push_back(redis->getObject()->rPort);
+	commands.push_back(redis->getObject()->createStringObject((char*)(name.c_str()),name.length()));
 }
 
 void xCluster::delSlotDeques(rObj *obj,int32_t slot)
 {
-	commands.push_back(redis->object.cluster);
-	commands.push_back(redis->object.delsync);
-	commands.push_back(redis->object.createStringObject(obj->ptr,sdslen(obj->ptr)));
+	commands.push_back(redis->getObject()->cluster);
+	commands.push_back(redis->getObject()->delsync);
+	commands.push_back(redis->getObject()->createStringObject(obj->ptr,sdslen(obj->ptr)));
 	clusterSlotNodes.erase(slot);
 }
 
@@ -435,7 +443,7 @@ sds xCluster::showClusterNodes()
 {
 	sds ci = sdsempty(), ni = sdsempty();
 	{
-		std::unique_lock <std::mutex> lck(redis->clusterMutex);
+		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 		for (auto &it : clusterSlotNodes)
 		{
 			ni = sdscatprintf(sdsempty(),"%s %s:%d slot:",it.second.name.c_str(),it.second.ip.c_str(),it.second.port);
@@ -455,7 +463,8 @@ sds xCluster::showClusterNodes()
 void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys,int32_t count)
 {
 	int32_t j = 0;
-	for(auto &it : redis->redisShards)
+	auto &redisShards = redis->getRedisShards();
+	for(auto &it : redisShards)
 	{
 		auto &mu = it.mtx;
 		auto &map = it.redis;
@@ -471,14 +480,12 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys,int32_t co
 			if(iter->type == OBJ_STRING)
 			{
 				auto iterr = stringMap.find(iter);
-			#ifdef __DEBUG__
 				assert(iterr != stringMap.end());
 				assert(iterr->first->type == iter->type);
-			#endif
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(redis->object.createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(redis->getObject()->createRawStringObject(iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -488,14 +495,12 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys,int32_t co
 			else if(iter->type == OBJ_HASH)
 			{
 				auto iterr = hashMap.find(iter);
-			#ifdef __DEBUG__
 				assert(iterr != hashMap.end());
 				assert(iterr->first->type == iter->type);
-			#endif
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(redis->object.createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(redis->getObject()->createRawStringObject(iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -505,14 +510,12 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys,int32_t co
 			else if(iter->type == OBJ_LIST)
 			{
 				auto iterr = listMap.find(iter);
-			#ifdef __DEBUG__
 				assert(iterr != listMap.end());
 				assert(iterr->first->type == iter->type);
-			#endif
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(redis->object.createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(redis->getObject()->createRawStringObject(iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -522,14 +525,12 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys,int32_t co
 			else if(iter->type == OBJ_ZSET)
 			{
 				auto iterr = zsetMap.find(iter);
-			#ifdef __DEBUG__
 				assert(iterr != zsetMap.end());
 				assert(iterr->first->type == iter->type);
-			#endif
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(redis->object.createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(redis->getObject()->createRawStringObject(iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -539,14 +540,12 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys,int32_t co
 			else if(iter->type == OBJ_SET)
 			{
 				auto iterr = setMap.find(iter);
-			#ifdef __DEBUG__
 				assert(iterr != setMap.end());
 				assert(iterr->first->type == iter->type);
-			#endif
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(redis->object.createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(redis->getObject()->createRawStringObject(iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -556,9 +555,7 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys,int32_t co
 			else
 			{
 				LOG_ERROR<<"unknown type error "<<iter->type;
-			#ifdef __DEBUG__
 				assert(false);
-			#endif
 			}
 		}
 	}
@@ -585,7 +582,7 @@ void xCluster::eraseClusterNode(const std::string &ip,int16_t port)
 	}
 }
 
-bool  xCluster::connSetCluster(const char *ip,int16_t port)
+bool xCluster::connSetCluster(const char *ip,int16_t port)
 {
 	TcpClientPtr client(new xTcpClient(loop,ip,port,this));
 	client->setConnectionCallback(std::bind(&xCluster::connCallBack,this,std::placeholders::_1));

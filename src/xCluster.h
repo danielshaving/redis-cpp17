@@ -77,7 +77,6 @@ private:
 	std::vector<rObj*> clusterDelKeys;
 	std::vector<rObj*> clusterDelCopys;
 	std::condition_variable condition;
-	std::mutex mtx;
 	std::atomic<int32_t> replyCount;
 	std::deque<rObj*> commands;
 	std::unordered_set<int32_t> slotSets;

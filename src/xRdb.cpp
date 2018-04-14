@@ -1,22 +1,6 @@
 #include "xRdb.h"
 #include "xRedis.h"
 
-xRio::xRio()
-{
-
-}
-
-xRio::~xRio()
-{
-
-}
-
-xRdb::xRdb(xRedis *redis)
-:redis(redis)
-{
-
-}
-
 /* Returns 1 or 0 for success/failure. */
 size_t xRdb::rioBufferWrite(xRio *r,const void *buf,size_t len)
 {
@@ -159,7 +143,7 @@ void xRdb::rioGenericUpdateChecksum(xRio *r,const void *buf,size_t len)
 	r->cksum = crc64(r->cksum,(const unsigned char*)buf,len);
 }
 
-void xRdb::rioInitWithBuffer(xRio *r, sds s)
+void xRdb::rioInitWithBuffer(xRio *r,sds s)
 {
 	r->readFuc = std::bind(&xRdb::rioBufferRead,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
 	r->writeFuc = std::bind(&xRdb::rioBufferWrite,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
@@ -169,7 +153,7 @@ void xRdb::rioInitWithBuffer(xRio *r, sds s)
 	r->io.buffer.pos = 0;
 }
 
-void xRdb::rioInitWithFile(xRio *r, FILE *fp)
+void xRdb::rioInitWithFile(xRio *r,FILE *fp)
 {
 	r->readFuc = std::bind(&xRdb::rioFileRead,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
 	r->writeFuc = std::bind(&xRdb::rioFileWrite,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
@@ -178,7 +162,7 @@ void xRdb::rioInitWithFile(xRio *r, FILE *fp)
 	r->updateFuc = std::bind(&xRdb::rioGenericUpdateChecksum,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
 	r->cksum = 0;
 	r->processedBytes = 0;
-	r->maxProcessingChunk = 1024 *  64;
+	r->maxProcessingChunk = 1024 * 64;
 	r->io.file.fp = fp;
 	r->io.file.buffered = 0;
 	r->io.file.autosync = 0;
@@ -214,7 +198,7 @@ int32_t xRdb::rdbEncodeInteger(int64_t value,uint8_t *enc)
    	}
 }
 
-int32_t xRdb::rdbTryIntegerEncoding(char *s, size_t len,uint8_t *enc)
+int32_t xRdb::rdbTryIntegerEncoding(char *s,size_t len,uint8_t *enc)
 {
 	int64_t value;
 	char *endptr,buf[32];
@@ -281,7 +265,7 @@ uint32_t xRdb::rdbLoadLen(xRio *rdb, int32_t *isencoded)
 	
 }
 
-rObj * xRdb::rdbLoadIntegerObject(xRio *rdb, int32_t enctype, int32_t encode)
+rObj *xRdb::rdbLoadIntegerObject(xRio *rdb,int32_t enctype,int32_t encode)
 {
 	unsigned char enc[4];
 	int64_t val;
@@ -316,20 +300,20 @@ rObj * xRdb::rdbLoadIntegerObject(xRio *rdb, int32_t enctype, int32_t encode)
 	}
 
 	if (encode)
-        return redis->object.createStringObjectFromLongLong(val);
+        return redis->getObject()->createStringObjectFromLongLong(val);
     else
-        return redis->object.createObject(REDIS_STRING,sdsfromlonglong(val));
+        return redis->getObject()->createObject(REDIS_STRING,sdsfromlonglong(val));
 }
 
-rObj * xRdb::rdbLoadEncodedStringObject(xRio *rdb)
+rObj *xRdb::rdbLoadEncodedStringObject(xRio *rdb)
 {
 	return rdbGenericLoadStringObject(rdb,1);
 }
 
-rObj * xRdb::rdbLoadLzfStringObject(xRio *rdb)
+rObj *xRdb::rdbLoadLzfStringObject(xRio *rdb)
 {
-    rObj * obj = nullptr;
-	uint32_t len, clen;
+    rObj *obj = nullptr;
+	uint32_t len,clen;
 	unsigned char *c = nullptr;
 	sds val = nullptr;
 
@@ -340,7 +324,7 @@ rObj * xRdb::rdbLoadLzfStringObject(xRio *rdb)
 	if (rioRead(rdb, c, clen) == 0) goto err;
 	if (lzf_decompress(c, clen, val, len) == 0) goto err;
 
-	obj = redis->object.createStringObject(val, len);
+	obj = redis->getObject()->createStringObject(val,len);
 	sdsfree(val);
 	zfree(c);
 	return obj;
@@ -351,13 +335,13 @@ rObj * xRdb::rdbLoadLzfStringObject(xRio *rdb)
 }
 
 
-rObj * xRdb::rdbGenericLoadStringObject(xRio *rdb, int32_t encode)
+rObj *xRdb::rdbGenericLoadStringObject(xRio *rdb,int32_t encode)
 {
 	int32_t isencoded;
 	uint32_t len;
 	rObj *o;
 
-	len = rdbLoadLen(rdb, &isencoded);
+	len = rdbLoadLen(rdb,&isencoded);
 	if (isencoded)
 	{
 		switch (len)
@@ -379,8 +363,8 @@ rObj * xRdb::rdbGenericLoadStringObject(xRio *rdb, int32_t encode)
 		return nullptr;
 	}
 
-	o = redis->object.createStringObject(nullptr, len);
-	if (len && rioRead(rdb, (void*)o->ptr, len) == 0)
+	o = redis->getObject()->createStringObject(nullptr,len);
+	if (len && rioRead(rdb,(void*)o->ptr,len) == 0)
 	{
 		return nullptr;
 	}
@@ -388,38 +372,11 @@ rObj * xRdb::rdbGenericLoadStringObject(xRio *rdb, int32_t encode)
 	return o;
 }
 
-rObj * xRdb::rdbLoadStringObject(xRio *rdb)
+rObj *xRdb::rdbLoadStringObject(xRio *rdb)
 {
 	return rdbGenericLoadStringObject(rdb, 0);
 }
 
-int32_t xRdb::rdbSaveExpre(xRio *rdb)
-{
-	if (blockEnabled)
-	{
-		redis->expireMutex.lock();
-	}
-
-	for (auto &it : redis->expireTimers)
-	{
-		if (rdbSaveKey(rdb, it.first) == -1)
-		{
-			return REDIS_ERR;
-		}
-
-		if (rdbSaveMillisecondTime(rdb, it.second->getExpiration().getMicroSecondsSinceEpoch()) == -1)
-		{
-			return REDIS_ERR;
-		}
-	}
-
-	if (blockEnabled)
-	{
-		redis->expireMutex.unlock();
-	}
-
-	return REDIS_OK;
-}
 
 int32_t xRdb::rdbSaveBinaryDoubleValue(xRio *rdb, double val)
 {
@@ -429,8 +386,11 @@ int32_t xRdb::rdbSaveBinaryDoubleValue(xRio *rdb, double val)
 
 int32_t xRdb::rdbSaveStruct(xRio *rdb)
 {
+	int64_t now = mstime();
+
 	size_t n = 0;
-	for (auto &it : redis->redisShards)
+	auto &redisShards = redis->getRedisShards();
+	for (auto &it : redisShards)
 	{
 		auto &map = it.redis;
 		auto &mu = it.mtx;
@@ -440,179 +400,108 @@ int32_t xRdb::rdbSaveStruct(xRio *rdb)
 		auto &zsetMap = it.zsetMap;
 		auto &setMap =it.setMap;
 		
-		if (blockEnabled)
-		{
-			mu.lock();
-		}
-	
+		if (blockEnabled) mu.lock();
+
 		for (auto &iter : map)
 		{
+			int64_t expire = redis->getExpire(iter);
 			if (iter->type == OBJ_STRING)
 			{
 				auto iterr = stringMap.find(iter);
-#ifdef __DEBUG__
 				assert(iterr != stringMap.end());
 				assert(iterr->first->type == OBJ_STRING);
-#endif
 
-				if (rdbSaveKeyValuePair(rdb, iterr->first, iterr->second) == -1)
-				{
-					return REDIS_ERR;
-				}
+				if (rdbSaveKeyValuePair(rdb,iterr->first,iterr->second,expire,now) == -1) return -1;
 			}
 			else if (iter->type == OBJ_LIST)
 			{
 				auto iterr = listMap.find(iter);
-#ifdef __DEBUG__
 				assert(iterr != listMap.end());
 				assert(iterr->first->type == OBJ_LIST);
-#endif
-				
-				if (rdbSaveKey(rdb, iterr->first) == -1)
-				{
-					return REDIS_ERR;
-				}
 
-				if (rdbSaveLen(rdb, iterr->second.size()) == -1)
-				{
-					return REDIS_ERR;
-				}
+				if (rdbSaveKey(rdb,iterr->first) == -1) return -1;
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
 
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveValue(rdb, iterrr) == -1)
-					{
-						return REDIS_ERR;
-					}
+					if (rdbSaveValue(rdb,iterrr) == -1) return -1;
 				}
 
 			}
 			else if (iter->type == OBJ_HASH)
 			{
 				auto iterr = hashMap.find(iter);
-#ifdef __DEBUG__
 				assert(iterr != hashMap.end());
-				assert(iterr->first->type == OBJ_HASH);
-#endif
 
-				if (rdbSaveKey(rdb,iterr->first) == -1)
-				{
-				 	return REDIS_ERR;
-				}
-				
-				if (rdbSaveLen(rdb,iterr->second.size()) == -1)
-				{
-					return REDIS_ERR;
-				}
+				assert(iterr->first->type == OBJ_HASH);
+				if (rdbSaveKey(rdb,iterr->first) == -1) return -1;
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
 
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second) == -1)
-					{
-						return REDIS_ERR;
-					}
+					if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second,expire,now) == -1) return -1;
 				}
 			}
 			else if (iter->type == OBJ_ZSET)
 			{
 				auto iterr = zsetMap.find(iter);
-#ifdef __DEBUG__
 				assert(iterr != zsetMap.end());
 				assert(iterr->first->type == OBJ_ZSET);
 				assert(iterr->second.keyMap.size() == iterr->second.sortMap.size());
-#endif
-				
-				if (rdbSaveKey(rdb,iterr->first) == -1)
-				{
-				 	return REDIS_ERR;
-				}
-				
-				if (rdbSaveLen(rdb,iterr->second.keyMap.size()) == -1)
-				{
-					return REDIS_ERR;
-				}
-
+				if (rdbSaveKey(rdb,iterr->first) == -1) return -1;
+				if (rdbSaveLen(rdb,iterr->second.keyMap.size()) == -1) return -1;
+			
 				for (auto &iterrr : iterr->second.keyMap)
 				{
-					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1)
-					{
-						return  REDIS_ERR;
-					}
-
-					if (rdbSaveValue(rdb, iterrr.first) == -1)
-					{
-						return REDIS_ERR;
-					}
+					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1) return -1;
+					if (rdbSaveValue(rdb, iterrr.first) == -1) return -1;
 				}
 						
 			}
 			else if (iter->type == OBJ_SET)
 			{
 				auto iterr = setMap.find(iter);
-#ifdef __DEBUG__
 				assert(iterr != setMap.end());
 				assert(iterr->first->type == OBJ_SET);
-#endif	
-				if (rdbSaveKey(rdb,iterr->first) == -1)
-				{
-				 	return REDIS_ERR;
-				}
-				
-				if (rdbSaveLen(rdb,iterr->second.size()) == -1)
-				{
-					return REDIS_ERR;
-				}
 
+				if (rdbSaveKey(rdb,iterr->first) == -1) return -1;
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
+	
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveValue(rdb, iterrr) == -1)
-					{
-						return REDIS_ERR;
-					}
+					if (rdbSaveValue(rdb, iterrr) == -1) return -1;
 				}
 				
 			}
 			else
 			{
-#ifdef __DEBUG__
 				LOG_ERROR<<"unkown key type "<<iter->type;
 				assert(false);
-#endif
 			}
 		}
 		
-		if (blockEnabled)
-		{
-			mu.unlock();
-		}
+		if (blockEnabled) mu.unlock();
 	}
 
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbLoadExpire(xRio *rdb,int32_t type)
 {
 	rObj *key;
 	int64_t expire;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr)
-	{
-		return  REDIS_ERR;
-	}
-
-	if ((expire = rdbLoadMillisecondTime(rdb)) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
+	if ((expire = rdbLoadMillisecondTime(rdb)) == -1) return -1;
 
 	int64_t curExpire = xTimeStamp::now().getMicroSecondsSinceEpoch();
 	if (curExpire > expire)
 	{
 		key->calHash();
 		key->type = OBJ_EXPIRE;
-		std::unique_lock <std::mutex> lck(redis->expireMutex);
-		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000,false,
+		std::unique_lock <std::mutex> lck(redis->getExpireMutex());
+		auto timer = redis->getEventLoop()->runAfter((expire - curExpire) / 1000000,false,
 			std::bind(&xRedis::setExpireTimeOut,redis,key));
-		redis->expireTimers.insert(std::make_pair(key,timer));
+		redis->getExpireTimer().insert(std::make_pair(key,timer));
 	}
 	else
 	{
@@ -620,66 +509,53 @@ int32_t xRdb::rdbLoadExpire(xRio *rdb,int32_t type)
 		zfree(key);
 	}
 	
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbLoadSet(xRio *rdb,int32_t type)
 {
 	std::unordered_set<rObj*,Hash,Equal> set;
 	rObj *key;
-	int32_t  len;
+	int32_t len;
 
-	if ((key = rdbLoadStringObject(rdb)) == nullptr)
-	{
-		return REDIS_ERR;
-	}
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
 
 	key->type = OBJ_ZSET;
 	key->calHash();
 
-	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if ((len = rdbLoadLen(rdb, nullptr)) == -1) return -1;
 
 	set.reserve(len);
 	
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
-		if ((val = rdbLoadObject(type, rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
+		if ((val = rdbLoadObject(type, rdb)) == nullptr) return -1;
 
 		val->type = OBJ_ZSET;
 		val->calHash();
-		
-#ifdef __DEBUG__
+
 		auto it = set.find(val);
 		assert(it != set.end());
-#endif
 		set.insert(val);
 	}
 
-#ifdef __DEBUG__
 	assert(!set.empty());
-#endif
+
+	auto &redisShards = redis->getRedisShards();
 
 	size_t index = key->hash % redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &setMap = redis->redisShards[index].setMap;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &setMap = redisShards[index].setMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = setMap.find(key);
-#ifdef __DEBUG__
 		assert(it == setMap.end());
-#endif
 		setMap.insert(std::make_pair(key,std::move(set)));
 	}
 
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbLoadZset(xRio *rdb,int32_t type)
@@ -687,34 +563,21 @@ int32_t xRdb::rdbLoadZset(xRio *rdb,int32_t type)
 	xRedis::SortSet sortSet;
 	
 	rObj *key;
-	int32_t  rdbver;
-	int32_t  len;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr)
-	{
-		return REDIS_ERR;
-	}
+	int32_t rdbver;
+	int32_t len;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
 
 	key->type = OBJ_ZSET;
 	key->calHash();
 
-	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
 
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
 		double socre;
-		if (rdbLoadBinaryDoubleValue(rdb,&socre) == -1)
-		{
-			return REDIS_ERR;
-		}
-		
-		if ((val = rdbLoadObject(type, rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
+		if (rdbLoadBinaryDoubleValue(rdb,&socre) == -1) return -1;
+		if ((val = rdbLoadObject(type,rdb)) == nullptr) return -1;
 
 		val->type = OBJ_ZSET;
 		val->calHash();
@@ -722,97 +585,77 @@ int32_t xRdb::rdbLoadZset(xRio *rdb,int32_t type)
 		sortSet.keyMap.insert(std::make_pair(val,socre));
 	}
 	
-#ifdef __DEBUG__
 	assert(!sortSet.sortMap.empty());
 	assert(!sortSet.keyMap.empty());
-#endif 
+
+	auto &redisShards = redis->getRedisShards();
 
 	size_t index = key->hash % redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &zsetMap = redis->redisShards[index].zsetMap;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &zsetMap = redisShards[index].zsetMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = zsetMap.find(key);
-#ifdef __DEBUG__
 		assert(it == zsetMap.end());
-#endif
+
 		auto iter = map.find(key);
-#ifdef __DEBUG__
 		assert(iter == map.end());
-#endif
+
 		zsetMap.insert(std::make_pair(key,std::move(sortSet)));
 		map.insert(key);
 	}
 		
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbLoadList(xRio *rdb, int32_t type)
 {
 	std::deque<rObj*> list;
 	rObj *key;
-	int32_t  rdbver;
-	int32_t  len;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr)
-	{
-		return REDIS_ERR;
-	}
+	int32_t rdbver;
+	int32_t len;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
 
 	key->type = OBJ_LIST;
 	key->calHash();
 	
-	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if ((len = rdbLoadLen(rdb, nullptr)) == -1) return -1;
 
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
-		if ((rdbver = rdbLoadType(rdb)) == -1)
-		{
-			return REDIS_ERR;
-		}
-
-		if (rdbver != REDIS_RDB_TYPE_STRING)
-		{
-			return REDIS_ERR;
-		}
-
-		if ((val = rdbLoadObject(rdbver, rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
+		if ((rdbver = rdbLoadType(rdb)) == -1) return -1;
+		if (rdbver != REDIS_RDB_TYPE_STRING) return -1;
+		if ((val = rdbLoadObject(rdbver, rdb)) == nullptr) return -1;
 
 		val->type = OBJ_LIST;
 		val->calHash();
 		list.push_back(val);
 	}
 
-#ifdef __DEBUG__
 	assert(!list.empty());
-#endif 
+
+	auto &redisShards = redis->getRedisShards();
 
 	size_t index = key->hash% redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &listMap = redis->redisShards[index].listMap;
+	auto &mu = redisShards[index].mtx;
+	auto &map =redisShards[index].redis;
+	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
+
 		auto it = listMap.find(key);
-#ifdef __DEBUG__
 		assert(it == listMap.end());
-#endif
+
 		auto iter = map.find(key);
-#ifdef __DEBUG__
 		assert(iter == map.end());
-#endif
+
 		map.insert(key);
 		listMap.insert(std::make_pair(key, std::move(list)));
 	}
 
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbLoadHash(xRio *rdb,int32_t type)
@@ -820,30 +663,15 @@ int32_t xRdb::rdbLoadHash(xRio *rdb,int32_t type)
 	std::unordered_map<rObj*,rObj*,Hash,Equal> rhash;
 	rObj *key,*kkey,*val;
 	int32_t len,rdbver;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr)
-	{
-		return REDIS_ERR;
-	}
-
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
 	key->calHash();
 	key->type = OBJ_HASH;
 	
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1)
-	{
-		return REDIS_ERR;
-	}
-
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
 	for (int32_t i = 0 ; i < len; i ++)
 	{
-		if ((rdbver = rdbLoadType(rdb)) == -1)
-		{
-			return REDIS_ERR;
-		}
-		
-		if (rdbver != REDIS_RDB_TYPE_HASH)
-		{
-			return REDIS_ERR;
-		}
+		if ((rdbver = rdbLoadType(rdb)) == -1) return -1;
+		if (rdbver != REDIS_RDB_TYPE_HASH) return -1;
 
 		if ((kkey = rdbLoadStringObject(rdb)) == nullptr)
 		{
@@ -853,74 +681,66 @@ int32_t xRdb::rdbLoadHash(xRio *rdb,int32_t type)
 		kkey->calHash();
 		kkey->type = OBJ_HASH;
 		
-		if ((val = rdbLoadObject(rdbver,rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
+		if ((val = rdbLoadObject(rdbver,rdb)) == nullptr) return -1;
 		
 		val->calHash();
 		val->type = OBJ_HASH;
 
 		rhash.insert(std::make_pair(kkey,val));
 	}
-#ifdef __DEBUG__
+
 	assert(!rhash.empty());
-#endif 
+	auto &redisShards = redis->getRedisShards();
 
 	size_t index  = key->hash% redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &hashMap = redis->redisShards[index].hashMap;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
-	
+
 		auto it = hashMap.find(key);
-#ifdef __DEBUG__
 		assert(it == hashMap.end());
-#endif
 
 		auto iter = map.find(key);
-#ifdef __DEBUG__
 		if (iter == map.end());
-#endif
+
 		hashMap.insert(std::make_pair(key,std::move(rhash)));
 		map.insert(key);
 	}
 	
-	return REDIS_OK;
+	return 1;
 }
 
 
 int32_t xRdb::rdbRestoreString(rObj *key,xRio *rdb,int32_t type)
 {
 	rObj *val;
-	if ((val = rdbLoadObject(type,rdb)) == nullptr)
-	{
-		return REDIS_ERR;
-	}
+	if ((val = rdbLoadObject(type,rdb)) == nullptr) return -1;
 
 	key->calHash();
 	key->type = OBJ_STRING;
 	val->type = OBJ_STRING;
+
+	auto &redisShards = redis->getRedisShards();
+
 	size_t index  = key->hash% redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &stringMap = redis->redisShards[index].stringMap;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &stringMap = redisShards[index].stringMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = map.find(key);
-#ifdef _DEBUG__
 		assert(it == map.end());
-#endif
 
 		auto iter = stringMap.find(key);
-#ifdef _DEBUG__
 		assert(iter == stringMap.end());
-#endif
+
 		map.insert(key);
 		stringMap.insert(std::make_pair(key,val));
 	}
-	return REDIS_OK;
+
+	return 1;
 }
 
 int32_t xRdb::rdbRestoreHash(rObj *key,xRio *rdb,int32_t type)
@@ -931,66 +751,43 @@ int32_t xRdb::rdbRestoreHash(rObj *key,xRio *rdb,int32_t type)
 	key->calHash();
 	key->type = OBJ_HASH;
 	
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1)
-	{
-		return REDIS_ERR;
-	}
-
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
 	for (int32_t i = 0 ; i < len; i ++)
 	{
-		if ((rdbver = rdbLoadType(rdb)) == -1)
-		{
-			return REDIS_ERR;
-		}
-		
-		if (rdbver != REDIS_RDB_TYPE_HASH)
-		{
-			return REDIS_ERR;
-		}
-
-		if ((kkey = rdbLoadStringObject(rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
+		if ((rdbver = rdbLoadType(rdb)) == -1) return -1;
+		if (rdbver != REDIS_RDB_TYPE_HASH) return -1;
+		if ((kkey = rdbLoadStringObject(rdb)) == nullptr) return -1;
 		
 		kkey->calHash();
 		kkey->type = OBJ_HASH;
 		
-		if ((val = rdbLoadObject(rdbver,rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
+		if ((val = rdbLoadObject(rdbver,rdb)) == nullptr) return -1;
 		
 		val->calHash();
 		val->type = OBJ_HASH;
 
 		rhash.insert(std::make_pair(kkey,val));
 	}
-#ifdef __DEBUG__
 	assert(!rhash.empty());
-#endif 
 
+	auto &redisShards = redis->getRedisShards();
 	size_t index  = key->hash% redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &hashMap = redis->redisShards[index].hashMap;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 	
 		auto it = hashMap.find(key);
-#ifdef __DEBUG__
 		assert(it == hashMap.end());
-#endif
 
 		auto iter = map.find(key);
-#ifdef __DEBUG__
 		if (iter == map.end());
-#endif
 		hashMap.insert(std::make_pair(key,std::move(rhash)));
 		map.insert(key);
 	}
 
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbRestoreList(rObj *key,xRio *rdb,int32_t type)
@@ -1001,90 +798,58 @@ int32_t xRdb::rdbRestoreList(rObj *key,xRio *rdb,int32_t type)
 	key->type = OBJ_LIST;
 	key->calHash();
 	
-	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if ((len = rdbLoadLen(rdb, nullptr)) == -1) return -1;
 
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
-		if ((rdbver = rdbLoadType(rdb)) == -1)
-		{
-			return REDIS_ERR;
-		}
-
-		if (rdbver != REDIS_RDB_TYPE_STRING)
-		{
-			return REDIS_ERR;
-		}
-
-		if ((val = rdbLoadObject(rdbver, rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
+		if ((rdbver = rdbLoadType(rdb)) == -1) return -1;
+		if (rdbver != REDIS_RDB_TYPE_STRING) return -1;
+		if ((val = rdbLoadObject(rdbver, rdb)) == nullptr) return -1;
 
 		val->type = OBJ_LIST;
 		val->calHash();
 		list.push_back(val);
 	}
 
-#ifdef __DEBUG__
 	assert(!list.empty());
-#endif 
+	auto &redisShards = redis->getRedisShards();
 
-	size_t index = key->hash% redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &listMap = redis->redisShards[index].listMap;
+	size_t index = key->hash % redis->kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = listMap.find(key);
-#ifdef __DEBUG__
 		assert(it == listMap.end());
-#endif
 		auto iter = map.find(key);
-#ifdef __DEBUG__
 		assert(iter == map.end());
-#endif
 		map.insert(key);
-		listMap.insert(std::make_pair(key, std::move(list)));
+		listMap.insert(std::make_pair(key,std::move(list)));
 	}
 
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbRestoreZset(rObj *key,xRio *rdb,int32_t type)
 {
 	xRedis::SortSet sortSet;
-	int32_t  rdbver;
-	int32_t  len;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr)
-	{
-		return REDIS_ERR;
-	}
+	int32_t rdbver;
+	int32_t len;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
 
 	key->type = OBJ_ZSET;
 	key->calHash();
 
-	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if ((len = rdbLoadLen(rdb, nullptr)) == -1) return -1;
 
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
 		double socre;
-		if (rdbLoadBinaryDoubleValue(rdb,&socre) == -1)
-		{
-			return REDIS_ERR;
-		}
-		
-		if ((val = rdbLoadObject(type, rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
+		if (rdbLoadBinaryDoubleValue(rdb,&socre) == -1) return -1;	
+		if ((val = rdbLoadObject(type, rdb)) == nullptr) return -1;
 
 		val->type = OBJ_ZSET;
 		val->calHash();
@@ -1092,30 +857,26 @@ int32_t xRdb::rdbRestoreZset(rObj *key,xRio *rdb,int32_t type)
 		sortSet.keyMap.insert(std::make_pair(val,socre));
 	}
 	
-#ifdef __DEBUG__
 	assert(!sortSet.sortMap.empty());
 	assert(!sortSet.keyMap.empty());
-#endif 
+
+	auto &redisShards = redis->getRedisShards();
 
 	size_t index = key->hash % redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &zsetMap = redis->redisShards[index].zsetMap;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &zsetMap = redisShards[index].zsetMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = zsetMap.find(key);
-#ifdef __DEBUG__
 		assert(it == zsetMap.end());
-#endif
 		auto iter = map.find(key);
-#ifdef __DEBUG__
 		assert(iter == map.end());
-#endif
 		zsetMap.insert(std::make_pair(key,std::move(sortSet)));
 		map.insert(key);
 	}
 		
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbRestoreSet(rObj *key,xRio *rdb,int32_t type)
@@ -1125,68 +886,55 @@ int32_t xRdb::rdbRestoreSet(rObj *key,xRio *rdb,int32_t type)
 	key->type = OBJ_ZSET;
 	key->calHash();
 
-	if ((len = rdbLoadLen(rdb, nullptr)) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if ((len = rdbLoadLen(rdb, nullptr)) == -1) return -1;
 
 	set.reserve(len);
 	
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
-		if ((val = rdbLoadObject(type, rdb)) == nullptr)
-		{
-			return REDIS_ERR;
-		}
+		if ((val = rdbLoadObject(type, rdb)) == nullptr) return -1;
 
 		val->type = OBJ_ZSET;
 		val->calHash();
-		
-#ifdef __DEBUG__
+
 		auto it = set.find(val);
 		assert(it != set.end());
-#endif
 		set.insert(val);
 	}
 
-#ifdef __DEBUG__
 	assert(!set.empty());
-#endif
+
+	auto &redisShards = redis->getRedisShards();
 
 	size_t index = key->hash % redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &setMap = redis->redisShards[index].setMap;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &setMap = redisShards[index].setMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = setMap.find(key);
-#ifdef __DEBUG__
 		assert(it == setMap.end());
-#endif
 		setMap.insert(std::make_pair(key,std::move(set)));
 	}
 	
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbRestoreExpire(rObj *key,xRio *rdb,int32_t type)
 {
 	int64_t expire;
-	if ((expire = rdbLoadMillisecondTime(rdb)) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if ((expire = rdbLoadMillisecondTime(rdb)) == -1) return -1;
 
 	int64_t curExpire = xTimeStamp::now().getMicroSecondsSinceEpoch();
 	if (curExpire > expire)
 	{
 		key->calHash();
 		key->type = OBJ_EXPIRE;
-		std::unique_lock <std::mutex> lck(redis->expireMutex);
-		xTimer *timer = redis->loop.runAfter((expire - curExpire) / 1000000,
+		std::unique_lock <std::mutex> lck(redis->getExpireMutex());
+		auto timer = redis->getEventLoop()->runAfter((expire - curExpire) / 1000000,
 			false,std::bind(&xRedis::setExpireTimeOut,redis,key));
-		redis->expireTimers.insert(std::make_pair(key,timer));
+		redis->getExpireTimer().insert(std::make_pair(key,timer));
 	}
 	else
 	{
@@ -1194,65 +942,48 @@ int32_t xRdb::rdbRestoreExpire(rObj *key,xRio *rdb,int32_t type)
 		zfree(key);
 	}
 	
-	return REDIS_OK;
+	return 1;
 }
 
 int32_t xRdb::rdbLoadString(xRio *rdb,int32_t type)
 {
 	rObj *key,*val;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr)
-	{
-		return  REDIS_ERR;
-	}
-
-	if ((val = rdbLoadObject(type,rdb)) == nullptr)
-	{
-		return REDIS_ERR;
-	}
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
+	if ((val = rdbLoadObject(type,rdb)) == nullptr) return -1;
 
 	key->calHash();
 	key->type = OBJ_STRING;
 	val->type = OBJ_STRING;
-	size_t index  = key->hash% redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &stringMap = redis->redisShards[index].stringMap;
+	auto &redisShards = redis->getRedisShards();
+	size_t index = key->hash % redis->kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &stringMap = redisShards[index].stringMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = map.find(key);
-#ifdef _DEBUG__
 		assert(it == map.end());
-#endif
 
 		auto iter = stringMap.find(key);
-#ifdef _DEBUG__
 		assert(iter == stringMap.end());
-#endif
 		map.insert(key);
 		stringMap.insert(std::make_pair(key,val));
 	}
-	return REDIS_OK;
+	return 1;
 }
 
-bool   xRdb::rdbReplication(char *filename,const TcpConnectionPtr &conn)
+bool xRdb::rdbReplication(char *filename,const TcpConnectionPtr &conn)
 {
 	xRio rdb;
 	FILE *fp ;
-	if ((fp = fopen(filename,"r")) == nullptr)
-	{
-		return false;
-	}
+	if ((fp = fopen(filename,"r")) == nullptr) return false;
 	
 	rioInitWithFile(&rdb,fp);
 	struct stat sb;
-	if (fstat(fileno(fp),&sb) == -1)
-	{
-		return false;
-	}
-	else
-	{
-		LOG_INFO<<"load dump.rdb size :"<<sb.st_size;
-	}
+	if (fstat(fileno(fp),&sb) == -1) return false;
+
+	LOG_INFO<<"load dump.rdb size :"<<sb.st_size;
+	
 
 	int32_t fd;
 	fd = fileno(fp);
@@ -1268,48 +999,32 @@ bool   xRdb::rdbReplication(char *filename,const TcpConnectionPtr &conn)
 	*sendLen = sb.st_size;
 	int32_t sendBytes  = * sendLen ;
 	ssize_t n = ::write(conn->getSockfd(), str, 4);
-	if (n < 0)
-	{
-		return false;
-	}
+	if (n < 0) return false;
 
 	size_t sendSize;
 	off_t offset = 0;
 	ssize_t nwrote = 0;
 	while(sendBytes)
 	{
-			if (sendBytes <  len)
-			{
-				len = sendBytes;
-			}
+			if (sendBytes <  len) { len = sendBytes; }
 #ifdef __linux__
 			nwrote = ::sendfile(conn->getSockfd(),fd,&offset,len);
 #endif
 
-			if (nwrote >=0)
-			{
-				sendBytes -=nwrote;
-			}
-			else
-			{
-				//FIXME
-			}
+			if (nwrote >=0) { sendBytes -=nwrote; }
 	}
 
 	fclose(fp);
 	return true;
 }
 
-int32_t  xRdb::closeFile(FILE *fp)
+int32_t xRdb::closeFile(FILE *fp)
 {
-	if (fclose(fp) == EOF)
-	{
-		return REDIS_ERR;
-	}
-	return REDIS_OK;
+	if (fclose(fp) == EOF) return -1;
+	return 1;
 }
 
-FILE * xRdb::createFile()
+FILE *xRdb::createFile()
 {
 	FILE *fp ;
 	char tmpfile[256];
@@ -1317,34 +1032,32 @@ FILE * xRdb::createFile()
 	fp = fopen(tmpfile,"w");
 	if (!fp)
 	{
-		 LOG_TRACE<<"Failed opening .rdb for saving:"<<strerror(errno);
-		 return nullptr;
+		LOG_TRACE<<"Failed opening .rdb for saving:"<<strerror(errno);
+		return nullptr;
 	}
 	
 	return fp;	
 }
 
-int32_t xRdb::rdbSyncWrite(const char *buf,FILE * fp,size_t len)
+int32_t xRdb::rdbSyncWrite(const char *buf,FILE *fp,size_t len)
 {
 	xRio rdb;
 	rioInitWithFile(&rdb,fp);
-	if (rioWrite(&rdb,buf,len) == 0)
-	{
-		return REDIS_ERR;
-	}
+	if (rioWrite(&rdb,buf,len) == 0) return REDIS_ERR;
 }
 
 
-int  xRdb::createDumpPayload(xRio *rdb,rObj *obj)
+int32_t xRdb::createDumpPayload(xRio *rdb,rObj *obj)
 {
-	size_t index = obj->hash% redis->kShards;
-	auto &mu = redis->redisShards[index].mtx;
-	auto &map = redis->redisShards[index].redis;
-	auto &stringMap = redis->redisShards[index].stringMap;
-	auto &hashMap = redis->redisShards[index].hashMap;
-	auto &listMap = redis->redisShards[index].listMap;
-	auto &zsetMap = redis->redisShards[index].zsetMap;
-	auto &setMap = redis->redisShards[index].setMap;
+	auto &redisShards = redis->getRedisShards();
+	size_t index = obj->hash % redis->kShards;
+	auto &mu = redisShards[index].mtx;
+	auto &map = redisShards[index].redis;
+	auto &stringMap = redisShards[index].stringMap;
+	auto &hashMap = redisShards[index].hashMap;
+	auto &listMap = redisShards[index].listMap;
+	auto &zsetMap = redisShards[index].zsetMap;
+	auto &setMap = redisShards[index].setMap;
 	
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -1354,100 +1067,62 @@ int  xRdb::createDumpPayload(xRio *rdb,rObj *obj)
 			if ((*iter)->type == OBJ_STRING)
 			{
 				auto iterr = stringMap.find(obj);
-#ifdef __DEBUG__
 				assert(iterr != stringMap.end());
 				assert(iterr->first->type == OBJ_STRING);
-#endif
-				if (rdbSaveValue(rdb,iterr->second) == -1)
-				{
-					return REDIS_ERR;
-				}
+				if (rdbSaveValue(rdb,iterr->second) == -1) return -1;
+
 			}
 			else if ((*iter)->type == OBJ_LIST)
 			{
 				auto iterr = listMap.find(obj);
-#ifdef __DEBUG__
 				assert(iterr != listMap.end());
 				assert(iterr->first->type == OBJ_LIST);
-#endif
-				if (rdbSaveLen(rdb, iterr->second.size()) == -1)
-				{
-					return REDIS_ERR;
-				}
+				if (rdbSaveLen(rdb, iterr->second.size()) == -1) return -1;
+		
 
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveValue(rdb, iterrr) == -1)
-					{
-						return REDIS_ERR;
-					}
+					if (rdbSaveValue(rdb, iterrr) == -1) return -1;
+		
 				}
 			}
 			else if ((*iter)->type == OBJ_HASH)
 			{
 				auto iterr = hashMap.find(obj);
-#ifdef __DEBUG__
 				assert(iterr != hashMap.end());
 				assert(iterr->first->type == OBJ_HASH);
-#endif
-
-				if (rdbSaveLen(rdb,iterr->second.size()) == -1)
-				{
-					return REDIS_ERR;
-				}
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
+		
 
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second) == -1)
-					{
-						return REDIS_ERR;
-					}
+					if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second,-1,-1) == -1) return -1;
 				}
 			}
 			else if ((*iter)->type == OBJ_ZSET)
 			{
 				auto iterr = zsetMap.find(obj);
-#ifdef __DEBUG__
 				assert(iterr != zsetMap.end());
 				assert(iterr->first->type == OBJ_ZSET);
 				assert(iterr->second.keyMap.size() == iterr->second.sortMap.size());
-#endif
-				if (rdbSaveLen(rdb,iterr->second.keyMap.size()) == -1)
-				{
-					return REDIS_ERR;
-				}
-
+				if (rdbSaveLen(rdb,iterr->second.keyMap.size()) == -1) return -1;			
 				for (auto &iterrr : iterr->second.keyMap)
 				{
-					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1)
-					{
-						return  REDIS_ERR;
-					}
-
-					if (rdbSaveValue(rdb, iterrr.first) == -1)
-					{
-						return REDIS_ERR;
-					}
+					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1) return -1;
+					if (rdbSaveValue(rdb, iterrr.first) == -1) return -1;
+					
 				}
 			}
 			else if ((*iter)->type == OBJ_SET)
 			{
 				auto iterr = setMap.find(obj);
-#ifdef __DEBUG__
 				assert(iterr != setMap.end());
 				assert(iterr->first->type == OBJ_SET);
-#endif	
-				if (rdbSaveLen(rdb,iterr->second.size()) == -1)
-				{
-					return REDIS_ERR;
-				}
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
 
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveValue(rdb, iterrr) == -1)
-					{
-						return REDIS_ERR;
-					}
+					if (rdbSaveValue(rdb, iterrr) == -1) return -1;
 				}
 			}
 			else
@@ -1458,12 +1133,9 @@ int  xRdb::createDumpPayload(xRio *rdb,rObj *obj)
 		}
 	}
 
-	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1) return -1;
 
-	return REDIS_OK;
+	return 1;
 }
 
 
@@ -1472,15 +1144,8 @@ int32_t xRdb::verifyDumpPayload(xRio *rdb,rObj *obj)
 	int type;
 	while(1)
 	{
-		if ((type = rdbLoadType(rdb)) == -1)
-		{
-			return  REDIS_ERR;
-		}
-
-		if (type == RDB_OPCODE_EOF)
-		{
-			break;
-		}
+		if ((type = rdbLoadType(rdb)) == -1) return  REDIS_ERR;
+		if (type == RDB_OPCODE_EOF) break;
 
 		switch(type)
 		{
@@ -1551,11 +1216,7 @@ int32_t xRdb::rdbSyncClose(char *fileName,FILE *fp)
 	char tmpfile[256];
 	snprintf(tmpfile,256,"temp-%d.rdb",(int32_t)getpid());
 	
-	if (::rename(tmpfile,fileName) == -1)
-	{
-		return REDIS_ERR;
-	}
-
+	if (::rename(tmpfile,fileName) == -1) return REDIS_ERR;
 	return REDIS_OK;
 }
 
@@ -1581,126 +1242,160 @@ int32_t xRdb::rdbWrite(char *filename,const char *buf,size_t len)
 	if (::fflush(fp) == EOF) return REDIS_ERR;
 	if (::fsync(fileno(fp)) == -1) return REDIS_ERR;
 	if (::fclose(fp) == EOF) return REDIS_ERR;
-
-	if (::rename(tmpfile,filename) == -1)
-	{
-		return REDIS_ERR;
-	}
+	if (::rename(tmpfile,filename) == -1) return REDIS_ERR;
 	
 	return REDIS_OK;
 }
 
-int32_t xRdb::rdbLoad(char *filename)
+void xRdb::startLoading(FILE *fp)
+{
+	struct stat sb;
+	if (fstat(fileno(fp),&sb) == -1) assert(false);
+
+	LOG_INFO<<"dump.rdb file size "<<sb.st_size;
+}
+
+
+/* This is just a wrapper for the low level function rioRead() that will
+ * automatically abort if it is not possible to read the specified amount
+ * of bytes. */
+void xRdb::rdbLoadRaw(xRio *rdb,int32_t *buf,uint64_t len)
+{
+    if (rioRead(rdb,buf,len) == 0)
+    {
+        return ; /* Not reached. */
+    }
+}
+
+time_t xRdb::rdbLoadTime(xRio *rdb)
+{
+    int32_t t32;
+    rdbLoadRaw(rdb,&t32,4);
+    return (time_t)t32;
+}
+
+int32_t xRdb::rdbLoadRio(xRio *rdb)
 {
 	uint32_t dbid;
 	int32_t type,rdbver;
 	char buf[1024];
-	FILE *fp;
-	xRio rdb;
-
-	if ((fp = ::fopen(filename,"r")) == nullptr)
-	{
-		return REDIS_ERR;
-	}
-
-	rioInitWithFile(&rdb,fp);
-	if (rioRead(&rdb,buf,9) == 0)
-	{
-		return REDIS_ERR;
-	}
 	
+	if (rioRead(rdb,buf,9) == 0) return REDIS_ERR;
 	buf[9] = '\0';
-	if (memcmp(buf,"REDIS",5) !=0)
+
+	if (memcmp(buf,"REDIS",9) !=0)
 	{
-		fclose(fp);
 		LOG_ERROR<<"Wrong signature trying to load DB from file";
+		errno = EINVAL;
 		return REDIS_ERR;
 	}
 
-	struct stat sb;
-	if (fstat(fileno(fp),&sb) == -1)
+	rdbver = atoi(buf+5);
+	if (rdbver < 1 || rdbver > REDIS_RDB_VERSION)
 	{
-		return REDIS_ERR;
+		LOG_WARN<<"Can't handle RDB format version "<<rdbver;
+		errno = EINVAL;
+		return REDIS_OK;
 	}
-	else
-	{
-		LOG_INFO<<"dump.rdb file size "<<sb.st_size;
-	}
-	
+
+	int64_t expiretime = -1,noew = mstime();
+
 	while(1)
 	{
-		if ((type = rdbLoadType(&rdb)) == -1)
+		if ((type = rdbLoadType(rdb)) == -1) return REDIS_ERR;
+		if (type == RDB_OPCODE_EXPIRETIME)
 		{
-			return  REDIS_ERR;
+			 /* EXPIRETIME: load an expire associated with the next key
+			 * to load. Note that after loading an expire we need to
+			 * load the actual type, and continue. */
+			expiretime = rdbLoadTime(rdb);
+			expiretime *= 1000;
+			continue;
 		}
-
-		if (type == RDB_OPCODE_EOF )
+		else if (type == RDB_OPCODE_EXPIRETIME_MS)
 		{
+			/* EXPIRETIME_MS: milliseconds precision expire times introduced
+			 * with RDB v3. Like EXPIRETIME but no with more precision. */
+			expiretime = rdbLoadMillisecondTime(rdb);
+			continue; /* Read next opcode. */
+		}
+		else if (type == RDB_OPCODE_EOF)
+		{
+			/* EOF: End of file, exit the main loop. */
 			break;
 		}
-
-		switch(type)
+		else if (type == RDB_OPCODE_SELECTDB)
 		{
-			case REDIS_STRING:
+			/* SELECTDB: Select the specified database. */
+			if ((dbid = rdbLoadLen(rdb,nullptr)) == RDB_LENERR) return REDIS_ERR;
+			if (dbid >= (unsigned)redis->dbnum)
 			{
-				if (rdbLoadString(&rdb,type) != REDIS_OK )
-				{
-					LOG_WARN<<"rdbLoadString error";
-					return REDIS_ERR;
-				}
+				LOG_WARN<<"FATAL: Data file was created with a Redis "
+					"server configured to handle more than "
+					"databases. Exiting "<<redis->dbnum;
+				exit(1);
+			}
 
-				break;
-			}
-			case REDIS_EXPIRE:
-			{
-				if (rdbLoadExpire(&rdb,type) != REDIS_OK)
-				{
-					LOG_WARN<<"rdbLoadExpire error";
-					return REDIS_ERR;
-				}
-
-				break;
-			}
-			case REDIS_HASH:
-			{
-				if (rdbLoadHash(&rdb,type) != REDIS_OK)
-				{
-					LOG_WARN<<"rdbLoadHash error";
-					return REDIS_ERR;
-				}
-				break;
-			}
-			case REDIS_LIST:
-			{
-				if (rdbLoadList(&rdb, type) != REDIS_OK)
-				{
-					LOG_WARN << "rdbLoadList error";
-					return REDIS_ERR;
-				}
-				break;
-			}
-			case REDIS_SET:
-			{
-				if (rdbLoadSet(&rdb, type) != REDIS_OK)
-				{
-					LOG_WARN << "rdbLoadSet error";
-					return REDIS_ERR;
-				}
-				break;
-			}
-			default:
-			{
-				assert(false);
-				break;
-			}
+			continue; /* Read next opcode. */
 		}
+		else if (type == RDB_OPCODE_RESIZEDB)
+		{
+			uint64_t db_size, expires_size;
+			if ((db_size = rdbLoadLen(rdb,nullptr)) == RDB_LENERR) return REDIS_ERR;
+
+			if ((expires_size = rdbLoadLen(rdb,nullptr)) == RDB_LENERR) return REDIS_ERR;
+
+			continue;
+		}
+		else if (type == RDB_OPCODE_AUX)
+		{
+			/* AUX: generic string-string fields. Use to add state to RDB
+			 * which is backward compatible. Implementations of RDB loading
+			 * are requierd to skip AUX fields they don't understand.
+			 *
+			 * An AUX field is composed of two strings: key and value. */
+			rObj *auxkey,*auxval;
+			if ((auxkey = rdbLoadStringObject(rdb)) == nullptr) return REDIS_ERR;
+			if ((auxval = rdbLoadStringObject(rdb)) == nullptr) return REDIS_ERR;
+
+			if (((char*)auxkey->ptr)[0] == '%')
+			{
+				/* All the fields with a name staring with '%' are considered
+				 * information fields and are logged at startup with a log
+				 * level of NOTICE. */
+				LOG_WARN<<"RDB "<<(char*)auxkey->ptr<<" " <<(char*)auxval->ptr;
+			}
+
+			zfree(auxkey);
+			zfree(auxval);
+			continue; /* Read type again. */
+		}
+		else if (type == REDIS_STRING)
+		{
+			if (rdbLoadString(rdb,type) != REDIS_OK ) return REDIS_ERR;
+		}
+		else if ( type == REDIS_EXPIRE)
+		{
+			if (rdbLoadExpire(rdb,type) != REDIS_OK) return REDIS_ERR;
+		}
+		else if (type == REDIS_HASH)
+		{
+			if (rdbLoadHash(rdb,type) != REDIS_OK) return REDIS_ERR;
+		}
+		else if (type == REDIS_LIST)
+		{
+			if (rdbLoadList(rdb,type) != REDIS_OK) return REDIS_ERR;
+		}
+		else if (type == REDIS_SET)
+		{
+			if (rdbLoadSet(rdb,type) != REDIS_OK) return REDIS_ERR;
+		}
+		expiretime = -1;
 	}
 
-	uint64_t cksum,expected = rdb.cksum;
-	if (rioRead(&rdb,&cksum,8) == 0)
-	{
-		return REDIS_ERR;
-	}
+	uint64_t cksum;
+	uint64_t expected = rdb->cksum;
+	if (rioRead(rdb,&cksum,8) == 0) return REDIS_ERR;
 
 	memrev64ifbe(&cksum);
 	if (cksum == 0)
@@ -1714,6 +1409,18 @@ int32_t xRdb::rdbLoad(char *filename)
 		return REDIS_ERR;
 	}
 
+	return REDIS_OK;
+}
+
+int32_t xRdb::rdbLoad(char *filename)
+{
+	FILE *fp;
+	xRio rdb;
+
+	if ((fp = ::fopen(filename,"r")) == nullptr) return REDIS_ERR;
+
+	startLoading(fp);
+	rioInitWithFile(&rdb,fp);
 	fclose(fp);
 	return REDIS_OK;
 }
@@ -1827,63 +1534,45 @@ size_t xRdb::rdbSaveRawString(xRio *rdb, const  char *s, size_t len)
 
 int32_t xRdb::rdbLoadBinaryDoubleValue(xRio *rdb,double *val)
 {
-	if (rioRead(rdb,val,sizeof(*val)) == 0)  return -1;
+	if (rioRead(rdb,val,sizeof(*val)) == 0) return -1;
    	 memrev64ifbe(val);
 }
 
 int64_t xRdb::rdbLoadMillisecondTime(xRio *rdb)
 {
 	int64_t t64;
-	if (rioRead(rdb, &t64, 8) == 0) return -1;
+	if (rioRead(rdb,&t64,8) == 0) return -1;
 	return t64;
 }
 
-rObj * xRdb::rdbLoadObject(int32_t rdbtype, xRio *rdb)
+rObj * xRdb::rdbLoadObject(int32_t rdbtype,xRio *rdb)
 {
 	rObj *o = nullptr;
 	size_t len;
 	uint32_t i;
 	if (rdbtype == REDIS_RDB_TYPE_STRING)
 	{
-		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
-		{
-			return nullptr;
-		}
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr) return nullptr;
 	}
 	else if (rdbtype == REDIS_RDB_TYPE_LIST)
 	{
-		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
-		{
-			return nullptr;
-		}
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr) return nullptr;
 	}
 	else if (rdbtype == REDIS_RDB_TYPE_SET)
 	{
-		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
-		{
-			return nullptr;
-		}
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr) return nullptr;
 	}
 	else if (rdbtype == REDIS_RDB_TYPE_ZSET)
 	{
-		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
-		{
-			return nullptr;
-		}
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr) return nullptr;
 	}
 	else if (rdbtype == REDIS_RDB_TYPE_HASH)
 	{
-		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
-		{
-			return nullptr;
-		}
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr) return nullptr;
 	}
 	else if (rdbtype == REDIS_RDB_TYPE_EXPIRE)
 	{
-		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
-		{
-			return nullptr;
-		}
+		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr) return nullptr;
 	}
 	else
 	{
@@ -1892,9 +1581,37 @@ rObj * xRdb::rdbLoadObject(int32_t rdbtype, xRio *rdb)
 	return o;
 }
 
+ssize_t xRdb::rdbSaveLongLongAsStringObject(xRio *rdb,int64_t value)
+{
+	unsigned char buf[32];
+    ssize_t n,nwritten = 0;
+    int enclen = rdbEncodeInteger(value,buf);
+    if (enclen > 0)
+    {
+        return rdbWriteRaw(rdb,buf,enclen);
+    } 
+    else 
+    {
+        /* Encode as string */
+        enclen = ll2string((char*)buf,32,value);
+        if ((n = rdbSaveLen(rdb,enclen)) == -1) return -1;
+        nwritten += n;
+        if ((n = rdbWriteRaw(rdb,buf,enclen)) == -1) return -1;
+        nwritten += n;
+    }
+    return nwritten;
+}
+
 int32_t xRdb::rdbSaveStringObject(xRio *rdb,rObj *obj)
 {
-	return rdbSaveRawString(rdb,obj->ptr,sdslen(obj->ptr));
+	if (obj->encoding == OBJ_ENCODING_INT) 
+	{
+       return rdbSaveLongLongAsStringObject(rdb,*(int32_t*)obj->ptr);
+    }
+    else 
+    {
+       return rdbSaveRawString(rdb,obj->ptr,sdslen(obj->ptr));
+    }
 }
 
 int32_t xRdb::rdbSaveType(xRio *rdb,uint8_t type)
@@ -1996,8 +1713,16 @@ int32_t xRdb::rdbSaveObject(xRio *rdb,rObj *o)
     return nwritten;
 }
 
-int32_t xRdb::rdbSaveKeyValuePair(xRio *rdb,rObj *key,rObj *val)
+int32_t xRdb::rdbSaveKeyValuePair(xRio *rdb,rObj *key,rObj *val,int64_t expiretime,int64_t now)
 {
+	 if (expiretime != -1) 
+	 {
+        /* If this key is already expired skip it */
+        if (expiretime < now) return 0;
+        if (rdbSaveType(rdb,RDB_OPCODE_EXPIRETIME_MS) == -1) return -1;
+        if (rdbSaveMillisecondTime(rdb,expiretime) == -1) return -1;
+    }
+
 	if (rdbSaveObjectType(rdb,key) == -1) return -1;
 	if (rdbSaveStringObject(rdb,key) == -1) return -1;
 	if (rdbSaveObject(rdb,val) == -1) return -1;
@@ -2029,51 +1754,55 @@ int32_t xRdb::rdbSaveKey(xRio *rdb,rObj *key)
 
 int32_t xRdb::rdbWriteRaw(xRio *rdb,void *p,size_t len)
 {
-	if (rdb && rioWrite(rdb,p,len) == 0)
-	{ 
-		 return -1;
-	}
-
+	if (rdb && rioWrite(rdb,p,len) == 0) return -1;
 	return len;
 }
 
-int32_t xRdb::rdbSaveRio(xRio *rdb,int32_t *error)
+
+/* Produces a dump of the database in RDB format sending it to the specified
+ * Redis I/O channel. On success C_OK is returned, otherwise C_ERR
+ * is returned and part of the output, or all the output, can be
+ * missing because of I/O errors.
+ *
+ * When the function returns C_ERR and if 'error' is not NULL, the
+ * integer pointed by 'error' is set to the value of errno just after the I/O
+ * error. */
+
+int32_t xRdb::rdbSaveRio(xRio *rdb,int32_t *error,int32_t flags)
 {
 	char magic[10];
-	int32_t j;
 	int64_t now = time(0);
 	uint64_t cksum;
 	snprintf(magic,sizeof(magic),"REDIS%04d",REDIS_RDB_VERSION);
-	if (rdbWriteRaw(rdb,magic,9) == -1)
+
+	if (rdbWriteRaw(rdb,magic,9) == -1) goto werr;
+	if (rdbSaveInfoAuxFields(rdb,flags) == -1) goto werr;
+
+	for (int i = 0; i < redis->dbnum; i++)
 	{
-		*error = errno;
-		return REDIS_ERR;
+		if (rdbSaveType(rdb,RDB_OPCODE_SELECTDB) == -1) goto werr;
+		if (rdbSaveLen(rdb,i) == -1) goto werr;
+
+		uint32_t dbSize,expireSize;
+		dbSize = redis->getDbsize();
+		expireSize = redis->getExpireSize();
+
+		if (rdbSaveType(rdb,RDB_OPCODE_RESIZEDB) == -1) goto werr;
+        if (rdbSaveLen(rdb,dbSize) == -1) goto werr;
+        if (rdbSaveLen(rdb,expireSize) == -1) goto werr;
+        if (rdbSaveStruct(rdb) == REDIS_ERR) goto werr;
 	}
 
-	if (rdbSaveStruct(rdb) != REDIS_OK)
-	{
-		return REDIS_ERR;
-	}
+	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1) goto werr;
 	
-	if (rdbSaveExpre(rdb) != REDIS_OK)
-	{
-		return REDIS_ERR;
-	}
-
-	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1)
-	{
-		return REDIS_ERR;
-	}
-
 	cksum = rdb->cksum;
 	memrev64ifbe(&cksum);
-	if (rioWrite(rdb,&cksum,8) == 0)
-	{
-		*error = errno;
-		return REDIS_ERR;
-	}
-	
+
+	if (rioWrite(rdb,&cksum,8) == 0) goto werr;
 	return REDIS_OK;
+werr:
+	if (error) *error = errno;
+	return REDIS_ERR;
 }
 
 int32_t xRdb::rdbSave(char *filename)
@@ -2087,22 +1816,19 @@ int32_t xRdb::rdbSave(char *filename)
 	fp = ::fopen(tmpfile,"w");
 	if (!fp)
 	{
-		 LOG_TRACE<<"Failed opening rdb for saving:"<<strerror(errno);
-		 return REDIS_ERR;
+		LOG_TRACE<<"Failed opening rdb for saving:"<<strerror(errno);
+		return REDIS_ERR;
 	}
 
 	rioInitWithFile(&rdb,fp);
-	if (rdbSaveRio(&rdb,&error) == REDIS_ERR)
-	{
-		errno = error;
-		goto werr;
-	}
+	if (rdbSaveRio(&rdb,&error,RDB_SAVE_NONE) == REDIS_ERR) goto werr;
+	
 
 	if (::fflush(fp) == EOF) goto werr;
 	if (::fsync(fileno(fp)) == -1) goto werr;
 	if (::fclose(fp) == EOF) goto werr;
 
-	if (rename(tmpfile,filename) == -1)
+	if (::rename(tmpfile,filename) == -1)
 	{
 		LOG_TRACE<<"Error moving temp DB file  on the final:"<<strerror(errno);
 		unlink(tmpfile);
@@ -2117,3 +1843,90 @@ werr:
 	unlink(tmpfile);
 	return REDIS_ERR;
 }
+
+
+/* Save a string object as [len][data] on disk. If the object is a string
+ * representation of an integer value we try to save it in a special form */
+ssize_t xRdb::rdbSaveRawString(xRio *rdb,uint8_t *s,size_t len) 
+{
+    int32_t enclen;
+    ssize_t n,nwritten = 0;
+
+    /* Try integer encoding */
+    if (len <= 11)
+    {
+        uint8_t buf[5];
+        if ((enclen = rdbTryIntegerEncoding((char*)s,len,buf)) > 0) 
+        {
+            if (rdbWriteRaw(rdb,buf,enclen) == -1) return -1;
+            return enclen;
+        }
+    }
+
+    /* Try LZF compression - under 20 bytes it's unable to compress even
+     * aaaaaaaaaaaaaaaaaa so skip it */
+    if (len > 20)
+    {
+        n = rdbSaveLzfStringObject(rdb,s,len);
+        if (n == -1) return -1;
+        if (n > 0) return n;
+        /* Return value of 0 means data can't be compressed, save the old way */
+    }
+
+    /* Store verbatim */
+    if ((n = rdbSaveLen(rdb,len)) == -1) return -1;
+    	nwritten += n;
+    if (len > 0) 
+    {
+        if (rdbWriteRaw(rdb,s,len) == -1) return -1;
+        nwritten += len;
+    }
+    return nwritten;
+}
+
+/* Save an AUX field. */
+ssize_t xRdb::rdbSaveAuxField(xRio *rdb,char *key,size_t keylen,char *val,size_t vallen)
+{
+    ssize_t ret,len = 0;
+    if ((ret = rdbSaveType(rdb,RDB_OPCODE_AUX)) == -1) return -1;
+    len += ret;
+    if ((ret = rdbSaveRawString(rdb,key,keylen)) == -1) return -1;
+    len += ret;
+    if ((ret = rdbSaveRawString(rdb,val,vallen)) == -1) return -1;
+    len += ret;
+    return len;
+}
+
+/* Wrapper for rdbSaveAuxField() used when key/val length can be obtained
+ * with strlen(). */
+ssize_t xRdb::rdbSaveAuxFieldStrStr(xRio *rdb,char *key,char *val)
+{
+    return rdbSaveAuxField(rdb,key,strlen(key),val,strlen(val));
+}
+
+/* Wrapper for strlen(key) + integer type (up to long long range). */
+ssize_t xRdb::rdbSaveAuxFieldStrInt(xRio *rdb,char *key,int64_t val) 
+{
+    char buf[LONG_STR_SIZE];
+    int32_t vlen = ll2string(buf,sizeof(buf),val);
+    return rdbSaveAuxField(rdb,key,strlen(key),buf,vlen);
+}
+
+int32_t xRdb::rdbSaveInfoAuxFields(xRio *rdb,int32_t flags)
+{
+	int32_t redisBits = (sizeof(void*) == 8) ? 64 : 32;
+    int32_t aofPreamble = (flags & RDB_SAVE_AOF_PREAMBLE) != 0;
+
+    /* Add a few fields about the state when the RDB was created. */
+    if (rdbSaveAuxFieldStrStr(rdb,"redis-ver",(char*)REDIS_RDB_VERSION) == -1) return -1;
+    if (rdbSaveAuxFieldStrInt(rdb,"redis-bits",redisBits) == -1) return -1;
+    if (rdbSaveAuxFieldStrInt(rdb,"ctime",time(0)) == -1) return -1;
+    if (rdbSaveAuxFieldStrInt(rdb,"used-mem",zmalloc_used_memory()) == -1) return -1;
+
+    if (rdbSaveAuxFieldStrInt(rdb,"aof-preamble",aofPreamble) == -1) return -1;
+    return 1;
+}
+
+
+
+

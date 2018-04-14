@@ -393,31 +393,28 @@ void getRandomHexChars(char *p, uint32_t len)
 }
 
 
-long long ustime(void)
+int64_t ustime(void)
 {
 	struct timeval tv;
-	long long ust;
+	int64_t ust;
 
 	gettimeofday(&tv, nullptr);
-	ust = ((long long)tv.tv_sec)*1000000;
+	ust = ((int64_t)tv.tv_sec)*1000000;
 	ust += tv.tv_usec;
 	return ust;
 }
 
 /* Return the UNIX time in milliseconds */
-long long mstime(void)
+int64_t mstime(void)
 {
 	return ustime()/1000;
 }
 
-
 /* Return the UNIX time in seconds */
-long long setime(void)
+int64_t setime(void)
 {
 	return ustime()/1000/1000;
 }
-
-
 
 
 /* Convert an amount of bytes into a human readable string in the form

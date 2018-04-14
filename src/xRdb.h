@@ -6,12 +6,8 @@
 #include "xLzf.h"
 #include "xSession.h"
 
-class xRedis;
-class xRio: noncopyable
+struct xRio
 {
-public:
-	xRio();
-	~xRio();
 	union
 	{
 		struct
@@ -37,22 +33,40 @@ public:
 		}fdset;
 	}io;
 
-public:
 	uint64_t cksum;
 	size_t processedBytes;
 	size_t maxProcessingChunk;
 
-	std::function<size_t (xRio *,void *buf,size_t len)> readFuc;
-	std::function<size_t (xRio *,const void *buf,size_t len)> writeFuc;
-	std::function<off_t (xRio *)> tellFuc;
-	std::function<int32_t (xRio *)> flushFuc;
+	std::function<size_t(xRio *,void *buf,size_t len)> readFuc;
+	std::function<size_t(xRio *,const void *buf,size_t len)> writeFuc;
+	std::function<off_t(xRio *)> tellFuc;
+	std::function<int32_t(xRio *)> flushFuc;
 	std::function<void(xRio *,const void *buf,size_t len)> updateFuc;
 };
 
+
+class xRedis;
 class xRdb: noncopyable
 {
 public:
-	xRdb(xRedis *redis);
+	xRdb(xRedis *redis)
+	:redis(redis)
+	{
+
+	}
+
+	~xRdb()
+	{
+
+	}
+
+	int32_t rdbSaveInfoAuxFields(xRio *rdb,int32_t flags);
+	ssize_t rdbSaveAuxField(xRio *rdb,char *key,size_t keylen,char *val,size_t vallen);
+	ssize_t rdbSaveAuxFieldStrStr(xRio *rdb,char *key,char *val);
+	ssize_t rdbSaveAuxFieldStrInt(xRio *rdb,char *key,int64_t val);
+	ssize_t rdbSaveRawString(xRio *rdb,uint8_t *s,size_t len);
+	ssize_t rdbSaveLongLongAsStringObject(xRio *rdb,int64_t value);
+
 	off_t  rioTell(xRio *r);
 	size_t rioWrite(xRio *r,const void *buf,size_t len);
 	size_t rioRead(xRio *r,void *buf,size_t len);
@@ -63,38 +77,41 @@ public:
 	inline off_t rioFileTell(xRio *r);
 	int32_t rioFileFlush(xRio *r);
 
+	void rdbLoadRaw(xRio *rdb,int32_t *buf,uint64_t len);
+	time_t rdbLoadTime(xRio *rdb);
+
 	size_t rioBufferWrite(xRio *r,const void *buf,size_t len) ;
 	size_t rioBufferRead(xRio *r,void *buf,size_t len) ;
 	off_t rioBufferTell(xRio *r);
-	int rioBufferFlush(xRio *r);
+	int32_t rioBufferFlush(xRio *r);
 
 	void rioInitWithFile(xRio *r,FILE *fp);
 	void rioInitWithBuffer(xRio *r,sds s);
 	FILE *createFile();
-	int32_t  closeFile(FILE *fp);
+	int32_t closeFile(FILE *fp);
+
+	int32_t rdbLoadRio(xRio *rdb);
+	void startLoading(FILE *fp);
 	
 	int32_t rdbSaveBinaryDoubleValue(xRio *rdb,double val);
 	int32_t rdbSaveMillisecondTime(xRio *rdb,int64_t t);
 	int32_t rdbSaveType(xRio *rdb,uint8_t type);
 	int32_t rdbSaveLen(xRio *rdb,uint32_t len);
 	int32_t rdbSave(char *filename);
-	int32_t rdbSaveRio(xRio *rdb,int32_t *error);
+	int32_t rdbSaveRio(xRio *rdb,int32_t *error,int32_t flags);
 	int32_t rdbSaveObject(xRio *rdb,rObj *o);
 	int32_t rdbSaveStringObject(xRio *rdb,rObj *obj);
-	int32_t rdbSaveKeyValuePair(xRio *rdb,rObj *key,rObj *val);
+	int32_t rdbSaveKeyValuePair(xRio *rdb,rObj *key,rObj *val,int64_t expiretime,int64_t now);
 	size_t rdbSaveRawString(xRio *rdb,const char *s,size_t len);
 	int32_t rdbSaveLzfStringObject(xRio *rdb,uint8_t *s,size_t len);
 	int32_t rdbSaveValue(xRio *rdb,rObj *value);
 	int32_t rdbSaveKey(xRio *rdb,rObj *value);
 	int32_t rdbSaveStruct(xRio *rdb);
-	int32_t rdbSaveExpre(xRio *rdb);
 	int32_t rdbSaveObjectType(xRio *rdb,rObj *o);
 
 	int32_t rdbLoadType(xRio *rdb);
 	uint32_t rdbLoadUType(xRio *rdb);
-	rObj *rdbLoadIntegerObject(xRio *rdb,int32_t enctype,int32_t encode);
-	rObj *rdbLoadEncodedStringObject(xRio *rdb);
-	rObj *rdbLoadLzfStringObject(xRio *rdb);
+
 	int64_t rdbLoadMillisecondTime(xRio *rdb);
 	int32_t rdbLoadBinaryDoubleValue(xRio *rdb,double *val);
 
@@ -114,24 +131,29 @@ public:
 	uint32_t rdbLoadLen(xRio *rdb,int32_t *isencoded);
 	
 	int32_t rdbLoad(char *fileName);
-	bool  rdbReplication(char *filename,const TcpConnectionPtr &conn);
+	bool rdbReplication(char *filename,const TcpConnectionPtr &conn);
+
 	rObj *rdbLoadObject(int32_t type,xRio *rdb);
-	rObj *rdbLoadStringObject(xRio *rdb);
+	rObj *rdbLoadStringObject(xRio *rdb);	
+	rObj *rdbLoadIntegerObject(xRio *rdb,int32_t enctype,int32_t encode);
+	rObj *rdbLoadEncodedStringObject(xRio *rdb);
+	rObj *rdbLoadLzfStringObject(xRio *rdb);
+	rObj *rdbGenericLoadStringObject(xRio *rdb,int32_t encode);
+
 
 	void rioGenericUpdateChecksum(xRio *r,const void *buf,size_t len);
 	int32_t rdbWriteRaw(xRio *rdb, void *p,size_t len);
 	int32_t rdbTryIntegerEncoding(char *s,size_t len,uint8_t *enc);
 	int32_t rdbEncodeInteger(int64_t value,uint8_t *enc);
-	rObj *rdbGenericLoadStringObject(xRio *rdb,int32_t encode);
 	int32_t rdbWrite(char *filename,const char *buf,size_t len);
 	int32_t rdbSyncWrite(const char *buf,FILE *fp,size_t len);
 	int32_t rdbSyncClose(char *fileName,FILE *fp);
 	void setBlockEnable(bool enabled) { blockEnabled = enabled; }
-	int  createDumpPayload(xRio *rdb,rObj *obj);
-	int  verifyDumpPayload(xRio *rdb,rObj *obj);
+	int32_t createDumpPayload(xRio *rdb,rObj *obj);
+	int32_t verifyDumpPayload(xRio *rdb,rObj *obj);
 	
-public:
-	xRedis * redis;
+private:
+	xRedis *redis;
 	bool blockEnabled;
 };
 
