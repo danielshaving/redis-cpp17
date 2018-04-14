@@ -34,7 +34,7 @@ public:
 
 private:
 	xEventLoop *loop;
-	std::unordered_map<int32_t,SessionPtr>  sessions;
+	std::unordered_map<int32_t,SessionPtr> sessions;
 	Options ops;
 
 	std::mutex mtx;

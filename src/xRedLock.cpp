@@ -30,10 +30,10 @@ float xRedLock::clockDriftFactor = 0.01;
 xRedLock::xRedLock()
 {
 	continueLockScript = sdsnew("if redis.call('get', KEYS[1]) == ARGV[1] then redis.call('del', KEYS[1]) end return redis.call('set', KEYS[1], ARGV[2], 'px', ARGV[3], 'nx')");
-	unlockScript  = sdsnew("if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end");
+	unlockScript = sdsnew("if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end");
 	retryCount = defaultRetryCount;
 	retryDelay = defaultRetryDelay;
-	quoRum     = 0;
+	quoRum = 0;
 	fd = open("/dev/urandom", O_RDONLY);
 	if (fd == -1)
 	{

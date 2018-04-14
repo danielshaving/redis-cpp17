@@ -83,14 +83,9 @@ void xTcpConnection::handleRead()
 		errno = savedErrno;
 		if(errno != ECONNRESET || errno != ETIMEDOUT)
 		{
-#ifdef __DEBUG__
-			LOG_ERROR<<"TcpConnection::handleRead "<<errno;
-#endif
+
 		}
-#ifdef __APPLE__
-		handleClose();
-#endif
-		//handleError();
+
 	}
 }
 
@@ -118,17 +113,13 @@ void xTcpConnection::handleWrite()
 		}
 		else
 		{
-#ifdef __DEBUG__
-			LOG_ERROR<<"TcpConnection::handleWrite";
-#endif
+
 		}
 
 	}
 	else
 	{
-#ifdef __DEBUG__
-		LOG_ERROR<<"Connection fd  is down, no more writing "<< channel->getfd();
-#endif
+
 	}
 }
 

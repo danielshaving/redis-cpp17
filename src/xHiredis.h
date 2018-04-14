@@ -18,7 +18,7 @@ typedef struct redisReply : noncopyable
     struct redisReply **element;
 }RedisReply;
 
-typedef std::function<void(const RedisAsyncContextPtr &context,redisReply*,const std::any)> RedisCallbackFn;
+typedef std::function<void(const RedisAsyncContextPtr &context,redisReply*,const std::any &)> RedisCallbackFn;
 typedef struct redisReadTask : noncopyable
 {
     int32_t type;

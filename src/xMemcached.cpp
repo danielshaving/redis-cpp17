@@ -29,11 +29,11 @@ void xMemcached::stop()
 	 loop->runAfter(3.0,false,std::bind(&xMemcached::quit,this));
 }
 
-bool xMemcached::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy, bool *exists)
+bool xMemcached::storeItem(const ItemPtr &item,xItem::UpdatePolicy policy,bool *exists)
 {
 	assert(item->neededBytes() == 0);
-	std::mutex & mutex = shards[item->getHash() % kShards].mutex;
-	ItemMap& items = shards[item->getHash() % kShards].items;
+	std::mutex &mutex = shards[item->getHash() % kShards].mutex;
+	ItemMap &items = shards[item->getHash() % kShards].items;
 	std::unique_lock <std::mutex> lck(mutex);
 	ItemMap::const_iterator it = items.find(item);
 	*exists = it != items.end();
@@ -126,7 +126,7 @@ bool xMemcached::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy, boo
 	return true;
 }
 
-ConstItemPtr xMemcached::getItem(const ConstItemPtr & key) const
+ConstItemPtr xMemcached::getItem(const ConstItemPtr &key) const
 {
 	std::mutex & mutex  = shards[key->getHash() % kShards].mutex;
 	const ItemMap& items = shards[key->getHash() % kShards].items;
@@ -135,7 +135,7 @@ ConstItemPtr xMemcached::getItem(const ConstItemPtr & key) const
 	return it != items.end() ? *it : ConstItemPtr();
 }
 
-bool xMemcached::deleteItem(const ConstItemPtr & key)
+bool xMemcached::deleteItem(const ConstItemPtr &key)
 {
 	std::mutex & mutex= shards[key->getHash() % kShards].mutex;
 	ItemMap& items = shards[key->getHash() % kShards].items;
@@ -144,7 +144,7 @@ bool xMemcached::deleteItem(const ConstItemPtr & key)
 }
 
 
-void xMemcached::onConnection(const TcpConnectionPtr & conn)
+void xMemcached::onConnection(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{

@@ -1757,6 +1757,13 @@ void xHiredis::pushTcpClient(const TcpClientPtr &client)
 
 RedisAsyncContextPtr xHiredis::getIteratorNode()
 {
+	std::unique_lock<std::mutex> lk(rtx);
+
+	if(redisAsyncContexts.empty())
+	{
+		return nullptr;
+	}
+
 	if(node == redisAsyncContexts.end())
 	{
 		node = redisAsyncContexts.begin();
@@ -1830,21 +1837,20 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 		 }
 		 else
 		 {
-				 {
-					 std::unique_lock<std::mutex> lk(redisPtr->getMutex());
-					 assert(!redisPtr->getCb().empty());
-					 asyncCb = std::move(redisPtr->getCb().front());
-					 redisPtr->getCb().pop_front();
-					 zfree(asyncCb.data);
-				 }
+			 {
+				 std::unique_lock<std::mutex> lk(redisPtr->getMutex());
+				 assert(!redisPtr->getCb().empty());
+				 asyncCb = std::move(redisPtr->getCb().front());
+				 redisPtr->getCb().pop_front();
+				 zfree(asyncCb.data);
+			 }
 
-				 if(asyncCb.cb.fn)
-				 {
-					 asyncCb.cb.fn(redisPtr,reply,asyncCb.cb.privdata);
-				 }
-				 
-				freeReply(reply);
+			 if(asyncCb.cb.fn)
+			 {
+				 asyncCb.cb.fn(redisPtr,reply,asyncCb.cb.privdata);
+			 }
+
+			freeReply(reply);
 		 }
 	 }
 }
-

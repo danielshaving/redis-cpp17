@@ -17,7 +17,7 @@ xItem::xItem(xStringPiece keyArg,
 {
 	assert(valuelen >= 2);
 	assert(receivedBytes < totalLen());
-	append(keyArg.data(), keyLen);
+	append(keyArg.data(),keyLen);
 }
 
 size_t xItem::neededBytes() const
@@ -25,7 +25,7 @@ size_t xItem::neededBytes() const
 	return totalLen() - receivedBytes;
 }
 
-void xItem::append(const char *data, size_t len)
+void xItem::append(const char *data,size_t len)
 {
 	assert(len <= neededBytes());
 	memcpy(this->data + receivedBytes, data, len);
@@ -33,7 +33,7 @@ void xItem::append(const char *data, size_t len)
 	assert(receivedBytes <= totalLen());
 }
 
-void xItem::output(xBuffer *out, bool needCas) const
+void xItem::output(xBuffer *out,bool needCas) const
 {
 	out->append("VALUE ");
 	out->append(data, keyLen);

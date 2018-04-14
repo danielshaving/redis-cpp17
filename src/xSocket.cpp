@@ -86,16 +86,26 @@ void xSocket::toIpPort(char *buf,size_t size,const struct sockaddr *addr)
 {
 	toIp(buf,size, addr);
 	size_t end = ::strlen(buf);
-	const struct sockaddr_in* addr4 = (const struct sockaddr_in*)(addr);
+	const struct sockaddr_in *addr4 = (const struct sockaddr_in*)(addr);
+#ifdef __linux__
 	uint16_t port = networkToHost16(addr4->sin_port);
+#endif
+#ifdef __APPLE__
+	uint16_t port = ntohs(addr4->sin_port);
+#endif
 	assert(size > end);
-	snprintf(buf+end, size-end, ":%u", port);
+	snprintf(buf+end, size-end,":%u",port);
 }
 
 void xSocket::toPort(uint16_t *port,const struct sockaddr *addr)
 {
 	const struct sockaddr_in *addr4 = (const struct sockaddr_in*)(addr);
+#ifdef __linux__
 	*port = networkToHost16(addr4->sin_port);
+#endif
+#ifdef __APPLE__
+	*port = ntohs(addr4->sin_port);
+#endif
 }
 
 void xSocket::toIp(char *buf,size_t size,const struct sockaddr *addr)
@@ -103,31 +113,41 @@ void xSocket::toIp(char *buf,size_t size,const struct sockaddr *addr)
 	if (addr->sa_family == AF_INET)
 	{
 		assert(size >= INET_ADDRSTRLEN);
-		const struct sockaddr_in* addr4 = (const struct sockaddr_in*)(addr);
+		const struct sockaddr_in *addr4 = (const struct sockaddr_in*)(addr);
 		::inet_ntop(AF_INET,&addr4->sin_addr, buf, static_cast<socklen_t>(size));
 	}
 	else if (addr->sa_family == AF_INET6)
 	{
 		assert(size >= INET6_ADDRSTRLEN);
-		const struct sockaddr_in6* addr6 =  (const struct sockaddr_in6*)(addr);
-		::inet_ntop(AF_INET6,&addr6->sin6_addr, buf, static_cast<socklen_t>(size));
+		const struct sockaddr_in6 *addr6 = (const struct sockaddr_in6*)(addr);
+		::inet_ntop(AF_INET6,&addr6->sin6_addr,buf,static_cast<socklen_t>(size));
 	}
 }
 
 void xSocket::fromIpPort(const char *ip,uint16_t port,struct sockaddr_in *addr)
 {
 	addr->sin_family = AF_INET;
+#ifdef __linux__
 	addr->sin_port = hostToNetwork16(port);
+#endif
+#ifdef __APPLE__
+	addr->sin_port = htons(port);
+#endif
 	if (::inet_pton(AF_INET,ip,&addr->sin_addr) <= 0)
 	{
 		LOG_SYSERR << "xSocket::fromIpPort";
 	}
 }
 
-void xSocket::fromIpPort(const char *ip, uint16_t port,struct sockaddr_in6 *addr)
+void xSocket::fromIpPort(const char *ip,uint16_t port,struct sockaddr_in6 *addr)
 {
 	addr->sin6_family = AF_INET6;
+#ifdef __linux__
 	addr->sin6_port = hostToNetwork16(port);
+#endif
+#ifdef __APPLE__
+	addr->sin6_port = htons(port);
+#endif
 	if (::inet_pton(AF_INET6,ip,&addr->sin6_addr) <= 0)
 	{
 		LOG_SYSERR << "xSocket::fromIpPort";
@@ -141,7 +161,7 @@ int32_t  xSocket::createSocket()
 
 bool xSocket::connectWaitReady(int32_t fd,int32_t msec)
 {
-	struct pollfd   wfd[1];
+	struct pollfd wfd[1];
 	wfd[0].fd = fd;
 	wfd[0].events = POLLOUT;
 
