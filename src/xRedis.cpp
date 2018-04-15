@@ -1376,9 +1376,9 @@ bool xRedis::commandCommand(const std::deque <rObj*> &obj,const SessionPtr &sess
 
 bool xRedis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {
-	if (obj.size()  <  2)
+	if (obj.size() < 2)
 	{
-		object.addReplyErrorFormat(session->clientBuffer, "unknown lpush param error");
+		object.addReplyErrorFormat(session->clientBuffer,"unknown lpush param error");
 		return false;
 	}
 
