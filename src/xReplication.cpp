@@ -38,12 +38,17 @@ void xReplication::disConnect()
 
 void xReplication::syncWrite(const TcpConnectionPtr &conn)
 {
-	conn->send("sync\r\n",6);
-	fp = redis->getRdb()->createFile();
-	if(fp == nullptr)
+	FILE *fp;
+	char tmpfile[256];
+	snprintf(tmpfile,256,"temp-%d.rdb",getpid());
+	fp = ::fopen(tmpfile,"w");
+	if (!fp)
 	{
-		conn->forceClose();
+		LOG_TRACE<<"Failed opening .rdb for saving:"<<strerror(errno);
+		return ;
 	}
+
+	conn->send("sync\r\n",6);
 }
 
 void xReplication::syncWithMaster(const TcpConnectionPtr &conn)
@@ -72,7 +77,7 @@ void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 			salveLen = *(int32_t*)(buffer->peek());
 			if (salveLen >= INT_MAX || salveLen <= 0)
 			{
-				redis->getRdb()->closeFile(fp);
+				::fclose(fp);
 				conn->forceClose();
 				LOG_WARN << "length is too large";
 				break;
@@ -91,7 +96,7 @@ void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 
 		if (salveReadLen > salveLen)
 		{
-			redis->getRdb()->closeFile(fp);
+			::fclose(fp);
 			conn->forceClose();
 			salveLen = 0;
 			LOG_WARN << "slave read data failure";
@@ -116,7 +121,7 @@ void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 			}
 			else
 			{
-				redis->getRdb()->closeFile(fp);
+				::fclose(fp);
 				conn->forceClose();
 				salveLen = 0;
 				LOG_INFO << "replication load rdb failure";

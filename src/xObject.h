@@ -36,8 +36,8 @@ typedef struct redisObject
 		}
 	}
 
-	unsigned type:4;
-	unsigned encoding:4;
+	char type;
+	char encoding;
 	size_t hash;
 	char *ptr;
 } rObj;

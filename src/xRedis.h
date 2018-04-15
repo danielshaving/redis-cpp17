@@ -115,6 +115,7 @@ public:
 	bool getClusterMap(rObj *command);
 	auto &getHandlerCommandMap() { return handlerCommands; }
 	rObj *createDumpPayload(rObj *dump);
+	void setExpire(rObj *key,double when);
 
 public:
 	auto *getEventLoop() { return &loop; }

@@ -392,7 +392,6 @@ void getRandomHexChars(char *p, uint32_t len)
 	}
 }
 
-
 int64_t ustime(void)
 {
 	struct timeval tv;

@@ -50,7 +50,8 @@ class xRdb: noncopyable
 {
 public:
 	xRdb(xRedis *redis)
-	:redis(redis)
+	:redis(redis),
+	 blockEnabled(true)
 	{
 
 	}
@@ -87,11 +88,9 @@ public:
 
 	void rioInitWithFile(xRio *r,FILE *fp);
 	void rioInitWithBuffer(xRio *r,sds s);
-	FILE *createFile();
-	int32_t closeFile(FILE *fp);
 
 	int32_t rdbLoadRio(xRio *rdb);
-	void startLoading(FILE *fp);
+	int32_t startLoading(FILE *fp);
 	
 	int32_t rdbSaveBinaryDoubleValue(xRio *rdb,double val);
 	int32_t rdbSaveMillisecondTime(xRio *rdb,int64_t t);
@@ -122,12 +121,11 @@ public:
 	int32_t rdbRestoreSet(rObj *key,xRio *rdb,int32_t type);
 	int32_t rdbRestoreExpire(rObj *key,xRio *rdb,int32_t type);
 	
-	int32_t rdbLoadString(xRio *rdb,int32_t type);
+	int32_t rdbLoadString(xRio *rdb,int32_t type,int64_t expiretime,int64_t now);
 	int32_t rdbLoadHash(xRio *rdb,int32_t type);
 	int32_t rdbLoadList(xRio *rdb,int32_t type);
 	int32_t rdbLoadZset(xRio *rdb,int32_t type);
 	int32_t rdbLoadSet(xRio *rdb,int32_t type);
-	int32_t rdbLoadExpire(xRio *rdb,int32_t type);
 	uint32_t rdbLoadLen(xRio *rdb,int32_t *isencoded);
 	
 	int32_t rdbLoad(char *fileName);
@@ -139,7 +137,6 @@ public:
 	rObj *rdbLoadEncodedStringObject(xRio *rdb);
 	rObj *rdbLoadLzfStringObject(xRio *rdb);
 	rObj *rdbGenericLoadStringObject(xRio *rdb,int32_t encode);
-
 
 	void rioGenericUpdateChecksum(xRio *r,const void *buf,size_t len);
 	int32_t rdbWriteRaw(xRio *rdb, void *p,size_t len);
