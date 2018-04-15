@@ -36,10 +36,8 @@ typedef struct redisObject
 		}
 	}
 
-	unsigned lru:LRU_BITS;    
-   	int32_t refcount;
-	unsigned type;
-	unsigned encoding;
+	unsigned type:4;
+	unsigned encoding:4;
 	size_t hash;
 	char *ptr;
 } rObj;
@@ -61,7 +59,6 @@ struct Equal
 				(memcmp(x->ptr, y->ptr, sdslen(y->ptr))== 0));
 	}
 };
-
 
 class xRedis;
 class xObjects : noncopyable

@@ -387,7 +387,6 @@ int32_t xRdb::rdbSaveBinaryDoubleValue(xRio *rdb, double val)
 int32_t xRdb::rdbSaveStruct(xRio *rdb)
 {
 	int64_t now = mstime();
-
 	size_t n = 0;
 	auto &redisShards = redis->getRedisShards();
 	for (auto &it : redisShards)
@@ -426,7 +425,6 @@ int32_t xRdb::rdbSaveStruct(xRio *rdb)
 				{
 					if (rdbSaveValue(rdb,iterrr) == -1) return -1;
 				}
-
 			}
 			else if (iter->type == OBJ_HASH)
 			{
@@ -926,7 +924,7 @@ int32_t xRdb::rdbRestoreExpire(rObj *key,xRio *rdb,int32_t type)
 	int64_t expire;
 	if ((expire = rdbLoadMillisecondTime(rdb)) == -1) return -1;
 
-	int64_t curExpire = xTimeStamp::now().getMicroSecondsSinceEpoch();
+	int64_t curExpire = mstime();
 	if (curExpire > expire)
 	{
 		key->calHash();
@@ -1279,11 +1277,11 @@ int32_t xRdb::rdbLoadRio(xRio *rdb)
 	uint32_t dbid;
 	int32_t type,rdbver;
 	char buf[1024];
-	
-	if (rioRead(rdb,buf,9) == 0) return REDIS_ERR;
+
+	if (rioRead(rdb,buf,REDIS_RDB_VERSION) == 0) return REDIS_ERR;
 	buf[9] = '\0';
 
-	if (memcmp(buf,"REDIS",9) !=0)
+	if (memcmp(buf,"REDIS",5) != 0)
 	{
 		LOG_ERROR<<"Wrong signature trying to load DB from file";
 		errno = EINVAL;
@@ -1390,6 +1388,8 @@ int32_t xRdb::rdbLoadRio(xRio *rdb)
 		{
 			if (rdbLoadSet(rdb,type) != REDIS_OK) return REDIS_ERR;
 		}
+
+		if (expiretime != -1) //setExpire(nullptr,db,key,expiretime);
 		expiretime = -1;
 	}
 
@@ -1416,25 +1416,26 @@ int32_t xRdb::rdbLoad(char *filename)
 {
 	FILE *fp;
 	xRio rdb;
-
+	int32_t retval;
 	if ((fp = ::fopen(filename,"r")) == nullptr) return REDIS_ERR;
 
 	startLoading(fp);
 	rioInitWithFile(&rdb,fp);
-	fclose(fp);
-	return REDIS_OK;
+	retval = rdbLoadRio(&rdb);
+	::fclose(fp);
+	return retval;
 }
 
 int32_t xRdb::rdbLoadType(xRio *rdb)
 {
-    unsigned char type;
+    uint8_t type;
     if (rioRead(rdb,&type,1) == 0) return -1;
     return type;
 }
 
 uint32_t xRdb::rdbLoadUType(xRio *rdb) 
 {
-    uint32_t  type;
+    uint32_t type;
     if (rioRead(rdb,&type,1) == 0) return -1;
     return type;
 }
@@ -1652,9 +1653,8 @@ int32_t xRdb::rdbSaveObjectType(xRio *rdb,rObj *o)
 		}
 		default:
         {
-			LOG_WARN<<"Unknown object type";
+			LOG_WARN<<"Unknown object type "<<o->type<<" "<<o->ptr;
 		}
-		
 	}
 	
 	return  -1;
@@ -1773,8 +1773,8 @@ int32_t xRdb::rdbSaveRio(xRio *rdb,int32_t *error,int32_t flags)
 	char magic[10];
 	int64_t now = time(0);
 	uint64_t cksum;
-	snprintf(magic,sizeof(magic),"REDIS%04d",REDIS_RDB_VERSION);
 
+	snprintf(magic,sizeof(magic),"REDIS%04d",REDIS_RDB_VERSION);
 	if (rdbWriteRaw(rdb,magic,9) == -1) goto werr;
 	if (rdbSaveInfoAuxFields(rdb,flags) == -1) goto werr;
 
@@ -1790,7 +1790,7 @@ int32_t xRdb::rdbSaveRio(xRio *rdb,int32_t *error,int32_t flags)
 		if (rdbSaveType(rdb,RDB_OPCODE_RESIZEDB) == -1) goto werr;
         if (rdbSaveLen(rdb,dbSize) == -1) goto werr;
         if (rdbSaveLen(rdb,expireSize) == -1) goto werr;
-        if (rdbSaveStruct(rdb) == REDIS_ERR) goto werr;
+        if (rdbSaveStruct(rdb) == -1) goto werr;
 	}
 
 	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1) goto werr;
@@ -1823,14 +1823,13 @@ int32_t xRdb::rdbSave(char *filename)
 	rioInitWithFile(&rdb,fp);
 	if (rdbSaveRio(&rdb,&error,RDB_SAVE_NONE) == REDIS_ERR) goto werr;
 	
-
 	if (::fflush(fp) == EOF) goto werr;
 	if (::fsync(fileno(fp)) == -1) goto werr;
 	if (::fclose(fp) == EOF) goto werr;
 
 	if (::rename(tmpfile,filename) == -1)
 	{
-		LOG_TRACE<<"Error moving temp DB file  on the final:"<<strerror(errno);
+		LOG_TRACE<<"Error moving temp DB file on the final:"<<strerror(errno);
 		unlink(tmpfile);
 		return REDIS_ERR;
 	}
@@ -1839,7 +1838,7 @@ int32_t xRdb::rdbSave(char *filename)
 	
 werr:
 	LOG_WARN<<"Write error saving DB on disk:" <<strerror(errno);
-	fclose(fp);
+	::fclose(fp);
 	unlink(tmpfile);
 	return REDIS_ERR;
 }
@@ -1916,9 +1915,10 @@ int32_t xRdb::rdbSaveInfoAuxFields(xRio *rdb,int32_t flags)
 {
 	int32_t redisBits = (sizeof(void*) == 8) ? 64 : 32;
     int32_t aofPreamble = (flags & RDB_SAVE_AOF_PREAMBLE) != 0;
+    char version = REDIS_RDB_VERSION;
 
     /* Add a few fields about the state when the RDB was created. */
-    if (rdbSaveAuxFieldStrStr(rdb,"redis-ver",(char*)REDIS_RDB_VERSION) == -1) return -1;
+    if (rdbSaveAuxFieldStrStr(rdb,"redis-ver",&version) == -1) return -1;
     if (rdbSaveAuxFieldStrInt(rdb,"redis-bits",redisBits) == -1) return -1;
     if (rdbSaveAuxFieldStrInt(rdb,"ctime",time(0)) == -1) return -1;
     if (rdbSaveAuxFieldStrInt(rdb,"used-mem",zmalloc_used_memory()) == -1) return -1;
@@ -1926,7 +1926,5 @@ int32_t xRdb::rdbSaveInfoAuxFields(xRio *rdb,int32_t flags)
     if (rdbSaveAuxFieldStrInt(rdb,"aof-preamble",aofPreamble) == -1) return -1;
     return 1;
 }
-
-
 
 

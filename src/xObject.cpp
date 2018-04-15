@@ -7,7 +7,7 @@ rObj *xObjects::createObject(int32_t type,void *ptr)
 	rObj *o = (rObj*)zmalloc(sizeof(rObj));
 	o->encoding = REDIS_ENCODING_RAW;
 	o->type = type;
-	o->ptr  = (char*)ptr;
+	o->ptr = (char*)ptr;
 	return o;
 }
 
@@ -669,17 +669,17 @@ void xObjects::createSharedObjects()
 	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(command);
 }
 
-rObj * xObjects::createStringObject(char *ptr, size_t len)
+rObj *xObjects::createStringObject(char *ptr,size_t len)
 {
 	return createEmbeddedStringObject(ptr,len);
 }
 
-rObj * xObjects::createRawStringObject(char *ptr, size_t len)
+rObj *xObjects::createRawStringObject(char *ptr,size_t len)
 {
 	return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
 
-rObj * xObjects::createEmbeddedStringObject(char *ptr, size_t len)
+rObj *xObjects::createEmbeddedStringObject(char *ptr,size_t len)
 {
 	rObj *o = (rObj*)zmalloc(sizeof(rObj)+sizeof(struct sdshdr)+len+1);
 	struct sdshdr *sh = (sdshdr*)(o+1);
@@ -739,7 +739,7 @@ void xObjects::addReplyBulk(xBuffer &buffer,rObj *obj)
 	addReply(buffer,crlf);
 }
 
-void xObjects::addReplyLongLongWithPrefix(xBuffer &buffer,int64_t ll, char prefix)
+void xObjects::addReplyLongLongWithPrefix(xBuffer &buffer,int64_t ll,char prefix)
 {
 	char buf[128];
 	int len;
@@ -772,14 +772,14 @@ void xObjects::addReplyLongLong(xBuffer &buffer,size_t len)
 		addReplyLongLongWithPrefix(buffer,len,':');
 }
 
-void xObjects::addReplyStatusLength(xBuffer &buffer, char *s, size_t len)
+void xObjects::addReplyStatusLength(xBuffer &buffer,char *s,size_t len)
 {
 	addReplyString(buffer,"+",1);
 	addReplyString(buffer,s,len);
 	addReplyString(buffer,"\r\n",2);
 }
 
-void xObjects::addReplyStatus(xBuffer &buffer, char *status)
+void xObjects::addReplyStatus(xBuffer &buffer,char *status)
 {
     addReplyStatusLength(buffer,status,strlen(status));
 }
@@ -795,7 +795,7 @@ void xObjects::addReply(xBuffer &buffer,rObj *obj)
 }
 
 /* Add sds to reply (takes ownership of sds and frees it) */
-void xObjects::addReplyBulkSds(xBuffer &buffer, sds s)
+void xObjects::addReplyBulkSds(xBuffer &buffer,sds s)
 {
 	addReplySds(buffer,sdscatfmt(sdsempty(),"$%u\r\n",
 	    (unsigned long)sdslen(s)));
@@ -828,28 +828,28 @@ void xObjects::prePendReplyLongLongWithPrefix(xBuffer &buffer,int32_t length)
 	}
 }
 
-void xObjects::addReplyBulkCString(xBuffer &buffer, const char *s)
+void xObjects::addReplyBulkCString(xBuffer &buffer,const char *s)
 {
 	if (s == nullptr)
 	{
-		addReply(buffer, nullbulk);
+		addReply(buffer,nullbulk);
 	}
 	else 
 	{
-		addReplyBulkCBuffer(buffer, s, strlen(s));
+		addReplyBulkCBuffer(buffer,s,strlen(s));
 	}
 }
 
-void xObjects::addReplyDouble(xBuffer &buffer, double d)
+void xObjects::addReplyDouble(xBuffer &buffer,double d)
 {
-	char dbuf[128], sbuf[128];
+	char dbuf[128],sbuf[128];
 	int dlen, slen;
-	dlen = snprintf(dbuf, sizeof(dbuf), "%.17g", d);
-	slen = snprintf(sbuf, sizeof(sbuf), "$%d\r\n%s\r\n", dlen, dbuf);
-	addReplyString(buffer, sbuf, slen);
+	dlen = snprintf(dbuf,sizeof(dbuf),"%.17g",d);
+	slen = snprintf(sbuf,sizeof(sbuf),"$%d\r\n%s\r\n",dlen,dbuf);
+	addReplyString(buffer,sbuf,slen);
 }
 
-void xObjects::addReplyBulkCBuffer(xBuffer &buffer,const char *p, size_t len)
+void xObjects::addReplyBulkCBuffer(xBuffer &buffer,const char *p,size_t len)
 {
 	addReplyLongLongWithPrefix(buffer,len,'$');
 	addReplyString(buffer,p,len);
@@ -872,14 +872,14 @@ void xObjects::addReplyErrorFormat(xBuffer &buffer,const char *fmt, ...)
 	sdsfree(s);
 }
 
-void xObjects::addReplyString(xBuffer &buffer,const char *s, size_t len)
+void xObjects::addReplyString(xBuffer &buffer,const char *s,size_t len)
 {
 	buffer.append(s,len);
 }
 
-void xObjects::addReplySds(xBuffer &buffer, sds s)
+void xObjects::addReplySds(xBuffer &buffer,sds s)
 {
-	buffer.append(s, sdslen(s));
+	buffer.append(s,sdslen(s));
 	sdsfree(s);
 }
 

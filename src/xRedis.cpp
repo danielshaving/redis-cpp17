@@ -98,7 +98,6 @@ void xRedis::serverCron()
 					LOG_INFO<<"background saving terminated with success";
 					if (slavefd != -1)
 					{
-
 						std::unique_lock <std::mutex> lck(slaveMutex);
 						auto it = slaveConns.find(slavefd);
 						if (it == slaveConns.end())
@@ -282,13 +281,11 @@ void xRedis::run()
 
 void xRedis::loadDataFromDisk()
 {
-	char rdb_filename[] = "dump.rdb";
-
-	xTimeStamp start (xTimeStamp::now());
-	if (rdb.rdbLoad(rdb_filename) == REDIS_OK)
+	int64_t start = mstime();
+	if (rdb.rdbLoad("dump.rdb") == REDIS_OK)
 	{
-		xTimeStamp end(xTimeStamp::now());
-		LOG_INFO<<"db loaded from disk sec: "<<timeDifference(end, start);
+		int64_t end = mstime();
+		LOG_INFO<<"db loaded from disk milseconds: "<<end - start;
 	}
 	else if (errno != ENOENT)
 	{
@@ -1196,12 +1193,12 @@ bool xRedis::bgsave(const SessionPtr &session,bool enabled)
 
 bool xRedis::save(const SessionPtr &session)
 {
-	xTimeStamp start(xTimeStamp::now());
+	int64_t now = mstime();
 	{
-		if (rdb.rdbSave(REDIS_DEFAULT_RDB_FILENGTHAME) == REDIS_OK)
+		if (rdb.rdbSave("dump.rdb") == REDIS_OK)
 		{
-			xTimeStamp end(xTimeStamp::now());
-			LOG_INFO<<"DB saved on disk sec: "<<timeDifference(end, start);
+			int64_t end = mstime();
+			LOG_INFO<<"DB saved on disk milliseconds: "<< (end - now);
 		}
 		else
 		{
@@ -1239,10 +1236,7 @@ void xRedis::clearFork()
 
 int32_t xRedis::rdbSaveBackground(bool enabled)
 {
-	if (rdbChildPid != -1)
-	{
-		return REDIS_ERR;
-	}
+	if (rdbChildPid != -1) return REDIS_ERR;
 
 	pid_t childpid;
 	if ((childpid = fork()) == 0)
@@ -1384,12 +1378,12 @@ bool xRedis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 {
 	if (obj.size()  <  2)
 	{
-		object.addReplyErrorFormat(session->clientBuffer, "unknown  lpush  param error");
+		object.addReplyErrorFormat(session->clientBuffer, "unknown lpush param error");
 		return false;
 	}
 
 	obj[0]->type = OBJ_LIST;
-	
+
 	size_t pushed = 0;
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
@@ -1404,9 +1398,9 @@ bool xRedis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 			auto iter = listMap.find(obj[0]);
 			assert(iter == listMap.end());
 			std::deque<rObj*> list;
-			for (int64_t i = 1; i < obj.size(); i++)
+			for (int32_t i = 1; i < obj.size(); i++)
 			{
-				obj[i]->type == OBJ_LIST;
+				obj[i]->type == 1;
 				pushed++;
 				list.push_back(obj[i]);
 			}
@@ -1427,7 +1421,7 @@ bool xRedis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 
 			zfree(obj[0]);
 
-			for (int32_t i = 1; i < obj.size(); ++i)
+			for (int32_t i = 1; i < obj.size(); i++)
 			{
 				obj[i]->type == OBJ_LIST;
 				pushed++;
@@ -1435,7 +1429,7 @@ bool xRedis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 			}
 		}
 	}
-	object.addReplyLongLong(session->clientBuffer, pushed);
+	object.addReplyLongLong(session->clientBuffer,pushed);
 	return true;
 }
 
