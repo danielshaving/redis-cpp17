@@ -1,8 +1,31 @@
 #include "xObject.h"
-#include "xRedis.h"
+
+struct sharedObjectsStruct shared;
 
 
-rObj *xObjects::createObject(int32_t type,void *ptr)
+void rObj::calHash()
+{
+	hash = dictGenHashFunction(ptr,sdslen(ptr));
+}
+
+bool rObj::operator < (const rObj &r) const
+{
+	auto cmp = memcmp(ptr,r.ptr,sdslen(ptr));
+	if (cmp < 0)
+	{
+		return true;
+	}
+	else if (cmp == 0)
+	{
+		return memcmp(ptr,r.ptr,sdslen(ptr)) < 0;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+rObj *createObject(int32_t type,void *ptr)
 {
 	rObj *o = (rObj*)zmalloc(sizeof(rObj));
 	o->encoding = REDIS_ENCODING_RAW;
@@ -11,8 +34,7 @@ rObj *xObjects::createObject(int32_t type,void *ptr)
 	return o;
 }
 
-
-int32_t xObjects::getLongLongFromObject(rObj *o,int64_t *target)
+int32_t getLongLongFromObject(rObj *o,int64_t *target)
 {
 	int64_t value;
 
@@ -28,7 +50,7 @@ int32_t xObjects::getLongLongFromObject(rObj *o,int64_t *target)
 		}
 		else
 		{
-			LOG_WARN << "Unknown string encoding";
+			assert(false);
 		}
 	}
 	
@@ -36,7 +58,7 @@ int32_t xObjects::getLongLongFromObject(rObj *o,int64_t *target)
 	return REDIS_OK;
 }
 
-int32_t xObjects::getLongLongFromObjectOrReply(xBuffer &buffer,rObj *o,int64_t *target,const char *msg)
+int32_t getLongLongFromObjectOrReply(xBuffer &buffer,rObj *o,int64_t *target,const char *msg)
 {
     int64_t value;
     if (getLongLongFromObject(o,&value) != REDIS_OK)
@@ -56,7 +78,7 @@ int32_t xObjects::getLongLongFromObjectOrReply(xBuffer &buffer,rObj *o,int64_t *
 }
 
 
-int xObjects::getLongFromObjectOrReply(xBuffer &buffer,rObj *o,int32_t *target,const char *msg)
+int32_t getLongFromObjectOrReply(xBuffer &buffer,rObj *o,int32_t *target,const char *msg)
 {
 	int64_t value;
 	if (getLongLongFromObject(o,&value) != REDIS_OK)
@@ -76,12 +98,12 @@ int xObjects::getLongFromObjectOrReply(xBuffer &buffer,rObj *o,int32_t *target,c
 	return REDIS_OK;
 }
 
-rObj *xObjects::createStringObjectFromLongLong(int64_t value)
+rObj *createStringObjectFromLongLong(int64_t value)
 {
 	rObj *o;
 	if(value <=0 && value < REDIS_SHARED_INTEGERS)
 	{
-		o = integers[value];
+		o = shared.integers[value];
 	}
 	else
 	{
@@ -99,7 +121,7 @@ rObj *xObjects::createStringObjectFromLongLong(int64_t value)
 	return o;
 }
 
-int32_t xObjects::getDoubleFromObjectOrReply(xBuffer &buffer,rObj *o,double *target,const char *msg)
+int32_t getDoubleFromObjectOrReply(xBuffer &buffer,rObj *o,double *target,const char *msg)
 {
     double value;
     if (getDoubleFromObject(o,&value) != REDIS_OK)
@@ -119,7 +141,7 @@ int32_t xObjects::getDoubleFromObjectOrReply(xBuffer &buffer,rObj *o,double *tar
 }
 
 
-int xObjects::getDoubleFromObject(const rObj *o,double *target)
+int32_t getDoubleFromObject(const rObj *o,double *target)
 {
     double value;
     char *eptr;
@@ -152,7 +174,7 @@ int xObjects::getDoubleFromObject(const rObj *o,double *target)
     return REDIS_OK;
 }
 
-void xObjects::freeStringObject(rObj *o)
+void freeStringObject(rObj *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW)
     {
@@ -160,7 +182,7 @@ void xObjects::freeStringObject(rObj *o)
     }
 }
 
-void xObjects::freeListObject(rObj *o)
+void freeListObject(rObj *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW)
     {
@@ -168,7 +190,7 @@ void xObjects::freeListObject(rObj *o)
     }
 }
 
-void xObjects::freeHashObject(rObj *o)
+void freeHashObject(rObj *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW)
     {
@@ -176,7 +198,7 @@ void xObjects::freeHashObject(rObj *o)
     }
 }
 
-void xObjects::freeSetObject(rObj *o)
+void freeSetObject(rObj *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW)
     {
@@ -184,7 +206,7 @@ void xObjects::freeSetObject(rObj *o)
     }
 }
 
-void xObjects::freeZsetObject(rObj *o)
+void freeZsetObject(rObj *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW)
     {
@@ -192,7 +214,7 @@ void xObjects::freeZsetObject(rObj *o)
     }
 }
 
-void xObjects::decrRefCount(rObj *o)
+void decrRefCount(rObj *o)
 {
 	switch(o->type)
 	{
@@ -201,485 +223,347 @@ void xObjects::decrRefCount(rObj *o)
         case OBJ_SET: freeSetObject(o); break;
         case OBJ_ZSET: freeZsetObject(o); break;
         case OBJ_HASH: freeHashObject(o); break;
-        default: LOG_ERROR<<"Unknown object type"; break;
+        default: assert(false); break;
 	}
 	zfree(o);
 }
 
-xObjects::xObjects(xRedis *redis)
-:redis(redis)
+void destorySharedObjects()
 {
-
-}
-
-xObjects::~xObjects()
-{
-
-}
-
-void xObjects::destorySharedObjects()
-{
-	freeStringObject(crlf);
-	freeStringObject(ok);
-	freeStringObject(err);
-	freeStringObject(emptybulk);
-	freeStringObject(czero);
-	freeStringObject(cone);
-	freeStringObject(cnegone);
-	freeStringObject(nullbulk);
-	freeStringObject(nullmultibulk);
-	freeStringObject(emptymultibulk);
-	freeStringObject(pping);
-	freeStringObject(ping);
-	freeStringObject(pong);
-	freeStringObject(ppong);
-	freeStringObject(queued);
-	freeStringObject(emptyscan);
-	freeStringObject(wrongtypeerr);
-	freeStringObject(nokeyerr);
-	freeStringObject(syntaxerr);
-	freeStringObject(sameobjecterr);
-	freeStringObject(outofrangeerr);
-	freeStringObject(noscripterr);
-	freeStringObject(loadingerr);
-	freeStringObject(slowscripterr);
-	freeStringObject(masterdownerr);
-	freeStringObject(bgsaveerr);
-	freeStringObject(roslaveerr);
-	freeStringObject(noautherr);
-	freeStringObject(oomerr);
-	freeStringObject(execaborterr);
-	freeStringObject(noreplicaserr);
-	freeStringObject(busykeyerr);
-	freeStringObject(space);
-	freeStringObject(colon);
-	freeStringObject(plus);
-	freeStringObject(messagebulk);
-	freeStringObject(pmessagebulk);
-	freeStringObject(subscribebulk);
-	freeStringObject(unsubscribebulk);
-	freeStringObject(psubscribebulk);
-	freeStringObject(punsubscribebulk);
-	freeStringObject(del);
-	freeStringObject(rpop);
-	freeStringObject(lpop);
-	freeStringObject(lpush);
-	freeStringObject(rpush);
-	freeStringObject(set);
-	freeStringObject(get);
-	freeStringObject(flushdb);
-	freeStringObject(dbsize);
-	freeStringObject(hset);
-	freeStringObject(hget);
-	freeStringObject(hgetall);
-	freeStringObject(save);
-	freeStringObject(slaveof);
-	freeStringObject(command);
-	freeStringObject(config);
-	freeStringObject(auth);
-	freeStringObject(info);
-	freeStringObject(echo);
-	freeStringObject(client);
-	freeStringObject(hkeys);
-	freeStringObject(hlen);
-	freeStringObject(keys);
-	freeStringObject(bgsave);
-	freeStringObject(memory);
-	freeStringObject(cluster);
-	freeStringObject(migrate);
-	freeStringObject(debug);
-	freeStringObject(ttl);
-	freeStringObject(lrange);
-	freeStringObject(llen);
-	freeStringObject(sadd);
-	freeStringObject(scard);
-	freeStringObject(addsync);
-	freeStringObject(setslot);
-	freeStringObject(node);
-	freeStringObject(connect);
-	freeStringObject(delsync);
-	freeStringObject(psync);
-	freeStringObject(sync);
-	freeStringObject(zadd);
-	freeStringObject(zrevrange);
-	freeStringObject(zcard);
-	freeStringObject(dump);
-	freeStringObject(restore);
+	freeStringObject(shared.crlf);
+	freeStringObject(shared.ok);
+	freeStringObject(shared.err);
+	freeStringObject(shared.emptybulk);
+	freeStringObject(shared.czero);
+	freeStringObject(shared.cone);
+	freeStringObject(shared.cnegone);
+	freeStringObject(shared.nullbulk);
+	freeStringObject(shared.nullmultibulk);
+	freeStringObject(shared.emptymultibulk);
+	freeStringObject(shared.pping);
+	freeStringObject(shared.ping);
+	freeStringObject(shared.pong);
+	freeStringObject(shared.ppong);
+	freeStringObject(shared.queued);
+	freeStringObject(shared.emptyscan);
+	freeStringObject(shared.wrongtypeerr);
+	freeStringObject(shared.nokeyerr);
+	freeStringObject(shared.syntaxerr);
+	freeStringObject(shared.sameobjecterr);
+	freeStringObject(shared.outofrangeerr);
+	freeStringObject(shared.noscripterr);
+	freeStringObject(shared.loadingerr);
+	freeStringObject(shared.slowscripterr);
+	freeStringObject(shared.masterdownerr);
+	freeStringObject(shared.bgsaveerr);
+	freeStringObject(shared.roslaveerr);
+	freeStringObject(shared.noautherr);
+	freeStringObject(shared.oomerr);
+	freeStringObject(shared.execaborterr);
+	freeStringObject(shared.noreplicaserr);
+	freeStringObject(shared.busykeyerr);
+	freeStringObject(shared.space);
+	freeStringObject(shared.colon);
+	freeStringObject(shared.plus);
+	freeStringObject(shared.messagebulk);
+	freeStringObject(shared.pmessagebulk);
+	freeStringObject(shared.subscribebulk);
+	freeStringObject(shared.unsubscribebulk);
+	freeStringObject(shared.psubscribebulk);
+	freeStringObject(shared.punsubscribebulk);
+	freeStringObject(shared.del);
+	freeStringObject(shared.rpop);
+	freeStringObject(shared.lpop);
+	freeStringObject(shared.lpush);
+	freeStringObject(shared.rpush);
+	freeStringObject(shared.set);
+	freeStringObject(shared.get);
+	freeStringObject(shared.flushdb);
+	freeStringObject(shared.dbsize);
+	freeStringObject(shared.hset);
+	freeStringObject(shared.hget);
+	freeStringObject(shared.hgetall);
+	freeStringObject(shared.save);
+	freeStringObject(shared.slaveof);
+	freeStringObject(shared.command);
+	freeStringObject(shared.config);
+	freeStringObject(shared.auth);
+	freeStringObject(shared.info);
+	freeStringObject(shared.echo);
+	freeStringObject(shared.client);
+	freeStringObject(shared.hkeys);
+	freeStringObject(shared.hlen);
+	freeStringObject(shared.keys);
+	freeStringObject(shared.bgsave);
+	freeStringObject(shared.memory);
+	freeStringObject(shared.cluster);
+	freeStringObject(shared.migrate);
+	freeStringObject(shared.debug);
+	freeStringObject(shared.ttl);
+	freeStringObject(shared.lrange);
+	freeStringObject(shared.llen);
+	freeStringObject(shared.sadd);
+	freeStringObject(shared.scard);
+	freeStringObject(shared.addsync);
+	freeStringObject(shared.setslot);
+	freeStringObject(shared.node);
+	freeStringObject(shared.clusterconnect);
+	freeStringObject(shared.delsync);
+	freeStringObject(shared.psync);
+	freeStringObject(shared.sync);
+	freeStringObject(shared.zadd);
+	freeStringObject(shared.zrevrange);
+	freeStringObject(shared.zcard);
+	freeStringObject(shared.dump);
+	freeStringObject(shared.restore);
 	
-	freeStringObject(PING);
-	freeStringObject(DEL);
-	freeStringObject(RPOP);
-	freeStringObject(LPOP);
-	freeStringObject(LPUSH);
-	freeStringObject(RPUSH);
-	freeStringObject(SET);
-	freeStringObject(GET);
-	freeStringObject(FLUSHDB);
-	freeStringObject(DBSIZE);
-	freeStringObject(HSET);
-	freeStringObject(HGET);
-	freeStringObject(HGETALL);
-	freeStringObject(SAVE);
-	freeStringObject(SLAVEOF);
-	freeStringObject(COMMAND);
-	freeStringObject(CONFIG);
-	freeStringObject(AUTH);
-	freeStringObject(INFO);
-	freeStringObject(ECHO);
-	freeStringObject(CLIENT);
-	freeStringObject(HKEYS);
-	freeStringObject(HLEN);
-	freeStringObject(KEYS);
-	freeStringObject(BGSAVE);
-	freeStringObject(MEMORY);
-	freeStringObject(CLUSTER);
-	freeStringObject(MIGRATE);
-	freeStringObject(DEBUG);
-	freeStringObject(TTL);
-	freeStringObject(LRANGE);
-	freeStringObject(LLEN);
-	freeStringObject(SADD);
-	freeStringObject(SCARD);
-	freeStringObject(ADDSYNC);
-	freeStringObject(SETSLOT);
-	freeStringObject(NODE);
-	freeStringObject(CONNECT);
-	freeStringObject(DELSYNC);
-	freeStringObject(PSYNC);
-	freeStringObject(SYNC);
-	freeStringObject(ZADD);
-	freeStringObject(ZREVRANGE);
-	freeStringObject(ZCARD);
-	freeStringObject(DUMP);
-	freeStringObject(RESTORE);
+	freeStringObject(shared.PING);
+	freeStringObject(shared.DEL);
+	freeStringObject(shared.RPOP);
+	freeStringObject(shared.LPOP);
+	freeStringObject(shared.LPUSH);
+	freeStringObject(shared.RPUSH);
+	freeStringObject(shared.SET);
+	freeStringObject(shared.GET);
+	freeStringObject(shared.FLUSHDB);
+	freeStringObject(shared.DBSIZE);
+	freeStringObject(shared.HSET);
+	freeStringObject(shared.HGET);
+	freeStringObject(shared.HGETALL);
+	freeStringObject(shared.SAVE);
+	freeStringObject(shared.SLAVEOF);
+	freeStringObject(shared.COMMAND);
+	freeStringObject(shared.CONFIG);
+	freeStringObject(shared.AUTH);
+	freeStringObject(shared.INFO);
+	freeStringObject(shared.ECHO);
+	freeStringObject(shared.CLIENT);
+	freeStringObject(shared.HKEYS);
+	freeStringObject(shared.HLEN);
+	freeStringObject(shared.KEYS);
+	freeStringObject(shared.BGSAVE);
+	freeStringObject(shared.MEMORY);
+	freeStringObject(shared.CLUSTER);
+	freeStringObject(shared.MIGRATE);
+	freeStringObject(shared.DEBUG);
+	freeStringObject(shared.TTL);
+	freeStringObject(shared.LRANGE);
+	freeStringObject(shared.LLEN);
+	freeStringObject(shared.SADD);
+	freeStringObject(shared.SCARD);
+	freeStringObject(shared.ADDSYNC);
+	freeStringObject(shared.SETSLOT);
+	freeStringObject(shared.NODE);
+	freeStringObject(shared.CONNECT);
+	freeStringObject(shared.DELSYNC);
+	freeStringObject(shared.PSYNC);
+	freeStringObject(shared.SYNC);
+	freeStringObject(shared.ZADD);
+	freeStringObject(shared.ZREVRANGE);
+	freeStringObject(shared.ZCARD);
+	freeStringObject(shared.DUMP);
+	freeStringObject(shared.RESTORE);
 	
-	for (int j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
+	for (int32_t j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
 	{
-		freeStringObject(integers[j]);
+		freeStringObject(shared.integers[j]);
 	}
 
-	for (int j = 0; j < REDIS_SHARED_INTEGERS; j++)
+	for (int32_t j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{
-		freeStringObject(mbulkhdr[j]);
+		freeStringObject(shared.mbulkhdr[j]);
 	}
 
-	zfree(rIp);
-	zfree(rPort);
+	zfree(shared.rIp);
+	zfree(shared.rPort);
 
 }
 
-void xObjects::createSharedObjects()
+void createSharedObjects()
 {
-	int j;
+	int32_t j;
 
-	crlf = createObject(REDIS_STRING,sdsnew("\r\n"));
-	ok = createObject(REDIS_STRING,sdsnew("+OK\r\n"));
-	err = createObject(REDIS_STRING,sdsnew("-ERR\r\n"));
-	emptybulk = createObject(REDIS_STRING,sdsnew("$0\r\n\r\n"));
-	czero = createObject(REDIS_STRING,sdsnew(":0\r\n"));
-	cone = createObject(REDIS_STRING,sdsnew(":1\r\n"));
-	cnegone = createObject(REDIS_STRING,sdsnew(":-1\r\n"));
-	nullbulk = createObject(REDIS_STRING,sdsnew("$-1\r\n"));
-	nullmultibulk = createObject(REDIS_STRING,sdsnew("*-1\r\n"));
-	emptymultibulk = createObject(REDIS_STRING,sdsnew("*0\r\n"));
-	pping = createObject(REDIS_STRING, sdsnew("PPING\r\n"));
-	ping = createObject(REDIS_STRING,sdsnew("PING\r\n"));
-	pong = createObject(REDIS_STRING, sdsnew("+PONG\r\n"));
-	ppong = createObject(REDIS_STRING,sdsnew("PPONG"));
-	queued = createObject(REDIS_STRING,sdsnew("+QUEUED\r\n"));
-	emptyscan = createObject(REDIS_STRING,sdsnew("*2\r\n$1\r\n0\r\n*0\r\n"));
+	shared.crlf = createObject(REDIS_STRING,sdsnew("\r\n"));
+	shared.ok = createObject(REDIS_STRING,sdsnew("+OK\r\n"));
+	shared.err = createObject(REDIS_STRING,sdsnew("-ERR\r\n"));
+	shared.emptybulk = createObject(REDIS_STRING,sdsnew("$0\r\n\r\n"));
+	shared.czero = createObject(REDIS_STRING,sdsnew(":0\r\n"));
+	shared.cone = createObject(REDIS_STRING,sdsnew(":1\r\n"));
+	shared.cnegone = createObject(REDIS_STRING,sdsnew(":-1\r\n"));
+	shared.nullbulk = createObject(REDIS_STRING,sdsnew("$-1\r\n"));
+	shared.nullmultibulk = createObject(REDIS_STRING,sdsnew("*-1\r\n"));
+	shared.emptymultibulk = createObject(REDIS_STRING,sdsnew("*0\r\n"));
+	shared.pping = createObject(REDIS_STRING, sdsnew("PPING\r\n"));
+	shared.ping = createObject(REDIS_STRING,sdsnew("PING\r\n"));
+	shared.pong = createObject(REDIS_STRING, sdsnew("+PONG\r\n"));
+	shared.ppong = createObject(REDIS_STRING,sdsnew("PPONG"));
+	shared.queued = createObject(REDIS_STRING,sdsnew("+QUEUED\r\n"));
+	shared.emptyscan = createObject(REDIS_STRING,sdsnew("*2\r\n$1\r\n0\r\n*0\r\n"));
 
-	wrongtypeerr = createObject(REDIS_STRING,sdsnew(
+	shared.wrongtypeerr = createObject(REDIS_STRING,sdsnew(
 	    "-WRONGTYPE Operation against a key holding the wrong kind of value\r\n"));
-	nokeyerr = createObject(REDIS_STRING,sdsnew(
+	shared.nokeyerr = createObject(REDIS_STRING,sdsnew(
 	    "-ERR no such key\r\n"));
-	syntaxerr = createObject(REDIS_STRING,sdsnew(
+	shared.syntaxerr = createObject(REDIS_STRING,sdsnew(
 	    "-ERR syntax error\r\n"));
-	sameobjecterr = createObject(REDIS_STRING,sdsnew(
+	shared.sameobjecterr = createObject(REDIS_STRING,sdsnew(
 	    "-ERR source and destination objects are the same\r\n"));
-	outofrangeerr = createObject(REDIS_STRING,sdsnew(
+	shared.outofrangeerr = createObject(REDIS_STRING,sdsnew(
 	    "-ERR index out of range\r\n"));
-	noscripterr = createObject(REDIS_STRING,sdsnew(
+	shared.noscripterr = createObject(REDIS_STRING,sdsnew(
 	    "-NOSCRIPT No matching script. Please use EVAL.\r\n"));
-	loadingerr = createObject(REDIS_STRING,sdsnew(
+	shared.loadingerr = createObject(REDIS_STRING,sdsnew(
 	    "-LOADING Redis is loading the dataset in memory\r\n"));
-	slowscripterr = createObject(REDIS_STRING,sdsnew(
+	shared.slowscripterr = createObject(REDIS_STRING,sdsnew(
 	    "-BUSY Redis is busy running a script. You can only call SCRIPT KILL or SHUTDOWN NOSAVE.\r\n"));
-	masterdownerr = createObject(REDIS_STRING,sdsnew(
+	shared.masterdownerr = createObject(REDIS_STRING,sdsnew(
 	    "-MASTERDOWN Link with MASTER is down and slave-serve-stale-data is set to 'no'.\r\n"));
-	bgsaveerr = createObject(REDIS_STRING,sdsnew(
+	shared.bgsaveerr = createObject(REDIS_STRING,sdsnew(
 	    "-MISCONF Redis is configured to save RDB snapshots, but is currently no able to persist on disk. Commands that may modify the data set are disabled. Please check Redis logs for details about the error.\r\n"));
-	roslaveerr = createObject(REDIS_STRING,sdsnew(
+	shared.roslaveerr = createObject(REDIS_STRING,sdsnew(
 	    "-READONLY You can't write against a read only slave.\r\n"));
-	noautherr = createObject(REDIS_STRING,sdsnew(
+	shared.noautherr = createObject(REDIS_STRING,sdsnew(
 	    "-NOAUTH Authentication required.\r\n"));
-	oomerr = createObject(REDIS_STRING,sdsnew(
+	shared.oomerr = createObject(REDIS_STRING,sdsnew(
 	    "-OOM command no allowed when used memory > 'maxmemory'.\r\n"));
-	execaborterr = createObject(REDIS_STRING,sdsnew(
+	shared.execaborterr = createObject(REDIS_STRING,sdsnew(
 	    "-EXECABORT Transaction discarded because of previous errors.\r\n"));
-	noreplicaserr = createObject(REDIS_STRING,sdsnew(
+	shared.noreplicaserr = createObject(REDIS_STRING,sdsnew(
 	    "-NOREPLICAS Not enough good slaves to write.\r\n"));
-	busykeyerr = createObject(REDIS_STRING,sdsnew(
+	shared.busykeyerr = createObject(REDIS_STRING,sdsnew(
 	    "-BUSYKEY Target key name already exists.\r\n"));
 
-	space = createObject(REDIS_STRING,sdsnew(" "));
-	colon = createObject(REDIS_STRING,sdsnew(":"));
-	plus = createObject(REDIS_STRING,sdsnew("+"));
-	asking = createObject(REDIS_STRING,sdsnew("asking"));
+	shared.space = createObject(REDIS_STRING,sdsnew(" "));
+	shared.colon = createObject(REDIS_STRING,sdsnew(":"));
+	shared.plus = createObject(REDIS_STRING,sdsnew("+"));
+	shared.asking = createObject(REDIS_STRING,sdsnew("asking"));
 
-	messagebulk = createStringObject("$7\r\nmessage\r\n",13);
-	pmessagebulk = createStringObject("$8\r\npmessage\r\n",14);
-	subscribebulk = createStringObject("$9\r\nsubscribe\r\n",15);
-	unsubscribebulk = createStringObject("$11\r\nunsubscribe\r\n",18);
-	psubscribebulk = createStringObject("$10\r\npsubscribe\r\n",17);
-	punsubscribebulk = createStringObject("$12\r\npunsubscribe\r\n",19);
+	shared.messagebulk = createStringObject("$7\r\nmessage\r\n",13);
+	shared.pmessagebulk = createStringObject("$8\r\npmessage\r\n",14);
+	shared.subscribebulk = createStringObject("$9\r\nsubscribe\r\n",15);
+	shared.unsubscribebulk = createStringObject("$11\r\nunsubscribe\r\n",18);
+	shared.psubscribebulk = createStringObject("$10\r\npsubscribe\r\n",17);
+	shared.punsubscribebulk = createStringObject("$12\r\npunsubscribe\r\n",19);
 
-	del = createStringObject("del", 3);
-	rpop = createStringObject("rpop", 4);
-	lpop = createStringObject("lpop", 4);
-	lpush = createStringObject("lpush", 5);
-	rpush = createStringObject("rpush", 5);
-	set = createStringObject("set", 3);
-	get = createStringObject("get", 3);
-	flushdb = createStringObject("flushdb", 7);
-	dbsize = createStringObject("dbsize", 6);
-	hset = createStringObject("hset", 4);
-	hget = createStringObject("hget", 4);
-	hgetall = createStringObject("hgetall", 7);
-	save = createStringObject("save", 4);
-	slaveof = createStringObject("slaveof", 7);
-	command = createStringObject("command", 7);
-	config = createStringObject("config", 6);
-	auth = createStringObject("rpush", 5);
-	info = createStringObject("info", 4);
-	echo = createStringObject("echo", 4);
-	client = createStringObject("client", 6);
-	hkeys = createStringObject("hkeys", 5);
-	hlen = createStringObject("hlen", 4);
-	keys = createStringObject("keys", 4);
-	bgsave = createStringObject("bgsave", 6);
-	memory = createStringObject("memory", 6);
-	cluster = createStringObject("cluster", 7);
-	migrate = createStringObject("migrate", 7);
-	debug = createStringObject("debug", 5);
-	ttl = createStringObject("ttl", 3);
-	lrange = createStringObject("lrange", 6);
-	llen = createStringObject("llen", 4);
-	sadd = createStringObject("sadd", 4);
-	scard = createStringObject("scard", 5);
-	addsync = createStringObject("addsync", 7);
-	setslot = createStringObject("setslot", 7);
-	node = createStringObject("node", 4);
-	connect = createStringObject("connect", 7);
-	psync = createStringObject("psync", 5);
-	sync = createStringObject("sync", 4);
-	delsync = createStringObject("delsync", 7);
-	zadd = createStringObject("zadd", 4);
-	zrange = createStringObject("zrange",6);
-	zrevrange = createStringObject("zrevrange",9);
-	zcard = createStringObject("zcard",5);
-	dump = createStringObject("dump",4);
-	restore =  createStringObject("restore",7);
+	shared.del = createStringObject("del",3);
+	shared.rpop = createStringObject("rpop",4);
+	shared.lpop = createStringObject("lpop",4);
+	shared.lpush = createStringObject("lpush",5);
+	shared.rpush = createStringObject("rpush",5);
+	shared.set = createStringObject("set",3);
+	shared.get = createStringObject("get",3);
+	shared.flushdb = createStringObject("flushdb",7);
+	shared.dbsize = createStringObject("dbsize",6);
+	shared.hset = createStringObject("hset",4);
+	shared.hget = createStringObject("hget",4);
+	shared.hgetall = createStringObject("hgetall",7);
+	shared.save = createStringObject("save",4);
+	shared.slaveof = createStringObject("slaveof",7);
+	shared.command = createStringObject("command",7);
+	shared.config = createStringObject("config",6);
+	shared.auth = createStringObject("rpush",5);
+	shared.info = createStringObject("info",4);
+	shared.echo = createStringObject("echo",4);
+	shared.client = createStringObject("client",6);
+	shared.hkeys = createStringObject("hkeys",5);
+	shared.hlen = createStringObject("hlen",4);
+	shared.keys = createStringObject("keys",4);
+	shared.bgsave = createStringObject("bgsave",6);
+	shared.memory = createStringObject("memory",6);
+	shared.cluster = createStringObject("cluster",7);
+	shared.migrate = createStringObject("migrate",7);
+	shared.debug = createStringObject("debug",5);
+	shared.ttl = createStringObject("ttl",3);
+	shared.lrange = createStringObject("lrange",6);
+	shared.llen = createStringObject("llen",4);
+	shared.sadd = createStringObject("sadd",4);
+	shared.scard = createStringObject("scard",5);
+	shared.addsync = createStringObject("addsync",7);
+	shared.setslot = createStringObject("setslot",7);
+	shared.node = createStringObject("node",4);
+	shared.clusterconnect = createStringObject("clusterconnect",13);
+	shared.sync = createStringObject("sync",4);
+	shared.psync = createStringObject("psync",5);
+	shared.delsync = createStringObject("delsync",7);
+	shared.zadd = createStringObject("zadd",4);
+	shared.zrange = createStringObject("zrange",6);
+	shared.zrevrange = createStringObject("zrevrange",9);
+	shared.zcard = createStringObject("zcard",5);
+	shared.dump = createStringObject("dump",4);
+	shared.restore = createStringObject("restore",7);
 	
-	PING =  createStringObject("PING", 4);
-	DEL = createStringObject("DEL", 3);
-	RPOP = createStringObject("RPOP", 4);
-	LPOP = createStringObject("LPOP", 4);
-	LPUSH = createStringObject("LPUSH", 5);
-	RPUSH = createStringObject("RPUSH", 5);
-	SET = createStringObject("SET", 3);
-	GET = createStringObject("GET", 3);
-	FLUSHDB = createStringObject("FLUSHDB", 7);
-	DBSIZE = createStringObject("DBSIZE", 6);
-	HSET = createStringObject("HSET", 4);
-	HGET = createStringObject("HGET", 4);
-	HGETALL = createStringObject("HGETALL", 7);
-	SAVE = createStringObject("SAVE", 4);
-	SLAVEOF = createStringObject("SLAVEOF", 7);
-	COMMAND = createStringObject("COMMAND", 7);
-	CONFIG = createStringObject("CONFIG", 6);
-	AUTH = createStringObject("RPUSH", 5);
-	INFO = createStringObject("INFO", 4);
-	ECHO = createStringObject("ECHO", 4);
-	CLIENT = createStringObject("CLIENT", 6);
-	HKEYS = createStringObject("HKEYS", 5);
-	HLEN = createStringObject("HLEN", 4);
-	KEYS = createStringObject("KEYS", 4);
-	BGSAVE = createStringObject("BGSAVE", 6);
-	MEMORY = createStringObject("MEMORY", 6);
-	CLUSTER = createStringObject("CLUSTER", 7);
-	MIGRATE = createStringObject("MIGRATE", 7);
-	DEBUG = createStringObject("DEBUG", 5);
-	TTL = createStringObject("TTL", 3);
-	LRANGE = createStringObject("LRANGE", 6);
-	LLEN = createStringObject("LLEN", 4);
-	SADD = createStringObject("SADD", 4);
-	SCARD = createStringObject("SCARD", 5);
-	ADDSYNC = createStringObject("ADDSYNC", 7);
-	SETSLOT = createStringObject("SETSLOT", 7);
-	NODE = createStringObject("NODE", 4);
-	CONNECT = createStringObject("CONNECT", 7);
-	PSYNC = createStringObject("PSYNC", 5);
-	SYNC = createStringObject("SYNC", 4);
-	DELSYNC = createStringObject("DELSYNC", 7);
-	ZADD = createStringObject("ZADD", 4);
-	ZRANGE = createStringObject("ZRANGE",6);
-	ZREVRANGE = createStringObject("ZRANGE",9);
-	ZCARD = createStringObject("ZCARD",5);
-	DUMP = createStringObject("DUMP",4);
-	RESTORE =  createStringObject("RESTORE",7);
-
-	
+	shared.PING = createStringObject("PING",4);
+	shared.DEL = createStringObject("DEL",3);
+	shared.RPOP = createStringObject("RPOP",4);
+	shared.LPOP = createStringObject("LPOP",4);
+	shared.LPUSH = createStringObject("LPUSH",5);
+	shared.RPUSH = createStringObject("RPUSH",5);
+	shared.SET = createStringObject("SET",3);
+	shared.GET = createStringObject("GET",3);
+	shared.FLUSHDB = createStringObject("FLUSHDB",7);
+	shared.DBSIZE = createStringObject("DBSIZE",6);
+	shared.HSET = createStringObject("HSET",4);
+	shared.HGET = createStringObject("HGET",4);
+	shared.HGETALL = createStringObject("HGETALL",7);
+	shared.SAVE = createStringObject("SAVE",4);
+	shared.SLAVEOF = createStringObject("SLAVEOF",7);
+	shared.COMMAND = createStringObject("COMMAND",7);
+	shared.CONFIG = createStringObject("CONFIG",6);
+	shared.AUTH = createStringObject("RPUSH",5);
+	shared.INFO = createStringObject("INFO",4);
+	shared.ECHO = createStringObject("ECHO",4);
+	shared.CLIENT = createStringObject("CLIENT",6);
+	shared.HKEYS = createStringObject("HKEYS",5);
+	shared.HLEN = createStringObject("HLEN",4);
+	shared.KEYS = createStringObject("KEYS",4);
+	shared.BGSAVE = createStringObject("BGSAVE",6);
+	shared.MEMORY = createStringObject("MEMORY",6);
+	shared.CLUSTER = createStringObject("CLUSTER",7);
+	shared.MIGRATE = createStringObject("MIGRATE",7);
+	shared.DEBUG = createStringObject("DEBUG",5);
+	shared.TTL = createStringObject("TTL",3);
+	shared.LRANGE = createStringObject("LRANGE",6);
+	shared.LLEN = createStringObject("LLEN",4);
+	shared.SADD = createStringObject("SADD",4);
+	shared.SCARD = createStringObject("SCARD",5);
+	shared.ADDSYNC = createStringObject("ADDSYNC",7);
+	shared.SETSLOT = createStringObject("SETSLOT",7);
+	shared.NODE = createStringObject("NODE",4);
+	shared.CONNECT = createStringObject("CONNECT",7);
+	shared.PSYNC = createStringObject("PSYNC",5);
+	shared.SYNC = createStringObject("SYNC",4);
+	shared.DELSYNC = createStringObject("DELSYNC",7);
+	shared.ZADD = createStringObject("ZADD",4);
+	shared.ZRANGE = createStringObject("ZRANGE",6);
+	shared.ZREVRANGE = createStringObject("ZRANGE",9);
+	shared.ZCARD = createStringObject("ZCARD",5);
+	shared.DUMP = createStringObject("DUMP",4);
+	shared.RESTORE = createStringObject("RESTORE",7);
 	
 	for (j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{
-		integers[j] = createObject(REDIS_STRING,(void*)(long)j);
-		integers[j]->encoding = REDIS_ENCODING_INT;
+		shared.integers[j] = createObject(REDIS_STRING,(void*)(long)j);
+		shared.integers[j]->encoding = REDIS_ENCODING_INT;
 	}
-
 
 	for (j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
 	{
-		mbulkhdr[j] = createObject(REDIS_STRING,sdscatprintf(sdsempty(),"*%d\r\n",j));
-		bulkhdr[j] = createObject(REDIS_STRING,sdscatprintf(sdsempty(),"$%d\r\n",j));
+		shared.mbulkhdr[j] = createObject(REDIS_STRING,sdscatprintf(sdsempty(),"*%d\r\n",j));
+		shared.bulkhdr[j] = createObject(REDIS_STRING,sdscatprintf(sdsempty(),"$%d\r\n",j));
 	}
-
-	char buf[8];
-	int32_t len = ll2string(buf,sizeof(buf),redis->getPort());
-	rPort = createStringObject(buf,len);
-	rIp = createStringObject((char*)(redis->getIp().c_str()),redis->getIp().length());
-
-#define REGISTER_REDIS_COMMAND(msgId, func) \
-    msgId->calHash(); \
-	redis->handlerCommands[msgId] = std::bind(&xRedis::func, redis, std::placeholders::_1, std::placeholders::_2);
-	REGISTER_REDIS_COMMAND(set,setCommand);
-	REGISTER_REDIS_COMMAND(get,getCommand);
-	REGISTER_REDIS_COMMAND(hset,hsetCommand);
-	REGISTER_REDIS_COMMAND(hget,hgetCommand);
-	REGISTER_REDIS_COMMAND(hlen,hlenCommand);
-	REGISTER_REDIS_COMMAND(hgetall,hgetallCommand);
-	REGISTER_REDIS_COMMAND(lpush,lpushCommand);
-	REGISTER_REDIS_COMMAND(rpush,rpushCommand);
-	REGISTER_REDIS_COMMAND(lpop,lpopCommand);
-	REGISTER_REDIS_COMMAND(rpop,rpopCommand);
-	REGISTER_REDIS_COMMAND(lrange,lrangeCommand);
-	REGISTER_REDIS_COMMAND(rpop,rpopCommand);
-	REGISTER_REDIS_COMMAND(llen,llenCommand);
-	REGISTER_REDIS_COMMAND(zadd,zaddCommand);
-	REGISTER_REDIS_COMMAND(zrange,zrangeCommand);
-	REGISTER_REDIS_COMMAND(zcard,zcardCommand);
-	REGISTER_REDIS_COMMAND(zrevrange,zrevrangeCommand);
-	REGISTER_REDIS_COMMAND(scard,scardCommand);
-	REGISTER_REDIS_COMMAND(sadd,saddCommand);
-	REGISTER_REDIS_COMMAND(dump,dumpCommand);
-	REGISTER_REDIS_COMMAND(restore,restoreCommand);
-
-	REGISTER_REDIS_COMMAND(flushdb,flushdbCommand);
-	REGISTER_REDIS_COMMAND(dbsize,dbsizeCommand);
-	REGISTER_REDIS_COMMAND(ping,pingCommand);
-	REGISTER_REDIS_COMMAND(save,saveCommand);
-	REGISTER_REDIS_COMMAND(slaveof,slaveofCommand);
-	REGISTER_REDIS_COMMAND(sync,syncCommand);
-	REGISTER_REDIS_COMMAND(command,commandCommand);
-	REGISTER_REDIS_COMMAND(config,configCommand);
-	REGISTER_REDIS_COMMAND(auth,authCommand);
-	REGISTER_REDIS_COMMAND(info,infoCommand);
-	REGISTER_REDIS_COMMAND(echo,echoCommand);
-	REGISTER_REDIS_COMMAND(client,clientCommand);
-	REGISTER_REDIS_COMMAND(del,delCommand);
-	REGISTER_REDIS_COMMAND(keys,keysCommand);
-	REGISTER_REDIS_COMMAND(bgsave,bgsaveCommand);
-	REGISTER_REDIS_COMMAND(memory,memoryCommand);
-	REGISTER_REDIS_COMMAND(cluster,clusterCommand);
-	REGISTER_REDIS_COMMAND(migrate,migrateCommand);
-	REGISTER_REDIS_COMMAND(debug,debugCommand);
-	REGISTER_REDIS_COMMAND(ttl,ttlCommand);
-	REGISTER_REDIS_COMMAND(SET,setCommand);
-	REGISTER_REDIS_COMMAND(GET,getCommand);
-	REGISTER_REDIS_COMMAND(HSET,hsetCommand);
-	REGISTER_REDIS_COMMAND(HGET,hgetCommand);
-	REGISTER_REDIS_COMMAND(HLEN,hlenCommand);
-	REGISTER_REDIS_COMMAND(HGETALL,hgetallCommand);
-	REGISTER_REDIS_COMMAND(LPUSH,lpushCommand);
-	REGISTER_REDIS_COMMAND(RPUSH,rpushCommand);
-	REGISTER_REDIS_COMMAND(LPOP,lpopCommand);
-	REGISTER_REDIS_COMMAND(RPOP,rpopCommand);
-	REGISTER_REDIS_COMMAND(LRANGE,lrangeCommand);
-	REGISTER_REDIS_COMMAND(RPOP,rpopCommand);
-	REGISTER_REDIS_COMMAND(LLEN,llenCommand);
-	REGISTER_REDIS_COMMAND(ZADD,zaddCommand);
-	REGISTER_REDIS_COMMAND(ZRANGE,zrangeCommand);
-	REGISTER_REDIS_COMMAND(ZCARD,zcardCommand);
-	REGISTER_REDIS_COMMAND(ZREVRANGE,zrevrangeCommand);
-	REGISTER_REDIS_COMMAND(SCARD,scardCommand);
-	REGISTER_REDIS_COMMAND(SADD,saddCommand);
-	REGISTER_REDIS_COMMAND(DUMP,dumpCommand);
-	REGISTER_REDIS_COMMAND(RESTORE,restoreCommand);
-	REGISTER_REDIS_COMMAND(FLUSHDB,flushdbCommand);
-	REGISTER_REDIS_COMMAND(DBSIZE,dbsizeCommand);
-	REGISTER_REDIS_COMMAND(PING,pingCommand);
-	REGISTER_REDIS_COMMAND(SAVE,saveCommand);
-	REGISTER_REDIS_COMMAND(SLAVEOF,slaveofCommand);
-	REGISTER_REDIS_COMMAND(SYNC,syncCommand);
-	REGISTER_REDIS_COMMAND(COMMAND,commandCommand);
-	REGISTER_REDIS_COMMAND(CONFIG,configCommand);
-	REGISTER_REDIS_COMMAND(AUTH,authCommand);
-	REGISTER_REDIS_COMMAND(INFO,infoCommand);
-	REGISTER_REDIS_COMMAND(ECHO,echoCommand);
-	REGISTER_REDIS_COMMAND(CLIENT,clientCommand);
-	REGISTER_REDIS_COMMAND(DEL,delCommand);
-	REGISTER_REDIS_COMMAND(KEYS,keysCommand);
-	REGISTER_REDIS_COMMAND(BGSAVE,bgsaveCommand);
-	REGISTER_REDIS_COMMAND(MEMORY,memoryCommand);
-	REGISTER_REDIS_COMMAND(CLUSTER,clusterCommand);
-	REGISTER_REDIS_COMMAND(MIGRATE,migrateCommand);
-	REGISTER_REDIS_COMMAND(DEBUG,debugCommand);
-	REGISTER_REDIS_COMMAND(TTL,ttlCommand);
-
-#define REGISTER_REDIS_REPLY_COMMAND(msgId) \
-	msgId->calHash(); \
-	redis->replyCommands.insert(msgId);
-	REGISTER_REDIS_REPLY_COMMAND(addsync);
-	REGISTER_REDIS_REPLY_COMMAND(setslot);
-	REGISTER_REDIS_REPLY_COMMAND(node);
-	REGISTER_REDIS_REPLY_COMMAND(connect);
-	REGISTER_REDIS_REPLY_COMMAND(delsync);
-	REGISTER_REDIS_REPLY_COMMAND(cluster);
-	REGISTER_REDIS_REPLY_COMMAND(rIp);
-	REGISTER_REDIS_REPLY_COMMAND(rPort);
-
-#define REGISTER_REDIS_CHECK_COMMAND(msgId) \
-	msgId->calHash(); \
-	redis->replyCommands.insert(msgId);
-	REGISTER_REDIS_CHECK_COMMAND(set);
-	REGISTER_REDIS_CHECK_COMMAND(hset);
-	REGISTER_REDIS_CHECK_COMMAND(lpush);
-	REGISTER_REDIS_CHECK_COMMAND(rpush);
-	REGISTER_REDIS_CHECK_COMMAND(sadd);
-	REGISTER_REDIS_CHECK_COMMAND(lpop);
-	REGISTER_REDIS_CHECK_COMMAND(rpop);
-	REGISTER_REDIS_CHECK_COMMAND(del);
-	REGISTER_REDIS_CHECK_COMMAND(flushdb);
-
-#define REGISTER_REDIS_CLUSTER_CHECK_COMMAND(msgId) \
-	msgId->calHash(); \
-	redis->cluterCommands.insert(msgId);
-	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(cluster);
-	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(migrate);
-	REGISTER_REDIS_CLUSTER_CHECK_COMMAND(command);
 }
 
-rObj *xObjects::createStringObject(char *ptr,size_t len)
+rObj *createStringObject(char *ptr,size_t len)
 {
 	return createEmbeddedStringObject(ptr,len);
 }
 
-rObj *xObjects::createRawStringObject(char *ptr,size_t len)
+rObj *createRawStringObject(char *ptr,size_t len)
 {
 	return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
 
-rObj *xObjects::createEmbeddedStringObject(char *ptr,size_t len)
+rObj *createEmbeddedStringObject(char *ptr,size_t len)
 {
 	rObj *o = (rObj*)zmalloc(sizeof(rObj)+sizeof(struct sdshdr)+len+1);
 	struct sdshdr *sh = (sdshdr*)(o+1);
@@ -702,7 +586,7 @@ rObj *xObjects::createEmbeddedStringObject(char *ptr,size_t len)
    	return o;
 }
 
-void xObjects::addReplyBulkLen(xBuffer &buffer,rObj *obj)
+void addReplyBulkLen(xBuffer &buffer,rObj *obj)
 {
 	size_t len;
 
@@ -726,31 +610,31 @@ void xObjects::addReplyBulkLen(xBuffer &buffer,rObj *obj)
 	}
 
 	if (len < REDIS_SHARED_BULKHDR_LEN)
-	    addReply(buffer,bulkhdr[len]);
+	    addReply(buffer,shared.bulkhdr[len]);
 	else
 	    addReplyLongLongWithPrefix(buffer,len,'$');
 
 }
 
-void xObjects::addReplyBulk(xBuffer &buffer,rObj *obj)
+void addReplyBulk(xBuffer &buffer,rObj *obj)
 {
 	addReplyBulkLen(buffer,obj);
 	addReply(buffer,obj);
-	addReply(buffer,crlf);
+	addReply(buffer,shared.crlf);
 }
 
-void xObjects::addReplyLongLongWithPrefix(xBuffer &buffer,int64_t ll,char prefix)
+void addReplyLongLongWithPrefix(xBuffer &buffer,int64_t ll,char prefix)
 {
 	char buf[128];
-	int len;
+	int32_t len;
 	if (prefix == '*' && ll < REDIS_SHARED_BULKHDR_LEN) 
 	{
-	    addReply(buffer,mbulkhdr[ll]);
+	    addReply(buffer,shared.mbulkhdr[ll]);
 	    return;
 	} 
 	else if (prefix == '$' && ll < REDIS_SHARED_BULKHDR_LEN) 
 	{
-	    addReply(buffer,bulkhdr[ll]);
+	    addReply(buffer,shared.bulkhdr[ll]);
 	    return;
 	}
 
@@ -759,63 +643,62 @@ void xObjects::addReplyLongLongWithPrefix(xBuffer &buffer,int64_t ll,char prefix
 	buf[len+1] = '\r';
 	buf[len+2] = '\n';
 	buffer.append(buf,len +3);
-
 }
 
-void xObjects::addReplyLongLong(xBuffer &buffer,size_t len)
+void addReplyLongLong(xBuffer &buffer,size_t len)
 {
 	if (len == 0)
-		addReply(buffer,czero);
+		addReply(buffer,shared.czero);
 	else if (len == 1)
-		addReply(buffer,cone);
+		addReply(buffer,shared.cone);
 	else
 		addReplyLongLongWithPrefix(buffer,len,':');
 }
 
-void xObjects::addReplyStatusLength(xBuffer &buffer,char *s,size_t len)
+void addReplyStatusLength(xBuffer &buffer,char *s,size_t len)
 {
 	addReplyString(buffer,"+",1);
 	addReplyString(buffer,s,len);
 	addReplyString(buffer,"\r\n",2);
 }
 
-void xObjects::addReplyStatus(xBuffer &buffer,char *status)
+void addReplyStatus(xBuffer &buffer,char *status)
 {
     addReplyStatusLength(buffer,status,strlen(status));
 }
 
-void xObjects::addReplyError(xBuffer &buffer,const char *str)
+void addReplyError(xBuffer &buffer,const char *str)
 {
 	addReplyErrorLength(buffer,str,strlen(str));
 }
 
-void xObjects::addReply(xBuffer &buffer,rObj *obj)
+void addReply(xBuffer &buffer,rObj *obj)
 {
 	buffer.append(obj->ptr,sdslen((const sds)obj->ptr));
 }
 
 /* Add sds to reply (takes ownership of sds and frees it) */
-void xObjects::addReplyBulkSds(xBuffer &buffer,sds s)
+void addReplyBulkSds(xBuffer &buffer,sds s)
 {
 	addReplySds(buffer,sdscatfmt(sdsempty(),"$%u\r\n",
 	    (unsigned long)sdslen(s)));
 	addReplySds(buffer,s);
-	addReply(buffer,crlf);
+	addReply(buffer,shared.crlf);
 }
 
-void xObjects::addReplyMultiBulkLen(xBuffer &buffer,int32_t length)
+void addReplyMultiBulkLen(xBuffer &buffer,int32_t length)
 {
 	if (length < REDIS_SHARED_BULKHDR_LEN)
-        addReply(buffer,mbulkhdr[length]);
+        addReply(buffer,shared.mbulkhdr[length]);
     else
         addReplyLongLongWithPrefix(buffer,length,'*');
 }
 
-void xObjects::prePendReplyLongLongWithPrefix(xBuffer &buffer,int32_t length)
+void prePendReplyLongLongWithPrefix(xBuffer &buffer,int32_t length)
 {
 	char buf[128];
 	buf[0] = '*';
-	int len = ll2string(buf+1,sizeof(buf)-1,length);
+	int32_t len = ll2string(buf+1,sizeof(buf)-1,length);
 	buf[len+1] = '\r';
 	buf[len+2] = '\n';
 	if(length == 0)
@@ -828,11 +711,11 @@ void xObjects::prePendReplyLongLongWithPrefix(xBuffer &buffer,int32_t length)
 	}
 }
 
-void xObjects::addReplyBulkCString(xBuffer &buffer,const char *s)
+void addReplyBulkCString(xBuffer &buffer,const char *s)
 {
 	if (s == nullptr)
 	{
-		addReply(buffer,nullbulk);
+		addReply(buffer,shared.nullbulk);
 	}
 	else 
 	{
@@ -840,23 +723,23 @@ void xObjects::addReplyBulkCString(xBuffer &buffer,const char *s)
 	}
 }
 
-void xObjects::addReplyDouble(xBuffer &buffer,double d)
+void addReplyDouble(xBuffer &buffer,double d)
 {
 	char dbuf[128],sbuf[128];
-	int dlen, slen;
+	int32_t dlen, slen;
 	dlen = snprintf(dbuf,sizeof(dbuf),"%.17g",d);
 	slen = snprintf(sbuf,sizeof(sbuf),"$%d\r\n%s\r\n",dlen,dbuf);
 	addReplyString(buffer,sbuf,slen);
 }
 
-void xObjects::addReplyBulkCBuffer(xBuffer &buffer,const char *p,size_t len)
+void addReplyBulkCBuffer(xBuffer &buffer,const char *p,size_t len)
 {
 	addReplyLongLongWithPrefix(buffer,len,'$');
 	addReplyString(buffer,p,len);
-	addReply(buffer,crlf);
+	addReply(buffer,shared.crlf);
 }
 
-void xObjects::addReplyErrorFormat(xBuffer &buffer,const char *fmt, ...)
+void addReplyErrorFormat(xBuffer &buffer,const char *fmt, ...)
 {
 	size_t l, j;
 	va_list ap;
@@ -872,19 +755,19 @@ void xObjects::addReplyErrorFormat(xBuffer &buffer,const char *fmt, ...)
 	sdsfree(s);
 }
 
-void xObjects::addReplyString(xBuffer &buffer,const char *s,size_t len)
+void addReplyString(xBuffer &buffer,const char *s,size_t len)
 {
 	buffer.append(s,len);
 }
 
-void xObjects::addReplySds(xBuffer &buffer,sds s)
+void addReplySds(xBuffer &buffer,sds s)
 {
 	buffer.append(s,sdslen(s));
 	sdsfree(s);
 }
 
 
-void xObjects::addReplyErrorLength(xBuffer &buffer,const char *s,size_t len)
+void addReplyErrorLength(xBuffer &buffer,const char *s,size_t len)
 {
 	addReplyString(buffer,"-ERR ",5);
 	addReplyString(buffer,s,len);

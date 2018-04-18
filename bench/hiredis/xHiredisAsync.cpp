@@ -134,16 +134,15 @@ void asyncOutput(const char *msg,int len)
 		test("Redis async multithreaded safe test ");
 
 		{
-			std::unique_lock<std::mutex> lk(async.getHiredis()->getMutex());
-			auto &redisMap = async.getHiredis()->getAsyncContext();
 			int32_t count = 0;
-			for(auto it = redisMap.begin(); it != redisMap.end();)
+			while(1)
 			{
 				if(count++ >= sessionCount)
 				{
 					break;
 				}
 
+				auto redis = async.getHiredis()->getIteratorNode();
 				auto redis = it->second;
 				std::thread::id threadId = redis->getServerConn()->getLoop()->getThreadId();
 
@@ -154,12 +153,8 @@ void asyncOutput(const char *msg,int len)
 				redis->redisAsyncCommand(std::bind(&xHiredisAsync::getCallback,
 						&async,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
 						threadId,"get key%d",count);
-
-				if(++it == redisMap.end())
-				{
-					it = redisMap.begin();
-				}
 			}
+
 		}
 
 		loop.runAfter(1.0,nullptr,true,std::bind(&xHiredisAsync::serverCron,&async,std::placeholders::_1));

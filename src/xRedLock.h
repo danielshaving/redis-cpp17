@@ -10,8 +10,8 @@ public:
 	~xLock();
 
 	int32_t validityTime;
-	sds  resource;
-	sds  val;
+	sds resource;
+	sds val;
 };
 
 class xRedLock : noncopyable

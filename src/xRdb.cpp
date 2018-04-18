@@ -296,9 +296,9 @@ rObj *xRdb::rdbLoadIntegerObject(xRio *rdb,int32_t enctype,int32_t encode)
 	}
 
 	if (encode)
-        return redis->getObject()->createStringObjectFromLongLong(val);
+        return createStringObjectFromLongLong(val);
     else
-        return redis->getObject()->createObject(REDIS_STRING,sdsfromlonglong(val));
+        return createObject(REDIS_STRING,sdsfromlonglong(val));
 }
 
 rObj *xRdb::rdbLoadEncodedStringObject(xRio *rdb)
@@ -320,7 +320,7 @@ rObj *xRdb::rdbLoadLzfStringObject(xRio *rdb)
 	if (rioRead(rdb,c,clen) == 0) goto err;
 	if (lzf_decompress(c,clen,val,len) == 0) goto err;
 
-	obj = redis->getObject()->createStringObject(val,len);
+	obj = createStringObject(val,len);
 	sdsfree(val);
 	zfree(c);
 	return obj;
@@ -355,7 +355,7 @@ rObj *xRdb::rdbGenericLoadStringObject(xRio *rdb,int32_t encode)
 
 	if (len == REDIS_RDB_LENERR) return nullptr;
 
-	o = redis->getObject()->createStringObject(nullptr,len);
+	o = createStringObject(nullptr,len);
 	if (len && rioRead(rdb,(void*)o->ptr,len) == 0) return nullptr;
 
 	return o;
@@ -905,7 +905,7 @@ int32_t xRdb::rdbLoadString(xRio *rdb,int32_t type,int64_t expiretime,int64_t no
 
 	if(now < expiretime)
 	{
-		rObj *k = redis->getObject()->createStringObject(key->ptr,sdslen(key->ptr));
+		rObj *k = createStringObject(key->ptr,sdslen(key->ptr));
 		redis->setExpire(k,(expiretime - now) / 1000);
 	}
 	return 1;

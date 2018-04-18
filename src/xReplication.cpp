@@ -116,7 +116,7 @@ void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 					sessions[conn->getSockfd()] = session;
 				}
 
-				conn->send(redis->getObject()->ok->ptr,sdslen(redis->getObject()->ok->ptr));
+				conn->send(shared.ok->ptr,sdslen(shared.ok->ptr));
 				LOG_INFO << "replication load rdb success";
 			}
 			else
@@ -132,16 +132,16 @@ void xReplication::readCallBack(const TcpConnectionPtr &conn, xBuffer *buffer)
 
 void xReplication::slaveCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
-	while(buffer->readableBytes() >= sdslen(redis->getObject()->ok->ptr))
+	while(buffer->readableBytes() >= sdslen(shared.ok->ptr))
 	{
 		std::unique_lock <std::mutex> lck(redis->getSlaveMutex());
 		auto &salveConn = redis->getSlaveConn();
 		auto it = salveConn.find(conn->getSockfd());
 		if (it != salveConn.end())
 		{
-			if (memcmp(buffer->peek(),redis->getObject()->ok->ptr,sdslen(redis->getObject()->ok->ptr)) == 0)
+			if (memcmp(buffer->peek(),shared.ok->ptr,sdslen(shared.ok->ptr)) == 0)
 			{
-				buffer->retrieve(sdslen(redis->getObject()->ok->ptr));
+				buffer->retrieve(sdslen(shared.ok->ptr));
 				if (++redis->salveCount >= salveConn.size())
 				{
 					if (redis->slaveCached.readableBytes() > 0)

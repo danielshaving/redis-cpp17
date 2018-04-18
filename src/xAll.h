@@ -28,7 +28,6 @@
 #include <memory>
 #include <condition_variable>
 #include <thread>
-#include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <signal.h>
@@ -36,14 +35,12 @@
 #include <iosfwd>    // for ostream forward-declaration
 #include <string>
 #include <sys/socket.h>
-#include <unistd.h>
 #include <set>
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/uio.h>
 #include <array>
 #include <utility>
-#include <unistd.h>
 #include <limits.h>
 #include <stdint.h>
 #include <sys/stat.h>
@@ -102,9 +99,9 @@
 /* Error codes */
 #define REDIS_OK                1
 #define REDIS_ERR               0
-#define REDIS_INLINE_MAX_SIZE   (4096*64 *10 * 10) /* Max size of inline reads */
+#define REDIS_INLINE_MAX_SIZE   (4096 * 64 *10 * 10) /* Max size of inline reads */
 #define REDIS_LRU_BITS 24
-#define REDIS_MBULK_BIG_ARG     (4096*11 * 10 * 10)
+#define REDIS_MBULK_BIG_ARG     (4096 * 11 * 10 * 10)
 #define REDIS_NULL -1
 #define REDIS_STRING 0
 #define REDIS_LIST 1

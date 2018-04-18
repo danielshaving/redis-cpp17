@@ -119,7 +119,6 @@ public:
 
 public:
 	auto *getEventLoop() { return &loop; }
-	auto *getObject() { return &object; }
 	auto *getRdb() { return &rdb; }
 	auto *getCluster() { return &clus; }
 	auto *getReplication() { return &repli; }
@@ -144,7 +143,7 @@ public:
 public:
 	const static int32_t kShards = 4096;
 
-	typedef std::function<bool(const std::deque<rObj*>&,SessionPtr)> CommandFunc;
+	typedef std::function<bool(const std::deque<rObj*> &,const SessionPtr &)> CommandFunc;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> StringMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal>,Hash,Equal> HashMap;
 	typedef std::unordered_map<rObj*,std::deque<rObj*>,Hash, Equal> ListMap;
@@ -235,7 +234,6 @@ public:
 	int32_t dbnum;
 
 private:
-	xObjects object;
 	xReplication repli;
 	xSentinel senti;
 	xCluster clus;
