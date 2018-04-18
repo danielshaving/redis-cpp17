@@ -143,7 +143,6 @@ void asyncOutput(const char *msg,int len)
 				}
 
 				auto redis = async.getHiredis()->getIteratorNode();
-				auto redis = it->second;
 				std::thread::id threadId = redis->getServerConn()->getLoop()->getThreadId();
 
 				redis->redisAsyncCommand(std::bind(&xHiredisAsync::setCallback,
