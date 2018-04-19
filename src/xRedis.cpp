@@ -3337,6 +3337,7 @@ void xRedis::flush()
 
 void xRedis::initConfig()
 {
+	createSharedObjects();
 	char buf[32];
 	int32_t len = ll2string(buf,sizeof(buf),getPort());
 	shared.rPort = createStringObject(buf,len);

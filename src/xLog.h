@@ -37,8 +37,8 @@ public:
 	void reset(){ cur = data;}
 	void bzero(){ ::bzero(data,sizeof data); }
 
-	std::string toString() const { return std::string(data, length()); }
-	int32_t  avail() const { return static_cast<int32_t>(end() - cur); }
+	std::string toString() const { return std::string(data,length()); }
+	int32_t avail() const { return static_cast<int32_t>(end() - cur); }
 	const char *end() const { return data + sizeof data; }
 	xStringPiece toStringPiece() const { return xStringPiece(data, length()); }
 
@@ -70,7 +70,7 @@ class xLogFile : noncopyable
 	xLogFile(const std::string &basename,
 	  size_t rollSize,
 	  bool threadSafe = true,
-	  int32_t flushint32_terval = 3,
+	  int32_t interval = 3,
 	  int32_t checkEveryN = 1024);
 	~xLogFile();
 
@@ -83,7 +83,7 @@ private:
 	static std::string getLogFileName(const std::string& basename,time_t *now);
 	const std::string basename;
 	const size_t rollSize;
-	const int32_t flushint32_terval;
+	const int32_t interval;
 	const int32_t checkEveryN;
 
 	int32_t count;
@@ -98,7 +98,7 @@ private:
 class xAsyncLogging : noncopyable
 {
 public:
-	xAsyncLogging(std::string baseName,size_t rollSize,int32_t flushint32_terval = 3);
+	xAsyncLogging(std::string baseName,size_t rollSize,int32_t interval = 3);
 	~xAsyncLogging()
 	{
 		if(running)
@@ -115,8 +115,8 @@ public:
 
 	void start()
 	{
-		thread = new std::thread(std::bind(&xAsyncLogging::threadFunc,this));
-		thread->detach();
+		std::thread t(std::bind(&xAsyncLogging::threadFunc,this));
+		t.detach();
 	}
 	void append(const char *loline,int32_t len);
 
@@ -127,10 +127,9 @@ private:
 	typedef std::vector<std::unique_ptr<Buffer>> BufferVector;
 	typedef std::unique_ptr<Buffer> BufferPtr;
 	std::string baseName;
-	const int32_t flushint32_terval;
+	const int32_t interval;
 	bool running;
 	size_t rollSize;
-	std::thread *thread;
 	mutable std::mutex mutex;
 	std::condition_variable condition;
 	BufferPtr currentBuffer;
