@@ -54,11 +54,12 @@ public:
 	~xAppendFile();
 	void append(const char *logline,const size_t len);
 	void flush();
+	void rename(const std::string &oldname,const std::string &rename);
 	size_t getWrittenBytes() const { return writtenBytes; }
 
-	private:
+private:
 	size_t write(const char *logline,size_t len);
-	FILE* fp;
+	FILE *fp;
 	char buffer[64*1024];
 	size_t writtenBytes;
 };
@@ -80,12 +81,14 @@ class xLogFile : noncopyable
 
 private:
 	void append_unlocked(const char *logline,int32_t len);
-	static std::string getLogFileName(const std::string& basename,time_t *now);
+	void getLogFileName(const std::string& basename,time_t *now);
 	const std::string basename;
 	const size_t rollSize;
 	const int32_t interval;
 	const int32_t checkEveryN;
 
+	std::string filename;
+	std::string filerename;
 	int32_t count;
 	std::mutex mutex;
 	time_t startOfPeriod;

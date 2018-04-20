@@ -10,7 +10,7 @@ public:
 	~xChannel();
 
 	void handleEvent();
-	void setTie(const std::shared_ptr<void>&);
+	void setTie(const std::shared_ptr<void> &);
 	void setRevents(int32_t revt) { revents = revt; }
 	void setEvents(int32_t revt) { events = revt; }
 	void setIndex(int32_t idx) { index = idx; }
@@ -57,7 +57,6 @@ private:
 	bool tied;
 	bool eventHandling;
 	bool addedToLoop;
-
 	std::weak_ptr<void> tie;
 
 };

@@ -24,9 +24,7 @@ xChannel::~xChannel()
 	assert(!addedToLoop);
 	if (loop->isInLoopThread())
 	{
-#ifdef __DEBUG__
 		assert(!loop->hasChannel(this));
-#endif
 	}
 }
 
@@ -36,7 +34,6 @@ void xChannel::remove()
 	addedToLoop = false;
 	loop->removeChannel(this);
 }
-
 
 void xChannel::update()
 {
@@ -92,9 +89,7 @@ void xChannel::handleEventWithGuard()
 	{
 		if (writeCallback) writeCallback();
 	}
-
 #endif
-
 
 	eventHandling = false;
 }
@@ -107,18 +102,17 @@ void xChannel::handleEvent()
 		guard = tie.lock();
 		if (guard)
 		{
-		  handleEventWithGuard();
+			handleEventWithGuard();
 		}
 	}
 	else
 	{
 		handleEventWithGuard();
 	}
-
 }
 
-void xChannel::setTie(const std::shared_ptr<void>& obj)
+void xChannel::setTie(const std::shared_ptr<void> &obj)
 {
-	 tie = obj;
-	 tied = true;
+	tie = obj;
+	tied = true;
 }

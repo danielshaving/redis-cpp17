@@ -46,8 +46,8 @@ size_t convertHex(char buf[],uintptr_t value)
 }
 
 xAppendFile::xAppendFile(std::string &filename)
-  : fp(::fopen(filename.c_str(),"ae")),  // 'e' for O_CLOEXEC
-    writtenBytes(0)
+  :fp(::fopen(filename.c_str(),"ae")),  // 'e' for O_CLOEXEC
+   writtenBytes(0)
 {
 	assert(fp);
 	::setbuffer(fp,buffer,sizeof(buffer));
@@ -86,6 +86,11 @@ void xAppendFile::flush()
 	::fflush(fp);
 }
 
+void xAppendFile::rename(const std::string &oldname,const std::string &newname)
+{
+	::rename(oldname.c_str(),newname.c_str());
+}
+
 size_t xAppendFile::write(const char *logline,size_t len)
 {
 #ifdef __linux__
@@ -109,8 +114,10 @@ checkEveryN(checkEveryN),
 count(0),
 startOfPeriod(0),
 lastRoll(0),
-lastFlush(0)
+lastFlush(0),
+filerename("redis.log")
 {
+
 	assert(basename.find('/') == std::string::npos);
 	rollFile();
 }
@@ -163,7 +170,7 @@ void xLogFile::append_unlocked(const char *logline,int32_t len)
 bool xLogFile::rollFile()
 {
 	time_t now = 0;
-	std::string filename = getLogFileName(basename,&now);
+	getLogFileName(basename,&now);
 	time_t start = now / kRollPerSeconds* kRollPerSeconds;
 
 	if (now > lastRoll)
@@ -171,26 +178,25 @@ bool xLogFile::rollFile()
 		lastRoll = now;
 		lastFlush = now;
 		startOfPeriod = start;
-		file.reset(new xAppendFile(filename));
+		file->rename(filerename.c_str(),filename.c_str());
+		file.reset(new xAppendFile(filerename));
 		return true;
 	}
 	return false;
 }
 
-std::string xLogFile::getLogFileName(const std::string &basename,time_t *now)
+void xLogFile::getLogFileName(const std::string &basename,time_t *now)
 {
-	std::string filename;
-	filename.reserve(basename.size() + 64);
+	filename.clear();
 	filename = basename;
 
 	char timebuf[32];
 	struct tm tm;
-	*now = time(NULL);
-	gmtime_r(now, &tm);
+	*now = time(0);
+	gmtime_r(now,&tm);
 	strftime(timebuf,sizeof timebuf,".%Y%m%d-%H%M%S",&tm);
 	filename += timebuf;
 	filename += ".log";
-	return filename;
 }
 
 xAsyncLogging::xAsyncLogging(std::string baseName,size_t rollSize,int32_t interval)

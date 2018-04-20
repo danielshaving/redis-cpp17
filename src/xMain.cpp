@@ -35,7 +35,7 @@ int main(int argc,char *argv[])
 	signal(SIGHUP,SIG_IGN);
 
 	xLogger::setOutput(asyncOutput);
-	xAsyncLogging log("redis",4096);
+	xAsyncLogging log("redis",10);
 	log.start();
 	glog = &log;
 	printf("%s\n",ascii_logo);

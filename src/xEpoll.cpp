@@ -60,7 +60,6 @@ bool xEpoll::hasChannel(xChannel *channel)
 	return it != channels.end() && it->second == channel;
 }
 
-
 void xEpoll::updateChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
@@ -70,30 +69,24 @@ void xEpoll::updateChannel(xChannel *channel)
 		int32_t fd = channel->getfd();
 		if (index == kNew)
 		{
-#ifdef __DEBUG__
 			assert(channels.find(fd) == channels.end());
-#endif
 			channels[fd] = channel;
 		}
 		else 
 		{
-#ifdef __DEBUG__
 			assert(channels.find(fd) != channels.end());
 			assert(channels[fd] == channel);
-#endif
 		}
 		channel->setIndex(kAdded);
 		update(EPOLL_CTL_ADD, channel);
 	}
 	else
 	{
-#ifdef __DEBUG__
 		int32_t fd = channel->getfd();
 		(void)fd;
 		assert(channels.find(fd) != channels.end());
 		assert(channels[fd] == channel);
 		assert(index == kAdded);
-#endif
 		if (channel->isNoneEvent())
 		{
 			update(EPOLL_CTL_DEL, channel);
@@ -106,20 +99,15 @@ void xEpoll::updateChannel(xChannel *channel)
 	}
 }
 
-
-
-
 void xEpoll::removeChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
 	int32_t fd = channel->getfd();
 	int32_t index = channel->getIndex();
-#ifdef __DEBUG__
 	assert(channels.find(fd) != channels.end());
 	assert(channels[fd] == channel);
 	assert(channel->isNoneEvent());
 	assert(index == kAdded || index == kDeleted);
-#endif
 	size_t n = channels.erase(fd);
 	(void)n;
 	assert(n == 1);
@@ -139,23 +127,21 @@ void xEpoll::update(int32_t operation, xChannel *channel)
 	event.events = channel->getEvents();
 	event.data.ptr = channel;
 	int32_t fd = channel->getfd();
-	if (::epoll_ctl(epollFd, operation, fd, &event) < 0)
+	if (::epoll_ctl(epollFd,operation,fd,&event) < 0)
 	{
 		LOG_ERROR<<"epoll_ctl "<<fd;
 	}
 }
 
-void xEpoll::fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const
+void xEpoll::fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) const
 {
 	for (int32_t i = 0; i < numEvents; ++i)
 	{
-		xChannel* channel = static_cast<xChannel*>(events[i].data.ptr);
-#ifdef __DEBUG__
+		xChannel *channel = static_cast<xChannel*>(events[i].data.ptr);
 		int32_t fd = channel->getfd();
-		auto  it = channels.find(fd);
+		auto it = channels.find(fd);
 		assert(it != channels.end());
 		assert(it->second == channel);
-#endif
 		channel->setRevents(events[i].events);
 		activeChannels->push_back(channel);
 	}

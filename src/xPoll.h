@@ -20,12 +20,12 @@ public:
 	bool hasChannel(xChannel *channel);
 	void updateChannel(xChannel *channel);
 	void removeChannel(xChannel *channel);
-	void fillActiveChannels(int32_t numEvents,ChannelList* activeChannels) const;
+	void fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) const;
 
  private:
 	ChannelMap channels;
 	EventList events;
-	xEventLoop  *loop;
+	xEventLoop *loop;
 };
 
 #endif
