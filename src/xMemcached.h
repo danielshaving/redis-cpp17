@@ -20,10 +20,10 @@ public:
 	~xMemcached();
 
 	void setThreadNum();
-	void quit();
-	void start();
-	void stop();
-	void run();
+	void quit() { loop->quit(); }
+	void start() { server.start(); }
+	void stop() { loop->runAfter(3.0,false,std::bind(&xMemcached::quit,this)); }
+	void run() { loop->run(); }
 
 	void onConnection(const TcpConnectionPtr &conn);
 	time_t getStartTime() const { return startTime; }

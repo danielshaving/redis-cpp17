@@ -149,11 +149,13 @@ public:
 	typedef std::unordered_map<rObj*,std::deque<rObj*>,Hash, Equal> ListMap;
 	typedef std::unordered_map<rObj*,double,Hash,Equal> KeyMap;
 	typedef std::multimap<double,rObj*> SortMap;
+
 	typedef struct SortSet
 	{
 		KeyMap keyMap; 
 		SortMap sortMap;
 	};
+
 	typedef std::unordered_map<rObj*,SortSet,Hash,Equal> ZsetMap;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> SetMap;
 	typedef std::unordered_set<rObj*,Hash,Equal> RedisMap;
@@ -230,7 +232,6 @@ public:
 	int16_t port;
 	int16_t threadCount;
 	int32_t masterPort;
-
 	int32_t dbnum;
 
 private:

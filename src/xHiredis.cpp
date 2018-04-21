@@ -1655,7 +1655,7 @@ RedisContextPtr redisConnectWithTimeout(const char *ip,int16_t port,const struct
 
 xHiredis::xHiredis(xEventLoop *loop,bool clusterMode)
 :pool(loop),
-clusterMode(true)
+ clusterMode(true)
 {
 	node = redisAsyncContexts.begin();
 }

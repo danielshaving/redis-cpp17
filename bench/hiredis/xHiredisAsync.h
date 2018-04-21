@@ -1,5 +1,16 @@
 #pragma once
 #include "xHiredis.h"
+#include "xUtil.h"
+
+int64_t startTime = 0;
+int64_t endTime = 0;
+
+xAsyncLogging *glog;
+void asyncOutput(const char *msg,int len)
+{
+	printf("%s\n",msg);
+	glog->append(msg, len);
+}
 
 class xHiredisAsync : noncopyable
 {
@@ -9,7 +20,7 @@ public:
 
 	void redisConnCallBack(const TcpConnectionPtr& conn);
 	xHiredis *getHiredis() { return &hiredis; }
-	void serverCron(const std::any &context);
+	void serverCron();
 	void getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
 	void setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
 

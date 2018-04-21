@@ -44,7 +44,6 @@ struct xRio
 	std::function<void(xRio *,const void *buf,size_t len)> updateFuc;
 };
 
-
 class xRedis;
 class xRdb: noncopyable
 {

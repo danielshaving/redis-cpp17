@@ -69,7 +69,6 @@ bool xKqueue::hasChannel(xChannel *channel)
 	return it != channels.end() && it->second == channel;
 }
 
-
 void xKqueue::updateChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
@@ -103,7 +102,6 @@ void xKqueue::updateChannel(xChannel *channel)
 			delUpdate(channel);
 		}
 		channel->setIndex(kDeleted);
-
 	}
 }
 

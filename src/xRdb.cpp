@@ -915,7 +915,7 @@ bool xRdb::rdbReplication(char *filename,const TcpConnectionPtr &conn)
 {
 	xRio rdb;
 	FILE *fp ;
-	if ((fp = fopen(filename,"r")) == nullptr) return false;
+	if ((fp = ::fopen(filename,"r")) == nullptr) return false;
 	
 	rioInitWithFile(&rdb,fp);
 	int32_t sendlen = startLoading(fp);
@@ -1013,7 +1013,7 @@ int32_t xRdb::createDumpPayload(xRio *rdb,rObj *obj)
 				for (auto &iterrr : iterr->second.keyMap)
 				{
 					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1) return -1;
-					if (rdbSaveValue(rdb, iterrr.first) == -1) return -1;
+					if (rdbSaveValue(rdb,iterrr.first) == -1) return -1;
 				}
 			}
 			else if ((*iter)->type == OBJ_SET)
@@ -1025,7 +1025,7 @@ int32_t xRdb::createDumpPayload(xRio *rdb,rObj *obj)
 
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveValue(rdb, iterrr) == -1) return -1;
+					if (rdbSaveValue(rdb,iterrr) == -1) return -1;
 				}
 			}
 			else
@@ -1137,7 +1137,7 @@ int32_t xRdb::rdbWrite(char *filename,const char *buf,size_t len)
 	xRio rdb;
 	char tmpfile[256];
 	snprintf(tmpfile,256,"temp-%d.rdb",getpid());
-	fp = fopen(tmpfile,"w");
+	fp = ::fopen(tmpfile,"w");
 	if (!fp)
 	{
 		LOG_TRACE<<"Failed opening .rdb for saving:"<<strerror(errno);

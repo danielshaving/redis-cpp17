@@ -171,7 +171,7 @@ bool xLogFile::rollFile()
 {
 	time_t now = 0;
 	getLogFileName(basename,&now);
-	time_t start = now / kRollPerSeconds* kRollPerSeconds;
+	time_t start = now / kRollPerSeconds * kRollPerSeconds;
 
 	if (now > lastRoll)
 	{

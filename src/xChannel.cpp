@@ -44,7 +44,6 @@ void xChannel::update()
 void xChannel::handleEventWithGuard()
 {
 	eventHandling = true;
-
 #ifdef __linux__
 	if ((revents & EPOLLHUP) && !(revents & EPOLLIN))
 	{
@@ -69,7 +68,6 @@ void xChannel::handleEventWithGuard()
 #endif
 
 #ifdef __APPLE__
-
 	if ((revents & POLLHUP) && !(revents & POLLIN))
 	{
 		if (closeCallback) closeCallback();
@@ -90,7 +88,6 @@ void xChannel::handleEventWithGuard()
 		if (writeCallback) writeCallback();
 	}
 #endif
-
 	eventHandling = false;
 }
 

@@ -9,26 +9,6 @@ startTime(time(0))
 	server.setConnectionCallback(std::bind(&xMemcached::onConnection,this,std::placeholders::_1));
 }
 
-void xMemcached::start()
-{
-	server.start();
-}
-
-void xMemcached::quit()
-{
-	loop->quit();
-}
-
-void xMemcached::run()
-{
-	loop->run();
-}
-
-void xMemcached::stop()
-{
-	 loop->runAfter(3.0,false,std::bind(&xMemcached::quit,this));
-}
-
 bool xMemcached::storeItem(const ItemPtr &item,xItem::UpdatePolicy policy,bool *exists)
 {
 	assert(item->neededBytes() == 0);
@@ -44,7 +24,6 @@ bool xMemcached::storeItem(const ItemPtr &item,xItem::UpdatePolicy policy,bool *
 		{
 			items.erase(it);
 		}
-
 		items.insert(item);
 	}
 	else

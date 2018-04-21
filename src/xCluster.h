@@ -72,8 +72,8 @@ private:
 	bool isConnect;
 	std::vector<TcpClientPtr> clusterConns;
 	std::map<int32_t,clusterNode> clusterSlotNodes;
-	std::unordered_map<std::string, std::unordered_set<int32_t>> migratingSlosTos;
-	std::unordered_map<std::string, std::unordered_set<int32_t>> importingSlotsFroms;
+	std::unordered_map<std::string,std::unordered_set<int32_t>> migratingSlosTos;
+	std::unordered_map<std::string,std::unordered_set<int32_t>> importingSlotsFroms;
 	std::vector<rObj*> clusterDelKeys;
 	std::vector<rObj*> clusterDelCopys;
 	std::condition_variable condition;

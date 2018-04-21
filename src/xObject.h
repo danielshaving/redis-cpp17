@@ -9,13 +9,12 @@
 struct rObj
 {
 	void calHash();
-	bool operator < (const rObj &r) const ;
+	bool operator < (const rObj &r) const;
 	unsigned type :4;
 	unsigned encoding :4;
 	size_t hash;
 	char *ptr;
 };
-
 
 struct Hash
 {
@@ -30,7 +29,6 @@ struct Equal
 				(memcmp(x->ptr, y->ptr, sdslen(y->ptr))== 0));
 	}
 };
-
 
 struct sharedObjectsStruct
 {
@@ -56,7 +54,6 @@ struct sharedObjectsStruct
 	*mbulkhdr[REDIS_SHARED_BULKHDR_LEN],
 	*bulkhdr[REDIS_SHARED_BULKHDR_LEN];
 };
-
 
 extern struct sharedObjectsStruct shared;
 void createSharedObjects();

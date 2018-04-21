@@ -22,7 +22,7 @@ public:
 	void removeChannel(xChannel *channel);
 	void fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) const;
 
- private:
+private:
 	ChannelMap channels;
 	EventList events;
 	xEventLoop *loop;

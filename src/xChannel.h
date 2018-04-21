@@ -40,10 +40,10 @@ public:
 private:
 	void update();
 	void handleEventWithGuard();
-	EventCallback  readCallback;
-	EventCallback  writeCallback;
-	EventCallback  closeCallback;
-	EventCallback  errorCallback;
+	EventCallback readCallback;
+	EventCallback writeCallback;
+	EventCallback closeCallback;
+	EventCallback errorCallback;
 
 	static const int kNoneEvent;
 	static const int kReadEvent;

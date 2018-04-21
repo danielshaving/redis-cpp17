@@ -58,7 +58,7 @@ void xPoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 bool xPoll::hasChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
-	auto  it = channels.find(channel->getfd());
+	auto it = channels.find(channel->getfd());
 	return it != channels.end() && it->second == channel;
 }
 

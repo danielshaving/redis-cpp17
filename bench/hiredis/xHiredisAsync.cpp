@@ -3,13 +3,13 @@
 std::atomic<int32_t> sessionCount = 0;
 std::atomic<int32_t> gconnetCount = 0;
 std::atomic<int32_t> sconnetCount = 0;
-int32_t  benchCount  = 10000;
+int32_t benchCount = 10000;
 
-xHiredisAsync::xHiredisAsync(xEventLoop *loop,int threadCount,const char *ip,int16_t port)
+xHiredisAsync::xHiredisAsync(xEventLoop *loop,int8_t threadCount,const char *ip,int16_t port)
 :hiredis(loop),
-connectCount(0),
-loop(loop),
-cron(true)
+ connectCount(0),
+ loop(loop),
+ cron(true)
 {
 	hiredis.setThreadNum(threadCount);
 	hiredis.start();
@@ -52,6 +52,8 @@ void xHiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 		{
 			test_cond(true);
 			hiredis.clearTcpClient();
+			endTime = mstime();
+			printf("becnch seconds %02d\n",(endTime - startTime) / 1000);
 		}
 		hiredis.eraseRedisMap(conn->getSockfd());
 	}
@@ -80,15 +82,15 @@ void xHiredisAsync::getCallback(const RedisAsyncContextPtr &c,redisReply *reply,
 
 	std::thread::id threadId = std::any_cast< std::thread::id>(privdata);
 	assert(threadId == std::this_thread::get_id());
-	if(++gconnetCount == sessionCount  && sconnetCount == sessionCount)
+	if(++gconnetCount == sessionCount && sconnetCount == sessionCount)
 	{
 		test_cond(true);
 	}
 }
 
-void xHiredisAsync::serverCron(const std::any &context)
+void xHiredisAsync::serverCron()
 {
-	if(cron && gconnetCount == sessionCount  && sconnetCount == sessionCount)
+	if(cron && gconnetCount == sessionCount && sconnetCount == sessionCount)
 	{
 		test("Redis async close safe test");
 		{
@@ -102,12 +104,6 @@ void xHiredisAsync::serverCron(const std::any &context)
 	}
 }
 
-xAsyncLogging *g_asyncLog;
-void asyncOutput(const char *msg,int len)
-{
-	printf("%s\n",msg);
-	g_asyncLog->append(msg, len);
-}
 
  int main(int argc, char* argv[])
  {
@@ -117,10 +113,11 @@ void asyncOutput(const char *msg,int len)
  	}
  	else
  	{
+ 		startTime = mstime();
 		xLogger::setOutput(asyncOutput);
 		xAsyncLogging log("hiredis",4096);
 		log.start();
-		g_asyncLog = &log;
+		glog = &log;
 
  		const char *ip = argv[1];
  		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
@@ -156,7 +153,7 @@ void asyncOutput(const char *msg,int len)
 
 		}
 
-		loop.runAfter(1.0,nullptr,true,std::bind(&xHiredisAsync::serverCron,&async,std::placeholders::_1));
+		loop.runAfter(1.0,true,std::bind(&xHiredisAsync::serverCron,&async));
  		loop.run();
  	}
  	return 0;

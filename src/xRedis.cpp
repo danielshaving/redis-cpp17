@@ -36,7 +36,7 @@ dbnum(1)
 
 	server.start();
 	loop.runAfter(1.0,true,std::bind(&xRedis::serverCron,this));
-	//loop.runAfter(60.0,true,std::bind(&xRedis::bgsaveCron,this));
+	loop.runAfter(120.0,true,std::bind(&xRedis::bgsaveCron,this));
 
 	{
 		std::thread thread(std::bind(&xSentinel::connectSentinel,&senti));
