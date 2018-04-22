@@ -33,6 +33,26 @@ void xHiredisTest::redisConnCallBack(const TcpConnectionPtr &conn)
 		RedisAsyncContextPtr ac(new xRedisAsyncContext(conn->intputBuffer(),conn));
 		hiredis.insertRedisMap(conn->getSockfd(),ac);
 		connectCount++;
+
+		int32_t count = 0;
+		while(1)
+		{
+
+			if(count++ >= messageCount)
+			{
+				break;
+			}
+
+			auto redis = hiredis.getIteratorNode();
+			redis->redisAsyncCommand(std::bind(&xHiredisTest::hsetCallback,
+					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+					nullptr,"hset zhanghao key%d %d",count,count);
+
+			redis->redisAsyncCommand(std::bind(&xHiredisTest::hgetCallback,
+					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+					count,"hget zhanghao key%d",count);
+		}
+
 	}
 	else
 	{
@@ -47,9 +67,11 @@ void xHiredisTest::redisConnCallBack(const TcpConnectionPtr &conn)
 void xHiredisTest::hsetCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
-	assert(reply->type == REDIS_REPLY_STATUS);
-	assert(reply->len == 2);
-	assert(strcmp(reply->str,"ok") == 0);
+	assert(reply->type == REDIS_REPLY_INTEGER);
+	assert(reply->len == 0);
+	assert(reply->str == nullptr);
+	assert(reply->element == nullptr);
+	assert(reply->integer == 1);
 }
 
 void xHiredisTest::hgetCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
@@ -57,7 +79,8 @@ void xHiredisTest::hgetCallback(const RedisAsyncContextPtr &c,redisReply *reply,
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STRING);
 	int32_t count = std::any_cast<int32_t>(privdata);
-	int32_t replyCount = *(int32_t*)reply->str;
+	int64_t replyCount = 0;
+	string2ll(reply->str,reply->len,&replyCount);
 	assert(count == replyCount);
 }
 
@@ -77,25 +100,6 @@ int main(int argc,char* argv[])
 
  		xEventLoop loop;
 		xHiredisTest async(&loop,threadCount,sessionCount,messageCount,ip,port);
-
-		int32_t count = 0;
-		while(1)
-		{
-			if(count++ >= messageCount)
-			{
-				break;
-			}
-
-			auto redis = async.getHiredis()->getIteratorNode();
-			redis->redisAsyncCommand(std::bind(&xHiredisTest::hsetCallback,
-					&async,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-					nullptr,"hset zhanghao key%d %d",count,count);
-
-			redis->redisAsyncCommand(std::bind(&xHiredisTest::hgetCallback,
-					&async,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-					count,"hget zhanghao key%d",count);
-		}
-
  		loop.run();
  	}
  	return 0;

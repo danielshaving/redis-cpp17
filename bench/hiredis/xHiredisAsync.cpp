@@ -6,6 +6,11 @@ xHiredisAsync::xHiredisAsync(xEventLoop *loop,int8_t threadCount,const char *ip,
  loop(loop),
  cron(true)
 {
+	if(threadCount == 0)
+	{
+		threadCount = 1;
+	}
+
 	hiredis.setThreadNum(threadCount);
 	hiredis.start();
 
@@ -16,11 +21,6 @@ xHiredisAsync::xHiredisAsync(xEventLoop *loop,int8_t threadCount,const char *ip,
 		client->setMessageCallback(std::bind(&xHiredis::redisReadCallBack,&hiredis,std::placeholders::_1,std::placeholders::_2));
 		client->asyncConnect();
 		hiredis.pushTcpClient(client);
-	}
-
-	if(threadCount == 0)
-	{
-		return ;
 	}
 
 	std::unique_lock<std::mutex> lk(hiredis.getMutex());
@@ -42,11 +42,6 @@ void xHiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 		RedisAsyncContextPtr ac(new xRedisAsyncContext(conn->intputBuffer(),conn));
 		hiredis.insertRedisMap(conn->getSockfd(),ac);
 		connectCount++;
-		if(threadCount == 0)
-		{
-			return ;
-		}
-
 		condition.notify_one();
 	}
 	else

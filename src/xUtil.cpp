@@ -61,7 +61,7 @@ uint32_t dictGenHashFunction(const void *key, int32_t len)
 }
 
 
-int32_t string2ll(const char * s,size_t slen, int64_t *value)
+int32_t string2ll(const char *s,size_t slen, int64_t *value)
 {
 	const char *p = s;
     size_t plen = 0;

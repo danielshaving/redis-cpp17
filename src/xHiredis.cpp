@@ -1853,7 +1853,7 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 				 asyncCb.cb.fn(redisPtr,reply,asyncCb.cb.privdata);
 			 }
 
-			freeReply(reply);
+			 freeReply(reply);
 		 }
 	 }
 }
