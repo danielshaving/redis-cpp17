@@ -966,7 +966,7 @@ int32_t xRedisContext::redisAppendCommand(const char *format, ...)
     return ret;
 }
 
-void xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata, char *cmd, size_t len)
+void xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,char *cmd,size_t len)
 {
 	RedisCallback cb;
 	cb.fn = std::move(fn);
@@ -981,8 +981,13 @@ void xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,const std
 		std::unique_lock<std::mutex> lk(mtx);
 		asyncCb.push_back(std::move(call));
 	}
-
+#ifdef __linux__
 	serverConn->sendPipe(cmd,len);
+#endif
+
+#ifdef __APPLE__
+	serverConn->send(cmd,len);
+#endif
 }
 
 
@@ -1258,7 +1263,8 @@ int32_t redisFormatCommand(char **target,const char *format, ...)
     return len;
 }
 
-int xRedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, va_list ap)
+int xRedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
+		const std::any &privdata,const char *format, va_list ap)
 {
 	char *cmd;
 	int32_t len;
@@ -1272,7 +1278,8 @@ int xRedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,const std::
 	return REDIS_OK;
 }
 
-int xRedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...)
+int xRedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
+		const std::any &privdata,const char *format, ...)
 {
 	va_list ap;
 	va_start(ap,format);
@@ -1342,7 +1349,7 @@ redisReply *xRedisContext::redisvCommand(const char *format,va_list ap)
 	if (redisvAppendCommand(format,ap) != REDIS_OK)
 		return nullptr;
 
-	  return redisBlockForReply();
+	return redisBlockForReply();
 }
 
 int32_t redisFormatCommandArgv(char **target,int32_t argc,const char **argv,const size_t *argvlen)
@@ -1519,16 +1526,12 @@ int32_t xRedisContext::redisCheckSocketError()
 		 {
 		 	return REDIS_ERR;
 		 }
-
-		  return REDIS_OK;
-		  
+		 return REDIS_OK;
 	}
 
 	redisSetError(REDIS_ERR_IO,nullptr);
 	return REDIS_ERR;
-	
 }
-
 
 static int32_t redisContextTimeoutMsec(const struct timeval *timeout,int32_t *result)
 {
@@ -1598,7 +1601,7 @@ int32_t xRedisContext::redisContextConnectTcp(const char *addr,int16_t port,cons
 
 	socket.setSocketNonBlock(sockfd);
 
-	if(socket.connect(sockfd, addr,port) == -1)
+	if(socket.connect(sockfd,addr,port) == -1)
 	{
 	 	 if (errno == EHOSTUNREACH) 
 		 {
@@ -1639,7 +1642,7 @@ int32_t xRedisContext::redisContextConnectTcp(const char *addr,int16_t port,cons
 
 RedisContextPtr redisConnect(const char *ip,int16_t port)
 {
-	RedisContextPtr c (new xRedisContext);
+	RedisContextPtr c(new xRedisContext);
 	c->setBlock();
 	c->redisContextConnectTcp(ip,port,nullptr);
 	return c;
@@ -1647,7 +1650,7 @@ RedisContextPtr redisConnect(const char *ip,int16_t port)
 
 RedisContextPtr redisConnectWithTimeout(const char *ip,int16_t port,const struct timeval tv)
 {
-	RedisContextPtr c (new xRedisContext);
+	RedisContextPtr c(new xRedisContext);
 	c->setBlock();
 	c->redisContextConnectTcp(ip,port,&tv);
 	return c;	

@@ -127,7 +127,7 @@ void xRedis::serverCron()
 				{
 					LOG_WARN<<"background saving terminated by signal "<< bysignal;
 					char tmpfile[256];
-					snprintf(tmpfile,256,"temp-%d.rdb",(int32_t) rdbChildPid);
+					snprintf(tmpfile,256,"temp-%d.rdb",(int32_t)rdbChildPid);
 					unlink(tmpfile);
 					if (bysignal != SIGUSR1)
 					{
@@ -143,16 +143,6 @@ void xRedis::serverCron()
 			 rdbChildPid = -1;
 		}
 	}
-}
-
-void xRedis::timeOut()
-{
-	loop.quit();
-}
-
-void xRedis::setExpireTimeOut(rObj *context)
-{
-	removeCommand(context);
 }
 
 void xRedis::slaveRepliTimeOut(int32_t context)
@@ -285,11 +275,6 @@ void xRedis::connCallBack(const TcpConnectionPtr &conn)
 
 		// LOG_INFO <<"Client disconnect";
 	}
-}
-
-void xRedis::run()
-{
-	loop.run();
 }
 
 void xRedis::loadDataFromDisk()
@@ -3113,8 +3098,8 @@ bool xRedis::setCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	}
 
 	int32_t j;
-	rObj * expire = nullptr;
-	rObj * ex = nullptr;
+	rObj *expire = nullptr;
+	rObj *ex = nullptr;
 	int32_t unit = UNIT_SECONDS;
 	int32_t flags = OBJ_SET_NO_FLAGS;
 

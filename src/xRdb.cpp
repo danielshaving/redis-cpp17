@@ -1696,7 +1696,6 @@ int32_t xRdb::rdbSaveRio(xRio *rdb,int32_t *error,int32_t flags)
 	
 	cksum = rdb->cksum;
 	memrev64ifbe(&cksum);
-
 	if (rioWrite(rdb,&cksum,8) == 0) goto werr;
 	return REDIS_OK;
 werr:

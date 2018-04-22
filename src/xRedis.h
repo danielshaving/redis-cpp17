@@ -23,14 +23,14 @@ public:
 	~xRedis();
 	
 	void initConfig();
-	void timeOut();
+	void timeOut() { loop.quit(); }
 	void serverCron();
 	void bgsaveCron();
 	void slaveRepliTimeOut(int32_t context);
-	void setExpireTimeOut(rObj *context);
+	void setExpireTimeOut(rObj *context) { removeCommand(context); }
    	void forkWait();
 
-	void run();
+	void run() { loop.run(); }
 	void connCallBack(const TcpConnectionPtr &conn);
 	void replyCheck();
 	void loadDataFromDisk();

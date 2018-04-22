@@ -1,10 +1,5 @@
 #include "xHiredisAsync.h"
 
-std::atomic<int32_t> sessionCount = 0;
-std::atomic<int32_t> gconnetCount = 0;
-std::atomic<int32_t> sconnetCount = 0;
-int32_t benchCount = 10000;
-
 xHiredisAsync::xHiredisAsync(xEventLoop *loop,int8_t threadCount,const char *ip,int16_t port)
 :hiredis(loop),
  connectCount(0),
@@ -23,13 +18,16 @@ xHiredisAsync::xHiredisAsync(xEventLoop *loop,int8_t threadCount,const char *ip,
 		hiredis.pushTcpClient(client);
 	}
 
+	if(threadCount == 0)
+	{
+		return ;
+	}
+
 	std::unique_lock<std::mutex> lk(hiredis.getMutex());
 	while (connectCount < sessionCount)
 	{
 		condition.wait(lk);
 	}
-
-	sessionCount = sessionCount * benchCount;
 }
 
 xHiredisAsync::~xHiredisAsync()
@@ -44,6 +42,11 @@ void xHiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 		RedisAsyncContextPtr ac(new xRedisAsyncContext(conn->intputBuffer(),conn));
 		hiredis.insertRedisMap(conn->getSockfd(),ac);
 		connectCount++;
+		if(threadCount == 0)
+		{
+			return ;
+		}
+
 		condition.notify_one();
 	}
 	else
@@ -62,10 +65,9 @@ void xHiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 void xHiredisAsync::setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
-	if(reply->type == REDIS_REPLY_ERROR || reply->type == REDIS_REPLY_NIL)
-	{
-		assert(false);
-	}
+	assert(reply->type == REDIS_REPLY_STATUS);
+	assert(reply->len == 2);
+	assert(strcmp(reply->str,"ok") == 0);
 
 	std::thread::id threadId = std::any_cast< std::thread::id>(privdata);
 	assert(threadId == std::this_thread::get_id());
@@ -75,11 +77,7 @@ void xHiredisAsync::setCallback(const RedisAsyncContextPtr &c,redisReply *reply,
 void xHiredisAsync::getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
-	if(reply->type == REDIS_REPLY_ERROR || reply->type == REDIS_REPLY_NIL)
-	{
-		assert(false);
-	}
-
+	assert(reply->type == REDIS_REPLY_STRING);
 	std::thread::id threadId = std::any_cast< std::thread::id>(privdata);
 	assert(threadId == std::this_thread::get_id());
 	if(++gconnetCount == sessionCount && sconnetCount == sessionCount)
