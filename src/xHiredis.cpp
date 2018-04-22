@@ -968,11 +968,11 @@ int32_t xRedisContext::redisAppendCommand(const char *format, ...)
 
 void xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,char *cmd,size_t len)
 {
-	RedisCallback cb;
+	redisCallback cb;
 	cb.fn = std::move(fn);
 	cb.privdata = privdata;
 
-	RedisAsyncCallback call;
+	redisAsyncCallback call;
 	call.data = cmd;
 	call.len = len;
 	call.cb = std::move(cb);
@@ -981,13 +981,7 @@ void xRedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,const std
 		std::unique_lock<std::mutex> lk(mtx);
 		asyncCb.push_back(std::move(call));
 	}
-#ifdef __linux__
 	serverConn->sendPipe(cmd,len);
-#endif
-
-#ifdef __APPLE__
-	serverConn->send(cmd,len);
-#endif
 }
 
 
@@ -1670,7 +1664,7 @@ xHiredis::~xHiredis()
 
 void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 {
-	auto callback = std::any_cast<RedisAsyncCallback>(conn->getMutableContext());
+	auto callback = std::any_cast<redisAsyncCallback>(conn->getMutableContext());
 	if(conn->connected())
 	{
 		RedisAsyncContextPtr ac(new xRedisAsyncContext(conn->intputBuffer(),conn));
@@ -1691,7 +1685,7 @@ void xHiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 
 void xHiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 {
-	auto callback = std::any_cast<RedisAsyncCallback>(conn->getMutableContext());
+	auto callback = std::any_cast<redisAsyncCallback>(conn->getMutableContext());
 	if(conn->connected())
 	{
 		RedisAsyncContextPtr ac (new xRedisAsyncContext(conn->intputBuffer(),conn));
@@ -1814,7 +1808,7 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 			int32_t port = atoi(s+1);
 			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<ip<<" "<<port;
 			
-			RedisAsyncCallback call;
+			redisAsyncCallback call;
 			{
 				std::unique_lock<std::mutex> lk(redisPtr->getMutex());
 				assert(!redisPtr->getCb().empty());

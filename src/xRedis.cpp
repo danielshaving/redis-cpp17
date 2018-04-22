@@ -52,6 +52,7 @@ dbnum(1)
 		std::thread thread(std::bind(&xCluster::connectCluster,&clus));
 		thread.detach();
 	}
+	LOG_INFO<<"Ready to accept connections";
 }
 
 
@@ -3322,6 +3323,7 @@ void xRedis::flush()
 
 void xRedis::initConfig()
 {
+	LOG_INFO<<"Server initialized";
 	createSharedObjects();
 	char buf[32];
 	int32_t len = ll2string(buf,sizeof(buf),getPort());

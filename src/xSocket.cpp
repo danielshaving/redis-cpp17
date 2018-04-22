@@ -291,7 +291,6 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 		::close(listenFd);
         return false;
     }
-
     if(::bind(listenFd,(struct sockaddr*)&serverAdress,sizeof(serverAdress)) < 0 )
     {
         LOG_SYSERR<<"Bind bind socket failed! error "<<strerror(errno);

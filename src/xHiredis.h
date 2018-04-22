@@ -8,26 +8,28 @@
 #include "xThreadPool.h"
 
 class xRedisAsyncContext;
-typedef struct redisReply : noncopyable
+class redisReply : noncopyable
 {
+public:
     int32_t type;
     int64_t integer;
     int32_t len;
     size_t elements;
     char *str;
     struct redisReply **element;
-}RedisReply;
+};
 
 typedef std::function<void(const RedisAsyncContextPtr &context,redisReply*,const std::any &)> RedisCallbackFn;
-typedef struct redisReadTask : noncopyable
+class redisReadTask : noncopyable
 {
+public:
     int32_t type;
     int32_t elements;
     int32_t idx;
     std::any privdata;
     redisReply *obj;
     struct redisReadTask *parent;
-} redisReadTask;
+};
 
 redisReply *createReplyObject(int32_t type);
 redisReply *createString(const redisReadTask *task,const char *str,size_t len);
@@ -36,9 +38,10 @@ redisReply *createInteger(const redisReadTask *task,int64_t value);
 redisReply *createNil(const redisReadTask *task);
 void freeReply(redisReply *reply);
 
-typedef struct redisReplyObjectFunctions : noncopyable
+class redisFunc : noncopyable
 {
-	redisReplyObjectFunctions()
+public:
+	redisFunc()
 	{
 		createStringFuc = createString;
 	   	createArrayFuc = createArray;
@@ -52,7 +55,7 @@ typedef struct redisReplyObjectFunctions : noncopyable
 	std::function<redisReply*(const redisReadTask*,int64_t)> createIntegerFuc;
 	std::function<redisReply*(const redisReadTask*)> createNilFuc;
 	std::function<void (redisReply*)> freeObjectFuc;
-} redisFunc;
+};
 
 class xRedisReader : noncopyable
 {
@@ -87,15 +90,17 @@ public:
 	std::any privdata;
 };
 
-typedef struct redisCallback
+class redisCallback
 {
+public:
 	RedisCallbackFn fn;
     std::any privdata;
-} RedisCallback;
+};
 
 typedef std::list<redisCallback> RedisCallbackList;
-typedef struct redisAsyncCallback
+class redisAsyncCallback
 {
+public:
 	redisAsyncCallback()
 	:data(nullptr),
 	 len(0)
@@ -104,8 +109,8 @@ typedef struct redisAsyncCallback
 	}
 	char *data;
 	int32_t len;
-	RedisCallback cb;
-}RedisAsyncCallback;
+	redisCallback cb;
+};
 
 typedef std::list<redisAsyncCallback> RedisAsyncCallbackList;
 class xRedisContext : noncopyable

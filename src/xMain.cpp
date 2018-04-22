@@ -8,12 +8,12 @@
  	glog->append(msg, len);
  }
 
- char *ascii_logo =
+ char *logo =
  "                _._                                                  \n"
  "           _.-``__ ''-._                                             \n"
- "      _.-``    `.  `_.  ''-._           xredis 1.0 	beta		  \n"
+ "      _.-``    `.  `_.  ''-._           Redis 1.0 		 		  \n"
  "  .-`` .-```.  ```\\/    _.,_ ''-._                                   \n"
- " (    '      ,       .-`  | `,    )									  \n"
+ " (    '      ,       .-`  | `,    )									\n"
  " |`-._`-...-` __...-.``-._|'` _.-'|									  \n"
  " |    `-._   `._    /     _.-'    |  								  \n"
  "  `-._    `-._  `-./  _.-'    _.-'                                   \n"
@@ -34,11 +34,12 @@
  	signal(SIGPIPE,SIG_IGN);
  	signal(SIGHUP,SIG_IGN);
 
+ 	printf("%s\n",logo);
+
  	xLogger::setOutput(asyncOutput);
  	xAsyncLogging log("redis",4096);
  	log.start();
  	glog = &log;
- 	printf("%s\n",ascii_logo);
 
  	if(argc == 5)
  	{
