@@ -13,12 +13,12 @@ xSocket::xSocket()
 
 xSocket::~xSocket()
 {
-	::close(listenFd);
+	::close(sockfd);
 }
 
 int32_t xSocket::getListenFd()
 {
-	return listenFd;
+	return sockfd;
 }
 
 struct sockaddr_in6 xSocket::getLocalAddr(int32_t sockfd)
@@ -154,9 +154,15 @@ void xSocket::fromIpPort(const char *ip,uint16_t port,struct sockaddr_in6 *addr)
 	}
 }
 
-int32_t  xSocket::createSocket()
+int32_t xSocket::createSocket()
 {
-	return socket(AF_INET,SOCK_STREAM,0);
+#ifdef __linux__
+	return ::socket(AF_INET,SOCK_STREAM,0);
+#endif
+
+#ifdef __APPLE__
+	return ::socket(AF_UNIX,SOCK_STREAM,0);
+#endif
 }
 
 bool xSocket::connectWaitReady(int32_t fd,int32_t msec)
@@ -248,28 +254,37 @@ void  xSocket::setkeepAlive(int32_t fd,int32_t idle)
 
 bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 {
-    struct sockaddr_in serverAdress;
-    serverAdress.sin_family = AF_INET;
-    serverAdress.sin_port  = htons(port);
+#ifdef __linux__
+	struct sockaddr_in sa;
+    sa.sin_family = AF_INET;
+    sa.sin_port  = htons(port);
+	if(ip)
+	{
+		sa.sin_addr.s_addr = inet_addr(ip);
+	}
+	else
+	{
+		sa.sin_addr.s_addr = htonl(INADDR_ANY);
+	}
+#endif
 
-    if(ip)
-    {
-        serverAdress.sin_addr.s_addr = inet_addr(ip);
-    }
-    else
-    {
-        serverAdress.sin_addr.s_addr = htonl(INADDR_ANY);
-    }
+#ifdef __APPLE__
+    struct sockaddr_un sa;
+    sa.sun_family = AF_UNIX;
+    char *path = "./redis.sock";//"var/run/redis/redis.sock";
+    strncpy(sa.sun_path,path,sizeof(sa.sun_path) - 1);
+    mode_t unixsocketperm = 777;
+    ::chmod(sa.sun_path,unixsocketperm);
+#endif
 
-    listenFd = socket(AF_INET,SOCK_STREAM,0);
-
-    if(listenFd < 0)
+    sockfd = createSocket();
+    if(sockfd < 0)
     {
         LOG_WARN<<"Create Tcp Socket Failed! "<< strerror(errno);
         return false;
     }
 
-    if(!setSocketNonBlock(listenFd))
+    if(!setSocketNonBlock(sockfd))
     {
 		LOG_WARN<<"Set listen socket to non-block failed!";
 		return false;
@@ -277,40 +292,47 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 
     int32_t optval = 1;
 	
-	if(::setsockopt(listenFd,SOL_SOCKET,SO_REUSEPORT,&optval,sizeof(optval)) < 0)
+	if(::setsockopt(sockfd,SOL_SOCKET,SO_REUSEPORT,&optval,sizeof(optval)) < 0)
     {
 		LOG_SYSERR<<"Set SO_REUSEPORT socket failed! error "<<strerror(errno);
-        ::close(listenFd);
+        ::close(sockfd);
         return false;
     }
 	
-  
-    if(::setsockopt(listenFd,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval)) < 0)
+    if(::setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval)) < 0)
     {
 		LOG_SYSERR<<"Set SO_REUSEADDR socket  failed! error "<<strerror(errno);
-		::close(listenFd);
-        return false;
-    }
-    if(::bind(listenFd,(struct sockaddr*)&serverAdress,sizeof(serverAdress)) < 0 )
-    {
-        LOG_SYSERR<<"Bind bind socket failed! error "<<strerror(errno);
-        ::close(listenFd);
+		::close(sockfd);
         return false;
     }
 
-    if(::listen(listenFd,SOMAXCONN))
+    if(::bind(sockfd,(struct sockaddr*)&sa,sizeof(sa)) < 0 )
+    {
+        LOG_SYSERR<<"Bind bind socket failed! error "<<strerror(errno);
+        ::close(sockfd);
+        return false;
+    }
+
+//        FILE *fp = fopen("/proc/sys/net/core/somaxconn","r");
+//        char buf[1024];
+//        if (!fp) return;
+//        if (fgets(buf,sizeof(buf),fp) != NULL)
+//            int somaxconn = atoi(buf);
+//            if (somaxconn > 0 && somaxconn < server.tcp_backlog)
+
+    if(::listen(sockfd,SOMAXCONN))
     {
         LOG_SYSERR<<"Listen listen socket failed! error "<<strerror(errno);
-        close(listenFd);
+        close(sockfd);
         return false;
     }
 
 #ifdef __linux__
-    setsockopt(listenFd,IPPROTO_TCP,TCP_NODELAY,&optval,static_cast<socklen_t>(sizeof optval));
+    setsockopt(sockfd,IPPROTO_TCP,TCP_NODELAY,&optval,static_cast<socklen_t>(sizeof optval));
 
     int32_t len = 65536;
-    setsockopt(listenFd,SOL_SOCKET,SO_RCVBUF,(void*)&len,sizeof(len));
-    setsockopt(listenFd,SOL_SOCKET,SO_SNDBUF,(void*)&len,sizeof(len));
+    setsockopt(sockfd,SOL_SOCKET,SO_RCVBUF,(void*)&len,sizeof(len));
+    setsockopt(sockfd,SOL_SOCKET,SO_SNDBUF,(void*)&len,sizeof(len));
 #endif
 
     return true;

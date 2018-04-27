@@ -52,6 +52,7 @@ dbnum(1)
 		std::thread thread(std::bind(&xCluster::connectCluster,&clus));
 		thread.detach();
 	}
+
 	LOG_INFO<<"Ready to accept connections";
 }
 
@@ -154,7 +155,7 @@ void xRedis::slaveRepliTimeOut(int32_t context)
 	{
 		it->second->forceClose();
 	}
-	LOG_INFO <<"sync connect repli  timeout ";
+	LOG_INFO <<"sync connect repli timeout ";
 }
 
 void xRedis::clearCommand(std::deque<rObj*> &commands)
@@ -284,7 +285,7 @@ void xRedis::loadDataFromDisk()
 	if (rdb.rdbLoad("dump.rdb") == REDIS_OK)
 	{
 		int64_t end = mstime();
-		 LOG_INFO <<"db loaded from disk milseconds: "<<end - start;
+		LOG_INFO <<"db loaded from disk milseconds: "<<end - start;
 	}
 	else if (errno != ENOENT)
 	{
@@ -494,7 +495,6 @@ bool xRedis::infoCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false ;
 }
 
-
 bool xRedis::clientCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 1)
@@ -507,7 +507,6 @@ bool xRedis::clientCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 
 	return false;
 }
-
 
 bool xRedis::echoCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {

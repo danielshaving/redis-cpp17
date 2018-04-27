@@ -34,7 +34,7 @@ public:
 	void reply(xStringPiece msg);
 	struct Reader;
 	bool doUpdate(const std::string &command,auto &beg,auto end);
-	void doDelete(const std::string &command,auto &beg, auto end);
+	void doDelete(const std::string &command,auto &beg,auto end);
 
 public:
 	enum State

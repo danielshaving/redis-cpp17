@@ -10,14 +10,11 @@ class xHttpServer : noncopyable
 public:
 	typedef std::function<bool(xHttpRequest *,const TcpConnectionPtr &)> HttpReadCallBack;
 	typedef std::function<void(const TcpConnectionPtr &)> HttpConnCallBack;
+
 	xHttpServer(xEventLoop *loop,const char *ip,uint16_t  port);
 	~xHttpServer();
 
-	void setThreadNum(int numThreads)
-	{
-		server.setThreadNum(numThreads);
-	}
-
+	void setThreadNum(int numThreads) { server.setThreadNum(numThreads); }
 	void setMessageCallback(HttpReadCallBack callback);
 	void setConnCallback(HttpConnCallBack callback);
 	void start();

@@ -2,7 +2,6 @@
 
 struct sharedObjectsStruct shared;
 
-
 void rObj::calHash()
 {
 	hash = dictGenHashFunction(ptr,sdslen(ptr));

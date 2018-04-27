@@ -59,6 +59,7 @@
 
 #ifdef __APPLE__
 #include <sys/event.h>
+#include <sys/un.h>
 #endif
 
 #ifdef __linux__

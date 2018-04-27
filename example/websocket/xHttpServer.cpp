@@ -36,13 +36,6 @@ void xHttpServer::onConnection(const TcpConnectionPtr &conn)
 void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	auto context = std::any_cast<xHttpContext>(conn->getContext());
-	if(buffer->readableBytes() > 1024)
-	{
-		LOG_WARN<<"xHttpServer::onMessage length > 1024";
-		conn->forceClose();
-		return ;
-	}
-
 	while(buffer->readableBytes() > 0)
 	{
 		size_t size = 0;
@@ -58,7 +51,6 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 						context->getRequest().getOpCode() == xHttpRequest::CLOSE_FRAME)
 		{
 			conn->forceClose();
-			LOG_WARN<<"xHttpServer::onMessage type error";
 			break;
 		}
 		else if(context->getRequest().getOpCode() == xHttpRequest::CONTINUATION_FRAME)
@@ -77,10 +69,6 @@ void xHttpServer::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 		else
 		{
 			conn->forceClose();
-#ifdef __DEBUG__
-
-			assert(false);
-#endif
 			break;
 		}
 
@@ -115,7 +103,6 @@ void xHttpServer::onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req
 	auto iter = headers.find("Sec-WebSocket-Key");
 	if(iter == headers.end())
 	{
-		LOG_WARN<<"xHttpServer::onRequest error";
 		conn->forceClose();
 		return ;
 	}
@@ -130,8 +117,8 @@ void xHttpServer::onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req
 	SHA1_CTX ctx;
 	unsigned char hash[20];
 	SHA1Init(&ctx);
-	SHA1Update(&ctx, (const unsigned char*)secKey.c_str(),secKey.size());
-	SHA1Final(hash, &ctx);
+	SHA1Update(&ctx,(const unsigned char*)secKey.c_str(),secKey.size());
+	SHA1Final(hash,&ctx);
 	std::string base64Str = base64Encode((const unsigned char *)hash, sizeof(hash));
 	sendBuf.append(base64Str.data(),base64Str.size());
 	sendBuf.append("\r\n\r\n");

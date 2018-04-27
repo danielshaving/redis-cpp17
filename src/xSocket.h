@@ -42,6 +42,6 @@ public:
 	bool connectWaitReady(int32_t fd,int32_t msec);
 
 private:
-	int32_t listenFd;
+	int32_t sockfd;
 };
 

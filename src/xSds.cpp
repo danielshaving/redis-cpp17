@@ -1,6 +1,6 @@
 #include "xSds.h"
 
-sds sdsnewlen(const void *init, size_t initlen)
+sds sdsnewlen(const void *init,size_t initlen)
 {
     struct sdshdr *sh;
     // T = O(N)
@@ -204,9 +204,7 @@ sds sdscatsds(sds s, const sds t)
  * safe string pointed by 't' of length 'len' bytes. */
 sds sdscpylen(sds s, const char *t, size_t len)
 {
-
     struct sdshdr *sh = (sdshdr*) (s-(sizeof(struct sdshdr)));
-
     size_t totlen = sh->free+sh->len;
    
     if (totlen < len)
@@ -331,7 +329,8 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap)
     {
         buf = (char*)zmalloc(buflen);
         if (buf == nullptr) return nullptr;
-    } else
+    }
+    else
     {
         buflen = sizeof(staticbuf);
     }
@@ -799,7 +798,7 @@ int hex_digit_to_int(char c)
 }
 
 
-sds *sdssplitargs(const char *line, int *argc)
+sds *sdssplitargs(const char *line,int *argc)
 {
     const char *p = line;
     char *current = nullptr;
@@ -918,17 +917,13 @@ err:
     return nullptr;
 }
 
-sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen)
+sds sdsmapchars(sds s,const char *from,const char *to,size_t setlen)
 {
     size_t j, i, l = sdslen(s);
-
-    // ���������ַ���
     for (j = 0; j < l; j++)
     {
-        // ����ӳ��
         for (i = 0; i < setlen; i++)
         {
-            // �滻�ַ���
             if (s[j] == from[i])
             {
                 s[j] = to[i];
@@ -941,7 +936,7 @@ sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen)
 
 /* Join an array of C strings using the specified separator (also a C string).
  * Returns the result as an sds string. */
-sds sdsjoin(char **argv, int argc, char *sep)
+sds sdsjoin(char **argv,int argc,char *sep)
 {
     sds join = sdsempty();
     int j;

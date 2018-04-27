@@ -6,7 +6,8 @@ xHiredisTest::xHiredisTest(xEventLoop *loop,int8_t threadCount,
  connectCount(0),
  sessionCount(sessionCount),
  loop(loop),
- messageCount(messageCount)
+ messageCount(messageCount),
+ count(0)
 {
 	if(threadCount == 0)
 	{
@@ -20,7 +21,8 @@ xHiredisTest::xHiredisTest(xEventLoop *loop,int8_t threadCount,
 	{
 		TcpClientPtr client(new xTcpClient(hiredis.getPool().getNextLoop(),ip,port,nullptr));
 		client->setConnectionCallback(std::bind(&xHiredisTest::redisConnCallBack,this,std::placeholders::_1));
-		client->setMessageCallback(std::bind(&xHiredis::redisReadCallBack,&hiredis,std::placeholders::_1,std::placeholders::_2));
+		client->setMessageCallback(std::bind(&xHiredis::redisReadCallBack,
+				&hiredis,std::placeholders::_1,std::placeholders::_2));
 		client->asyncConnect();
 		hiredis.pushTcpClient(client);
 	}
@@ -54,6 +56,24 @@ void xHiredisTest::redisConnCallBack(const TcpConnectionPtr &conn)
 		}
 		hiredis.eraseRedisMap(conn->getSockfd());
 	}
+}
+
+
+void xHiredisTest::setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+{
+	assert(reply != nullptr);
+	assert(reply->type == REDIS_REPLY_STATUS);
+	assert(reply->str == nullptr);
+	assert(reply->element == nullptr);
+}
+
+void xHiredisTest::getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+{
+	assert(reply != nullptr);
+	assert(reply->type == REDIS_REPLY_STRING);
+	int64_t replyCount = 0;
+	string2ll(reply->str,reply->len,&replyCount);
+	assert(count++ == replyCount);
 }
 
 void xHiredisTest::hsetCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
@@ -101,6 +121,49 @@ void xHiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,redisReply *rep
 			string2ll(reply->element[i + 1]->str,reply->element[i + 1]->len,&value);
 			assert(value == i);
 		}
+	}
+}
+
+void xHiredisTest::lpushCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+{
+
+}
+
+void xHiredisTest::rpushCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+{
+
+}
+
+void xHiredisTest::rpopCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+{
+
+}
+
+void xHiredisTest::lpopCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+{
+
+}
+
+void xHiredisTest::string()
+{
+	int32_t count = 0;
+	while(1)
+	{
+		if(count++ >= messageCount)
+		{
+			break;
+		}
+
+		auto redis = hiredis.getIteratorNode();
+		assert(redis != nullptr);
+		redis->redisAsyncCommand(std::bind(&xHiredisTest::setCallback,
+				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+				nullptr,"set %d %d",count,count);
+
+		redis->redisAsyncCommand(std::bind(&xHiredisTest::getCallback,
+							this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+							nullptr,"get %d",count);
+
 	}
 }
 
@@ -160,6 +223,11 @@ int main(int argc,char* argv[])
 
  		xEventLoop loop;
 		xHiredisTest hiredis(&loop,threadCount,sessionCount,messageCount,ip,port);
+		if(threadCount == 0)
+		{
+			hiredis.string();
+		}
+
 		hiredis.hash();
 		hiredis.list();
  		loop.run();

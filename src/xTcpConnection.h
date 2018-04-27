@@ -102,5 +102,5 @@ private:
 	ChannelPtr channel;
 	std::any context;
 	const char *ip;
-	uint16_t  port;
+	uint16_t port;
 };

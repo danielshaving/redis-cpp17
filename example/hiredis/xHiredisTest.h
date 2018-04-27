@@ -10,8 +10,13 @@ public:
 
 	void redisConnCallBack(const TcpConnectionPtr& conn);
 	xHiredis *getHiredis() { return &hiredis; }
+
+	void string();
 	void hash();
 	void list();
+
+	void setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
+	void getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
 	void hgetCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
 	void hsetCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
 	void hgetallCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
@@ -24,6 +29,7 @@ public:
 private:
 	xHiredis hiredis;
 	std::atomic<int32_t> connectCount;
+	int32_t count;
 	int16_t sessionCount;
 	std::condition_variable condition;
 	xEventLoop *loop;

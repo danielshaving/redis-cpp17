@@ -76,7 +76,6 @@ private:
     bool callingPendingFunctors;
     std::vector<Functor> functors;
     std::vector<Functor> pendingFunctors;
-
     xSocket socket;
 };
 

@@ -119,20 +119,19 @@ void xEventLoop::quit()
 
 void xEventLoop::wakeup()
 {
-  uint64_t one = 1;
+	uint64_t one = 1;
 #ifdef __linux__
-  ssize_t n = ::write(wakeupFd,&one,sizeof one);
+    ssize_t n = ::write(wakeupFd,&one,sizeof one);
 #endif
 
 #ifdef __APPLE__
-  ssize_t n = ::write(wakeupFd[0],&one,sizeof one);
+  	ssize_t n = ::write(wakeupFd[0],&one,sizeof one);
 #endif
 
-  if (n != sizeof one)
-  {
-    LOG_ERROR<<"EventLoop::wakeup() wrties error";
-  }
-
+	if (n != sizeof one)
+	{
+		LOG_ERROR<<"EventLoop::wakeup() wrties error";
+	}
 }
 
 void xEventLoop::runInLoop(Functor &&cb)
