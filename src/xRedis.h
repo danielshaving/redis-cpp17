@@ -11,7 +11,6 @@
 #include "xLog.h"
 #include "xSocket.h"
 #include "xReplication.h"
-#include "xSentinel.h"
 #include "xCluster.h"
 #include "xRdb.h"
 #include "xUtil.h"
@@ -236,7 +235,6 @@ public:
 
 private:
 	xReplication repli;
-	xSentinel senti;
 	xCluster clus;
 	xRdb rdb;
 	xSocket socket;

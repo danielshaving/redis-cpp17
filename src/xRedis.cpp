@@ -15,7 +15,6 @@ clusterSlotEnabled(false),
 clusterRepliMigratEnabled(false),
 clusterRepliImportEnabeld(false),
 repli(this),
-senti(this),
 clus(this),
 rdb(this),
 forkEnabled(false),
@@ -37,11 +36,6 @@ dbnum(1)
 	server.start();
 	loop.runAfter(1.0,true,std::bind(&xRedis::serverCron,this));
 	loop.runAfter(120.0,true,std::bind(&xRedis::bgsaveCron,this));
-
-	{
-		std::thread thread(std::bind(&xSentinel::connectSentinel,&senti));
-		thread.detach();
-	}
 
 	{
 		std::thread thread(std::bind(&xReplication::connectMaster,&repli));
