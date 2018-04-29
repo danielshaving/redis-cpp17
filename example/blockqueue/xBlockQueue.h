@@ -2,7 +2,7 @@
 #include "xAll.h"
 
 template<typename T>
-class xBlockingQueue : noncopyable
+class xBlockingQueue : boost::noncopyable
 {
 public:
 	xBlockingQueue()

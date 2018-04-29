@@ -40,7 +40,6 @@ struct sdshdr
     char buf[];
 };
 
-
 static inline size_t sdslen(const sds s)
 {
     struct sdshdr *sh = (sdshdr*)(s-(sizeof(struct sdshdr)));

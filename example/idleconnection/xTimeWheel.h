@@ -6,7 +6,7 @@
 #include "xTcpConnection.h"
 #include <boost/circular_buffer.hpp>
 
-class xTimeWheel
+class xTimeWheel : boost::noncopyable
 {
 public:
 	xTimeWheel(xEventLoop *loop,const char *ip,int16_t port,int8_t idleSeconds);

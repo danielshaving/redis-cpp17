@@ -7,7 +7,7 @@
 class xChannel;
 class xEventLoop;
 
-class xKqueue : noncopyable
+class xKqueue : boost::noncopyable
 {
 public:
 	typedef std::vector<struct kevent> EventList;

@@ -119,7 +119,7 @@ void xHttpServer::onRequest(const TcpConnectionPtr &conn,const xHttpRequest &req
 	SHA1Init(&ctx);
 	SHA1Update(&ctx,(const unsigned char*)secKey.c_str(),secKey.size());
 	SHA1Final(hash,&ctx);
-	std::string base64Str = base64Encode((const unsigned char *)hash, sizeof(hash));
+	std::string base64Str = base64Encode((const unsigned char *)hash,sizeof(hash));
 	sendBuf.append(base64Str.data(),base64Str.size());
 	sendBuf.append("\r\n\r\n");
 	conn->send(&sendBuf);

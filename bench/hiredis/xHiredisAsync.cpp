@@ -106,16 +106,12 @@ void xHiredisAsync::serverCron()
  	}
  	else
  	{
- 		startTime = mstime();
-		xLogger::setOutput(asyncOutput);
-		xAsyncLogging log("hiredis",4096);
-		log.start();
-		glog = &log;
-
  		const char *ip = argv[1];
  		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
  		sessionCount = atoi(argv[3]);
  		int8_t threadCount = atoi(argv[4]);
+
+ 		startTime = mstime();
  		xEventLoop loop;
 		xHiredisAsync async(&loop,threadCount,ip,port);
 

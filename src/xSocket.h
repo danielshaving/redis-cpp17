@@ -1,7 +1,7 @@
 #pragma once
 #include "xAll.h"
 
-class xSocket : noncopyable
+class xSocket : boost::noncopyable
 {
 public:
 	xSocket();

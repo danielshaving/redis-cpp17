@@ -2,7 +2,7 @@
 #include "xAll.h"
 #include <zlib.h>
 
-class xGzipFile : noncopyable
+class xGzipFile : boost::noncopyable
 {
 public:
 	xGzipFile(xGzipFile && rhs)

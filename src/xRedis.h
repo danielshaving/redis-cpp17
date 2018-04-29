@@ -15,7 +15,7 @@
 #include "xRdb.h"
 #include "xUtil.h"
 
-class xRedis : noncopyable
+class xRedis : boost::noncopyable
 {
 public:
 	xRedis(const char *ip,int16_t port,int16_t threadCount,bool enbaledCluster = false);

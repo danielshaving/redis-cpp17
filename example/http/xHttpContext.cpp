@@ -5,7 +5,7 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 {
 	bool succeed = false;
 	const char *start = begin;
-	const  char *space = std::find(start,end,' ');
+	const char *space = std::find(start,end,' ');
 	if(space != end && request.setMethod(start,space))
 	{
 		start = space+1;
@@ -54,7 +54,7 @@ bool xHttpContext::parseRequest(xBuffer *buf)
 	{
 		if(state == kExpectRequestLine)
 		{
-			const char * crlf = buf->findCRLF();
+			const char *crlf = buf->findCRLF();
 			if(crlf)
 			{
 				ok = processRequestLine(buf->peek(),crlf);
@@ -76,10 +76,10 @@ bool xHttpContext::parseRequest(xBuffer *buf)
 		}
 		else if(state == kExpectHeaders)
 		{
-			const char * crlf = buf->findCRLF();
+			const char *crlf = buf->findCRLF();
 			if(crlf)
 			{
-				const char *colon = std::find(buf->peek(), crlf, ':');
+				const char *colon = std::find(buf->peek(),crlf, ':');
 				if(colon != crlf)
 				{
 					request.addHeader(buf->peek(),colon,crlf);

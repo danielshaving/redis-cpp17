@@ -3,7 +3,7 @@
 #include "xAll.h"
 
 class xEventLoop;
-class xThread : noncopyable
+class xThread : boost::noncopyable
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;

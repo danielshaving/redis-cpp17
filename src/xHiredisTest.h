@@ -1,7 +1,7 @@
 #pragma once
 #include "xHiredis.h"
 
-class xHiredisTest : noncopyable
+class xHiredisTest : boost::noncopyable
 {
 public:
 	xHiredisTest(xEventLoop *loop,int8_t threadCount,

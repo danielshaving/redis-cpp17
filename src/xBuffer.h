@@ -3,7 +3,7 @@
 #include "xAll.h"
 #include "xStringPiece.h"
 
-class xBuffer : noncopyable
+class xBuffer : boost::noncopyable
 {
 public:
 	static const size_t kCheapPrepend = 16;

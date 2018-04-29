@@ -6,7 +6,7 @@ const int32_t kSmallBuffer = 4000;
 const int32_t kLargeBuffer = 4000*10;
 
 template<int32_t SIZE>
-class xFixedBuffer : noncopyable
+class xFixedBuffer : boost::noncopyable
 {
 public:
 	xFixedBuffer()
@@ -47,7 +47,7 @@ private:
 	char *cur;
 };
 
-class xAppendFile : noncopyable
+class xAppendFile : boost::noncopyable
 {
 public:
 	explicit xAppendFile(std::string &filename);
@@ -65,7 +65,7 @@ private:
 };
 
 
-class xLogFile : noncopyable
+class xLogFile : boost::noncopyable
 {
  public:
 	xLogFile(const std::string &basename,
@@ -98,7 +98,7 @@ private:
 	const static int32_t kRollPerSeconds = 60*60*24;
 };
 
-class xAsyncLogging : noncopyable
+class xAsyncLogging : boost::noncopyable
 {
 public:
 	xAsyncLogging(std::string baseName,size_t rollSize,int32_t interval = 3);
@@ -153,7 +153,7 @@ class T
 	const unsigned len;
 };
 
-class xLogStream : noncopyable
+class xLogStream : boost::noncopyable
 {
 public:
 	typedef xLogStream self;

@@ -6,7 +6,7 @@
 #include "xSocket.h"
 
 class xRedis;
-class xReplication : noncopyable
+class xReplication : boost::noncopyable
 {
 public:
 	xReplication(xRedis *redis);

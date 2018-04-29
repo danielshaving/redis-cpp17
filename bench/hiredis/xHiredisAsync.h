@@ -5,13 +5,6 @@
 int64_t startTime = 0;
 int64_t endTime = 0;
 
-xAsyncLogging *glog;
-void asyncOutput(const char *msg,int len)
-{
-	printf("%s\n",msg);
-	glog->append(msg, len);
-}
-
 class xHiredisAsync : noncopyable
 {
 public:

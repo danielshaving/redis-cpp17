@@ -14,25 +14,26 @@
 #include "xTimerQueue.h"
 #include "xCallback.h"
 
-class xEventLoop : noncopyable
+class xEventLoop : boost::noncopyable
 {
 public:
-    typedef std::function<void()> Functor;
+	typedef std::function<void()> Functor;
 
 	xEventLoop();
 	~xEventLoop();
 
-    void quit();
-    void run();
-    void handleRead();
-    void runInLoop(Functor &&cb);
-    void queueInLoop(Functor &&cb);
-    void wakeup();
-    void updateChannel(xChannel *channel);
-    void removeChannel(xChannel *channel);
-    bool hasChannel(xChannel *channel);
-    void cancelAfter(xTimer *timer);
-    void assertInLoopThread()
+	void quit();
+
+	void run();
+	void handleRead();
+	void runInLoop(Functor &&cb);
+	void queueInLoop(Functor &&cb);
+	void wakeup();
+	void updateChannel(xChannel *channel);
+	void removeChannel(xChannel *channel);
+	bool hasChannel(xChannel *channel);
+	void cancelAfter(xTimer *timer);
+	void assertInLoopThread()
     {
 	  if (!isInLoopThread())
 	  {

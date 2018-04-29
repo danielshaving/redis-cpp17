@@ -3,7 +3,7 @@
 #include "xHiredis.h"
 #include "xSds.h"
 
-class xLock : noncopyable
+class xLock : boost::noncopyable
 {
 public:
 	xLock();
@@ -14,7 +14,7 @@ public:
 	sds val;
 };
 
-class xRedLock : noncopyable
+class xRedLock : boost::noncopyable
 {
 public:
 	xRedLock();

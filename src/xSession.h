@@ -8,7 +8,7 @@
 class xSentinel;
 class xRedis;
 
-class xSession : noncopyable, public std::enable_shared_from_this<xSession>
+class xSession : boost::noncopyable, public std::enable_shared_from_this<xSession>
 {
 public:
 	xSession(xRedis *redis,const TcpConnectionPtr &conn);

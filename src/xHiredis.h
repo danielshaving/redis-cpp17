@@ -8,9 +8,8 @@
 #include "xThreadPool.h"
 
 class xRedisAsyncContext;
-class redisReply : noncopyable
+struct redisReply : boost::noncopyable
 {
-public:
     int32_t type;
     int64_t integer;
     int32_t len;
@@ -20,9 +19,8 @@ public:
 };
 
 typedef std::function<void(const RedisAsyncContextPtr &context,redisReply*,const std::any &)> RedisCallbackFn;
-class redisReadTask : noncopyable
+struct redisReadTask : boost::noncopyable
 {
-public:
     int32_t type;
     int32_t elements;
     int32_t idx;
@@ -38,13 +36,12 @@ redisReply *createInteger(const redisReadTask *task,int64_t value);
 redisReply *createNil(const redisReadTask *task);
 void freeReply(redisReply *reply);
 
-class redisFunc : noncopyable
+struct redisFunc : boost::noncopyable
 {
-public:
 	redisFunc()
 	{
 		createStringFuc = createString;
-	   	createArrayFuc = createArray;
+		createArrayFuc = createArray;
 		createIntegerFuc = createInteger;
 		createNilFuc = createNil;
 		freeObjectFuc = freeReply;
@@ -57,7 +54,7 @@ public:
 	std::function<void (redisReply*)> freeObjectFuc;
 };
 
-class xRedisReader : noncopyable
+class xRedisReader : boost::noncopyable
 {
 public:
 	xRedisReader();
@@ -90,17 +87,15 @@ public:
 	std::any privdata;
 };
 
-class redisCallback
+struct redisCallback
 {
-public:
 	RedisCallbackFn fn;
     std::any privdata;
 };
 
 typedef std::list<redisCallback> RedisCallbackList;
-class redisAsyncCallback
+struct redisAsyncCallback
 {
-public:
 	redisAsyncCallback()
 	:data(nullptr),
 	 len(0)
@@ -113,7 +108,7 @@ public:
 };
 
 typedef std::list<redisAsyncCallback> RedisAsyncCallbackList;
-class xRedisContext : noncopyable
+class xRedisContext : boost::noncopyable
 {
 public:
 	xRedisContext();
@@ -121,11 +116,11 @@ public:
 	~xRedisContext();
 
 	int32_t redisvAppendCommand(const char *format,va_list ap);
-	int32_t redisAppendCommand(const char *cmd,size_t len);
+	void redisAppendCommand(const char *cmd,size_t len);
 	redisReply *redisCommand(const char *format,...);
 	redisReply *redisvCommand(const char *format,va_list ap);
 	redisReply *redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
-	int32_t redisAppendFormattedCommand(const char *cmd,size_t len);
+	void redisAppendFormattedCommand(const char *cmd,size_t len);
 	int32_t redisAppendCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
 	void redisSetError(int32_t type,const char *str);
 	redisReply *redisBlockForReply();
@@ -155,7 +150,7 @@ public:
 	RedisReaderPtr reader;
 };
 
-class xRedisAsyncContext : noncopyable
+class xRedisAsyncContext : boost::noncopyable
 {
 public:
 	xRedisAsyncContext(xBuffer *buffer,const TcpConnectionPtr &conn);
@@ -188,7 +183,7 @@ private:
 	}sub;
 };
 
-class xHiredis : noncopyable
+class xHiredis : boost::noncopyable
 {
 public:
 	xHiredis(xEventLoop *loop,bool clusterMode = false);

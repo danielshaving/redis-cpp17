@@ -3,8 +3,7 @@
 #include "xZmalloc.h"
 #include "xCallback.h"
 
-class xTimeStamp //: public std::equality_comparable<xTimeStamp>,
-                   //public std::less_than_comparable<xTimeStamp>
+class xTimeStamp
 {
 public:
 	xTimeStamp()
@@ -44,45 +43,43 @@ private:
 	int64_t microSecondsSinceEpoch;
 };
 
-
-inline bool operator<(xTimeStamp lhs,xTimeStamp rhs)
+inline bool operator<(const xTimeStamp &lhs,const xTimeStamp &rhs)
 {
 	return lhs.getMicroSecondsSinceEpoch() < rhs.getMicroSecondsSinceEpoch();
 }
 
-inline bool operator==(xTimeStamp lhs,xTimeStamp rhs)
+inline bool operator==(const xTimeStamp &lhs,const xTimeStamp &rhs)
 {
 	return lhs.getMicroSecondsSinceEpoch() == rhs.getMicroSecondsSinceEpoch();
 }
 
-inline xTimeStamp addTime(xTimeStamp timestamp,double seconds)
+inline xTimeStamp addTime(const xTimeStamp &timestamp,double seconds)
 {
 	int64_t delta = static_cast<int64_t>(seconds * xTimeStamp::kMicroSecondsPerSecond);
 	return xTimeStamp(timestamp.getMicroSecondsSinceEpoch() + delta);
 }
 
-inline double timeDifference(xTimeStamp high,xTimeStamp low)
+inline double timeDifference(const xTimeStamp &high,const xTimeStamp &low)
 {
 	int64_t diff = high.getMicroSecondsSinceEpoch() - low.getMicroSecondsSinceEpoch();
 	return static_cast<double>(diff) / xTimeStamp::kMicroSecondsPerSecond;
 }
 
-class xTimer : noncopyable
+class xTimer
 {
 public:
 	xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval);
 	~xTimer();
 
 	int64_t getSequence() { return sequence; }
-	auto getExpiration() const { return expiration; }
+	xTimeStamp &getExpiration() { return expiration; }
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
 	bool getRepeat() { return repeat; }
 	void setSequence(int64_t seq) { sequence = seq; }
-
-	void restart(xTimeStamp now);
+	void restart(const xTimeStamp &now);
 	void run();
+	double getInterval() { return interval; }
 
-	double getInterval(){ return interval; }
 private:	
 	int64_t index;
 	bool repeat;

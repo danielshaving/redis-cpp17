@@ -26,7 +26,7 @@ public:
 		statusCode = code;
 	}
 
-	void setStatusMessage(const std::string & message)
+	void setStatusMessage(const std::string &message)
 	{
 		statusMessage = message;
 	}
@@ -41,9 +41,9 @@ public:
 		return closeConnection;
 	}
 
-	void setContentType(const std::string & contentType)
+	void setContentType(const std::string &contentType)
 	{
-		addHeader("Content-Type", contentType);
+		addHeader("Content-Type",contentType);
 	}
 
 	void addHeader(const std::string &key,const std::string &value)
@@ -56,7 +56,7 @@ public:
 		this->body = body;
 	}
 
-	void appendToBuffer(xBuffer* output) const;
+	void appendToBuffer(xBuffer *output) const;
 
 
 private:

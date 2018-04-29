@@ -1,7 +1,5 @@
 #include "xTimer.h"
-
-
- std::atomic<int64_t> xTimer::numCreated = 0;
+std::atomic<int64_t> xTimer::numCreated = 0;
 
 xTimer::xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,
 	bool repeat,double interval)
@@ -25,7 +23,7 @@ void xTimer::run()
 	callback();
 }
 
-void xTimer::restart(xTimeStamp now)
+void xTimer::restart(const xTimeStamp &now)
 {
 	if (repeat)
 	{
@@ -36,8 +34,6 @@ void xTimer::restart(xTimeStamp now)
 		expiration = xTimeStamp::invalid();
 	}
 }
-
-
 
 std::string xTimeStamp::toString() const
 {

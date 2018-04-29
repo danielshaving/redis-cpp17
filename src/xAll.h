@@ -70,7 +70,7 @@
 #include <sys/eventfd.h>
 #include <endian.h>
 #endif
-
+#include <boost/noncopyable.hpp>
 
 #define REDIS_CONNECT_RETRIES  10
 
@@ -415,17 +415,3 @@
 #define UNUSED(V) ((void) V)
 
 #define SDS_MAX_PREALLOC (1024*1024)
-
-
-class noncopyable
-{
-protected:
-	noncopyable()
-	{
-
-		
-	}
-private:
-	noncopyable(const noncopyable &);
-	noncopyable& operator = (const noncopyable &);
-};

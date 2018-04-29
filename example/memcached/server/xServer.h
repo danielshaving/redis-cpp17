@@ -1,5 +1,5 @@
 #pragma once
-#include "all.h"
+#include "xAll.h"
 #include "xTcpConnection.h"
 #include "xTcpServer.h"
 #include "xZmalloc.h"
@@ -10,7 +10,7 @@ class xItem;
 typedef std::shared_ptr<xItem> ItemPtr;
 typedef std::shared_ptr<const xItem> ConstItemPtr;
 
-class xItem:noncopyable
+class xItem : boost::noncopyable
 {
 public:
 	enum UpdatePolicy
@@ -83,7 +83,7 @@ private:
 
 class xMemcacheServer;
 
-class xConnect : noncopyable, public std::enable_shared_from_this<xConnect>
+class xConnect : boost::noncopyable, public std::enable_shared_from_this<xConnect>
 {
 public:
 	xConnect(xMemcacheServer *owner,const TcpConnectionPtr & conn)
@@ -153,14 +153,10 @@ private:
 };
 
 const int kLongestKeySize = 250;
-
 std::string xConnect::kLongestKey(kLongestKeySize, 'x');
-
-
 typedef std::shared_ptr<xConnect> SessionPtr;
 
-
-class xMemcacheServer :noncopyable
+class xMemcacheServer : boost::noncopyable
 {
 public:
 	struct Options

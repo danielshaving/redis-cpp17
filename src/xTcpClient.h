@@ -5,7 +5,7 @@
 #include "xCallback.h"
 
 
-class xTcpClient: noncopyable
+class xTcpClient: boost::noncopyable
 {
 public:
 	xTcpClient(xEventLoop *loop,const char *ip,int16_t port,const std::any &context);

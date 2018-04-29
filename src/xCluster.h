@@ -18,7 +18,7 @@ struct clusterNode
 };
 
 class xRedis;
-class xCluster : noncopyable
+class xCluster : boost::noncopyable
 {
 public:
 	xCluster(xRedis *redis);

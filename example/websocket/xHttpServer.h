@@ -5,7 +5,7 @@
 #include "xHttpResponse.h"
 
 class xEventLoop;
-class xHttpServer : noncopyable
+class xHttpServer : boost::noncopyable
 {
 public:
 	typedef std::function<bool(xHttpRequest *,const TcpConnectionPtr &)> HttpReadCallBack;

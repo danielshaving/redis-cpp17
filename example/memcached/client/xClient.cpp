@@ -1,4 +1,4 @@
-#include "all.h"
+#include "xAll.h"
 #include "xLog.h"
 #include "xTcpConnection.h"
 #include "xTcpClient.h"
@@ -13,7 +13,8 @@ std::mutex mtx;
 std::condition_variable condition;
 std::atomic<int> connShutDown;
 std::atomic<int> connectCount;
-class xClient : noncopyable
+
+class xClient : boost::noncopyable
 {
 public:
 	enum Operation

@@ -5,7 +5,7 @@
 const uint32_t dict_hash_function_seed = 5381;
 
 /* And a case insensitive hash function (based on djb hash) */
-uint32_t dictGenCaseHashFunction(const char *buf, int32_t len)
+uint32_t dictGenCaseHashFunction(const char *buf,int32_t len)
 {
 	uint32_t hash = (uint32_t)dict_hash_function_seed;
 
@@ -14,7 +14,7 @@ uint32_t dictGenCaseHashFunction(const char *buf, int32_t len)
 	return hash;
 }
 
-uint32_t dictGenHashFunction(const void *key, int32_t len)
+uint32_t dictGenHashFunction(const void *key,int32_t len)
 {
 	/* 'm' and 'r' are mixing constants generated offline.
 	 They're no really 'magic', they just happen to work well.  */
@@ -61,7 +61,7 @@ uint32_t dictGenHashFunction(const void *key, int32_t len)
 }
 
 
-int32_t string2ll(const char *s,size_t slen, int64_t *value)
+int32_t string2ll(const char *s,size_t slen,int64_t *value)
 {
 	const char *p = s;
     size_t plen = 0;
@@ -133,7 +133,7 @@ int32_t string2ll(const char *s,size_t slen, int64_t *value)
 
 }
 
-int32_t ll2string(char *s, size_t len, int64_t value)
+int32_t ll2string(char *s,size_t len,int64_t value)
 {
     char buf[32], *p;
     uint64_t v;
@@ -157,8 +157,8 @@ int32_t ll2string(char *s, size_t len, int64_t value)
 }
 
 /* Glob-style pattern matching. */
-int32_t stringmatchlen(const char *pattern, int32_t patternLen,
-        const char *string, int32_t stringLen, int32_t nocase)
+int32_t stringmatchlen(const char *pattern,int32_t patternLen,
+        const char *string,int32_t stringLen,int32_t nocase)
 {
     while(patternLen)
     {
@@ -304,12 +304,12 @@ int32_t stringmatchlen(const char *pattern, int32_t patternLen,
     return 0;
 }
 
-int32_t stringmatch(const char *pattern, const char *string, int32_t nocase)
+int32_t stringmatch(const char *pattern,const char *string,int32_t nocase)
 {
     return stringmatchlen(pattern,strlen(pattern),string,strlen(string),nocase);
 }
 
-void getRandomHexChars(char *p, uint32_t len)
+void getRandomHexChars(char *p,uint32_t len)
 {
 	char *charset = "0123456789abcdef";
 	uint32_t j;

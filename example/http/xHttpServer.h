@@ -6,7 +6,7 @@ class xEventLoop;
 class xHttpRequest;
 class xHttpResponse;
 
-class xHttpServer:noncopyable
+class xHttpServer : boost::noncopyable
 {
 public:
 	typedef std::function<void(const xHttpRequest &,xHttpResponse*)> HttpCallBack;

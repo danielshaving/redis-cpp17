@@ -8,7 +8,7 @@
 class xEventLoop;
 class xTimerId;
 
-class xPriorityQueue : noncopyable
+class xPriorityQueue : boost::noncopyable
 {
 public:
 	xPriorityQueue();
@@ -33,7 +33,7 @@ private:
 	int64_t n,a;
 };
 
-class xTimerQueue : noncopyable
+class xTimerQueue : boost::noncopyable
 {
 public:
 	xTimerQueue(xEventLoop *loop);

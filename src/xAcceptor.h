@@ -4,7 +4,7 @@
 #include "xEventLoop.h"
 #include "xSocket.h"
 
-class xAcceptor : noncopyable
+class xAcceptor : boost::noncopyable
 {
 public:
 	typedef std::function<void (int32_t sockfd)> NewConnectionCallback;

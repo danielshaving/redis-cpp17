@@ -6,7 +6,7 @@
 #include "xLzf.h"
 #include "xSession.h"
 
-struct xRio
+struct xRio : boost::noncopyable
 {
 	union
 	{
@@ -45,7 +45,7 @@ struct xRio
 };
 
 class xRedis;
-class xRdb: noncopyable
+class xRdb: boost::noncopyable
 {
 public:
 	xRdb(xRedis *redis)

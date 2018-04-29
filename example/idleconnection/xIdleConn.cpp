@@ -5,7 +5,7 @@
 #include "xTimer.h"
 #include "xTcpConnection.h"
 
-class xEchoServer : noncopyable
+class xEchoServer : boost::noncopyable
 {
 public:
 	xEchoServer(xEventLoop *loop,const char *ip,int16_t port,int8_t idleSeconds)

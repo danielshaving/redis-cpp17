@@ -500,7 +500,6 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		
 		ip = argv[1];
 		port = static_cast<uint16_t>(atoi(argv[2]));
 		struct timeval timeout = { 1, 500000 }; // 1.5 seconds

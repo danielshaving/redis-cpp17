@@ -63,7 +63,7 @@ bool xSocket::isSelfConnect(int32_t sockfd)
 	}
 	else
 	{
-	return false;
+		return false;
 	}
 }
 
@@ -188,20 +188,20 @@ bool xSocket::connectWaitReady(int32_t fd,int32_t msec)
 	return true;
 }
 
-int32_t  xSocket::connect(int32_t sockfd,const char *ip,int16_t port)
+int32_t xSocket::connect(int32_t sockfd,const char *ip,int16_t port)
 {
 	struct sockaddr_in sin;
 	memset(&sin,0,sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = inet_addr(ip);
-	return  ::connect(sockfd,(struct sockaddr *)&sin,sizeof(sin));
+	return ::connect(sockfd,(struct sockaddr *)&sin,sizeof(sin));
 }
 
 int32_t xSocket::setFlag(int32_t fd,int32_t flag)
 {
-	int32_t ret = fcntl(fd, F_GETFD);
-	return fcntl(fd, F_SETFD, ret | flag);
+	int32_t ret = ::fcntl(fd, F_GETFD);
+	return ::fcntl(fd, F_SETFD, ret | flag);
 }
 
 bool xSocket::setTimeOut(int32_t sockfd,const struct timeval tv)
@@ -221,7 +221,7 @@ bool xSocket::setTimeOut(int32_t sockfd,const struct timeval tv)
     return true;
 }
 
-void  xSocket::setkeepAlive(int32_t fd,int32_t idle)
+void xSocket::setkeepAlive(int32_t fd,int32_t idle)
 {
 #ifdef __linux__
 	int32_t keepalive = 1;
@@ -271,7 +271,7 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 #ifdef __APPLE__
     struct sockaddr_un sa;
     sa.sun_family = AF_UNIX;
-    char *path = "./redis.sock";//"var/run/redis/redis.sock";
+    char *path = "./redis.sock";
     strncpy(sa.sun_path,path,sizeof(sa.sun_path) - 1);
     mode_t unixsocketperm = 777;
     ::chmod(sa.sun_path,unixsocketperm);
