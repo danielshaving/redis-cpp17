@@ -1,14 +1,13 @@
 #include "xTimer.h"
 std::atomic<int64_t> xTimer::numCreated = 0;
 
-xTimer::xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,
-	bool repeat,double interval)
-	:index(-1),
-	repeat(repeat),
-	interval(interval),
-	expiration(std::move(expiration)),
-	callback(std::move(cb)),
-	sequence(++numCreated)
+xTimer::xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval)
+:index(-1),
+repeat(repeat),
+interval(interval),
+expiration(std::move(expiration)),
+callback(std::move(cb)),
+sequence(++numCreated)
 {
 	
 }

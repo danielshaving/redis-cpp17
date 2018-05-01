@@ -16,17 +16,16 @@ void flushFunc()
   	g_logFile->flush();
 }
 
-
-void dummyOutput(const char* msg, int len)
+void dummyOutput(const char* msg,int len)
 {
 	g_total += len;
 	if (g_file)
 	{
-		fwrite(msg, 1, len, g_file);
+		fwrite(msg,1,len,g_file);
 	}
 	else if (g_logFile)
 	{
-		g_logFile->append(msg, len);
+		g_logFile->append(msg,len);
 	}
 }
 
@@ -34,7 +33,7 @@ void dummyOutput(const char* msg, int len)
 void bench(const char* type)
 {
 	xLogger::setOutput(dummyOutput);
-	xTimestamp start(xTimestamp::now());
+	xTimeStamp start(xTimeStamp::now());
 	g_total = 0;
 
 	int n = 1000*1000;
@@ -48,33 +47,33 @@ void bench(const char* type)
 	         << (kLongLog ? longStr : empty)
 	         << i;
 	}
-	xTimestamp end(xTimestamp::now());
+	xTimeStamp end(xTimeStamp::now());
 	double seconds = timeDifference(end, start);
 	printf("%12s: %f seconds, %d bytes, %10.2f msg/s, %.2f MiB/s\n",
 	     type, seconds, g_total, n / seconds, g_total / seconds / (1024 * 1024));
 }
 
-int main(int argc, char* argv[])
+int main(int argc,char* argv[])
 {
 	bench("nop");
 	
 	char buffer[64*1024];
 	
-	 g_file = fopen("/dev/null", "w");
-	 setbuffer(g_file, buffer, sizeof buffer);
+	 g_file = fopen("/dev/null","w");
+	 setbuffer(g_file,buffer,sizeof buffer);
 	 bench("/dev/null");
 	 fclose(g_file);
 	
-	 g_file = fopen("/tmp/log", "w");
-	 setbuffer(g_file, buffer, sizeof buffer);
+	 g_file = fopen("/tmp/log","w");
+	 setbuffer(g_file, buffer,sizeof buffer);
 	 bench("/tmp/log");
 	 fclose(g_file);
 	
-	 g_file = NULL;
-	 g_logFile.reset(new xLogFile("test_log_st", 500*1000*1000, false));
+	 g_file = nullptr;
+	 g_logFile.reset(new xLogFile("test_log_st",500*1000*1000,false));
 	 bench("test_log_st");
 	
-	 g_logFile.reset(new xLogFile("test_log_mt", 500*1000*1000, true));
+	 g_logFile.reset(new xLogFile("test_log_mt",500*1000*1000,true));
 	 bench("test_log_mt");
 	 g_logFile.reset();
 
@@ -82,7 +81,7 @@ int main(int argc, char* argv[])
 	sleep(1);
 	char name[256];
 	strncpy(name,argv[0],256);
-	g_logFile.reset(new xLogFile(::basename(name), 200*1000));
+	g_logFile.reset(new xLogFile("log_benvh",200*1000));
 	xLogger::setOutput(outputFunc);
 	xLogger::setFlush(flushFunc);
 	std::string line = "1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
@@ -90,8 +89,6 @@ int main(int argc, char* argv[])
 	{
 		LOG_INFO << line << i;
 	}
-
-	 
 	return 0;
 }
 	

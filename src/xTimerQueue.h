@@ -8,31 +8,6 @@
 class xEventLoop;
 class xTimerId;
 
-class xPriorityQueue : boost::noncopyable
-{
-public:
-	xPriorityQueue();
-	~xPriorityQueue();
-
-	void reserve();
-	void shiftUp(int64_t index,xTimer *e);
-	void shiftDown(int64_t index,xTimer *e);
-	void dtor();
-	bool push(xTimer *e);
-	bool erase(xTimer *e);
-	void clear();
-	int64_t size();
-	bool empty();
-
-	xTimer *pop();
-	xTimer *head();
-	xTimer *top();
-
-private:
-	xTimer **p;
-	int64_t n,a;
-};
-
 class xTimerQueue : boost::noncopyable
 {
 public:
@@ -42,17 +17,14 @@ public:
 	void cancelTimer(xTimer *timer);
   	xTimer *addTimer(double when,bool repeat,xTimerCallback &&cb);
   	void handleRead();
-  	auto *getPriority() { return &queue; }
   	xTimer *getTimerBegin();
 
 private:
 	xEventLoop *loop;
-	xPriorityQueue queue;
 	int32_t timerfd;
 #ifdef __linux__
 	xChannel timerfdChannel;
 #endif
-	std::vector<xTimer*> timers;
 	int64_t sequence;
 
 	void cancelInloop(xTimer *timer);

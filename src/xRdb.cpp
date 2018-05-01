@@ -380,7 +380,7 @@ int32_t xRdb::rdbSaveStruct(xRio *rdb)
 	for (auto &it : redisShards)
 	{
 		auto &mu = it.mtx;
-		auto &map = it.redis;
+		auto &map = it.redisMap;
 		auto &stringMap = it.stringMap;
 		auto &hashMap = it.hashMap;
 		auto &listMap = it.listMap;
@@ -501,7 +501,7 @@ int32_t xRdb::rdbLoadSet(xRio *rdb,int32_t type)
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &setMap = redisShards[index].setMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -545,7 +545,7 @@ int32_t xRdb::rdbLoadZset(xRio *rdb,int32_t type)
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &zsetMap = redisShards[index].zsetMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -590,7 +590,7 @@ int32_t xRdb::rdbLoadList(xRio *rdb, int32_t type)
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -638,7 +638,7 @@ int32_t xRdb::rdbLoadHash(xRio *rdb,int32_t type)
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -669,7 +669,7 @@ int32_t xRdb::rdbRestoreString(rObj *key,xRio *rdb,int32_t type)
 
 	size_t index  = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &stringMap = redisShards[index].stringMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -714,7 +714,7 @@ int32_t xRdb::rdbRestoreHash(rObj *key,xRio *rdb,int32_t type)
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -755,7 +755,7 @@ int32_t xRdb::rdbRestoreList(rObj *key,xRio *rdb,int32_t type)
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -801,7 +801,7 @@ int32_t xRdb::rdbRestoreZset(rObj *key,xRio *rdb,int32_t type)
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &zsetMap = redisShards[index].zsetMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -845,7 +845,7 @@ int32_t xRdb::rdbRestoreSet(rObj *key,xRio *rdb,int32_t type)
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &setMap = redisShards[index].setMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -890,7 +890,7 @@ int32_t xRdb::rdbLoadString(xRio *rdb,int32_t type,int64_t expiretime,int64_t no
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &stringMap = redisShards[index].stringMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -959,7 +959,7 @@ int32_t xRdb::createDumpPayload(xRio *rdb,rObj *obj)
 	auto &redisShards = redis->getRedisShards();
 	size_t index = obj->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &stringMap = redisShards[index].stringMap;
 	auto &hashMap = redisShards[index].hashMap;
 	auto &listMap = redisShards[index].listMap;

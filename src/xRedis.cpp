@@ -1375,7 +1375,7 @@ bool xRedis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -1431,7 +1431,7 @@ bool xRedis::lpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -1488,7 +1488,7 @@ bool xRedis::lrangeCommand(const std::deque<rObj*> &obj, const SessionPtr &sessi
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -1562,7 +1562,7 @@ bool xRedis::rpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -1620,7 +1620,7 @@ bool xRedis::rpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -1669,7 +1669,7 @@ bool xRedis::llenCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -1812,7 +1812,7 @@ size_t xRedis::getDbsize()
 	for (auto &it : redisShards)
 	{
 		std::unique_lock <std::mutex> lck(it.mtx);
-		auto &map = it.redis;
+		auto &map = it.redisMap;
 		size += map.size();
 	}
 
@@ -1836,7 +1836,7 @@ bool xRedis::removeCommand(rObj *obj)
 {
 	size_t hash = obj->hash;
 	int32_t index = hash % kShards;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &mu = redisShards[index].mtx;
 	auto &stringMap = redisShards[index].stringMap;
 	auto &hashMap = redisShards[index].hashMap;
@@ -2019,7 +2019,7 @@ void xRedis::clearCommand()
 	for (auto &it : redisShards)
 	{
 		auto &mu = it.mtx;
-		auto &map = it.redis;
+		auto &map = it.redisMap;
 		auto &stringMap = it.stringMap;
 		auto &hashMap = it.hashMap;
 		auto &listMap = it.listMap;
@@ -2120,8 +2120,8 @@ bool xRedis::keysCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	{
 		for (auto &it : redisShards)
 		{
-			auto &mu =  it.mtx;
-			auto &map = it.redis;
+			auto &mu = it.mtx;
+			auto &map = it.redisMap;
 			auto &stringMap = it.stringMap;
 			auto &hashMap = it.hashMap;
 			auto &listMap = it.listMap;
@@ -2209,7 +2209,7 @@ bool xRedis::zaddCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &zsetMap = redisShards[index].zsetMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -2372,7 +2372,7 @@ bool xRedis::zcardCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &zsetMap = redisShards[index].zsetMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -2419,7 +2419,7 @@ bool xRedis::scardCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &setMap = redisShards[index].setMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -2514,7 +2514,7 @@ bool xRedis::restoreCommand(const std::deque<rObj*> &obj,const SessionPtr &sessi
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = map.find(obj[0]);
@@ -2606,7 +2606,7 @@ bool xRedis::existsCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
 		auto it = map.find(obj[0]);
@@ -2637,7 +2637,7 @@ bool xRedis::saddCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &setMap = redisShards[index].setMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -2739,7 +2739,7 @@ bool xRedis::zrangeGenericCommand(const std::deque<rObj*> &obj,const SessionPtr 
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &zsetMap = redisShards[index].zsetMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -2844,7 +2844,7 @@ bool xRedis::hgetallCommand(const std::deque<rObj*> &obj,const SessionPtr &sessi
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -2890,7 +2890,7 @@ bool xRedis::hgetCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -2938,7 +2938,7 @@ bool xRedis::hkeysCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -2987,7 +2987,7 @@ bool xRedis::hlenCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -3036,7 +3036,7 @@ bool xRedis::hsetCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	size_t hash = obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -3163,7 +3163,7 @@ bool xRedis::setCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	size_t hash= obj[0]->hash;
 	size_t index = hash % kShards;
 	auto &mu = redisShards[index].mtx;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &stringMap = redisShards[index].stringMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
@@ -3254,7 +3254,7 @@ bool xRedis::getCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 
 	size_t hash = obj[0]->hash;
 	int32_t index = hash  % kShards;
-	auto &map = redisShards[index].redis;
+	auto &map = redisShards[index].redisMap;
 	auto &mu = redisShards[index].mtx;
 	auto &stringMap = redisShards[index].stringMap;
 	{

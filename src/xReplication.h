@@ -36,7 +36,7 @@ public:
 	xBuffer sendBuf;
 	int32_t connectCount;
 	xSocket socket;
-	FILE *fp ;
+	FILE *fp;
 	int32_t salveLen;
 	int32_t salveReadLen;
 	TcpConnectionPtr repliConn;

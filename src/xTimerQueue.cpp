@@ -2,130 +2,6 @@
 #include "xEventLoop.h"
 #include "xTimer.h"
 
-xPriorityQueue::xPriorityQueue()
-{
-	p = nullptr;
-	n = 0;
-	a = 0;
-}
-
-void xPriorityQueue::dtor()
-{
-	if(p)
-	{
-		zfree(p);
-	}
-}
-
-xPriorityQueue::~xPriorityQueue()
-{
-	dtor();
-}
-
-bool xPriorityQueue::push(xTimer *e)
-{
-	if(a < n + 1)
-	{
-		reserve();
-	}
-
-	shiftUp(n++, e);
-	return true;
-}
-
-xTimer *xPriorityQueue::pop()
-{
-	if (n)
-	{
-		xTimer *e = *p;
-		shiftDown(0, p[--n]);
-		*(int64_t*)e = -1;
-		return e;
-	}
-	return nullptr;
-}
-
-int64_t xPriorityQueue::size()
-{
-	return n;
-}
-
-bool xPriorityQueue::empty()
-{
-	return n <= 0;
-}
-
-bool xPriorityQueue::erase(xTimer *e)
-{
-	if (-1 != *(int64_t *)e)
-	{
-		xTimer *last = p[--n];
-		int64_t parent = (*(int64_t *)e - 1) / 2;
-		if (*(int64_t *)e > 0 && (p[parent]->getWhen() > last->getWhen()) > 0)
-			shiftUp(*(int64_t *)e,last);
-		else
-			shiftDown(*(int64_t *)e,last);
-		*(int64_t *)e = -1;
-
-		return 0;
-	}
-
-	return -1;
-}
-
-xTimer *xPriorityQueue::head()
-{
-	return p[0];
-}
-
-void xPriorityQueue::clear()
-{
-	p = 0;
-	n = 0;
-	a = 0;
-}
-
-xTimer *xPriorityQueue::top()
-{
-	return n ? *p:nullptr;
-}
-
-void xPriorityQueue::reserve()
-{
-	int64_t aa = a ? a * 2:8;
-	xTimer **pp = (xTimer**)zrealloc(p,aa * sizeof * pp);
-
-	a = aa;
-	p = pp;
-}
-
-void xPriorityQueue::shiftUp(int64_t index,xTimer *e)
-{
-	int64_t parent = (index - 1) / 2;
-	while (index && ((p[parent])->getWhen() > e->getWhen()) > 0)
-	{
-		*(int64_t *)(p[index] = p[parent]) = index;
-		index = parent;
-		parent = (index - 1) / 2;
-	}
-	*(int64_t *)(p[index] = e) = index;
-}
-
-void xPriorityQueue::shiftDown(int64_t index,xTimer *e)
-{
-	int64_t min_child = 2 * (index + 1);
-	while (min_child <= n)
-	{
-		min_child -= min_child == n || (p[min_child]->getWhen() > p[min_child - 1]->getWhen()) > 0;
-		if (!((e->getWhen() >  p[min_child]->getWhen() ) > 0))
-			break;
-		*(int64_t *)(p[index] = p[min_child]) = index;
-		index = min_child;
-		min_child = 2 * (index + 1);
-	}
-	*(int64_t *)(p[index] = e) = index;
-}
-
 #ifdef __linux__
 int64_t createTimerfd()
 {
@@ -141,7 +17,7 @@ int64_t createTimerfd()
 #endif
 
 
-struct timespec howMuchTimeFromNow(xTimeStamp when)
+struct timespec howMuchTimeFromNow(const xTimeStamp &when)
 {
 	int64_t  microseconds = when.getMicroSecondsSinceEpoch()
 						 - xTimeStamp::now().getMicroSecondsSinceEpoch();
@@ -156,7 +32,7 @@ struct timespec howMuchTimeFromNow(xTimeStamp when)
 	return ts;
 }
 
-void resetTimerfd(int64_t timerfd,xTimeStamp expiration)
+void resetTimerfd(int64_t timerfd,const xTimeStamp &expiration)
 {
 #ifdef __linux__
 	struct itimerspec newValue;
@@ -173,7 +49,7 @@ void resetTimerfd(int64_t timerfd,xTimeStamp expiration)
   
 }
 
-void readTimerfd(int64_t timerfd,xTimeStamp now)
+void readTimerfd(int64_t timerfd,const xTimeStamp &now)
 {
   uint64_t howmany;
   ssize_t n = ::read(timerfd,&howmany,sizeof howmany);
@@ -228,22 +104,7 @@ void xTimerQueue::cancelTimer(xTimer *timer)
 
 void xTimerQueue::cancelInloop(xTimer *timer)
 {
-	// if(queue.empty())
-	// {
-	// 	return ;
-	// }
-
-	// assert(queue.erase(timer) == 0);
-	// timer->~xTimer();
-	// zfree(timer);
-
-	// if (!queue.empty())
-	// {
-	// 	resetTimerfd(timerfd,queue.head()->getExpiration());
-	// }
-
 	loop->assertInLoopThread();
-
 	assert(timerLists.size() == activeTimers.size());
 	ActiveTimer atimer(timer,timer->getSequence());
 	auto it = activeTimers.find(atimer);
@@ -265,22 +126,7 @@ void xTimerQueue::cancelInloop(xTimer *timer)
 void xTimerQueue::addTimerInLoop(xTimer *timer)
 {
 	loop->assertInLoopThread();
-
 	bool earliestChanged = insert(timer);
-	// if(queue.empty())
-	// {
-	// 	earliestChanged = true;
-	// }
-	// else
-	// {
-	// 	if(timer->getWhen() < queue.head()->getWhen())
-	// 	{
-	// 		earliestChanged = true;
-	// 	}
-	// }
-
-	// queue.push(timer);
-
 	if(earliestChanged)
 	{
 		resetTimerfd(timerfd,timer->getExpiration());
@@ -305,40 +151,6 @@ void xTimerQueue::handleRead()
 #ifdef __linux__
 	readTimerfd(timerfd,now);
 #endif
-	// while(queue.size() > 0 )
-	// {
-	// 	if(now.getMicroSecondsSinceEpoch() >= queue.head()->getWhen())
-	// 	{
-	// 		xTimer *timer = queue.pop();
-	// 		assert(timer != nullptr);
-	// 		timer->run();
-	// 		timers.push_back(timer);
-	// 	}
-	// 	else
-	// 	{
-	// 		resetTimerfd(timerfd,queue.head()->getExpiration());
-	// 		break;
-	// 	}
-	// }
-
-	// for(auto &it : timers)
-	// {
-	// 	if(it->getRepeat())
-	// 	{
-	// 		it->restart(now);
-	// 		resetTimerfd(timerfd, now);
-	// 		queue.push(it);
-	// 	}
-	// 	else
-	// 	{
-	// 		it->~xTimer();
-	// 		zfree(it);
-	// 		it = nullptr;
-	// 	}
-	// }
-
-	// timers.clear();
-
 	std::vector<Entry> expired = getExpired(now);
 
 	callingExpiredTimers = true;

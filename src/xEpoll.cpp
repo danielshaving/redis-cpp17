@@ -24,14 +24,14 @@ xEpoll::~xEpoll()
 	::close(epollFd);
 }
 
-void  xEpoll::epollWait(ChannelList *activeChannels,int32_t msTime)
+void xEpoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
-	int32_t numEvents = ::epoll_wait(epollFd, &*events.begin(),static_cast<int32_t>(events.size()), msTime);
+	int32_t numEvents = ::epoll_wait(epollFd,&*events.begin(),static_cast<int32_t>(events.size()), msTime);
 	int32_t savedErrno = errno;
 
 	if (numEvents > 0)
 	{
-		fillActiveChannels(numEvents, activeChannels);
+		fillActiveChannels(numEvents,activeChannels);
 		if (numEvents == events.size())
 		{
 			events.resize(events.size() * 2);
@@ -56,7 +56,7 @@ void  xEpoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 bool xEpoll::hasChannel(xChannel *channel)
 {
 	loop->assertInLoopThread();
-	auto  it = channels.find(channel->getfd());
+	auto it = channels.find(channel->getfd());
 	return it != channels.end() && it->second == channel;
 }
 
@@ -89,12 +89,12 @@ void xEpoll::updateChannel(xChannel *channel)
 		assert(index == kAdded);
 		if (channel->isNoneEvent())
 		{
-			update(EPOLL_CTL_DEL, channel);
+			update(EPOLL_CTL_DEL,channel);
 			channel->setIndex(kDeleted);
 		}
 		else
 		{
-			update(EPOLL_CTL_MOD, channel);
+			update(EPOLL_CTL_MOD,channel);
 		}
 	}
 }
@@ -114,13 +114,13 @@ void xEpoll::removeChannel(xChannel *channel)
 
 	if (index == kAdded)
 	{
-		update(EPOLL_CTL_DEL, channel);
+		update(EPOLL_CTL_DEL,channel);
 	}
 	
 	channel->setIndex(kNew);
 }
 
-void xEpoll::update(int32_t operation, xChannel *channel)
+void xEpoll::update(int32_t operation,xChannel *channel)
 {
 	struct epoll_event event;
 	bzero(&event, sizeof event);

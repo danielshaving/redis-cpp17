@@ -147,49 +147,38 @@ void xHiredisTest::lpopCallback(const RedisAsyncContextPtr &c,redisReply *reply,
 void xHiredisTest::string()
 {
 	int32_t count = 0;
-	while(1)
+	for(; cout < messageCount; count++)
 	{
-		if(count++ >= messageCount)
-		{
-			break;
-		}
-
 		auto redis = hiredis.getIteratorNode();
 		assert(redis != nullptr);
 		redis->redisAsyncCommand(std::bind(&xHiredisTest::setCallback,
 				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-				nullptr,"set %d %d",count,count);
+				nullptr,"set string%d %d",count,count);
 
 		redis->redisAsyncCommand(std::bind(&xHiredisTest::getCallback,
 							this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-							nullptr,"get %d",count);
-
+							nullptr,"get string%d",count);
 	}
 }
 
 void xHiredisTest::hash()
 {
 	int32_t count = 0;
-	while(1)
+	for(; cout < messageCount; count++)
 	{
-		if(count++ >= messageCount)
-		{
-			break;
-		}
-
 		auto redis = hiredis.getIteratorNode();
 		assert(redis != nullptr);
 		redis->redisAsyncCommand(std::bind(&xHiredisTest::hsetCallback,
 				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-				nullptr,"hset %d zhanghao %d",count,count);
+				nullptr,"hset %d hash %d",count,count);
 
 		redis->redisAsyncCommand(std::bind(&xHiredisTest::hsetCallback,
 					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-					nullptr,"hset zhanghao %d %d",count,count);
+					nullptr,"hset hash %d %d",count,count);
 
 		redis->redisAsyncCommand(std::bind(&xHiredisTest::hgetCallback,
 				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-				count,"hget %d zhanghao",count);
+				count,"hget %d hash",count);
 	}
 
 	auto redis = hiredis.getIteratorNode();
@@ -197,13 +186,26 @@ void xHiredisTest::hash()
 
 	redis->redisAsyncCommand(std::bind(&xHiredisTest::hgetallCallback,
 					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-					count,"hgetall zhanghao");
+					count,"hgetall hash");
 
 	printf("hash done\n");
 }
 
 void xHiredisTest::list()
 {
+	int32_t count = 0;
+	for(; cout < messageCount; i++)
+	{
+		auto redis = hiredis.getIteratorNode();
+		assert(redis != nullptr);
+		redis->redisAsyncCommand(std::bind(&xHiredisTest::hsetCallback,
+				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+				nullptr,"lpush list%d %d",count,count);
+
+		redis->redisAsyncCommand(std::bind(&xHiredisTest::hsetCallback,
+					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+					nullptr,"lpop list%d %d",count,count);
+	}
 
 }
 

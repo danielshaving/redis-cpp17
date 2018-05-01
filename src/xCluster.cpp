@@ -89,7 +89,7 @@ void xCluster::readCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 				for(auto &it : redisShards)
 				{
 					auto &mu = it.mtx;
-					auto &map = it.redis;
+					auto &map = it.redisMap;
 					std::unique_lock <std::mutex> lck(mu);
 					
 					for(auto &iter : map)
@@ -469,7 +469,7 @@ void xCluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys,int32_t co
 	for(auto &it : redisShards)
 	{
 		auto &mu = it.mtx;
-		auto &map = it.redis;
+		auto &map = it.redisMap;
 		auto &stringMap = it.stringMap;
 		auto &hashMap = it.hashMap;
 		auto &zsetMap = it.zsetMap;

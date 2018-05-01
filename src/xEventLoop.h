@@ -18,12 +18,10 @@ class xEventLoop : boost::noncopyable
 {
 public:
 	typedef std::function<void()> Functor;
-
 	xEventLoop();
 	~xEventLoop();
 
 	void quit();
-
 	void run();
 	void handleRead();
 	void runInLoop(Functor &&cb);

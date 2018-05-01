@@ -117,10 +117,10 @@ public:
 	void setExpire(rObj *key,double when);
 
 public:
-	auto *getEventLoop() { return &loop; }
-	auto *getRdb() { return &rdb; }
-	auto *getCluster() { return &clus; }
-	auto *getReplication() { return &repli; }
+	xEventLoop *getEventLoop() { return &loop; }
+	xRdb *getRdb() { return &rdb; }
+	xCluster *getCluster() { return &clus; }
+	xReplication *getReplication() { return &repli; }
 
 	auto &getRedisShards() { return redisShards; }
 	auto &getSession() { return sessions; }
@@ -175,7 +175,7 @@ private:
 
 	struct RedisMapLock
 	{		
-		RedisMap redis;
+		RedisMap redisMap;
 		StringMap stringMap;
 		HashMap hashMap;
 		ListMap listMap;
