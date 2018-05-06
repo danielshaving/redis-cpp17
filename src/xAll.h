@@ -70,7 +70,6 @@
 #include <sys/eventfd.h>
 #include <endian.h>
 #endif
-#include <boost/noncopyable.hpp>
 
 #define REDIS_CONNECT_RETRIES  10
 

@@ -1,6 +1,5 @@
 #pragma once
 #include "xAll.h"
-
 #include "xChannel.h"	
 #include "xSocket.h"
 #ifdef __APPLE__
@@ -14,7 +13,7 @@
 #include "xTimerQueue.h"
 #include "xCallback.h"
 
-class xEventLoop : boost::noncopyable
+class xEventLoop
 {
 public:
 	typedef std::function<void()> Functor;
@@ -47,6 +46,9 @@ public:
     std::thread::id getThreadId() const { return threadId; }
 
 private:
+    xEventLoop(const xEventLoop&);
+    void operator=(const xEventLoop&);
+
     void abortNotInLoopThread();
     void doPendingFunctors();
 

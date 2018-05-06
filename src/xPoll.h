@@ -6,7 +6,7 @@
 class xChannel;
 class xEventLoop;
 
-class xPoll : boost::noncopyable
+class xPoll
 {
 public:
 	typedef std::vector<struct pollfd> EventList;
@@ -23,6 +23,9 @@ public:
 	void fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) const;
 
 private:
+	xPoll(const xPoll&);
+	void operator=(const xPoll&);
+
 	ChannelMap channels;
 	EventList events;
 	xEventLoop *loop;

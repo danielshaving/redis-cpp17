@@ -8,7 +8,7 @@
 class xEventLoop;
 class xTimerId;
 
-class xTimerQueue : boost::noncopyable
+class xTimerQueue
 {
 public:
 	xTimerQueue(xEventLoop *loop);
@@ -20,6 +20,9 @@ public:
   	xTimer *getTimerBegin();
 
 private:
+  	xTimerQueue(const xTimerQueue&);
+  	void operator=(const xTimerQueue&);
+
 	xEventLoop *loop;
 	int32_t timerfd;
 #ifdef __linux__

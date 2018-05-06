@@ -1,12 +1,10 @@
 #pragma once
-
 #include "xAcceptor.h"
 #include "xThreadPool.h"
 #include "xCallback.h"
 
 class xEventLoop;
-
-class xTcpServer : boost::noncopyable
+class xTcpServer
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;
@@ -31,6 +29,9 @@ public:
 	void setContext(const std::any &context) { this->context = context; }
 
 private:
+	xTcpServer(const xTcpServer&);
+	void operator=(const xTcpServer&);
+
 	xEventLoop *loop;
 	AcceptorPtr acceptor;
 	ThreadPoolPtr threadPool;

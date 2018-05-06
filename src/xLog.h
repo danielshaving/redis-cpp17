@@ -6,7 +6,7 @@ const int32_t kSmallBuffer = 4000;
 const int32_t kLargeBuffer = 4000*10;
 
 template<int32_t SIZE>
-class xFixedBuffer : boost::noncopyable
+class xFixedBuffer
 {
 public:
 	xFixedBuffer()
@@ -43,11 +43,14 @@ public:
 	xStringPiece toStringPiece() const { return xStringPiece(data, length()); }
 
 private:
+	xFixedBuffer(const xFixedBuffer&);
+	void operator=(const xFixedBuffer&);
+
 	char data[SIZE];
 	char *cur;
 };
 
-class xAppendFile : boost::noncopyable
+class xAppendFile
 {
 public:
 	explicit xAppendFile(std::string &filename);
@@ -58,6 +61,9 @@ public:
 	size_t getWrittenBytes() const { return writtenBytes; }
 
 private:
+	xAppendFile(const xAppendFile&);
+	void operator=(const xAppendFile&);
+
 	size_t write(const char *logline,size_t len);
 	FILE *fp;
 	char buffer[64*1024];
@@ -65,7 +71,7 @@ private:
 };
 
 
-class xLogFile : boost::noncopyable
+class xLogFile
 {
  public:
 	xLogFile(const std::string &basename,
@@ -80,6 +86,9 @@ class xLogFile : boost::noncopyable
 	bool rollFile();
 
 private:
+	xLogFile(const xLogFile&);
+	void operator=(const xLogFile&);
+
 	void append_unlocked(const char *logline,int32_t len);
 	void getLogFileName(const std::string& basename,time_t *now);
 	const std::string basename;
@@ -98,7 +107,7 @@ private:
 	const static int32_t kRollPerSeconds = 60*60*24;
 };
 
-class xAsyncLogging : boost::noncopyable
+class xAsyncLogging
 {
 public:
 	xAsyncLogging(std::string baseName,size_t rollSize,int32_t interval = 3);
@@ -124,6 +133,9 @@ public:
 	void append(const char *loline,int32_t len);
 
 private:
+	xAsyncLogging(const xAsyncLogging&);
+	void operator=(const xAsyncLogging&);
+
 	void threadFunc();
 
 	typedef xFixedBuffer<kLargeBuffer> Buffer;
@@ -153,11 +165,11 @@ class T
 	const unsigned len;
 };
 
-class xLogStream : boost::noncopyable
+class xLogStream
 {
 public:
 	typedef xLogStream self;
-	typedef xFixedBuffer<kSmallBuffer>  Buffer;
+	typedef xFixedBuffer<kSmallBuffer> Buffer;
 
 	self &operator<<(bool v)
 	{
@@ -233,6 +245,7 @@ public:
 	void append(const char *data,int32_t len) { buffer.append(data,len); }
 	const Buffer &getBuffer() const { return buffer; }
 	void resetBuffer() { buffer.reset(); }
+
 public:
 	template<typename T>
 	void formatInteger(T);
@@ -322,7 +335,7 @@ private:
 extern xLogger::LogLevel g_logLevel;
 inline xLogger::LogLevel xLogger::logLevel()
 {
-  return g_logLevel;
+	return g_logLevel;
 }
 
 

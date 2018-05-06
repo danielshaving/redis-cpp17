@@ -8,7 +8,7 @@
 #include "xThreadPool.h"
 
 class xRedisAsyncContext;
-struct redisReply : boost::noncopyable
+struct redisReply
 {
     int32_t type;
     int64_t integer;
@@ -19,7 +19,7 @@ struct redisReply : boost::noncopyable
 };
 
 typedef std::function<void(const RedisAsyncContextPtr &context,redisReply*,const std::any &)> RedisCallbackFn;
-struct redisReadTask : boost::noncopyable
+struct redisReadTask
 {
     int32_t type;
     int32_t elements;
@@ -29,14 +29,14 @@ struct redisReadTask : boost::noncopyable
     struct redisReadTask *parent;
 };
 
+void freeReply(redisReply *reply);
 redisReply *createReplyObject(int32_t type);
 redisReply *createString(const redisReadTask *task,const char *str,size_t len);
 redisReply *createArray(const redisReadTask *task,int32_t elements);
 redisReply *createInteger(const redisReadTask *task,int64_t value);
 redisReply *createNil(const redisReadTask *task);
-void freeReply(redisReply *reply);
 
-struct redisFunc : boost::noncopyable
+struct redisFunc
 {
 	redisFunc()
 	{
@@ -54,7 +54,7 @@ struct redisFunc : boost::noncopyable
 	std::function<void (redisReply*)> freeObjectFuc;
 };
 
-class xRedisReader : boost::noncopyable
+class xRedisReader
 {
 public:
 	xRedisReader();
@@ -75,6 +75,11 @@ public:
 	const char *readBytes(uint32_t bytes);
 	const char *readLine(int32_t *_len);
 
+private:
+	xRedisReader(const xEventLoop&);
+	void operator=(const xRedisReader&);
+
+public:
 	char errstr[128];
 	redisReadTask rstack[9];
 	int32_t ridx;
@@ -108,7 +113,7 @@ struct redisAsyncCallback
 };
 
 typedef std::list<redisAsyncCallback> RedisAsyncCallbackList;
-class xRedisContext : boost::noncopyable
+class xRedisContext
 {
 public:
 	xRedisContext();
@@ -133,6 +138,10 @@ public:
 	int32_t redisContextConnectTcp(const char *addr,int16_t port,const struct timeval *timeout);
 	int32_t redisAppendCommand(const char *format, ...);
 
+private:
+	xRedisContext(const xRedisContext&);
+	void operator=(const xRedisContext&);
+
 public:
 	void clear();
 	void setBlock();
@@ -150,7 +159,7 @@ public:
 	RedisReaderPtr reader;
 };
 
-class xRedisAsyncContext : boost::noncopyable
+class xRedisAsyncContext
 {
 public:
 	xRedisAsyncContext(xBuffer *buffer,const TcpConnectionPtr &conn);
@@ -167,6 +176,9 @@ public:
 	RedisAsyncCallbackList &getCb() { return asyncCb; }
 
 private:
+	xRedisAsyncContext(const xRedisAsyncContext&);
+	void operator=(const xRedisAsyncContext&);
+
 	int32_t err;
 	char *errstr;
 	std::any data;
@@ -183,7 +195,7 @@ private:
 	}sub;
 };
 
-class xHiredis : boost::noncopyable
+class xHiredis
 {
 public:
 	xHiredis(xEventLoop *loop,bool clusterMode = false);
@@ -207,10 +219,12 @@ public:
 	auto &getMutex() { return rtx; }
 	auto &getAsyncContext() { return redisAsyncContexts; }
 	auto &getTcpClient() { return tcpClients; }
-
 	RedisAsyncContextPtr getIteratorNode();
 
 private:
+	xHiredis(const xHiredis&);
+	void operator=(const xHiredis&);
+
 	typedef std::unordered_map<int32_t,RedisAsyncContextPtr> RedisAsyncContext;
 	xThreadPool pool;
 	std::vector<TcpClientPtr> tcpClients;

@@ -30,7 +30,6 @@ void xTimeWheel::onConnection(const TcpConnectionPtr &conn)
 	}
 }
 
-
 void xTimeWheel::onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
 {
 	std::string msg(buffer->retrieveAllAsString());
@@ -50,7 +49,6 @@ void xTimeWheel::onTimer()
 	dumpConnectionBuckets();
 }
 
-
 void xTimeWheel::dumpConnectionBuckets() const
 {
 	LOG_INFO << "size = " << connectionBuckets.size();
@@ -59,7 +57,7 @@ void xTimeWheel::dumpConnectionBuckets() const
 	  bucketI != connectionBuckets.end();
 	  ++bucketI, ++idx)
 	{
-		const Bucket& bucket = *bucketI;
+		const Bucket &bucket = *bucketI;
 		printf("[%d] len = %zd : ", idx, bucket.size());
 		for (auto  it = bucket.begin(); it != bucket.end(); ++it)
 		{
@@ -84,7 +82,7 @@ int main(int argc,char *argv[])
 	else if (argc == 1)
 	{
 		xEventLoop loop;
-		xTimeWheel wheel(&loop,"0.0.0.0",6379,10);
+		xTimeWheel wheel(&loop,"0.0.0.0",6379,5);
 		loop.run();
 	}
 	else

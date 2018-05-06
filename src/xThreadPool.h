@@ -4,8 +4,7 @@
 
 class xThread;
 class xEventLoop;
-
-class xThreadPool : boost::noncopyable
+class xThreadPool
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;
@@ -21,6 +20,9 @@ public:
 	bool getStarted() const { return started; }
 
 private:
+	xThreadPool(const xThreadPool&);
+	void operator=(const xThreadPool&);
+
 	xEventLoop *baseLoop;
 	bool started;
 	int32_t	numThreads;

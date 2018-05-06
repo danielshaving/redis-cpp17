@@ -7,7 +7,7 @@
 class xChannel;
 class xEventLoop;
 
-class xEpoll : boost::noncopyable
+class xEpoll
 {
 public:
 	typedef std::vector<struct epoll_event> EventList;
@@ -24,7 +24,10 @@ public:
 	void update(int32_t operation,xChannel *channel);
 	void fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) const;
 
- private:
+private:
+	xEpoll(const xEpoll&);
+	void operator=(const xEpoll&);
+
 	ChannelMap channels;
 	EventList events;
 	xEventLoop *loop;

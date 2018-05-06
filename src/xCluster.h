@@ -18,7 +18,7 @@ struct clusterNode
 };
 
 class xRedis;
-class xCluster : boost::noncopyable
+class xCluster
 {
 public:
 	xCluster(xRedis *redis);
@@ -33,7 +33,7 @@ public:
 	void cretateClusterNode(int32_t slot,const std::string &ip,int16_t port,const std::string &name);
 
 	bool getKeySlot(const std::string &name);
-	void structureProtocolSetCluster(const std::string &host,int16_t port,xBuffer &buffer,const TcpConnectionPtr &conn);
+	void structureProtocolSetCluster(std::string host,int16_t port,xBuffer &buffer,const TcpConnectionPtr &conn);
 	int32_t getSlotOrReply(const SessionPtr &session,rObj *o);
 	uint32_t keyHashSlot(char *key,int32_t keylen);
 	void syncClusterSlot();
@@ -49,7 +49,7 @@ public:
 	clusterNode *checkClusterSlot(int32_t slot);
 	sds showClusterNodes();
 	void delSlotDeques(rObj *obj,int32_t slot);
-	void addSlotDeques(rObj *slot,const std::string &name);
+	void addSlotDeques(rObj *slot,std::string name);
 
 	auto &getMigrating() { return migratingSlosTos; } 
 	auto &getImporting() { return importingSlotsFroms; }
@@ -65,6 +65,9 @@ public:
 	void eraseImportingSlot(const std::string &name);
 	
 private:
+	xCluster(const xCluster&);
+	void operator=(const xCluster&);
+
 	xEventLoop *loop;
 	xRedis *redis;
 	xSocket socket;

@@ -2,7 +2,7 @@
 #include "xAll.h"
 
 class xEventLoop;
-class xChannel : boost::noncopyable
+class xChannel
 {
 public:
 	typedef std::function<void()> EventCallback;
@@ -38,6 +38,9 @@ public:
 	xEventLoop *ownerLoop() { return loop; }
 
 private:
+	xChannel(const xChannel&);
+	void operator=(const xChannel&);
+
 	void update();
 	void handleEventWithGuard();
 	EventCallback readCallback;

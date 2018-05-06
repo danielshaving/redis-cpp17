@@ -6,7 +6,7 @@
 #include "xLzf.h"
 #include "xSession.h"
 
-struct xRio : boost::noncopyable
+struct xRio
 {
 	union
 	{
@@ -45,7 +45,7 @@ struct xRio : boost::noncopyable
 };
 
 class xRedis;
-class xRdb: boost::noncopyable
+class xRdb
 {
 public:
 	xRdb(xRedis *redis)
@@ -149,6 +149,9 @@ public:
 	int32_t verifyDumpPayload(xRio *rdb,rObj *obj);
 	
 private:
+	xRdb(const xRdb&);
+	void operator=(const xRdb&);
+
 	xRedis *redis;
 	bool blockEnabled;
 };

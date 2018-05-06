@@ -119,31 +119,31 @@ void xCluster::clusterRedirectClient(const SessionPtr &session,clusterNode *n,in
 {
 	if (errCode == CLUSTER_REDIR_CROSS_SLOT)
 	{
-		addReplySds(session->clientBuffer, sdsnew("-CROSSSLOT Keys in request don't hash to the same slot\r\n"));
+		addReplySds(session->getClientBuffer(), sdsnew("-CROSSSLOT Keys in request don't hash to the same slot\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_UNSTABLE)
 	{
-		addReplySds(session->clientBuffer,sdsnew("-TRYAGAIN Multiple keys request during rehashing of slot\r\n"));
+		addReplySds(session->getClientBuffer(),sdsnew("-TRYAGAIN Multiple keys request during rehashing of slot\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_DOWN_STATE)
 	{
-		addReplySds(session->clientBuffer,sdsnew("-CLUSTERDOWN The cluster is down\r\n"));
+		addReplySds(session->getClientBuffer(),sdsnew("-CLUSTERDOWN The cluster is down\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_DOWN_UNBOUND)
 	{
-		addReplySds(session->clientBuffer,sdsnew("-CLUSTERDOWN Hash slot not served\r\n"));
+		addReplySds(session->getClientBuffer(),sdsnew("-CLUSTERDOWN Hash slot not served\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_MOVED ||
 		errCode == CLUSTER_REDIR_ASK)
 	{
-		addReplySds(session->clientBuffer,sdscatprintf(sdsempty(),
+		addReplySds(session->getClientBuffer(),sdscatprintf(sdsempty(),
 			"-%s %d %s:%d\r\n",
 			(errCode == CLUSTER_REDIR_ASK) ? "ASK" : "MOVED",
-			hashSlot, n->ip.c_str(), n->port));
+			hashSlot,n->ip.c_str(),n->port));
 	}
 	else
 	{
-		LOG_WARN << "getNodeByQuery() unknown error.";
+		LOG_WARN << "getNodeByQuery unknown error.";
 	}
 } 
 
@@ -190,13 +190,13 @@ int32_t xCluster::getSlotOrReply(const SessionPtr &session,rObj *o)
 	if (getLongLongFromObject(o,&slot) != REDIS_OK ||
 		slot < 0 || slot >= CLUSTER_SLOTS)
 	{
-		addReplyError(session->clientBuffer, "Invalid or out of range slot");
+		addReplyError(session->getClientBuffer(), "Invalid or out of range slot");
 		return  REDIS_ERR;
 	}
 	return (int32_t)slot;
 }
 
-void xCluster::structureProtocolSetCluster(const std::string &ip,int16_t port,
+void xCluster::structureProtocolSetCluster(std::string ip,int16_t port,
 		xBuffer &buffer,const TcpConnectionPtr &conn)
 {
     commands.push_back(shared.cluster);
@@ -204,7 +204,7 @@ void xCluster::structureProtocolSetCluster(const std::string &ip,int16_t port,
 
 	char buf[32];
 	int32_t len = ll2string(buf,sizeof(buf),port);
-	commands.push_back(createStringObject((char*)(ip.c_str()),ip.length()));
+	commands.push_back(createStringObject(ip.data(),ip.length()));
 	commands.push_back(createStringObject(buf,len));
 	redis->structureRedisProtocol(buffer,commands);
 	conn->send(&buffer);
@@ -423,14 +423,14 @@ void xCluster::eraseImportingSlot(const std::string &name)
 	importingSlotsFroms.erase(name);
 }
 
-void xCluster::addSlotDeques(rObj *slot,const std::string &name)
+void xCluster::addSlotDeques(rObj *slot,std::string name)
 {
 	commands.push_back(shared.cluster);
 	commands.push_back(shared.addsync);
 	commands.push_back(createStringObject(slot->ptr,sdslen(slot->ptr)));
 	commands.push_back(shared.rIp);
 	commands.push_back(shared.rPort);
-	commands.push_back(createStringObject((char*)(name.c_str()),name.length()));
+	commands.push_back(createStringObject(name.data(),name.length()));
 }
 
 void xCluster::delSlotDeques(rObj *obj,int32_t slot)

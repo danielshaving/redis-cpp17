@@ -394,7 +394,6 @@ xLogStream &xLogStream::operator<<(double v)
 	return *this;
 }
 
-
 xLogger::LogLevel initLogLevel()
 {
 	if (::getenv("TRACE"))
@@ -409,12 +408,12 @@ xLogger::LogLevel g_logLevel = initLogLevel();
 
 const char *LogLevelName[xLogger::NUM_LOG_LEVELS] =
 {
-  "TRACE ",
-  "DEBUG ",
-  "INFO  ",
-  "WARN  ",
-  "ERROR ",
-  "FATAL ",
+	"TRACE ",
+	"DEBUG ",
+	"INFO  ",
+	"WARN  ",
+	"ERROR ",
+	"FATAL ",
 };
 
 
@@ -435,10 +434,10 @@ xLogger::OutputFunc g_output = defaultOutput;
 xLogger::FlushFunc g_flush = defaultFlush;
 
 xLogger::xImpl::xImpl(LogLevel level,int32_t savedErrno,const xSourceFile &file,int32_t line)
-  : stream(),
-    level(level),
-    line(line),
-    baseName(file)
+:stream(),
+level(level),
+line(line),
+baseName(file)
 {
 	formatTime();
 }
@@ -456,9 +455,7 @@ void xLogger::xImpl::formatTime()
 	assert(len == 17); (void)len;
 	stream<<T(t_time,17);
 	stream<<"  ";
-
 }
-
 
 void xLogger::xImpl::finish()
 {

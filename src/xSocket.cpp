@@ -258,14 +258,7 @@ bool xSocket::createTcpListenSocket(const char *ip,int16_t port)
 	struct sockaddr_in sa;
     sa.sin_family = AF_INET;
     sa.sin_port  = htons(port);
-	if(ip)
-	{
-		sa.sin_addr.s_addr = inet_addr(ip);
-	}
-	else
-	{
-		sa.sin_addr.s_addr = htonl(INADDR_ANY);
-	}
+	sa.sin_addr.s_addr = inet_addr(ip);
 #endif
 
 #ifdef __APPLE__

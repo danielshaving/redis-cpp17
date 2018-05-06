@@ -6,7 +6,7 @@
 #include "xSocket.h"
 
 class xRedis;
-class xReplication : boost::noncopyable
+class xReplication
 {
 public:
 	xReplication(xRedis *redis);
@@ -25,7 +25,10 @@ public:
 	void syncWrite(const TcpConnectionPtr &conn);
 	void disConnect();
 
-public:
+private:
+	xReplication(const xReplication&);
+	void operator=(const xReplication&);
+
 	xRedis *redis;
 	xEventLoop *loop;
 	TcpClientPtr client;

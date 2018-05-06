@@ -25,24 +25,23 @@ class xStringPiece
 	: ptr(nullptr), length(0) { }
 
 	xStringPiece(const char *str)
-	: ptr(str), length(static_cast<int32_t>(strlen(ptr))) { }
+	: ptr(str),length(static_cast<int32_t>(strlen(ptr))) { }
 
 	xStringPiece(const unsigned char *str)
 	: ptr(reinterpret_cast<const char *>(str)),
 	length(static_cast<int32_t>(strlen(ptr))) { }
 
 	xStringPiece(const std::string &str)
-	: ptr(str.data()), length(static_cast<int32_t>(str.size())) { }
+	: ptr(str.data()),length(static_cast<int32_t>(str.size())) { }
 
 	xStringPiece(const char* offset,int32_t length)
 	: ptr(offset),length(length) { }
 
 	std::string as_string() const { return std::string(data(),size());}
-	const char* ptr;
+	const char *ptr;
 	int32_t length;
 
 	bool empty() const { return length == 0; }
-
 	const char *begin() const  { return ptr; }
 	const char *end() const { return ptr + length; }
 	int32_t size() const { return length; }
@@ -77,13 +76,12 @@ class xStringPiece
 
 	bool operator==(const xStringPiece &x) const
 	{
-	  	 return ((length == x.length) &&
-			   (memcmp(ptr, x.ptr,length) == 0));
+		return ((length == x.length) && (memcmp(ptr, x.ptr,length) == 0));
 	}
 	
 	bool operator!=(const xStringPiece &x) const
 	{
-	  	 return !(*this == x);
+	  	return !(*this == x);
 	}
 
 	int compare(const xStringPiece &x) const

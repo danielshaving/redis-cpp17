@@ -1,11 +1,9 @@
 #pragma once
-
 #include "xAll.h"
 #include "xEventLoop.h"
 #include "xCallback.h"
 
-
-class xTcpClient: boost::noncopyable
+class xTcpClient
 {
 public:
 	xTcpClient(xEventLoop *loop,const char *ip,int16_t port,const std::any &context);
@@ -32,6 +30,9 @@ public:
 	TcpConnectionPtr getConnection() { return connection; }
 
 private:
+	xTcpClient(const xTcpClient&);
+	void operator=(const xTcpClient&);
+
 	void errorConnection();
 	void newConnection(int32_t sockfd);
 	void removeConnection(const TcpConnectionPtr &conn);

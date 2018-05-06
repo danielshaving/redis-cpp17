@@ -99,7 +99,7 @@ void xEchoServer::onTimer(const std::any &context)
 		if(conn)
 		{
 			auto node = std::any_cast<Node>(conn->getContext());
-			double age = timeDifference(now, node->lastReceiveTime);
+			double age = timeDifference(now,node->lastReceiveTime);
 			if (age > idleSeconds)
 			{
 				if (conn->connected())

@@ -3,7 +3,7 @@
 #include "xHiredis.h"
 #include "xSds.h"
 
-class xLock : boost::noncopyable
+class xLock
 {
 public:
 	xLock();
@@ -12,9 +12,12 @@ public:
 	int32_t validityTime;
 	sds resource;
 	sds val;
+private:
+	xLock(const xLock&);
+	void operator=(const xLock&);
 };
 
-class xRedLock : boost::noncopyable
+class xRedLock
 {
 public:
 	xRedLock();
@@ -30,6 +33,9 @@ public:
 	int32_t lockInstance(const RedisContextPtr &c,const char *resource,const char *val,const int32_t ttl);
 
 private:
+	xRedLock(const xRedLock&);
+	void operator=(const xRedLock&);
+
 	static int32_t defaultRetryCount;
 	static int32_t defaultRetryDelay;
 	static float clockDriftFactor;
@@ -42,7 +48,7 @@ private:
 	xLock continueLock;
 	sds continueLockScript;
 
-	struct timeval timeout = { 1, 500000 }; 
+	struct timeval timeout = { 1,500000 };
 	std::vector<RedisContextPtr> disconnectServers;
 	std::unordered_map<int32_t,RedisContextPtr> syncServers;
 	HiredisAsyncPtr	asyncServers;

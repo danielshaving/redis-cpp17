@@ -206,7 +206,7 @@ void xReplication::connCallBack(const TcpConnectionPtr &conn)
 		auto &sessions = redis->getSession();
 		sessions.erase(conn->getSockfd());
 		client.reset();
-		LOG_INFO<<"connect  master disconnect";
+		LOG_INFO<<"connect master disconnect";
 	}
 }
 

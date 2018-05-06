@@ -6,7 +6,7 @@
 #include "xChannel.h"
 
 class xEventLoop;
-class xTcpConnection : boost::noncopyable,public std::enable_shared_from_this<xTcpConnection>
+class xTcpConnection : public std::enable_shared_from_this<xTcpConnection>
 {
 public:
 	enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };
@@ -85,6 +85,9 @@ public:
 	void setport(uint16_t port) { this->port = port; }
 
 private:
+	xTcpConnection(const xTcpConnection&);
+	void operator=(const xTcpConnection&);
+
 	xEventLoop *loop;
 	int32_t sockfd;
 	bool reading;

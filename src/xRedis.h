@@ -15,7 +15,7 @@
 #include "xRdb.h"
 #include "xUtil.h"
 
-class xRedis : boost::noncopyable
+class xRedis
 {
 public:
 	xRedis(const char *ip,int16_t port,int16_t threadCount,bool enbaledCluster = false);
@@ -136,19 +136,18 @@ public:
 	auto &getForkMutex() { return forkMutex; }
 	auto &pubSubMutex() { return pubsubMutex; }
 
-	std::string getIp() { return ip; }
+	std::string &getIp() { return ip; }
 	int16_t getPort() { return port; }
 
 public:
-	const static int32_t kShards = 4096;
+	const static int32_t kShards = 1024;
 
 	typedef std::function<bool(const std::deque<rObj*> &,const SessionPtr &)> CommandFunc;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> StringMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal>,Hash,Equal> HashMap;
-	typedef std::unordered_map<rObj*,std::deque<rObj*>,Hash, Equal> ListMap;
+	typedef std::unordered_map<rObj*,std::deque<rObj*>,Hash,Equal> ListMap;
 	typedef std::unordered_map<rObj*,double,Hash,Equal> KeyMap;
 	typedef std::multimap<double,rObj*> SortMap;
-
 	typedef struct SortSet
 	{
 		KeyMap keyMap; 
@@ -166,6 +165,9 @@ public:
 	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommands;
 
 private:
+	xRedis(const xRedis&);
+	void operator=(const xRedis&);
+
 	std::unordered_map<int32_t,SessionPtr> sessions;
 	std::unordered_map<int32_t,TcpConnectionPtr> slaveConns;
 	std::unordered_map<int32_t,TcpConnectionPtr> clusterConns;

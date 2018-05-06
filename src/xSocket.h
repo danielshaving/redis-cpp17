@@ -1,7 +1,7 @@
 #pragma once
 #include "xAll.h"
 
-class xSocket : boost::noncopyable
+class xSocket
 {
 public:
 	xSocket();
@@ -42,6 +42,9 @@ public:
 	bool connectWaitReady(int32_t fd,int32_t msec);
 
 private:
+	xSocket(const xSocket&);
+	void operator=(const xSocket&);
+
 	int32_t sockfd;
 };
 

@@ -1,9 +1,8 @@
 #pragma once
-
 #include "xAll.h"
 #include "xStringPiece.h"
 
-class xBuffer : boost::noncopyable
+class xBuffer
 {
 public:
 	static const size_t kCheapPrepend = 16;
@@ -31,7 +30,7 @@ public:
 	size_t prependableBytes() const { return readerIndex; }
 
 	const char *peek() const { return begin() + readerIndex; }
-	char *start() { return begin() + readerIndex; }
+	char *data() { return begin() + readerIndex; }
 
 	const char *findCRLF() const
 	{
@@ -134,7 +133,7 @@ public:
 	void append(const char *data,size_t len)
 	{
 		ensureWritableBytes(len);
-		std::copy(data, data+len, beginWrite());
+		std::copy(data, data+len,beginWrite());
 		hasWritten(len);
 	}
 
@@ -328,6 +327,9 @@ public:
 	ssize_t readFd(int32_t fd,int32_t *savedErrno);
 
 private:
+	xBuffer(const xBuffer&);
+	void operator=(const xBuffer&);
+
 	char *begin() { return &*buffer.begin(); }
 	char *prepeek() { return begin() + readerIndex; }
 	const char *begin() const { return &*buffer.begin(); }

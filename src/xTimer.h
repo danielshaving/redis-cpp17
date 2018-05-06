@@ -68,20 +68,23 @@ inline double timeDifference(const xTimeStamp &high,const xTimeStamp &low)
 class xTimer
 {
 public:
-	xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,bool repeat,double interval);
+	xTimer(xTimerCallback &&cb,xTimeStamp &&expiration,
+			bool repeat,double interval);
 	~xTimer();
 
+	void run();
 	int64_t getSequence() { return sequence; }
 	xTimeStamp &getExpiration() { return expiration; }
 	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
 	bool getRepeat() { return repeat; }
 	void setSequence(int64_t seq) { sequence = seq; }
 	void restart(const xTimeStamp &now);
-	void run();
 	double getInterval() { return interval; }
 
-private:	
-	int64_t index;
+private:
+	xTimer(const xTimer&);
+	void operator=(const xTimer&);
+
 	bool repeat;
 	double interval;
 	int64_t sequence;

@@ -23,7 +23,7 @@ xRedisReader::~xRedisReader()
 
 }
 
- void xRedisReader::redisReaderSetError(int32_t type,const char *str)
+void xRedisReader::redisReaderSetError(int32_t type,const char *str)
 {
 	size_t len;
 	if (reply != nullptr && fn.freeObjectFuc)
@@ -1745,7 +1745,6 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 		redisPtr = it->second;
 	}
 
-	 redisAsyncCallback asyncCb;
 	 redisReply *reply = nullptr;
 	 int32_t status;
 	 while((status = redisPtr->redisGetReply(&reply)) == REDIS_OK)
@@ -1797,6 +1796,7 @@ void xHiredis::redisReadCallBack(const TcpConnectionPtr &conn,xBuffer *buffer)
 		 }
 		 else
 		 {
+			 redisAsyncCallback asyncCb;
 			 {
 				 std::unique_lock<std::mutex> lk(redisPtr->getMutex());
 				 assert(!redisPtr->getCb().empty());

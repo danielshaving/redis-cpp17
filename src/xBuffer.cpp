@@ -15,7 +15,7 @@ ssize_t xBuffer::readFd(int32_t fd,int32_t *savedErrno)
 	vec[1].iov_base = extrabuf;
 	vec[1].iov_len = sizeof extrabuf;
 	const int32_t iovcnt = (writable < sizeof extrabuf) ? 2 : 1;
-	const ssize_t n = ::readv(fd, vec, iovcnt);
+	const ssize_t n = ::readv(fd,vec,iovcnt);
 	if (n < 0)
 	{
 		*savedErrno = errno;
@@ -27,7 +27,7 @@ ssize_t xBuffer::readFd(int32_t fd,int32_t *savedErrno)
 	else
 	{
 		writerIndex = buffer.size();
-		append(extrabuf, n - writable);
+		append(extrabuf,n - writable);
 	}
 
 	return n;

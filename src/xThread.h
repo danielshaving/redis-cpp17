@@ -1,9 +1,8 @@
 #pragma once
-
 #include "xAll.h"
 
 class xEventLoop;
-class xThread : boost::noncopyable
+class xThread
 {
 public:
 	typedef std::function<void(xEventLoop*)> ThreadInitCallback;
@@ -14,6 +13,9 @@ public:
 	xEventLoop *startLoop();
 
 private:
+	xThread(const xThread&);
+	void operator=(const xThread&);
+
 	void threadFunc();
 	xEventLoop *loop;
 	bool exiting;

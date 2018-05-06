@@ -8,7 +8,7 @@
 class xSentinel;
 class xRedis;
 
-class xSession : boost::noncopyable, public std::enable_shared_from_this<xSession>
+class xSession : public std::enable_shared_from_this<xSession>
 {
 public:
 	xSession(xRedis *redis,const TcpConnectionPtr &conn);
@@ -22,11 +22,15 @@ public:
 	int32_t processInlineBuffer(xBuffer *buffer);
 	int32_t processCommand();
 	bool checkCommand(rObj *robjs);
-
 	void onMessage(const TcpConnectionPtr &conn,xBuffer *buffer);
+	xBuffer &getClientBuffer() { return clientBuffer; }
+	TcpConnectionPtr getClientConn() { return clientConn; }
+	void setAuth(bool enbaled) { authEnabled = enbaled; }
 
+private:
+	xSession(const xSession&);
+	void operator=(const xSession&);
 
-public:
 	xRedis *redis;
 	rObj *command;
 	std::deque<rObj*> commands;
@@ -38,13 +42,11 @@ public:
 	xBuffer clientBuffer;
 	xBuffer slaveBuffer;
 	xBuffer pubsubBuffer;
-
 	TcpConnectionPtr clientConn;
 
 	bool authEnabled;
 	bool replyBuffer;
 	bool fromMaster;
 	bool fromSlave;
-	bool noreply;
 };
 
