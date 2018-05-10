@@ -7,7 +7,7 @@ const int32_t kNew = -1;
 const int32_t kAdded = 1;
 const int32_t kDeleted = 2;
 
-Epoll::Epoll(xEventLoop *loop)
+Epoll::Epoll(EventLoop *loop)
 :events(64),
 loop(loop),
 epollFd(::epoll_create1(EPOLL_CLOEXEC))

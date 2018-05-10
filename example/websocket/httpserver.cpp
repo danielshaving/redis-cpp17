@@ -35,7 +35,7 @@ void HttpServer::onConnection(const TcpConnectionPtr &conn)
 
 void HttpServer::onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
 {
-	auto context = std::any_cast<xHttpContext>(conn->getContext());
+	auto context = std::any_cast<HttpContext>(conn->getMutableContext());
 	while(buffer->readableBytes() > 0)
 	{
 		size_t size = 0;
@@ -78,7 +78,7 @@ void HttpServer::onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
 
 void HttpServer::onHandeShake(const TcpConnectionPtr &conn,Buffer *buffer)
 {
-	auto context = std::any_cast<xHttpContext>(conn->getContext());
+	auto context = std::any_cast<HttpContext>(conn->getMutableContext());
 	if(!context->parseRequest(buffer) ||
 			context->getRequest().getMethod() != HttpRequest::kGet)
 	{

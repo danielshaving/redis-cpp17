@@ -1,4 +1,4 @@
-#include "RedLock.h"
+#include "redlock.h"
 
 static char **convertToSds(int32_t count, char **args)
 {

@@ -1,7 +1,7 @@
 #pragma once
 #include "all.h"
 #include "object.h"
-#include "tcpClient.h"
+#include "tcpclient.h"
 #include "socket.h"
 
 class Redis;

@@ -28,11 +28,11 @@ bool HttpContext::processRequestLine(const char *begin,const char *end)
 			{
 				if (*(end-1) == '1')
 				{
-					request.setVersion(xHttpRequest::kHttp11);
+					request.setVersion(HttpRequest::kHttp11);
 				}
 				else if (*(end-1) == '0')
 				{
-					request.setVersion(xHttpRequest::kHttp10);
+					request.setVersion(HttpRequest::kHttp10);
 				}
 				else
 				{
@@ -134,22 +134,22 @@ bool HttpContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,const char *
 
 	if(fin)
 	{
-		getRequest().setOpCodeType((xHttpRequest::WebSocketType)(buffer[0] & 0x0F));
+		getRequest().setOpCodeType((HttpRequest::WebSocketType)(buffer[0] & 0x0F));
 	}
 	else
 	{
-		getRequest().setOpCodeType(xHttpRequest::CONTINUATION_FRAME);
+		getRequest().setOpCodeType(HttpRequest::CONTINUATION_FRAME);
 	}
 
 	size = len + pos;
 	return true;
 }
 
-bool HttpContext::wsFrameBuild(Buffer *buffer,xHttpRequest::WebSocketType framType,bool ok,bool masking)
+bool HttpContext::wsFrameBuild(Buffer *buffer,HttpRequest::WebSocketType framType,bool ok,bool masking)
  {
 	 if (masking)
 	 {
-		 char *peek = buffer->start();
+		 char *peek = buffer->data();
 		 peek[1] = ((uint8_t)peek[1]) | 0x80;
 		 uint8_t mask[4];
 

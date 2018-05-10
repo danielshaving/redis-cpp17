@@ -5,7 +5,7 @@
 #include "util.h"
 
 class EventLoop;
-class HttpServer : boost::noncopyable
+class HttpServer
 {
 public:
 	typedef std::function<bool(HttpRequest *,const TcpConnectionPtr &)> HttpReadCallBack;

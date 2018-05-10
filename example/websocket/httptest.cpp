@@ -15,7 +15,7 @@ void onConnection(const TcpConnectionPtr &conn)
 
 void onMessage(HttpRequest &rep,const TcpConnectionPtr &conn)
 {
-	auto context = std::any_cast<HttpContext>(conn->getContext());
+	auto context = std::any_cast<HttpContext>(conn->getMutableContext());
 	Buffer sendBuf;
 	sendBuf.append(rep.getParseString().c_str(),rep.getParseString().size());
 	context->wsFrameBuild(sendBuf,HttpRequest::BINARY_FRAME,true,false);

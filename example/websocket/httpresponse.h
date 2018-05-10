@@ -1,7 +1,7 @@
 #pragma once
 #include "buffer.h"
 
-class xHttpResponse : noncopyable
+class HttpResponse 
 {
 public:
 	void swap(Buffer &buf) { sendBuf.swap(buf); }
