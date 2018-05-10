@@ -1,8 +1,8 @@
-#include "xAll.h"
-#include "xLog.h"
-#include "xTcpConnection.h"
-#include "xTcpClient.h"
-#include "xThreadPool.h"
+#include "all.h"
+#include "log.h"
+#include "tcpconnection.h"
+#include "tcpclient.h"
+#include "threadpool.h"
 
 int clients = 100;
 int requests = 10000;
@@ -14,7 +14,7 @@ std::condition_variable condition;
 std::atomic<int> connShutDown;
 std::atomic<int> connectCount;
 
-class xClient : boost::noncopyable
+class Client : boost::noncopyable
 {
 public:
 	enum Operation
@@ -23,14 +23,14 @@ public:
 		kSet,
 	};
 
-	xClient(xEventLoop *loop,const char *ip,uint16_t port,Operation  op)
+	Client(EventLoop *loop,const char *ip,uint16_t port,Operation  op)
 	:client(loop,nullptr),
 	 operation(op),
 	 ack(0),
 	 sent(0)
 	{
-		client.setConnectionCallback(std::bind(&xClient::connCallBack,this,std::placeholders::_1));
-		client.setMessageCallback(std::bind(&xClient::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
+		client.setConnectionCallback(std::bind(&Client::connCallBack,this,std::placeholders::_1));
+		client.setMessageCallback(std::bind(&Client::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
 		client.connect(ip,port);
 	}
 
@@ -54,11 +54,11 @@ public:
 		else
 		{
 			this->conn.reset();
-			client.getLoop()->queueInLoop(std::bind(&xClient::countDown, this));
+			client.getLoop()->queueInLoop(std::bind(&Client::countDown, this));
 		}
 	}
 
-	void readCallBack(const TcpConnectionPtr& conn,xBuffer * buffer)
+	void readCallBack(const TcpConnectionPtr& conn,Buffer * buffer)
 	{
 		if(operation == kSet)
 		{
@@ -111,7 +111,7 @@ public:
 
 	void send()
 	{
-		xBuffer buf;
+		Buffer buf;
 		char req[256];
 		if (operation == kSet)
 		{
@@ -130,7 +130,7 @@ public:
 
 	}
 
-	xTcpClient client;
+	TcpClient client;
 	TcpConnectionPtr conn;
 	Operation operation;
 
@@ -139,7 +139,7 @@ public:
 
 };
 
-std::vector<std::shared_ptr<xClient>> clientPtr;
+std::vector<std::shared_ptr<Client>> clientPtr;
 
 int main(int argc, char* argv[])
 {
@@ -155,25 +155,25 @@ int main(int argc, char* argv[])
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		std::string op  = argv[3];
-		xEventLoop loop;
-		xThreadPool pool(&loop);
+		EventLoop loop;
+		ThreadPool pool(&loop);
 		pool.setThreadNum(threadCount);
 		pool.start();
 
-		xClient::Operation opertion;
+		Client::Operation opertion;
 		if(op == "set")
 		{
-			opertion = xClient::kSet;
+			opertion = Client::kSet;
 		}
 		else
 		{
-			opertion = xClient::kGet;
+			opertion = Client::kGet;
 		}
 
 
 		for(int i = 0; i< clients; i++)
 		{
-			std::shared_ptr<xClient> client(new xClient(pool.getNextLoop(),ip,port,opertion));
+			std::shared_ptr<Client> client(new Client(pool.getNextLoop(),ip,port,opertion));
 			clientPtr.push_back(client);
 		}
 
@@ -188,21 +188,21 @@ int main(int argc, char* argv[])
 
 		LOG_INFO<<"Client all connected";
 
-		xTimestamp start = xTimestamp::now();
-		for(auto it = clientPtr.begin(); it != clientPtr.end(); ++it)
+		TimeStamp start = TimeStamp::now();
+		for(auto &it : clientPtr)
 		{
-			(*it)->send();
+			it.send();
 		}
 
 		{
 			std::unique_lock <std::mutex> lck(mtx);
-			while(connShutDown  < clients)
+			while(connShutDown < clients)
 			{
 				condition.wait(lck);
 			}
 		}
 
-		xTimestamp end = xTimestamp::now();
+		TimeStamp end = TimeStamp::now();
 		LOG_WARN<<"All finished";
 		double seconds = timeDifference(end, start);
 		LOG_WARN << seconds << " sec";
