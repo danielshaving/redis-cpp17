@@ -6,6 +6,7 @@
 #include "log.h"
 #include "util.h"
 
+#define OBJ_SHARED_REFCOUNT INT_MAX
 struct rObj
 {
 	void calHash();
@@ -44,12 +45,12 @@ struct SharedObjectsStruct
 	*dbsize,*asking,*hset,*hget,*hgetall,*save,*slaveof,*command,*config,*auth,
 	*info,*echo,*client,*hkeys,*hlen,*keys,*bgsave,*memory,*cluster,*migrate,*debug,
 	*ttl,*lrange,*llen,*sadd,*scard,*addsync,*setslot,*node,*clusterconnect,*delsync,
-	*zadd,*zrange,*zrevrange,*zcard,*dump,*restore,
+	*zadd,*zrange,*zrevrange,*zcard,*dump,*restore,*incr,*decr,
 	*PING,*DEL, *RPOP, *LPOP,*LPUSH, *RPUSH,*SYNC,*SET,*GET,*FLUSHDB,*DBSIZE,*ASKING,
 	*HSET,*HGET,*HGETALL,*SAVE,*SLAVEOF,*COMMAND,*CONFIG,*AUTH,
 	*INFO,*ECHO,*CLIENT,*HKEYS,*HLEN,*KEYS,*BGSAVE,*MEMORY,*CLUSTER,*MIGRATE,*DEBUG,
 	*TTL,*LRANGE,*LLEN,*SADD,*SCARD,*PSYNC,*ADDSYNC,*SETSLOT,*NODE,*CONNECT,*DELSYNC,
-	*ZADD,*ZRANGE,*ZREVRANGE,*ZCARD,*DUMP,*RESTORE,
+	*ZADD,*ZRANGE,*ZREVRANGE,*ZCARD,*DUMP,*RESTORE,*INCR,*DECR,
 	*integers[REDIS_SHARED_INTEGERS],
 	*mbulkhdr[REDIS_SHARED_BULKHDR_LEN],
 	*bulkhdr[REDIS_SHARED_BULKHDR_LEN];
@@ -66,7 +67,7 @@ void freeZsetObject(rObj *o);
 void decrRefCount(rObj *o);
 
 rObj *createRawStringObject(char *ptr,size_t len);
-rObj *createObject(int32_t type,void *ptr);
+rObj *createObject(int32_t type,char *ptr);
 rObj *createStringObject(char *ptr,size_t len);
 rObj *createEmbeddedStringObject(char *ptr,size_t len);
 rObj *createStringObjectFromLongLong(int64_t value);

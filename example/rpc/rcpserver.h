@@ -1,7 +1,7 @@
 #pragma once
-#include "xTcpServer.h"
-#include "xTcpconnection.h"
-#include "xRpcChannel.h"
+#include "tcpserver.h"
+#include "tcpconnection.h"
+#include "rpcchannel.h"
 
 namespace google
 {
@@ -11,10 +11,10 @@ namespace google
 	}
 }
 
-class xRpcServer
+class RpcServer
 {
 public:
-	xRpcServer(xEventLoop *loop,const char *ip,uint16_t port);
+	RpcServer(EventLoop *loop,const char *ip,uint16_t port);
 	void setThreadNum(int numThreads)
 	{
 		server.setThreadNum(numThreads);
@@ -24,8 +24,8 @@ public:
 	void start();
 
 private:
-	void connectCallback(const xTcpconnectionPtr & conn);
+	void connectCallback(const TcpConnectionPtr & conn);
 	std::unordered_map<int32_t,RpcChannelPtr> rpcMaps;
 	std::unordered_map<std::string,::google::protobuf::Service*> services;
-	xTcpServer server;
+	TcpServer server;
 };

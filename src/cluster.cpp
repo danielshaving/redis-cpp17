@@ -224,7 +224,7 @@ void Cluster::delClusterImport(std::deque<rObj*> &robj)
 
 	for (auto &it : robj)
 	{
-		zfree(it);
+		decrRefCount(it);
 	}
 }
 

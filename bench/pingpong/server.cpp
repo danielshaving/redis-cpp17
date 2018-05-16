@@ -1,9 +1,9 @@
 #pragma once
-#include "xAll.h"
-#include "xTcpConnection.h"
-#include "xTcpServer.h"
-#include "xEventLoop.h"
-#include "xLog.h"
+#include "all.h"
+#include "tcpconnection.h"
+#include "tcpserver.h"
+#include "eventloop.h"
+#include "log.h"
 
 void onConnection(const TcpConnectionPtr &conn)
 {
@@ -17,13 +17,12 @@ void onConnection(const TcpConnectionPtr &conn)
 	}
 }
 
-void onMessage(const TcpConnectionPtr &conn,xBuffer *buffer)
+void onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
 {
 	conn->send(buffer);
 }
 
-
-int main(int argc, char* argv[])
+int main(int argc,char* argv[])
 {
 	if (argc < 4)
 	{
@@ -37,9 +36,9 @@ int main(int argc, char* argv[])
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int threadCount = atoi(argv[3]);
 
-		xEventLoop loop;
+		EventLoop loop;
 
-		xTcpServer server(&loop, ip,port,nullptr);
+		TcpServer server(&loop, ip,port,nullptr);
 		server.setConnectionCallback(onConnection);
 		server.setMessageCallback(onMessage);
 

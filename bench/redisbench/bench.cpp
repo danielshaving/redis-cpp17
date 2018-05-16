@@ -1,6 +1,5 @@
 #pragma once
-#include "xHiredis.h"
-
+#include "hiredis.h"
 int clients = 100;
 int requests = 10000;
 int threadCount = 4;
@@ -9,7 +8,7 @@ std::mutex mtx;
 std::condition_variable condition;
 std::atomic<int> connShutDown;
 std::atomic<int> connectCount;
-class xClient : noncopyable
+class Client : noncopyable
 {
 public:
 	enum Operation
@@ -18,14 +17,14 @@ public:
 		kSet,
 	};
 
-	xClient(xEventLoop *loop,const char *ip,uint16_t port,Operation  op)
+	Client(EventLoop *loop,const char *ip,uint16_t port,Operation op)
 	:client(loop,nullptr),
 	 operation(op),
 	 ack(0),
 	 sent(0)
 	{
-		client.setConnectionCallback(std::bind(&xClient::connCallBack,this,std::placeholders::_1));
-		client.setMessageCallback(std::bind(&xClient::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
+		client.setConnectionCallback(std::bind(&Client::connCallBack,this,std::placeholders::_1));
+		client.setMessageCallback(std::bind(&Client::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
 		client.connect(ip,port);
 	}
 
@@ -37,7 +36,7 @@ public:
 		condition.notify_one();
 	}
 
-	void connCallBack(const TcpConnectionPtr& conn)
+	void connCallBack(const TcpConnectionPtr &conn)
 	{
 		if(conn->connected())
 		{
@@ -49,28 +48,28 @@ public:
 		else
 		{
 			this->conn.reset();
-			client.getLoop()->queueInLoop(std::bind(&xClient::countDown, this));
+			client.getLoop()->queueInLoop(std::bind(&Client::countDown,this));
 		}
 	}
 
-	void readCallBack(const TcpConnectionPtr& conn,xBuffer * buffer)
+	void readCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 	{
 		if(operation == kSet)
 		{
 			while(buffer->readableBytes() > 0)
 			{
-				const char * end = static_cast<const char*>(memmem(buffer->peek(),
+				const char *end = static_cast<const char*>(memmem(buffer->peek(),
                         buffer->readableBytes(),
                         "+OK\r\n", 5));
 
 				if(end)
 				{
 					buffer->retrieveUntil(end+5);
-					 ++ack;
-					 if (sent < requests)
-					  {
+					++ack;
+					if (sent < requests)
+					{
 						send();
-					  }
+					}
 
 				}
 				else
@@ -83,18 +82,18 @@ public:
 		{
 			while(buffer->readableBytes() > 0)
 			{
-				const char * end = static_cast<const char*>(memmem(buffer->peek(),
+				const char *end = static_cast<const char*>(memmem(buffer->peek(),
 						buffer->readableBytes(),
 						"$3\r\nbar\r\n", 9));
 
 				if(end)
 				{
 					buffer->retrieveUntil(end+9);
-					 ++ack;
-					 if (sent < requests)
-					  {
+					++ack;
+					if (sent < requests)
+					{
 						send();
-					  }
+					}
 
 				}
 				else
@@ -137,16 +136,15 @@ public:
 
 	}
 
-	xTcpClient client;
+	TcpClient client;
 	TcpConnectionPtr conn;
 	Operation operation;
 
 	int ack;
 	int sent;
-
 };
 
-std::vector<std::shared_ptr<xClient>> clientPtr;
+std::vector<std::shared_ptr<Client>> clientPtr;
 
 int main(int argc, char* argv[])
 {
@@ -162,28 +160,27 @@ int main(int argc, char* argv[])
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		std::string op  = argv[3];
-		xEventLoop loop;
-		xThreadPool pool(&loop);
+		EventLoop loop;
+		ThreadPool pool(&loop);
 		pool.setThreadNum(threadCount);
 		pool.start();
 
-		xClient::Operation opertion;
+		Client::Operation opertion;
 		if(op == "set")
 		{
-			opertion = xClient::kSet;
+			opertion = Client::kSet;
 		}
 		else
 		{
-			opertion = xClient::kGet;
+			opertion = Client::kGet;
 		}
 
 
 		for(int i = 0; i< clients; i++)
 		{
-			std::shared_ptr<xClient> client(new xClient(pool.getNextLoop(),ip,port,opertion));
+			std::shared_ptr<Client> client(new Client(pool.getNextLoop(),ip,port,opertion));
 			clientPtr.push_back(client);
 		}
-
 
 		{
 			std::unique_lock <std::mutex> lck(mtx);
@@ -195,7 +192,7 @@ int main(int argc, char* argv[])
 
 		LOG_INFO<<"Client all connected";
 
-		xTimestamp start = xTimestamp::now();
+		TimeStamp start = TimeStamp::now();
 		for(auto it = clientPtr.begin(); it != clientPtr.end(); ++it)
 		{
 			(*it)->send();
@@ -209,9 +206,9 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		xTimestamp end = xTimestamp::now();
+		TimeStamp end = TimeStamp::now();
 		LOG_WARN<<"All finished";
-		double seconds = timeDifference(end, start);
+		double seconds = timeDifference(end,start);
 		LOG_WARN << seconds << " sec";
 		LOG_WARN << 1.0 * clients * requests / seconds << " QPS";
 	}

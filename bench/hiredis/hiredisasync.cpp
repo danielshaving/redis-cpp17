@@ -1,6 +1,6 @@
-#include "xHiredisAsync.h"
+#include "hiredisasync.h"
 
-xHiredisAsync::xHiredisAsync(xEventLoop *loop,int8_t threadCount,const char *ip,int16_t port)
+HiredisAsync::HiredisAsync(EventLoop *loop,int8_t threadCount,const char *ip,int16_t port)
 :hiredis(loop),
  connectCount(0),
  loop(loop),
@@ -17,7 +17,7 @@ xHiredisAsync::xHiredisAsync(xEventLoop *loop,int8_t threadCount,const char *ip,
 	for(int i = 0; i < sessionCount; i++)
 	{
 		TcpClientPtr client(new xTcpClient(hiredis.getPool().getNextLoop(),ip,port,nullptr));
-		client->setConnectionCallback(std::bind(&xHiredisAsync::redisConnCallBack,this,std::placeholders::_1));
+		client->setConnectionCallback(std::bind(&HiredisAsync::redisConnCallBack,this,std::placeholders::_1));
 		client->setMessageCallback(std::bind(&xHiredis::redisReadCallBack,&hiredis,std::placeholders::_1,std::placeholders::_2));
 		client->asyncConnect();
 		hiredis.pushTcpClient(client);
@@ -30,12 +30,12 @@ xHiredisAsync::xHiredisAsync(xEventLoop *loop,int8_t threadCount,const char *ip,
 	}
 }
 
-xHiredisAsync::~xHiredisAsync()
+HiredisAsync::~HiredisAsync()
 {
 
 }
 
-void xHiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
+void HiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
@@ -57,7 +57,7 @@ void xHiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 	}
 }
 
-void xHiredisAsync::setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisAsync::setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STATUS);
@@ -69,7 +69,7 @@ void xHiredisAsync::setCallback(const RedisAsyncContextPtr &c,redisReply *reply,
 	sconnetCount++;
 }
 
-void xHiredisAsync::getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisAsync::getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STRING);
@@ -81,7 +81,7 @@ void xHiredisAsync::getCallback(const RedisAsyncContextPtr &c,redisReply *reply,
 	}
 }
 
-void xHiredisAsync::serverCron()
+void HiredisAsync::serverCron()
 {
 	if(cron && gconnetCount == sessionCount && sconnetCount == sessionCount)
 	{
@@ -98,7 +98,7 @@ void xHiredisAsync::serverCron()
 }
 
 
- int main(int argc, char* argv[])
+ int main(int argc,char* argv[])
  {
  	if (argc != 5)
  	{
@@ -112,8 +112,8 @@ void xHiredisAsync::serverCron()
  		int8_t threadCount = atoi(argv[4]);
 
  		startTime = mstime();
- 		xEventLoop loop;
-		xHiredisAsync async(&loop,threadCount,ip,port);
+ 		EventLoop loop;
+		HiredisAsync async(&loop,threadCount,ip,port);
 
 		test("Redis async Connect test ");
 		test_cond(true);
@@ -131,18 +131,18 @@ void xHiredisAsync::serverCron()
 				auto redis = async.getHiredis()->getIteratorNode();
 				std::thread::id threadId = redis->getServerConn()->getLoop()->getThreadId();
 
-				redis->redisAsyncCommand(std::bind(&xHiredisAsync::setCallback,
+				redis->redisAsyncCommand(std::bind(&HiredisAsync::setCallback,
 						&async,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
 						threadId,"set key%d %d",count,count);
 
-				redis->redisAsyncCommand(std::bind(&xHiredisAsync::getCallback,
+				redis->redisAsyncCommand(std::bind(&HiredisAsync::getCallback,
 						&async,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
 						threadId,"get key%d",count);
 			}
 
 		}
 
-		loop.runAfter(1.0,true,std::bind(&xHiredisAsync::serverCron,&async));
+		loop.runAfter(1.0,true,std::bind(&HiredisAsync::serverCron,&async));
  		loop.run();
  	}
  	return 0;

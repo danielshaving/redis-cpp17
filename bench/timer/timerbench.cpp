@@ -1,19 +1,18 @@
 #pragma once
-#include "xAll.h"
-#include "xLog.h"
-#include "xTcpServer.h"
+#include "all.h"
+#include "log.h"
+#include "tcpserver.h"
 
 int num = 1024 * 100;
 int count = 0;
-std::vector<xTimer*> timers;
+std::vector<Timer*> timers;
 
-void canceltimerOut(xEventLoop *loop)
+void canceltimerOut(EventLoop *loop)
 {
 	loop->quit();
 }
 
-
-void runtimerOut(xEventLoop *loop)
+void runtimerOut(EventLoop *loop)
 {
 	if(++count >=num)
 	{
@@ -21,20 +20,18 @@ void runtimerOut(xEventLoop *loop)
 		{
 			loop->cancelAfter(*it);
 		}
-
 		canceltimerOut(data);
 	}
 }
 
-
 int main(int argc,char* argv[])
 {
 
-	xEventLoop loop;
-	xTcpServer server;
+	EventLoop loop;
+	TcpServer server;
 	server.init(&loop,"0.0.0.0",6378,nullptr);
 
-	xTimestamp start(xTimestamp::now());
+	TimeStamp start(TimeStamp::now());
 	for(int i = 0; i < num; i++)
 	{
 		timers.push_back(loop.runAfter(1.0,true,std::bind(runtimerOut,&loop,&loop)));
@@ -42,7 +39,7 @@ int main(int argc,char* argv[])
 	
 	loop.run();
 
-	xTimestamp end(xTimestamp::now());
+	TimeStamp end(TimeStamp::now());
 	LOG_INFO<<"bench sec:"<< timeDifference(end,start);
 	return 0;
 }

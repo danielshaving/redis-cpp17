@@ -14,6 +14,7 @@ public:
 
 	}
 	const char *c_str() const { return str; }
+
 private:
 	const char *str;
 };
@@ -34,7 +35,7 @@ class StringPiece
 	StringPiece(const std::string &str)
 	: ptr(str.data()),length(static_cast<int32_t>(str.size())) { }
 
-	StringPiece(const char* offset,int32_t length)
+	StringPiece(const char *offset,int32_t length)
 	: ptr(offset),length(length) { }
 
 	std::string as_string() const { return std::string(data(),size());}

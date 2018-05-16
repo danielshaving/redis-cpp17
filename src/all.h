@@ -45,7 +45,6 @@
 #include <stdint.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <atomic>
 #include <stdarg.h>

@@ -269,6 +269,7 @@ void freeReply(redisReply *reply)
 
 			break;
 	}
+
 	zfree(r);
 }
 
@@ -365,7 +366,7 @@ redisReply *createInteger(const redisReadTask *task,int64_t value)
 
 redisReply *createNil(const redisReadTask *task)
 {
-	redisReply * r,*parent;
+	redisReply *r,*parent;
 
 	r = createReplyObject(REDIS_REPLY_NIL);
 

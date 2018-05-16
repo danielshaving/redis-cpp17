@@ -433,12 +433,12 @@ int32_t Rdb::rdbSaveStruct(Rio *rdb)
 				auto iterr = zsetMap.find(iter);
 				assert(iterr != zsetMap.end());
 				assert(iterr->first->type == OBJ_ZSET);
-				assert(iterr->second.keyMap.size() == iterr->second.sortMap.size());
+				assert(iterr->second.first.size() == iterr->second.second.size());
 
 				if (rdbSaveKey(rdb,iterr->first) == -1) return -1;
-				if (rdbSaveLen(rdb,iterr->second.keyMap.size()) == -1) return -1;
+				if (rdbSaveLen(rdb,iterr->second.first.size()) == -1) return -1;
 			
-				for (auto &iterrr : iterr->second.keyMap)
+				for (auto &iterrr : iterr->second.first)
 				{
 					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1) return -1;
 					if (rdbSaveValue(rdb,iterrr.first) == -1) return -1;
@@ -525,7 +525,8 @@ int32_t Rdb::rdbLoadZset(Rio *rdb,int32_t type)
 
 	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
 
-	Redis::SortSet sortSet;
+	Redis::SortIndexMap indexMap;
+	Redis::SortMap sortMap;
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
@@ -535,12 +536,12 @@ int32_t Rdb::rdbLoadZset(Rio *rdb,int32_t type)
 
 		val->type = OBJ_ZSET;
 		val->calHash();
-		sortSet.sortMap.insert(std::make_pair(socre,val));
-		sortSet.keyMap.insert(std::make_pair(val,socre));
+		sortMap.insert(std::make_pair(socre,val));
+		indexMap.insert(std::make_pair(val,socre));
 	}
 	
-	assert(!sortSet.sortMap.empty());
-	assert(!sortSet.keyMap.empty());
+	assert(!sortMap.empty());
+	assert(!indexMap.empty());
 
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
@@ -555,7 +556,7 @@ int32_t Rdb::rdbLoadZset(Rio *rdb,int32_t type)
 		auto iter = map.find(key);
 		assert(iter == map.end());
 
-		zsetMap.insert(std::make_pair(key,std::move(sortSet)));
+		zsetMap.insert(std::make_pair(key,std::make_pair(std::move(indexMap),std::move(sortMap))));
 		map.insert(key);
 	}
 		
@@ -772,7 +773,9 @@ int32_t Rdb::rdbRestoreList(rObj *key,Rio *rdb,int32_t type)
 
 int32_t Rdb::rdbRestoreZset(rObj *key,Rio *rdb,int32_t type)
 {
-	Redis::SortSet sortSet;
+	Redis::SortIndexMap indexMap;
+	Redis::SortMap sortMap;
+	
 	int32_t rdbver;
 	int32_t len;
 	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
@@ -791,12 +794,12 @@ int32_t Rdb::rdbRestoreZset(rObj *key,Rio *rdb,int32_t type)
 
 		val->type = OBJ_ZSET;
 		val->calHash();
-		sortSet.sortMap.insert(std::make_pair(socre,val));
-		sortSet.keyMap.insert(std::make_pair(val,socre));
+		sortMap.insert(std::make_pair(socre,val));
+		indexMap.insert(std::make_pair(val,socre));
 	}
 	
-	assert(!sortSet.sortMap.empty());
-	assert(!sortSet.keyMap.empty());
+	assert(!sortMap.empty());
+	assert(!indexMap.empty());
 
 	auto &redisShards = redis->getRedisShards();
 	size_t index = key->hash % redis->kShards;
@@ -809,7 +812,7 @@ int32_t Rdb::rdbRestoreZset(rObj *key,Rio *rdb,int32_t type)
 		assert(it == zsetMap.end());
 		auto iter = map.find(key);
 		assert(iter == map.end());
-		zsetMap.insert(std::make_pair(key,std::move(sortSet)));
+		zsetMap.insert(std::make_pair(key,std::make_pair(std::move(indexMap),std::move(sortMap))));
 		map.insert(key);
 	}
 		
@@ -1008,9 +1011,9 @@ int32_t Rdb::createDumpPayload(Rio *rdb,rObj *obj)
 				auto iterr = zsetMap.find(obj);
 				assert(iterr != zsetMap.end());
 				assert(iterr->first->type == OBJ_ZSET);
-				assert(iterr->second.keyMap.size() == iterr->second.sortMap.size());
-				if (rdbSaveLen(rdb,iterr->second.keyMap.size()) == -1) return -1;			
-				for (auto &iterrr : iterr->second.keyMap)
+				assert(iterr->second.first.size() == iterr->second.second.size());
+				if (rdbSaveLen(rdb,iterr->second.first.size()) == -1) return -1;			
+				for (auto &iterrr : iterr->second.first)
 				{
 					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1) return -1;
 					if (rdbSaveValue(rdb,iterrr.first) == -1) return -1;

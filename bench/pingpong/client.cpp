@@ -1,19 +1,16 @@
 #pragma once
-#include "xAll.h"
+#include "all.h"
+#include "tcpclient.h"
+#include "tcpconnection.h"
+#include "threadPool.h"
+#include "log.h"
 
-#include "xTcpClient.h"
-#include "xTcpconnection.h"
-#include "xThreadPool.h"
-#include "xLog.h"
-
-
-class xClient;
-
-class xConnect : noncopyable
+class Client;
+class Connect
 {
 public:
-	xConnect(xEventLoop *loop,
-		const char *ip,uint16_t port,xClient *owner)
+	Connect(EventLoop *loop,
+		const char *ip,uint16_t port,Client *owner)
 		:cli(loop,ip,port,nullptr),
 		ip(ip),
 		port(port),
@@ -22,8 +19,8 @@ public:
 		bytesWritten(0),
 		messagesRead(0)
 	{
-		cli.setConnectionCallback(std::bind(&xConnect::connCallBack,this,std::placeholders::_1));
-		cli.setMessageCallback(std::bind(&xConnect::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
+		cli.setConnectionCallback(std::bind(&Connect::connCallBack,this,std::placeholders::_1));
+		cli.setMessageCallback(std::bind(&Connect::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
 	}
 
 	void start()
@@ -42,7 +39,7 @@ public:
 
 private:
 	void connCallBack(const TcpConnectionPtr &conn);
-	void readCallBack(const TcpConnectionPtr &conn, xBuffer* buf)
+	void readCallBack(const TcpConnectionPtr &conn,Buffer *buf)
 	{
 		++messagesRead;
 		bytesRead +=  buf->readableBytes();
@@ -51,27 +48,27 @@ private:
 		buf->retrieveAll();
 	}
 
-	xTcpClient cli;
+	TcpClient cli;
 	const char *ip;
 	uint16_t port;
-	xClient * owner;
+	Client * owner;
 	int64_t bytesRead;
 	int64_t bytesWritten;
 	int64_t messagesRead;
 
 };
 
-class xClient : noncopyable
+class Client : noncopyable
 {
 public:
-	xClient(xEventLoop *loop,const char *ip,uint16_t port,int blockSize,int sessionCount,
+	Client(EventLoop *loop,const char *ip,uint16_t port,int blockSize,int sessionCount,
 		int timeOut,int threadCount)
 		:loop(loop),
 		threadPool(loop),
 		sessionCount(sessionCount),
 		timeOut(timeOut)
 	{
-		loop->runAfter(timeOut,nullptr,false, std::bind(&xClient::handlerTimeout,this,std::placeholders::_1));
+		loop->runAfter(timeOut,nullptr,false, std::bind(&Client::handlerTimeout,this,std::placeholders::_1));
 		if(threadCount > 1)
 		{
 			threadPool.setThreadNum(threadCount);
@@ -85,7 +82,7 @@ public:
 
 		for(int i = 0 ; i < sessionCount; i ++)
 		{
-			std::shared_ptr<xConnect> vsession (new xConnect(threadPool.getNextLoop(),ip,port,this));
+			std::shared_ptr<Connect> vsession (new Connect(threadPool.getNextLoop(),ip,port,this));
 			vsession->start();
     			sessions.push_back(vsession);
 			numConencted++;
@@ -101,7 +98,7 @@ public:
 	}
 
 
-	void onDisconnect(const TcpConnectionPtr& conn)
+	void onDisconnect(const TcpConnectionPtr &conn)
 	{
 		numConencted--;
 		if (numConencted  == 0)
@@ -119,29 +116,29 @@ public:
 			LOG_WARN << totalMessagesRead << " total messages read";
 			LOG_WARN << static_cast<double>(totalBytesRead) / static_cast<double>(totalMessagesRead)<< " average message size";
 			LOG_WARN << static_cast<double>(totalBytesRead) / (timeOut * 1024 * 1024) << " MiB/s throughput";
-			conn->getLoop()->queueInLoop(std::bind(&xClient::quit, this));
+			conn->getLoop()->queueInLoop(std::bind(&Client::quit, this));
 		}
 	}
 
 	const std::string &getMessage() const { return message;	}
-	void quit() { loop->queueInLoop(std::bind(&xEventLoop::quit,loop)); }
+	void quit() { loop->queueInLoop(std::bind(&EventLoop::quit,loop)); }
 	void handlerTimeout(const std::any &context)
 	{
 		 LOG_WARN << "stop";
-		 std::for_each(sessions.begin(),sessions.end(),std::mem_fn(&xConnect::stop));
+		 std::for_each(sessions.begin(),sessions.end(),std::mem_fn(&Connect::stop));
 	}
 
 private:
-	xEventLoop *loop;
-	xThreadPool threadPool;
+	EventLoop *loop;
+	ThreadPool threadPool;
 	int sessionCount;
 	int timeOut;
-	std::vector<std::shared_ptr<xConnect>> sessions;
+	std::vector<std::shared_ptr<Connect>> sessions;
 	std::string message;
 	std::atomic<int> numConencted;
 };
 
-void xConnect::connCallBack(const TcpConnectionPtr &conn)
+void Connect::connCallBack(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{
@@ -154,16 +151,16 @@ void xConnect::connCallBack(const TcpConnectionPtr &conn)
 	}
 }
 
-int main(int argc,char * argv[])
+int main(int argc,char *argv[])
 {
 	if (argc != 7)
 	{
-		fprintf(stderr, "Usage: xClient <host_ip> <port> <threads> <blocksize> ");
+		fprintf(stderr, "Usage: Client <host_ip> <port> <threads> <blocksize> ");
 		fprintf(stderr, "<sessions> <time>\n");
 	}
 	else
 	{
-		LOG_INFO << "ping pong xClient pid = " << getpid() << ", tid = " <<getpid();
+		LOG_INFO << "ping pong Client pid = " << getpid() << ", tid = " <<getpid();
 		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int threadCount = atoi(argv[3]);
@@ -171,9 +168,8 @@ int main(int argc,char * argv[])
 		int sessionCount = atoi(argv[5]);
 		int timeout = atoi(argv[6]);
 
-		xEventLoop loop;
-
-		xClient cli(&loop, ip,port, blockSize, sessionCount, timeout, threadCount);
+		EventLoop loop;
+		Client cli(&loop,ip,port,blockSize,sessionCount,timeout,threadCount);
 		loop.run();
 
 	}

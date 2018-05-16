@@ -1,20 +1,19 @@
 #pragma once
-#include "xEventLoop.h"
+#include "eventloop.h"
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
 
-
 struct redisAsyncContext;
 
-class xHiredisClient :public std::enable_shared_from_this<xHiredisClient>,noncopyable
+class HiredisClient :public std::enable_shared_from_this<HiredisClient>
 {
 public:
-	typedef std::function<void (xHiredisClient *,int)> ConnectCallback;
-	typedef std::function<void (xHiredisClient *,int)> DisconnectCallback;
-	typedef std::function<void (xHiredisClient *,redisReply*)> CommandCallback;
+	typedef std::function<void (HiredisClient *,int)> ConnectCallback;
+	typedef std::function<void (HiredisClient *,int)> DisconnectCallback;
+	typedef std::function<void (HiredisClient *,redisReply*)> CommandCallback;
 
-	xHiredisClient(xEventLoop *loop,const std::string &ip,uint16_t port);
-	~xHiredisClient();
+	HiredisClient(EventLoop *loop,const std::string &ip,uint16_t port);
+	~HiredisClient();
 	
 	bool connected() const;
 	const char *errstr() const;
@@ -25,7 +24,7 @@ public:
 	void connect();
 	void disconnect();
 
-	int command(const CommandCallback& cb,xStringArg cmd,...);
+	int command(const CommandCallback& cb,StringArg cmd,...);
 	int ping();
 	 
 	void handleRead();
@@ -40,7 +39,7 @@ public:
 	void disconnectCallback(int status);
 	void commandCallback(redisReply *reply,CommandCallback *cb);
 
-	static xHiredisClient *getHiredis(const redisAsyncContext *ac);
+	static HiredisClient *getHiredis(const redisAsyncContext *ac);
 	static void connectCallback(const redisAsyncContext *ac,int status);
 	static void disconnectCallback(const redisAsyncContext *ac,int status);
 	static void commandCallback(redisAsyncContext *ac,void *,void *);
@@ -51,14 +50,14 @@ public:
 	static void delWrite(void *privdata);
 	static void cleanup(void *privdata);
 
-	void pingCallback(xHiredisClient *msg,redisReply *reply);
+	void pingCallback(HiredisClient *msg,redisReply *reply);
 
 private:
-	xEventLoop *loop;
+	EventLoop *loop;
 	std::string ip;
 	uint16_t port;
 	redisAsyncContext *context;
-	std::shared_ptr<xChannel> channel;
+	std::shared_ptr<Channel> channel;
 	ConnectCallback connectCb;
 	DisconnectCallback disconnectCb;
 };

@@ -1,10 +1,9 @@
-#include "xProtobufCodecLite.h"
-#include "xLog.h"
-#include "xTcpconnection.h"
 #include <google/protobuf/message.h>
-
+#include <google.h>
 #include <zlib.h>
-#include "xGoogleIn.h"
+#include "protobufcodeclite.h"
+#include "log.h"
+#include "tcpconnection.h"
 
 namespace
 {
@@ -17,16 +16,16 @@ namespace
 }
 
 
-void xProtobufCodecLite::send(const xTcpconnectionPtr& conn,
-                             const ::google::protobuf::Message& message)
+void ProtobufCodecLite::send(const TcpConnectionPtr& conn,
+                             const ::google::protobuf::Message &message)
 {
 	// FIXME: serialize to TcpConnection::outputBuffer()
-	xBuffer buf;
-	fillEmptyBuffer(&buf, message);
+	Buffer buf;
+	fillEmptyBuffer(&buf,message);
 	conn->send(&buf);
 }
 
-void xProtobufCodecLite::fillEmptyBuffer(xBuffer* buf, const ::google::protobuf::Message& message)
+void ProtobufCodecLite::fillEmptyBuffer(Buffer* buf,const ::google::protobuf::Message& message)
 {
 	assert(buf->readableBytes() == 0);
 	buf->append(tag);
@@ -39,7 +38,7 @@ void xProtobufCodecLite::fillEmptyBuffer(xBuffer* buf, const ::google::protobuf:
 	buf->prepend(&len, sizeof len);
 }
 
-void xProtobufCodecLite::onMessage(const xTcpconnectionPtr& conn, xBuffer* buf)
+void ProtobufCodecLite::onMessage(const TcpConnectionPtr& conn, Buffer* buf)
 {
 	while (buf->readableBytes() >= static_cast<uint32_t>(kMinMessageLen+kHeaderLen))
 	{
@@ -51,22 +50,22 @@ void xProtobufCodecLite::onMessage(const xTcpconnectionPtr& conn, xBuffer* buf)
 		}
 		else if (buf->readableBytes() >= kHeaderLen+len)
 		{
-			if (rawCb && !rawCb(conn, xStringPiece(buf->peek(), kHeaderLen+len)))
+			if (rawCb && !rawCb(conn, StringPiece(buf->peek(), kHeaderLen+len)))
 			{
 				buf->retrieve(kHeaderLen+len);
 				continue;
 			}
 
 			MessagePtr message(prototype->New());
-			ErrorCode errorCode = parse(buf->peek()+kHeaderLen, len, message.get());
+			ErrorCode errorCode = parse(buf->peek()+kHeaderLen,len,message.get());
 			if (errorCode == kNoError)
 			{
-				messageCallback(conn, message);
+				messageCallback(conn,message);
 				buf->retrieve(kHeaderLen+len);
 			}
 			else
 			{
-				errorCallback(conn, buf, errorCode);
+				errorCallback(conn,buf,errorCode);
 				break;
 			}
 		}
@@ -77,20 +76,20 @@ void xProtobufCodecLite::onMessage(const xTcpconnectionPtr& conn, xBuffer* buf)
 	}
 }
 
-bool xProtobufCodecLite::parseFromBuffer(xStringPiece buf, ::google::protobuf::Message* message)
+bool ProtobufCodecLite::parseFromBuffer(StringPiece buf,::google::protobuf::Message* message)
 {
-	return message->ParseFromArray(buf.data(), buf.size());
+	return message->ParseFromArray(buf.data(),buf.size());
 }
 
-int xProtobufCodecLite::serializeToBuffer(const ::google::protobuf::Message& message, xBuffer* buf)
+int ProtobufCodecLite::serializeToBuffer(const ::google::protobuf::Message& message,Buffer* buf)
 {
 	GOOGLE_DCHECK(message.IsInitialized()) << InitializationErrorMessage("serialize", message);
 
 	int byteSize = message.ByteSize();
 	buf->ensureWritableBytes(byteSize + kChecksumLen);
 
-	uint8_t* start = reinterpret_cast<uint8_t*>(buf->beginWrite());
-	uint8_t* end = message.SerializeWithCachedSizesToArray(start);
+	uint8_t *start = reinterpret_cast<uint8_t*>(buf->beginWrite());
+	uint8_t *end = message.SerializeWithCachedSizesToArray(start);
 	if (end - start != byteSize)
 	{
 		ByteSizeConsistencyError(byteSize, message.ByteSize(), static_cast<int>(end - start));
@@ -111,7 +110,7 @@ namespace
 	const std::string kUnknownErrorStr = "UnknownError";
 }
 
-const std::string& xProtobufCodecLite::errorCodeToString(ErrorCode errorCode)
+const std::string &ProtobufCodecLite::errorCodeToString(ErrorCode errorCode)
 {
 	switch (errorCode)
 	{
@@ -132,7 +131,7 @@ const std::string& xProtobufCodecLite::errorCodeToString(ErrorCode errorCode)
 	}
 }
 
-void xProtobufCodecLite::defaultErrorCallback(const xTcpconnectionPtr& conn,xBuffer* buf, ErrorCode errorCode)
+void ProtobufCodecLite::defaultErrorCallback(const TcpConnectionPtr &conn,Buffer *buf,ErrorCode errorCode)
 {
 	LOG_ERROR << "ProtobufCodecLite::defaultErrorCallback - " << errorCodeToString(errorCode);
 	if (conn && conn->connected())
@@ -141,20 +140,19 @@ void xProtobufCodecLite::defaultErrorCallback(const xTcpconnectionPtr& conn,xBuf
 	}
 }
 
-
-int32_t xProtobufCodecLite::asInt32(const char* buf)
+int32_t ProtobufCodecLite::asInt32(const char* buf)
 {
 	int32_t be32 = 0;
 	::memcpy(&be32, buf, sizeof(be32));
 	return be32;
 }
 
-int32_t xProtobufCodecLite::checkSum(const void* buf, int len)
+int32_t ProtobufCodecLite::checkSum(const void *buf,int len)
 {
-	return static_cast<int32_t>(::adler32(1, static_cast<const Bytef*>(buf), len));
+	return static_cast<int32_t>(::adler32(1, static_cast<const Bytef*>(buf),len));
 }
 
-bool xProtobufCodecLite::validateCheckSum(const char* buf, int len)
+bool ProtobufCodecLite::validateCheckSum(const char *buf,int len)
 {
 	// check sum
 	int32_t expectedCheckSum = asInt32(buf + len - kChecksumLen);
@@ -162,18 +160,18 @@ bool xProtobufCodecLite::validateCheckSum(const char* buf, int len)
 	return checksum == expectedCheckSum;
 }
 
-xProtobufCodecLite::ErrorCode xProtobufCodecLite::parse(const char* buf,int len,::google::protobuf::Message* message)
+ProtobufCodecLite::ErrorCode ProtobufCodecLite::parse(const char* buf,int len,::google::protobuf::Message *message)
 {
 	ErrorCode error = kNoError;
 
-	if (validateCheckSum(buf, len))
+	if (validateCheckSum(buf,len))
 	{
-		if (memcmp(buf, tag.data(), tag.size()) == 0)
+		if (memcmp(buf,tag.data(),tag.size()) == 0)
 		{
 			// parse from buffer
-			const char* data = buf + tag.size();
+			const char *data = buf + tag.size();
 			int32_t dataLen = len - kChecksumLen - static_cast<int>(tag.size());
-			if (parseFromBuffer(xStringPiece(data, dataLen), message))
+			if (parseFromBuffer(StringPiece(data,dataLen),message))
 			{
 				error = kNoError;
 			}

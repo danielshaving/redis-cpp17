@@ -1,4 +1,4 @@
-#include "xHiredis.h"
+#include "hiredis.h"
 
 const char *ip;
 int32_t port;
@@ -7,45 +7,45 @@ void testCommand(RedisContextPtr c)
 {
 	redisReply *reply;
 
-	reply = ( redisReply *)c->redisCommand("PING");
+	reply = c->redisCommand("PING");
 	if(reply != nullptr)
 	printf("PING: %s\n", reply->str);
 	freeReply(reply);
 
 
-	reply =  ( redisReply *)c->redisCommand("SET %s %s", "foo", "hello world");
+	reply = c->redisCommand("SET %s %s", "foo", "hello world");
 	printf("SET: %s\n", reply->str);
 	freeReply(reply);
 
 
-	reply =  ( redisReply *)c->redisCommand("SET %b %b", "bar", (size_t) 3, "hello", (size_t) 5);
+	reply = c->redisCommand("SET %b %b", "bar", (size_t) 3, "hello", (size_t) 5);
 	printf("SET (binary API): %s\n", reply->str);
 	freeReply(reply);
 
-	reply =  ( redisReply *)c->redisCommand("GET foo");
+	reply = c->redisCommand("GET foo");
 	printf("GET foo: %s\n", reply->str);
 	freeReply(reply);
 
-	reply =  ( redisReply *)c->redisCommand("INCR counter");
+	reply = c->redisCommand("INCR counter");
 	printf("INCR counter: %lld\n", reply->integer);
 	freeReply(reply);
 
-	reply = ( redisReply *)c->c->redisCommand("INCR counter");
+	reply = c->c->redisCommand("INCR counter");
 	printf("INCR counter: %lld\n", reply->integer);
 	freeReply(reply);
 
-	reply = ( redisReply *)c->redisCommand("DEL mylist");
+	reply = c->redisCommand("DEL mylist");
 	freeReply(reply);
 	for (int j = 0; j < 10; j++)
 	{
 		char buf[64];
 
 		snprintf(buf,64,"%d",j);
-		reply =  ( redisReply *)c->redisCommand("LPUSH mylist element-%s", buf);
+		reply = c->redisCommand("LPUSH mylist element-%s", buf);
 		freeReply(reply);
 	}
 
-	reply =  ( redisReply *)c->redisCommand("LRANGE mylist 0 -1");
+	reply = c->redisCommand("LRANGE mylist 0 -1");
 	if (reply->type == REDIS_REPLY_ARRAY)
 	{
 		for (int j = 0; j < reply->elements; j++)
@@ -184,7 +184,6 @@ void testReplyReader()
 	std::shared_ptr<xRedisReader>  reader (new xRedisReader);
 }
 
-
 void testBlockingConnectionTimeOuts()
 {
 	RedisContextPtr c = redisConnect(ip,port);
@@ -221,8 +220,8 @@ void testBlockingConnectionTimeOuts()
 void testBlockingConnection()
 {
 	RedisContextPtr c;
-	redisReply * reply;
-	xSocket socket;
+	redisReply *reply;
+	Socket socket;
 	c = redisConnect(ip,port);
 	test("Is able to deliver commands: ");
 	reply = (redisReply*)c->redisCommand("PING");
@@ -292,9 +291,8 @@ void testBlockingConnection()
 	reply->element[1]->type == REDIS_REPLY_STATUS &&
 	strcasecmp(reply->element[1]->str,"pong") == 0);
 	freeReply(reply);
-
-
 }
+
 void testBlockingConecntionerros()
 {
 	RedisContextPtr c;
@@ -318,7 +316,7 @@ void testBlockingConecntionerros()
 void testBlockIoerrors()
 {
 	RedisContextPtr c;
-	xSocket socket;
+	Socket socket;
 	redisReply * reply;
 	void * _reply;
 	int major, minor;
@@ -375,13 +373,12 @@ void testInvalidTimeOuterros()
 		RedisContextPtr c = redisConnectWithTimeout(ip,port,timeout);
 		test_cond(c->err == REDIS_ERR_IO && strcmp(c->errstr, "Invalid timeout specified") == 0);
 	}
-	
 }
 
 void testAppendFormateedCommands()
 {
 	RedisContextPtr c;
-	redisReply * reply;
+	redisReply *reply;
 	char *cmd;
 	int len;
 	c = redisConnect(ip,port);
@@ -397,7 +394,7 @@ void testAppendFormateedCommands()
 void testThroughPut()
 {
 	RedisContextPtr c = redisConnect(ip,port);
-	redisReply ** replies;
+	redisReply **replies;
 	int i,num;
 	int64_t t1,t2;
 
@@ -444,7 +441,7 @@ void testThroughPut()
 	printf("\t(%dx LRANGE with 500 elements: %.3fs)\n", num, (t2-t1)/1000000.0);
 
 
-	 num = 10000;
+	num = 10000;
 	replies = (redisReply**)zmalloc(sizeof(redisReply*)*num);
 	for (i = 0; i < num; i++)
 	{
@@ -463,6 +460,7 @@ void testThroughPut()
 	{
 		freeReply(replies[i]);	
 	}
+
 	zfree(replies);
 	printf("\t(%dx PING (pipelined): %.3fs)\n", num, (t2-t1)/1000000.0);
 
@@ -488,11 +486,9 @@ void testThroughPut()
 	
 	zfree(replies);
 	printf("\t(%dx LRANGE with 500 elements (pipelined): %.3fs)\n", num, (t2-t1)/1000000.0);
-	
-	
 }
 
-int main(int argc, char* argv[])
+int main(int argc,char* argv[])
 {
 	if (argc != 3)
 	{
@@ -504,10 +500,10 @@ int main(int argc, char* argv[])
 		port = static_cast<uint16_t>(atoi(argv[2]));
 		struct timeval timeout = { 1, 500000 }; // 1.5 seconds
 
-		xRedisContextPtr c;
+		RedisContextPtr c;
 		redisReply *reply;
 	
-		c = redisConnectWithTimeout(ip, port, timeout);
+		c = redisConnectWithTimeout(ip,port,timeout);
 		if (c == nullptr || c->err)
 		{
 			if (c) 

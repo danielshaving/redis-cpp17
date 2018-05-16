@@ -30,13 +30,7 @@ public:
 	void removeChannel(Channel *channel);
 	bool hasChannel(Channel *channel);
 	void cancelAfter(Timer *timer);
-	void assertInLoopThread()
-    {
-	  if (!isInLoopThread())
-	  {
-	      abortNotInLoopThread();
-	  }
-    }
+	void assertInLoopThread() { if (!isInLoopThread()) { abortNotInLoopThread(); } }
 
     Timer *runAfter(double when,bool repeat,TimerCallback &&cb);
     void handlerTimerQueue() { timerQueue->handleRead(); }

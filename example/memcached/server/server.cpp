@@ -1,8 +1,6 @@
-#include "xServer.h"
+#include "server.h"
 
-
-
-xItem::xItem(xStringPiece keyArg,
+Item::Item(xStringPiece keyArg,
            uint32_t flagsArg,
            int exptimeArg,
            int valuelen,
@@ -22,14 +20,14 @@ xItem::xItem(xStringPiece keyArg,
 }
 
 
-size_t xItem::neededBytes() const
+size_t Item::neededBytes() const
  {
 	return totalLen() - receivedBytes;
  }
 
 
 
-void xItem::append(const char* data, size_t len)
+void Item::append(const char* data, size_t len)
 {
 	assert(len <= neededBytes());
 	memcpy(this->data + receivedBytes, data, len);
@@ -38,7 +36,7 @@ void xItem::append(const char* data, size_t len)
 }
 
 
-void xItem::output(xBuffer* out, bool needCas) const
+void Item::output(xBuffer* out, bool needCas) const
 {	
 	out->append("VALUE ");
 	out->append(data, keyLen);
@@ -54,7 +52,7 @@ void xItem::output(xBuffer* out, bool needCas) const
 	out->append(value(), valueLen);
 }
 
-void xItem::resetKey(xStringPiece k)
+void Item::resetKey(xStringPiece k)
 {
 	assert(k.size() <= 250);
 	keyLen = k.size();
@@ -69,7 +67,7 @@ static bool isBinaryProtocol(uint8_t firstByte)
 	return firstByte == 0x80;
 }
 
-struct xConnect::Reader
+struct Connect::Reader
 {
 	Reader(std::vector<xStringPiece>::iterator &beg, std::vector<xStringPiece>::iterator end)
 	  : first(beg),
@@ -100,7 +98,7 @@ struct xConnect::Reader
 };
 
 
-void xConnect::receiveValue(xBuffer* buf)
+void Connect::receiveValue(xBuffer* buf)
 {
 	assert(currItem.get());
 	assert(state == kReceiveValue);
@@ -120,7 +118,7 @@ void xConnect::receiveValue(xBuffer* buf)
 			}
 			else
 			{
-				if (policy == xItem::kCas)
+				if (policy == Item::kCas)
 				{
 					if (exists)
 					{
@@ -147,7 +145,7 @@ void xConnect::receiveValue(xBuffer* buf)
   	}
 }
 
-void xConnect::discardValue(xBuffer* buf)
+void Connect::discardValue(xBuffer* buf)
 {
 	assert(!currItem);
 	assert(state == kDiscardValue);
@@ -167,11 +165,11 @@ void xConnect::discardValue(xBuffer* buf)
 
 
 
-bool xConnect::processRequest(xStringPiece request)
+bool Connect::processRequest(xStringPiece request)
 {
 	assert(command.empty());
 	assert(!noreply);
-	assert(policy == xItem::kInvalid);
+	assert(policy == Item::kInvalid);
 	assert(!currItem);
 	assert(bytesToDiscard == 0);
 	++requestsProcessed;
@@ -286,18 +284,18 @@ bool xConnect::processRequest(xStringPiece request)
  	return true;
 }
 
-void xConnect::resetRequest()
+void Connect::resetRequest()
 {
 	command.clear();
 	noreply = false;
-	policy = xItem::kInvalid;
+	policy = Item::kInvalid;
 	currItem.reset();
 	bytesToDiscard = 0;
 }
 
 
 
-void xConnect::reply(xStringPiece msg)
+void Connect::reply(xStringPiece msg)
 {
 	if (!noreply)
 	{
@@ -307,20 +305,20 @@ void xConnect::reply(xStringPiece msg)
 
 
 
-bool xConnect::doUpdate(std::vector<xStringPiece>::iterator  &beg, std::vector<xStringPiece>::iterator  end)
+bool Connect::doUpdate(std::vector<xStringPiece>::iterator  &beg, std::vector<xStringPiece>::iterator  end)
 {
 	if (command == "set")
-		policy = xItem::kSet;
+		policy = Item::kSet;
 	else if (command == "add")
-		policy = xItem::kAdd;
+		policy = Item::kAdd;
 	else if (command == "replace")
-		policy = xItem::kReplace;
+		policy = Item::kReplace;
 	else if (command == "append")
-		policy = xItem::kAppend;
+		policy = Item::kAppend;
 	else if (command == "prepend")
-		policy = xItem::kPrepend;
+		policy = Item::kPrepend;
 	else if (command == "cas")
-		policy = xItem::kCas;
+		policy = Item::kCas;
 	else
 	assert(false);
 
@@ -351,7 +349,7 @@ bool xConnect::doUpdate(std::vector<xStringPiece>::iterator  &beg, std::vector<x
 		// relExptime = exptime + currentTime;
 	}
 
-	if (good && policy == xItem::kCas)
+	if (good && policy == Item::kCas)
 	{
 		good = r.read(&cas);
 	}
@@ -373,13 +371,13 @@ bool xConnect::doUpdate(std::vector<xStringPiece>::iterator  &beg, std::vector<x
 	}
 	else
 	{
-		currItem = xItem::makeItem(key, flags, relExptime, bytes + 2, cas);
+		currItem = Item::makeItem(key, flags, relExptime, bytes + 2, cas);
 		state = kReceiveValue;
 		return false;
 	}
 }
 
-void xConnect::doDelete(std::vector<xStringPiece>::iterator &beg, std::vector<xStringPiece>::iterator end)
+void Connect::doDelete(std::vector<xStringPiece>::iterator &beg, std::vector<xStringPiece>::iterator end)
 {
 	assert(command == "delete");
 	xStringPiece key = *beg;
@@ -407,9 +405,7 @@ void xConnect::doDelete(std::vector<xStringPiece>::iterator &beg, std::vector<xS
 	}
 }
 
-
-
-void xConnect::onMessage(const TcpConnectionPtr & conn,xBuffer *buf,void * data)
+void Connect::onMessage(const TcpConnectionPtr &conn,xBuffer *buf,void * data)
 {
 	const size_t initialReadable = buf->readableBytes();
 
@@ -466,51 +462,48 @@ void xConnect::onMessage(const TcpConnectionPtr & conn,xBuffer *buf,void * data)
 	}
 }
 
-xMemcacheServer::xMemcacheServer(xEventLoop *loop,const Options & op)
+MemcacheServer::MemcacheServer(xEventLoop *loop,const Options & op)
 :loop(loop),
 ops(op),
 startTime(time(0))
 {
-	server.setConnectionCallback(std::bind(&xMemcacheServer::onConnection,this,std::placeholders::_1));
+	server.setConnectionCallback(std::bind(&MemcacheServer::onConnection,this,std::placeholders::_1));
 }
 
-xMemcacheServer::~xMemcacheServer()
+MemcacheServer::~MemcacheServer()
 {
 	
 }
 	
-
-
-void xMemcacheServer::init()
+void MemcacheServer::init()
 {
 	server.init(loop,ops.ip,ops.port,nullptr);
 }
 
-void xMemcacheServer::start()
+void MemcacheServer::start()
 {
 	server.start();
 }
 
-
-void xMemcacheServer::quit(const std::any &context)
+void MemcacheServer::quit()
 {
 	loop->quit();
 }
 
-void xMemcacheServer::stop()
+void MemcacheServer::stop()
 {
-	 loop->runAfter(3.0, nullptr,false,std::bind(&xMemcacheServer::quit,this,std::placeholders::_1));
+	loop->runAfter(3.0,nullptr,false,std::bind(&MemcacheServer::quit,this));
 }
 
-bool xMemcacheServer::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy, bool *exists)
+bool MemcacheServer::storeItem(const ItemPtr & item,Item::UpdatePolicy policy,bool *exists)
 {
 	assert(item->neededBytes() == 0);
-	std::mutex & mutex = shards[item->getHash() % kShards].mutex;
+	std::mutex &mutex = shards[item->getHash() % kShards].mutex;
 	ItemMap& items = shards[item->getHash() % kShards].items;
 	std::unique_lock <std::mutex> lck(mutex);
 	ItemMap::const_iterator it = items.find(item);
 	*exists = it != items.end();
-	if (policy == xItem::kSet)
+	if (policy == Item::kSet)
 	{
 		item->setCas(cas++);
 		if (*exists)
@@ -522,7 +515,7 @@ bool xMemcacheServer::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy
 	}
 	else
 	{
-		if (policy == xItem::kAdd)
+		if (policy == Item::kAdd)
 		{
 			if (*exists)
 			{
@@ -534,7 +527,7 @@ bool xMemcacheServer::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy
 				items.insert(item);
 			}
 		}
-		else if (policy == xItem::kReplace)
+		else if (policy == Item::kReplace)
 		{
 			if (*exists)
 			{
@@ -547,18 +540,18 @@ bool xMemcacheServer::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy
 				return false;
 			}
 		}
-		else if (policy == xItem::kAppend || policy == xItem::kPrepend)
+		else if (policy == Item::kAppend || policy == Item::kPrepend)
 		{
 			if (*exists)
 			{
 				const ConstItemPtr& oldItem = *it;
 				int newLen = static_cast<int>(item->valueLength() + oldItem->valueLength() - 2);
-				ItemPtr newItem(xItem::makeItem(item->getKey(),
-				                   oldItem->getFlags(),
-				                   oldItem->getRelExptime(),
-				                   newLen,
-				                   cas++));
-				if (policy == xItem::kAppend)
+				ItemPtr newItem(Item::makeItem(item->getKey(),
+								   oldItem->getFlags(),
+								   oldItem->getRelExptime(),
+								   newLen,
+								   cas++));
+				if (policy == Item::kAppend)
 				{
 					newItem->append(oldItem->value(), oldItem->valueLength() - 2);
 					newItem->append(item->value(), item->valueLength());
@@ -572,13 +565,13 @@ bool xMemcacheServer::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy
 				assert(newItem->endsWithCRLF());
 				items.erase(it);
 				items.insert(newItem);
-			  }
-			  else
-			  {
-			  	return false;
-			  }
+			}
+			else
+			{
+				return false;
+			}
 		}
-		else if (policy == xItem::kCas)
+		else if (policy == Item::kCas)
 		{
 			if (*exists && (*it)->getCas() == item->getCas())
 			{
@@ -601,7 +594,7 @@ bool xMemcacheServer::storeItem(const ItemPtr & item, xItem::UpdatePolicy policy
 	return true;
 }
 
-ConstItemPtr xMemcacheServer::getItem(const ConstItemPtr & key) const
+ConstItemPtr MemcacheServer::getItem(const ConstItemPtr & key) const
 {
 	std::mutex & mutex  = shards[key->getHash() % kShards].mutex;
 	const ItemMap& items = shards[key->getHash() % kShards].items;
@@ -610,7 +603,7 @@ ConstItemPtr xMemcacheServer::getItem(const ConstItemPtr & key) const
 	return it != items.end() ? *it : ConstItemPtr();
 }
 
-bool xMemcacheServer::deleteItem(const ConstItemPtr & key)
+bool MemcacheServer::deleteItem(const ConstItemPtr & key)
 {
 	std::mutex & mutex= shards[key->getHash() % kShards].mutex;
 	ItemMap& items = shards[key->getHash() % kShards].items;
@@ -619,11 +612,11 @@ bool xMemcacheServer::deleteItem(const ConstItemPtr & key)
 }
 
 
-void xMemcacheServer::onConnection(const TcpConnectionPtr & conn)
+void MemcacheServer::onConnection(const TcpConnectionPtr & conn)
 {
 	if(conn->connected())
 	{
-		SessionPtr session(new xConnect(this,conn));
+		SessionPtr session(new Connect(this,conn));
 		std::unique_lock <std::mutex> lck(mtx);
 		assert(sessions.find(conn->getSockfd()) == sessions.end());
 		sessions[conn->getSockfd()] = session;
@@ -640,12 +633,12 @@ void xMemcacheServer::onConnection(const TcpConnectionPtr & conn)
 
 int main(int argc, char* argv[])
 {	
-	xMemcacheServer::Options options;
+	MemcacheServer::Options options;
 	options.ip = "127.0.0.1";
 	options.port = 11211;
 
 	xEventLoop loop;
-	xMemcacheServer memcache(&loop,options);
+	MemcacheServer memcache(&loop,options);
 	memcache.init();
 	memcache.setThreadNum(4);
 	memcache.start();

@@ -58,7 +58,7 @@ public:
 		}
 	}
 
-	void readCallBack(const TcpConnectionPtr& conn,Buffer * buffer)
+	void readCallBack(const TcpConnectionPtr& conn,Buffer *buffer)
 	{
 		if(operation == kSet)
 		{

@@ -156,13 +156,14 @@ void Socket::fromIpPort(const char *ip,uint16_t port,struct sockaddr_in6 *addr)
 
 int32_t Socket::createSocket()
 {
-#ifdef __linux__
 	return ::socket(AF_INET,SOCK_STREAM,0);
-#endif
-
-#ifdef __APPLE__
-	return ::socket(AF_UNIX,SOCK_STREAM,0);
-#endif
+//#ifdef __linux__
+//	return ::socket(AF_INET,SOCK_STREAM | SOCK_CLOEXEC,0);
+//#endif
+//
+//#ifdef __APPLE__
+//	return ::socket(AF_UNIX,SOCK_STREAM,0);
+//#endif
 }
 
 bool Socket::connectWaitReady(int32_t fd,int32_t msec)
@@ -173,7 +174,7 @@ bool Socket::connectWaitReady(int32_t fd,int32_t msec)
 
 	if (errno == EINPROGRESS)
 	{
-		int res;
+		 int res;
 		 if ((res = ::poll(wfd,1,msec)) == -1)
 		 {
 			 return false;
@@ -254,21 +255,26 @@ void Socket::setkeepAlive(int32_t fd,int32_t idle)
 
 bool Socket::createTcpListenSocket(const char *ip,int16_t port)
 {
-#ifdef __linux__
 	struct sockaddr_in sa;
-    sa.sin_family = AF_INET;
-    sa.sin_port  = htons(port);
+	sa.sin_family = AF_INET;
+	sa.sin_port  = htons(port);
 	sa.sin_addr.s_addr = inet_addr(ip);
-#endif
 
-#ifdef __APPLE__
-    struct sockaddr_un sa;
-    sa.sun_family = AF_UNIX;
-    char *path = "./redis.sock";
-    strncpy(sa.sun_path,path,sizeof(sa.sun_path) - 1);
-    mode_t unixsocketperm = 777;
-    ::chmod(sa.sun_path,unixsocketperm);
-#endif
+//#ifdef __linux__
+//	struct sockaddr_in sa;
+//    sa.sin_family = AF_INET;
+//    sa.sin_port  = htons(port);
+//	sa.sin_addr.s_addr = inet_addr(ip);
+//#endif
+//
+//#ifdef __APPLE__
+//    struct sockaddr_un sa;
+//    sa.sun_family = AF_UNIX;
+//    char *path = "./redis.sock";
+//    strncpy(sa.sun_path,path,sizeof(sa.sun_path) - 1);
+//    mode_t unixsocketperm = 777;
+//    ::chmod(sa.sun_path,unixsocketperm);
+//#endif
 
     sockfd = createSocket();
     if(sockfd < 0)
@@ -357,7 +363,6 @@ bool Socket::setSocketBlock(int32_t socketFd)
 
     return true;
 }
-
 
 bool Socket::setSocketNonBlock(int32_t socketFd)
 {

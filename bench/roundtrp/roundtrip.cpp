@@ -1,23 +1,19 @@
 #pragma once
-#include "xSocket.h"
-#include "xLog.h"
-#include "xTcpconnection.h"
-#include "xTcpServer.h"
-#include "xTcpClient.h"
-#include "xTimer.h"
-
+#include "socket.h"
+#include "log.h"
+#include "tcpconnection.h"
+#include "tcpserver.h"
+#include "tcpclient.h"
+#include "timer.h"
 
 const size_t frameLen = 2*sizeof(int64_t);
-
-void serverConnectionCallback(const xTcpconnectionPtr& conn, void *data)
+void serverConnectionCallback(const TcpConnectionPtr &conn)
 {
- 
 	if (conn->connected())
 	{
 		LOG_INFO<<" from client connect ";
-		xSocket socket;
+		Socket socket;
 		socket.setTcpNoDelay(conn->getSockfd(),false);
-		
 	}
 	else
 	{
@@ -25,26 +21,22 @@ void serverConnectionCallback(const xTcpconnectionPtr& conn, void *data)
 	}
 }
 
-void serverMessageCallback(const xTcpconnectionPtr& conn,
-                           xBuffer* buffer,
-                          void * data)
+void serverMessageCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 {
 	int64_t message[2];
 	while (buffer->readableBytes() >= frameLen)
 	{
-		memcpy(message, buffer->peek(), frameLen);
+		memcpy(message,buffer->peek(),frameLen);
 		buffer->retrieve(frameLen);
-		message[1] = xTimestamp::now().getMicroSecondsSinceEpoch();
+		message[1] = TimeStamp::now().getMicroSecondsSinceEpoch();
 		conn->send(message, sizeof message);
 	}
 }
 
-
-
 void runServer(uint16_t port)
 {
-	xEventLoop loop;
-	xTcpServer server;
+	EventLoop loop;
+	TcpServer server;
 	server.init(&loop,"127.0.0.1",port,nullptr);
 	server.setConnectionCallback(serverConnectionCallback);
 	server.setMessageCallback(serverMessageCallback);
@@ -52,27 +44,16 @@ void runServer(uint16_t port)
 	loop.run();
 }
 
+TcpConnectionPtr clientConnection;
 
-
-xTcpconnectionPtr clientConnection;
-
-
-void clientConnectionErrorCallback()
-{
-	
-}
-
-
-
-void clientConnectionCallback(const xTcpconnectionPtr& conn ,void * data)
+void clientConnectionCallback(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{
 		LOG_INFO<<"  client connect ";
 		clientConnection = conn;
-		xSocket socket;
+		Socket socket;
 		socket.setSocketBlock(conn->getSockfd());
-		socket.setTcpNoDelay(conn->getSockfd(),false);
 	}
 	else
 	{
@@ -81,9 +62,8 @@ void clientConnectionCallback(const xTcpconnectionPtr& conn ,void * data)
 	}
 }
 
-void clientMessageCallback(const xTcpconnectionPtr& conn,
-                           xBuffer* buffer,
-                           void * data)
+void clientMessageCallback(const TcpConnectionPtr &conn,
+                           Buffer *buffer)
 {
 	int64_t message[2];
 	while (buffer->readableBytes() >= frameLen)
@@ -92,40 +72,33 @@ void clientMessageCallback(const xTcpconnectionPtr& conn,
 		buffer->retrieve(frameLen);
 		int64_t send = message[0];
 		int64_t their = message[1];
-		int64_t back = xTimestamp::now().getMicroSecondsSinceEpoch();
+		int64_t back = TimeStamp::now().getMicroSecondsSinceEpoch();
 		int64_t mine = (back+send)/2;
 		LOG_INFO << "round trip " << back - send
 		         << " clock error " << their - mine;
 	}
 }
 
-
-
 void sendMyTime(void * data)
 {
 	if (clientConnection)
 	{
 		int64_t message[2] = { 0, 0 };
-		message[0] = xTimestamp::now().getMicroSecondsSinceEpoch();
+		message[0] = TimeStamp::now().getMicroSecondsSinceEpoch();
 		clientConnection->send(message, sizeof message);
 	}
 }
 
-
-
-
 void runClient(const char* ip, uint16_t port)
 {
-	xEventLoop loop;
-	xTcpClient client(&loop,nullptr);
+	EventLoop loop;
+	TcpClient client(&loop,nullptr);
 	client.setConnectionCallback(clientConnectionCallback);
 	client.setMessageCallback(clientMessageCallback);
 	client.connect(ip,port);
 	loop.runAfter(0.2,nullptr,true,sendMyTime);
 	loop.run();
 }
-
-
 
 int main(int argc, char* argv[])
 {
@@ -143,7 +116,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		  printf("Usage:\n%s -s port\n%s ip port\n", argv[0], argv[0]);
+		printf("Usage:\n%s -s port\n%s ip port\n", argv[0], argv[0]);
 	}
 
 	return 0;

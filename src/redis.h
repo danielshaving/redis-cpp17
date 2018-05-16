@@ -93,6 +93,9 @@ public:
 	bool sentinelCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
 	bool migrateCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
 	bool ttlCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool incrCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool decrCommand(const std::deque<rObj*> &obj,const SessionPtr &session);
+	bool incrDecrCommand(rObj *obj,const SessionPtr &session,int64_t incr);
 
 	int32_t rdbSaveBackground(bool enabled = false);
 	bool bgsave(const SessionPtr &session,bool enabled = false);
@@ -139,21 +142,13 @@ public:
 	int16_t getPort() { return port; }
 
 public:
-	const static int32_t kShards = 1024;
-
 	typedef std::function<bool(const std::deque<rObj*> &,const SessionPtr &)> CommandFunc;
 	typedef std::unordered_map<rObj*,rObj*,Hash,Equal> StringMap;
 	typedef std::unordered_map<rObj*,std::unordered_map<rObj*,rObj*,Hash,Equal>,Hash,Equal> HashMap;
 	typedef std::unordered_map<rObj*,std::deque<rObj*>,Hash,Equal> ListMap;
-	typedef std::unordered_map<rObj*,double,Hash,Equal> KeyMap;
+	typedef std::unordered_map<rObj*,double,Hash,Equal> SortIndexMap;
 	typedef std::multimap<double,rObj*> SortMap;
-	typedef struct SortSet
-	{
-		KeyMap keyMap; 
-		SortMap sortMap;
-	};
-
-	typedef std::unordered_map<rObj*,SortSet,Hash,Equal> ZsetMap;
+	typedef std::unordered_map<rObj*,std::pair<SortIndexMap,SortMap>,Hash,Equal> ZsetMap;
 	typedef std::unordered_map<rObj*,std::unordered_set<rObj*,Hash,Equal>,Hash,Equal> SetMap;
 	typedef std::unordered_set<rObj*,Hash,Equal> RedisMap;
 
@@ -163,6 +158,8 @@ public:
 	std::unordered_set<rObj*,Hash,Equal> cluterCommands;
 	std::unordered_map<rObj*,CommandFunc,Hash,Equal> handlerCommands;
 
+	const static int32_t kShards = 1024;
+	
 private:
 	Redis(const Redis&);
 	void operator=(const Redis&);

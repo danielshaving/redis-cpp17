@@ -1,6 +1,6 @@
-#include "xHiredisClient.h"
+#include "hiredisclient.h"
 
-xHiredisClient::xHiredisClient(xEventLoop *loop,const std::string &ip,uint16_t port)
+HiredisClient::HiredisClient(EventLoop *loop,const std::string &ip,uint16_t port)
 :loop(loop),
 ip(ip),
 port(port),
@@ -9,25 +9,25 @@ context(nullptr)
 	
 }
 
-xHiredisClient::~xHiredisClient()
+HiredisClient::~HiredisClient()
 {
 	LOG_INFO<< this;
 	assert(!channel || channel->isNoneEvent());
 	::redisAsyncFree(context);
 }
 
-bool xHiredisClient::connected() const
+bool HiredisClient::connected() const
 {
 	return channel && context && (context->c.flags & REDIS_CONNECTED);
 }
 
-const char *xHiredisClient::errstr() const
+const char *HiredisClient::errstr() const
 {
 	assert(context != nullptr);
 	return context->errstr;
 }
 
-void xHiredisClient::connect()
+void HiredisClient::connect()
 {
 	assert(!context);
 	context = ::redisAsyncConnect(ip.c_str(),port);
@@ -45,7 +45,7 @@ void xHiredisClient::connect()
 	::redisAsyncSetDisconnectCallback(context, disconnectCallback);
 }
 
-void xHiredisClient::disconnect()
+void HiredisClient::disconnect()
 {
 	if(connected())
 	{
@@ -54,55 +54,55 @@ void xHiredisClient::disconnect()
 	}
 }
 
-int xHiredisClient::getFd() const
+int HiredisClient::getFd() const
 {
 	assert(context);
 	return context->c.fd;
 }
 
-void xHiredisClient::setChannel()
+void HiredisClient::setChannel()
 {
 	assert(!channel);
 	channel.reset(new xChannel(loop,getFd()));
-	channel->setReadCallback(std::bind(&xHiredisClient::handleRead,this));
-	channel->setWriteCallback(std::bind(&xHiredisClient::handleWrite,this));
+	channel->setReadCallback(std::bind(&HiredisClient::handleRead,this));
+	channel->setWriteCallback(std::bind(&HiredisClient::handleWrite,this));
 }
 
-void xHiredisClient::removeChannel()
+void HiredisClient::removeChannel()
 {
 	channel->disableAll();
 	channel->remove();
 	channel.reset();
 }
 
-void xHiredisClient::handleRead()
+void HiredisClient::handleRead()
 {
 	::redisAsyncHandleRead(context);
 }
 
-void xHiredisClient::handleWrite()
+void HiredisClient::handleWrite()
 {
 	::redisAsyncHandleWrite(context);
 }
 
-void xHiredisClient::connectCallback(const redisAsyncContext *ac,int status)
+void HiredisClient::connectCallback(const redisAsyncContext *ac,int status)
 {
 	getHiredis(ac)->connectCallback(status);
 }
 
-void xHiredisClient::disconnectCallback(const redisAsyncContext *ac,int status)
+void HiredisClient::disconnectCallback(const redisAsyncContext *ac,int status)
 {
 	 getHiredis(ac)->disconnectCallback(status);
 }
 
-void xHiredisClient::commandCallback(redisAsyncContext *ac,void *r,void *privdata)
+void HiredisClient::commandCallback(redisAsyncContext *ac,void *r,void *privdata)
 {
 	redisReply *reply = static_cast<redisReply*>(r);
 	CommandCallback *cb = static_cast<CommandCallback*>(privdata);
 	getHiredis(ac)->commandCallback(reply,cb);
 }
 
-void xHiredisClient::connectCallback(int status)
+void HiredisClient::connectCallback(int status)
 {
 	if(status != REDIS_OK)
 	{
@@ -119,8 +119,7 @@ void xHiredisClient::connectCallback(int status)
 	}
 }
 
-
-void xHiredisClient::disconnectCallback(int status)
+void HiredisClient::disconnectCallback(int status)
 {
 	removeChannel();
 	if(disconnectCb)
@@ -129,77 +128,71 @@ void xHiredisClient::disconnectCallback(int status)
 	}
 }
 
-void xHiredisClient::commandCallback(redisReply *reply,CommandCallback *cb)
+void HiredisClient::commandCallback(redisReply *reply,CommandCallback *cb)
 {
 	(*cb)(this,reply);
 	delete cb;
 }
 
-
-
-xHiredisClient *xHiredisClient::getHiredis(const redisAsyncContext *ac)
+HiredisClient *HiredisClient::getHiredis(const redisAsyncContext *ac)
 {
-	xHiredisClient *hiredis = static_cast<xHiredisClient*>(ac->ev.data);
+	HiredisClient *hiredis = static_cast<HiredisClient*>(ac->ev.data);
 	assert(hiredis->context == ac);
 	return hiredis;
 }
 
-void xHiredisClient::addRead(void *privdata)
+void HiredisClient::addRead(void *privdata)
 {
-	xHiredisClient *hiredis = static_cast<xHiredisClient*>(privdata);
+	HiredisClient *hiredis = static_cast<HiredisClient*>(privdata);
 	hiredis->channel->enableReading();
 }
 
-void xHiredisClient::delRead(void *privdata)
+void HiredisClient::delRead(void *privdata)
 {
-	xHiredisClient *hiredis = static_cast<xHiredisClient*>(privdata);
+	HiredisClient *hiredis = static_cast<HiredisClient*>(privdata);
 	hiredis->channel->disableReading();
 }
 
-void xHiredisClient::addWrite(void *privdata)
+void HiredisClient::addWrite(void *privdata)
 {
-	xHiredisClient *hiredis = static_cast<xHiredisClient*>(privdata);
+	HiredisClient *hiredis = static_cast<HiredisClient*>(privdata);
 	hiredis->channel->enableWriting();
 }
 
-void xHiredisClient::delWrite(void *privdata)
+void HiredisClient::delWrite(void *privdata)
 {
-	xHiredisClient *hiredis = static_cast<xHiredisClient*>(privdata);
+	HiredisClient *hiredis = static_cast<HiredisClient*>(privdata);
 	hiredis->channel->disableWriting();
 }
 
-void xHiredisClient::cleanup(void *privdata)
+void HiredisClient::cleanup(void *privdata)
 {
-	xHiredisClient *hiredis = static_cast<xHiredisClient*>(privdata);
+	HiredisClient *hiredis = static_cast<HiredisClient*>(privdata);
 	LOG_INFO << hiredis;
 }
 
-int xHiredisClient::command(const CommandCallback& cb,xStringArg cmd,...)
+int HiredisClient::command(const CommandCallback& cb,StringArg cmd,...)
 {
 	CommandCallback *p = new CommandCallback(cb);
 	va_list args;
 	va_start(args,cmd);
 	int ret = ::redisvAsyncCommand(context,commandCallback,p,cmd.c_str(),args);
 	va_end(args);
-	
 	return ret;
 }
 
-
-void xHiredisClient::pingCallback(xHiredisClient *msg,redisReply *reply)
+void HiredisClient::pingCallback(HiredisClient *msg,redisReply *reply)
 {
 	assert(this == msg);
 	LOG_INFO<<reply->str;
 }
 
-int xHiredisClient::ping()
+int HiredisClient::ping()
 {
-	return command(std::bind(&xHiredisClient::pingCallback,this,std::placeholders::_1,std::placeholders::_2),"ping");
+	return command(std::bind(&HiredisClient::pingCallback,this,std::placeholders::_1,std::placeholders::_2),"ping");
 }
 	
-
-
-void connectCallback(xHiredisClient *c,int status)
+void connectCallback(HiredisClient *c,int status)
 {
 	if (status != REDIS_OK)
 	{
@@ -211,7 +204,7 @@ void connectCallback(xHiredisClient *c,int status)
 	}
 }
 
-void disconnectCallback(xHiredisClient *c,int status)
+void disconnectCallback(HiredisClient *c,int status)
 {
 	if (status != REDIS_OK)
 	{
@@ -225,12 +218,12 @@ void disconnectCallback(xHiredisClient *c,int status)
 
 int main(int argc,char** argv)
 {
-	xEventLoop loop;
-	xHiredisClient hiredis(&loop,"127.0.0.1",6379);
+	EventLoop loop;
+	HiredisClient hiredis(&loop,"127.0.0.1",6379);
 	hiredis.setConnectCallback(connectCallback);
 	hiredis.setDisconnectCallback(disconnectCallback);
 	hiredis.connect();
-	loop.runAfter(1.0,nullptr,true,std::bind(&xHiredisClient::ping,&hiredis));
+	loop.runAfter(1.0,nullptr,true,std::bind(&HiredisClient::ping,&hiredis));
 	loop.run();
 	return 0;
 }

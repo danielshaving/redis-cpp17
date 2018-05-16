@@ -1,25 +1,24 @@
 #pragma once
-#include "xAll.h"
-#include "xTcpconnection.h"
-#include "xTcpServer.h"
-#include "xEventLoop.h"
-#include "xLog.h"
-#include "xTimer.h"
-
+#include "all.h"
+#include "tcpconnection.h"
+#include "tcpserver.h"
+#include "eventloop.h"
+#include "log.h"
+#include "timer.h"
 
 std::vector<int> pipes;
 int numPipes;
 int numActive;
 int numWrites;
-xEventLoop * loop;
-std::vector<std::shared_ptr<xChannel>> channels;
+EventLoop *loop;
+std::vector<std::shared_ptr<Channel>> channels;
 int reads,writes,fired;
 
 void readCallback(int fd, int idx)
 {
 	char ch;
 
-	reads += static_cast<int>(::recv(fd, &ch, sizeof(ch), 0));
+	reads += static_cast<int>(::recv(fd,&ch,sizeof(ch),0));
 	if (writes > 0)
 	{
 		int widx = idx+1;
@@ -27,7 +26,7 @@ void readCallback(int fd, int idx)
 		{
 			widx -= numPipes;
 		}
-		::send(pipes[2 * widx + 1], "m", 1, 0);
+		::send(pipes[2 * widx + 1],"m",1,0);
 		writes--;
 		fired++;
 	}
@@ -41,10 +40,10 @@ void readCallback(int fd, int idx)
 
 std::pair<int, int> runOnce()
 {
-	xTimestamp beforeInit(xTimestamp::now());
+	TimeStamp beforeInit(TimeStamp::now());
 	for(int i = 0; i < numPipes ; i ++)
 	{
-		std::shared_ptr<xChannel>   channel  = channels[i];
+		std::shared_ptr<Channel> channel = channels[i];
 		channel->setReadCallback(std::bind(readCallback,channel->getfd(),i));		
 		channel->enableReading();
 	}
@@ -59,14 +58,14 @@ std::pair<int, int> runOnce()
 	fired = numActive;
 	reads = 0;
 	writes = numWrites;
-	xTimestamp beforeLoop(xTimestamp::now());
+	TimeStamp beforeLoop(TimeStamp::now());
 	loop->run();
 
-	xTimestamp end(xTimestamp::now());
+	TimeStamp end(TimeStamp::now());
 
 	int iterTime = static_cast<int>(end.getMicroSecondsSinceEpoch() - beforeInit.getMicroSecondsSinceEpoch());
 	int loopTime = static_cast<int>(end.getMicroSecondsSinceEpoch() - beforeLoop.getMicroSecondsSinceEpoch());
-	return std::make_pair(iterTime, loopTime);
+	return std::make_pair(iterTime,loopTime);
 }
 
 int main(int argc, char* argv[])
@@ -76,7 +75,7 @@ int main(int argc, char* argv[])
 	numWrites = 100;
 	int c;
 
-	while ((c = getopt(argc, argv, "n:a:w:")) != -1)
+	while ((c = getopt(argc,argv,"n:a:w:")) != -1)
 	{
 		switch (c)
 		{
@@ -105,20 +104,19 @@ int main(int argc, char* argv[])
 	pipes.resize(2 * numPipes);
 	for(int i = 0; i < numPipes; ++i)
 	{
-		if (::socketpair(AF_UNIX, SOCK_STREAM, 0, &pipes[i*2]) == -1)
+		if (::socketpair(AF_UNIX,SOCK_STREAM,0,&pipes[i*2]) == -1)
 		{
 			perror("pipe");
 			return 1;
 		}
 	}
 
-	xEventLoop lop;
+	EventLoop lop;
 	loop = &lop;
 
-	
 	for(int i = 0 ; i < numPipes; i ++)
 	{
-		std::shared_ptr<xChannel> channel ( new xChannel(loop, pipes[i*2]));
+		std::shared_ptr<Channel> channel(new Channel(loop,pipes[i*2]));
     		channels.push_back(channel);
 	}
 
@@ -134,7 +132,7 @@ int main(int argc, char* argv[])
 		(*it)->remove();
 	}
 	   
-	 channels.clear();
+	channels.clear();
 	return 0;
 }
 

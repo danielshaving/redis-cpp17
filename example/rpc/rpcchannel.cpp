@@ -1,21 +1,18 @@
-#include "xRpcChannel.h"
-#include "xLog.h"
-#include  "rpc.pb.h"
+#include "log.h"
+#include "rpc.pb.h"
 #include <google/protobuf/descriptor.h>
+#include <rpcchannel.h>
 const char rpctag [] = "RPC0";
 
-
-
-xRpcChannel::xRpcChannel()
-: codec(std::bind(&xRpcChannel::onRpcMessage, this, std::placeholders::_1,std::placeholders::_2)),
+RpcChannel::RpcChannel()
+: codec(std::bind(&RpcChannel::onRpcMessage,this,std::placeholders::_1,std::placeholders::_2)),
   services(nullptr)
 {
 	LOG_INFO << "RpcChannel::ctor - " << this;
 }
 
-
-xRpcChannel::xRpcChannel(const xTcpconnectionPtr& conn)
-: codec(std::bind(&xRpcChannel::onRpcMessage, this, std::placeholders::_1,std::placeholders::_2)),
+RpcChannel::RpcChannel(const TcpConnectionPtr& conn)
+: codec(std::bind(&RpcChannel::onRpcMessage, this, std::placeholders::_1,std::placeholders::_2)),
   conn(conn),
   services(nullptr)
 {
@@ -23,7 +20,7 @@ xRpcChannel::xRpcChannel(const xTcpconnectionPtr& conn)
 }
 
 
-xRpcChannel::~xRpcChannel()
+RpcChannel::~RpcChannel()
 {
 	LOG_INFO << "RpcChannel::dtor - " << this;
 	for (auto it = outstandings.begin(); it != outstandings.end(); ++it)
@@ -35,11 +32,11 @@ xRpcChannel::~xRpcChannel()
 }
 
 
-void xRpcChannel::CallMethod(const ::google::protobuf::MethodDescriptor* method,
-                            ::google::protobuf::RpcController* controller,
-                            const ::google::protobuf::Message* request,
-                            ::google::protobuf::Message* response,
-                            ::google::protobuf::Closure* done)
+void RpcChannel::CallMethod(const ::google::protobuf::MethodDescriptor *method,
+                            ::google::protobuf::RpcController *controller,
+                            const ::google::protobuf::Message *request,
+                            ::google::protobuf::Message *response,
+                            ::google::protobuf::Closure *done)
 {
 	RpcMessage message;
 	message.set_type(REQUEST);
@@ -49,7 +46,7 @@ void xRpcChannel::CallMethod(const ::google::protobuf::MethodDescriptor* method,
 	message.set_method(method->name());
 	message.set_request(request->SerializeAsString()); // FIXME: error check
 
-	OutstandingCall out = { response, done };
+	OutstandingCall out = { response,done };
 	{
 		std::unique_lock<std::mutex> lk(mtx);
 		outstandings[id] = out;
@@ -57,17 +54,16 @@ void xRpcChannel::CallMethod(const ::google::protobuf::MethodDescriptor* method,
 	codec.send(conn, message);
 }
 
-
-void xRpcChannel::onMessage(const xTcpconnectionPtr& conn, xBuffer* buf)
+void RpcChannel::onMessage(const TcpConnectionPtr &conn,Buffer *buf)
 {
-	codec.onMessage(conn, buf);
+	codec.onMessage(conn,buf);
 }
 
-void xRpcChannel::onRpcMessage(const xTcpconnectionPtr& conn,const RpcMessagePtr& messagePtr)
+void RpcChannel::onRpcMessage(const TcpConnectionPtr &conn,const RpcMessagePtr &messagePtr)
 {
 	assert(this->conn == conn);
 	//printf("%s\n", message.DebugString().c_str());
-	RpcMessage& message = *messagePtr;
+	RpcMessage &message = *messagePtr;
 	if (message.type() == RESPONSE)
 	{
 		int64_t id = message.id();
@@ -88,10 +84,8 @@ void xRpcChannel::onRpcMessage(const xTcpconnectionPtr& conn,const RpcMessagePtr
 		if (out.response)
 		{
 			  std::unique_ptr<::google::protobuf::Message> d(out.response);
-			  //if (message.has_response())
-			 // {
 			  out.response->ParseFromString(message.response());
-			 // }
+
 			  if (out.done)
 			  {
 				  out.done->Run();
@@ -104,23 +98,23 @@ void xRpcChannel::onRpcMessage(const xTcpconnectionPtr& conn,const RpcMessagePtr
 		ErrorCode error = WRONG_PROTO;
 		if (services)
 		{
-			auto  it = services->find(message.service());
+			auto it = services->find(message.service());
 			if (it != services->end())
 			{
-				::google::protobuf::Service* service = it->second;
+				::google::protobuf::Service *service = it->second;
 				assert(service != nullptr);
-				const google::protobuf::ServiceDescriptor* desc = service->GetDescriptor();
-				const google::protobuf::MethodDescriptor* method = desc->FindMethodByName(message.method());
+				const google::protobuf::ServiceDescriptor *desc = service->GetDescriptor();
+				const google::protobuf::MethodDescriptor *method = desc->FindMethodByName(message.method());
 				if (method)
 				{
 					std::unique_ptr<google::protobuf::Message> request(service->GetRequestPrototype(method).New());
 					if (request->ParseFromString(message.request()))
 					{
-						::google::protobuf::Message* response = service->GetResponsePrototype(method).New();
+						::google::protobuf::Message *response = service->GetResponsePrototype(method).New();
 						// response is deleted in doneCallback
 						int64_t id = message.id();
-						service->CallMethod(method, nullptr, request.get(), response,
-											NewCallback(this, &xRpcChannel::doneCallback, response, id));
+						service->CallMethod(method,nullptr,request.get(),response,
+											NewCallback(this,&RpcChannel::doneCallback,response,id));
 						error = NO_ERROR;
 					}
 					else
@@ -142,6 +136,7 @@ void xRpcChannel::onRpcMessage(const xTcpconnectionPtr& conn,const RpcMessagePtr
 		{
 			error = NO_SERVICE;
 		}
+
 		if (error != NO_ERROR)
 		{
 			RpcMessage response;
@@ -150,14 +145,14 @@ void xRpcChannel::onRpcMessage(const xTcpconnectionPtr& conn,const RpcMessagePtr
 			response.set_error(error);
 			codec.send(conn, response);
 		}
-  }
-  else if (message.type() == ERROR)
-  {
+	}
+	else if (message.type() == ERROR)
+	{
 
-  }
+	}
 }
 
-void xRpcChannel::doneCallback(::google::protobuf::Message* response, int64_t id)
+void RpcChannel::doneCallback(::google::protobuf::Message *response,int64_t id)
 {
 	std::unique_ptr<google::protobuf::Message> d(response);
 	RpcMessage message;

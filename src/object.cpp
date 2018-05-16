@@ -24,12 +24,12 @@ bool rObj::operator < (const rObj &r) const
 	}
 }
 
-rObj *createObject(int32_t type,void *ptr)
+rObj *createObject(int32_t type,char *ptr)
 {
 	rObj *o = (rObj*)zmalloc(sizeof(rObj));
 	o->encoding = REDIS_ENCODING_RAW;
 	o->type = type;
-	o->ptr = (char*)ptr;
+	o->ptr = ptr;
 	return o;
 }
 
@@ -47,6 +47,10 @@ int32_t getLongLongFromObject(rObj *o,int64_t *target)
 		{
 			if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0) return REDIS_ERR;
 		}
+		else if (o->encoding == OBJ_ENCODING_INT)
+		{
+			if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0) return REDIS_ERR;
+		}
 		else
 		{
 			assert(false);
@@ -54,6 +58,7 @@ int32_t getLongLongFromObject(rObj *o,int64_t *target)
 	}
 	
 	if (target) *target = value;
+
 	return REDIS_OK;
 }
 
@@ -70,9 +75,12 @@ int32_t getLongLongFromObjectOrReply(Buffer &buffer,rObj *o,int64_t *target,cons
         {
             addReplyError(buffer,"value is no an integer or out of range");
         }
+
         return REDIS_ERR;
     }
+
     *target = value;
+
     return REDIS_OK;
 }
 
@@ -90,33 +98,27 @@ int32_t getLongFromObjectOrReply(Buffer &buffer,rObj *o,int32_t *target,const ch
 		{
 			addReplyError(buffer, "value is no an integer or out of range");
 		}
+
 		return REDIS_ERR;
 	}
 	
 	*target = value;
+
 	return REDIS_OK;
 }
 
 rObj *createStringObjectFromLongLong(int64_t value)
 {
 	rObj *o;
-	if(value <=0 && value < REDIS_SHARED_INTEGERS)
+	if (value >= 0 && value < REDIS_SHARED_INTEGERS)
 	{
-		o = shared.integers[value];
+		o = shared.integers[value - 1];
 	}
 	else
 	{
-		if(value >= LONG_MIN && value <= LONG_MAX)
-		{
-			o = createObject(REDIS_STRING, nullptr);
-			o->encoding = REDIS_ENCODING_INT;
-			o->ptr = (char*)value;
-		}
-		else
-		{
-			o = createObject(REDIS_STRING,sdsfromlonglong(value));
-		}
+		o = createObject(REDIS_STRING,sdsfromlonglong(value));
 	}
+
 	return o;
 }
 
@@ -133,9 +135,12 @@ int32_t getDoubleFromObjectOrReply(Buffer &buffer,rObj *o,double *target,const c
         {
             addReplyError(buffer,"value is no a valid float");
         }
+
         return REDIS_ERR;
     }
+
     *target = value;
+
     return REDIS_OK;
 }
 
@@ -169,7 +174,9 @@ int32_t getDoubleFromObject(const rObj *o,double *target)
             LOG_WARN<<"Unknown string encoding";
         }
     }
+
     *target = value;
+
     return REDIS_OK;
 }
 
@@ -217,171 +224,178 @@ void decrRefCount(rObj *o)
 {
 	switch(o->type)
 	{
-        case OBJ_STRING: freeStringObject(o); break;
-        case OBJ_LIST: freeListObject(o); break;
-        case OBJ_SET: freeSetObject(o); break;
-        case OBJ_ZSET: freeZsetObject(o); break;
-        case OBJ_HASH: freeHashObject(o); break;
-        default: assert(false); break;
+		case OBJ_STRING: freeStringObject(o); break;
+		case OBJ_LIST: freeListObject(o); break;
+		case OBJ_SET: freeSetObject(o); break;
+		case OBJ_ZSET: freeZsetObject(o); break;
+		case OBJ_HASH: freeHashObject(o); break;
+		default: assert(false); break;
 	}
-	zfree(o);
+
+	if(o->encoding != OBJ_ENCODING_INT)
+	{
+		zfree(o);
+	}
 }
 
 void destorySharedObjects()
 {
-	freeStringObject(shared.crlf);
-	freeStringObject(shared.ok);
-	freeStringObject(shared.err);
-	freeStringObject(shared.emptybulk);
-	freeStringObject(shared.czero);
-	freeStringObject(shared.cone);
-	freeStringObject(shared.cnegone);
-	freeStringObject(shared.nullbulk);
-	freeStringObject(shared.nullmultibulk);
-	freeStringObject(shared.emptymultibulk);
-	freeStringObject(shared.pping);
-	freeStringObject(shared.ping);
-	freeStringObject(shared.pong);
-	freeStringObject(shared.ppong);
-	freeStringObject(shared.queued);
-	freeStringObject(shared.emptyscan);
-	freeStringObject(shared.wrongtypeerr);
-	freeStringObject(shared.nokeyerr);
-	freeStringObject(shared.syntaxerr);
-	freeStringObject(shared.sameobjecterr);
-	freeStringObject(shared.outofrangeerr);
-	freeStringObject(shared.noscripterr);
-	freeStringObject(shared.loadingerr);
-	freeStringObject(shared.slowscripterr);
-	freeStringObject(shared.masterdownerr);
-	freeStringObject(shared.bgsaveerr);
-	freeStringObject(shared.roslaveerr);
-	freeStringObject(shared.noautherr);
-	freeStringObject(shared.oomerr);
-	freeStringObject(shared.execaborterr);
-	freeStringObject(shared.noreplicaserr);
-	freeStringObject(shared.busykeyerr);
-	freeStringObject(shared.space);
-	freeStringObject(shared.colon);
-	freeStringObject(shared.plus);
-	freeStringObject(shared.messagebulk);
-	freeStringObject(shared.pmessagebulk);
-	freeStringObject(shared.subscribebulk);
-	freeStringObject(shared.unsubscribebulk);
-	freeStringObject(shared.psubscribebulk);
-	freeStringObject(shared.punsubscribebulk);
-	freeStringObject(shared.del);
-	freeStringObject(shared.rpop);
-	freeStringObject(shared.lpop);
-	freeStringObject(shared.lpush);
-	freeStringObject(shared.rpush);
-	freeStringObject(shared.set);
-	freeStringObject(shared.get);
-	freeStringObject(shared.flushdb);
-	freeStringObject(shared.dbsize);
-	freeStringObject(shared.hset);
-	freeStringObject(shared.hget);
-	freeStringObject(shared.hgetall);
-	freeStringObject(shared.save);
-	freeStringObject(shared.slaveof);
-	freeStringObject(shared.command);
-	freeStringObject(shared.config);
-	freeStringObject(shared.auth);
-	freeStringObject(shared.info);
-	freeStringObject(shared.echo);
-	freeStringObject(shared.client);
-	freeStringObject(shared.hkeys);
-	freeStringObject(shared.hlen);
-	freeStringObject(shared.keys);
-	freeStringObject(shared.bgsave);
-	freeStringObject(shared.memory);
-	freeStringObject(shared.cluster);
-	freeStringObject(shared.migrate);
-	freeStringObject(shared.debug);
-	freeStringObject(shared.ttl);
-	freeStringObject(shared.lrange);
-	freeStringObject(shared.llen);
-	freeStringObject(shared.sadd);
-	freeStringObject(shared.scard);
-	freeStringObject(shared.addsync);
-	freeStringObject(shared.setslot);
-	freeStringObject(shared.node);
-	freeStringObject(shared.clusterconnect);
-	freeStringObject(shared.delsync);
-	freeStringObject(shared.psync);
-	freeStringObject(shared.sync);
-	freeStringObject(shared.zadd);
-	freeStringObject(shared.zrevrange);
-	freeStringObject(shared.zcard);
-	freeStringObject(shared.dump);
-	freeStringObject(shared.restore);
+	decrRefCount(shared.decr);
+	decrRefCount(shared.incr);
+	decrRefCount(shared.crlf);
+	decrRefCount(shared.ok);
+	decrRefCount(shared.err);
+	decrRefCount(shared.emptybulk);
+	decrRefCount(shared.czero);
+	decrRefCount(shared.cone);
+	decrRefCount(shared.cnegone);
+	decrRefCount(shared.nullbulk);
+	decrRefCount(shared.nullmultibulk);
+	decrRefCount(shared.emptymultibulk);
+	decrRefCount(shared.pping);
+	decrRefCount(shared.ping);
+	decrRefCount(shared.pong);
+	decrRefCount(shared.ppong);
+	decrRefCount(shared.queued);
+	decrRefCount(shared.emptyscan);
+	decrRefCount(shared.wrongtypeerr);
+	decrRefCount(shared.nokeyerr);
+	decrRefCount(shared.syntaxerr);
+	decrRefCount(shared.sameobjecterr);
+	decrRefCount(shared.outofrangeerr);
+	decrRefCount(shared.noscripterr);
+	decrRefCount(shared.loadingerr);
+	decrRefCount(shared.slowscripterr);
+	decrRefCount(shared.masterdownerr);
+	decrRefCount(shared.bgsaveerr);
+	decrRefCount(shared.roslaveerr);
+	decrRefCount(shared.noautherr);
+	decrRefCount(shared.oomerr);
+	decrRefCount(shared.execaborterr);
+	decrRefCount(shared.noreplicaserr);
+	decrRefCount(shared.busykeyerr);
+	decrRefCount(shared.space);
+	decrRefCount(shared.colon);
+	decrRefCount(shared.plus);
+	decrRefCount(shared.messagebulk);
+	decrRefCount(shared.pmessagebulk);
+	decrRefCount(shared.subscribebulk);
+	decrRefCount(shared.unsubscribebulk);
+	decrRefCount(shared.psubscribebulk);
+	decrRefCount(shared.punsubscribebulk);
+	decrRefCount(shared.del);
+	decrRefCount(shared.rpop);
+	decrRefCount(shared.lpop);
+	decrRefCount(shared.lpush);
+	decrRefCount(shared.rpush);
+	decrRefCount(shared.set);
+	decrRefCount(shared.get);
+	decrRefCount(shared.flushdb);
+	decrRefCount(shared.dbsize);
+	decrRefCount(shared.hset);
+	decrRefCount(shared.hget);
+	decrRefCount(shared.hgetall);
+	decrRefCount(shared.save);
+	decrRefCount(shared.slaveof);
+	decrRefCount(shared.command);
+	decrRefCount(shared.config);
+	decrRefCount(shared.auth);
+	decrRefCount(shared.info);
+	decrRefCount(shared.echo);
+	decrRefCount(shared.client);
+	decrRefCount(shared.hkeys);
+	decrRefCount(shared.hlen);
+	decrRefCount(shared.keys);
+	decrRefCount(shared.bgsave);
+	decrRefCount(shared.memory);
+	decrRefCount(shared.cluster);
+	decrRefCount(shared.migrate);
+	decrRefCount(shared.debug);
+	decrRefCount(shared.ttl);
+	decrRefCount(shared.lrange);
+	decrRefCount(shared.llen);
+	decrRefCount(shared.sadd);
+	decrRefCount(shared.scard);
+	decrRefCount(shared.addsync);
+	decrRefCount(shared.setslot);
+	decrRefCount(shared.node);
+	decrRefCount(shared.clusterconnect);
+	decrRefCount(shared.delsync);
+	decrRefCount(shared.psync);
+	decrRefCount(shared.sync);
+	decrRefCount(shared.zadd);
+	decrRefCount(shared.zrevrange);
+	decrRefCount(shared.zcard);
+	decrRefCount(shared.dump);
+	decrRefCount(shared.restore);
 	
-	freeStringObject(shared.PING);
-	freeStringObject(shared.DEL);
-	freeStringObject(shared.RPOP);
-	freeStringObject(shared.LPOP);
-	freeStringObject(shared.LPUSH);
-	freeStringObject(shared.RPUSH);
-	freeStringObject(shared.SET);
-	freeStringObject(shared.GET);
-	freeStringObject(shared.FLUSHDB);
-	freeStringObject(shared.DBSIZE);
-	freeStringObject(shared.HSET);
-	freeStringObject(shared.HGET);
-	freeStringObject(shared.HGETALL);
-	freeStringObject(shared.SAVE);
-	freeStringObject(shared.SLAVEOF);
-	freeStringObject(shared.COMMAND);
-	freeStringObject(shared.CONFIG);
-	freeStringObject(shared.AUTH);
-	freeStringObject(shared.INFO);
-	freeStringObject(shared.ECHO);
-	freeStringObject(shared.CLIENT);
-	freeStringObject(shared.HKEYS);
-	freeStringObject(shared.HLEN);
-	freeStringObject(shared.KEYS);
-	freeStringObject(shared.BGSAVE);
-	freeStringObject(shared.MEMORY);
-	freeStringObject(shared.CLUSTER);
-	freeStringObject(shared.MIGRATE);
-	freeStringObject(shared.DEBUG);
-	freeStringObject(shared.TTL);
-	freeStringObject(shared.LRANGE);
-	freeStringObject(shared.LLEN);
-	freeStringObject(shared.SADD);
-	freeStringObject(shared.SCARD);
-	freeStringObject(shared.ADDSYNC);
-	freeStringObject(shared.SETSLOT);
-	freeStringObject(shared.NODE);
-	freeStringObject(shared.CONNECT);
-	freeStringObject(shared.DELSYNC);
-	freeStringObject(shared.PSYNC);
-	freeStringObject(shared.SYNC);
-	freeStringObject(shared.ZADD);
-	freeStringObject(shared.ZREVRANGE);
-	freeStringObject(shared.ZCARD);
-	freeStringObject(shared.DUMP);
-	freeStringObject(shared.RESTORE);
+	decrRefCount(shared.PING);
+	decrRefCount(shared.DEL);
+	decrRefCount(shared.RPOP);
+	decrRefCount(shared.LPOP);
+	decrRefCount(shared.LPUSH);
+	decrRefCount(shared.RPUSH);
+	decrRefCount(shared.SET);
+	decrRefCount(shared.GET);
+	decrRefCount(shared.FLUSHDB);
+	decrRefCount(shared.DBSIZE);
+	decrRefCount(shared.HSET);
+	decrRefCount(shared.HGET);
+	decrRefCount(shared.HGETALL);
+	decrRefCount(shared.SAVE);
+	decrRefCount(shared.SLAVEOF);
+	decrRefCount(shared.COMMAND);
+	decrRefCount(shared.CONFIG);
+	decrRefCount(shared.AUTH);
+	decrRefCount(shared.INFO);
+	decrRefCount(shared.ECHO);
+	decrRefCount(shared.CLIENT);
+	decrRefCount(shared.HKEYS);
+	decrRefCount(shared.HLEN);
+	decrRefCount(shared.KEYS);
+	decrRefCount(shared.BGSAVE);
+	decrRefCount(shared.MEMORY);
+	decrRefCount(shared.CLUSTER);
+	decrRefCount(shared.MIGRATE);
+	decrRefCount(shared.DEBUG);
+	decrRefCount(shared.TTL);
+	decrRefCount(shared.LRANGE);
+	decrRefCount(shared.LLEN);
+	decrRefCount(shared.SADD);
+	decrRefCount(shared.SCARD);
+	decrRefCount(shared.ADDSYNC);
+	decrRefCount(shared.SETSLOT);
+	decrRefCount(shared.NODE);
+	decrRefCount(shared.CONNECT);
+	decrRefCount(shared.DELSYNC);
+	decrRefCount(shared.PSYNC);
+	decrRefCount(shared.SYNC);
+	decrRefCount(shared.ZADD);
+	decrRefCount(shared.ZREVRANGE);
+	decrRefCount(shared.ZCARD);
+	decrRefCount(shared.DUMP);
+	decrRefCount(shared.RESTORE);
+	decrRefCount(shared.INCR);
+	decrRefCount(shared.DECR);
 	
-	for (int32_t j = 0; j < REDIS_SHARED_BULKHDR_LEN; j++)
+	for (int32_t j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{
-		freeStringObject(shared.integers[j]);
+		decrRefCount(shared.integers[j]);
 	}
 
 	for (int32_t j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{
-		freeStringObject(shared.mbulkhdr[j]);
+		decrRefCount(shared.mbulkhdr[j]);
 	}
 
-	zfree(shared.rIp);
-	zfree(shared.rPort);
+	decrRefCount(shared.rIp);
+	decrRefCount(shared.rPort);
 
 }
 
 void createSharedObjects()
 {
 	int32_t j;
-
 	shared.crlf = createObject(REDIS_STRING,sdsnew("\r\n"));
 	shared.ok = createObject(REDIS_STRING,sdsnew("+OK\r\n"));
 	shared.err = createObject(REDIS_STRING,sdsnew("-ERR\r\n"));
@@ -490,6 +504,8 @@ void createSharedObjects()
 	shared.zcard = createStringObject("zcard",5);
 	shared.dump = createStringObject("dump",4);
 	shared.restore = createStringObject("restore",7);
+	shared.incr = createStringObject("incr",4);
+	shared.decr = createStringObject("decr",4);
 	
 	shared.PING = createStringObject("PING",4);
 	shared.DEL = createStringObject("DEL",3);
@@ -538,10 +554,12 @@ void createSharedObjects()
 	shared.ZCARD = createStringObject("ZCARD",5);
 	shared.DUMP = createStringObject("DUMP",4);
 	shared.RESTORE = createStringObject("RESTORE",7);
+	shared.INCR = createStringObject("INCR",4);
+	shared.DECR = createStringObject("DECR",4);
 	
 	for (j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{
-		shared.integers[j] = createObject(REDIS_STRING,(void*)(long)j);
+		shared.integers[j] = createObject(REDIS_STRING,sdsfromlonglong(j));
 		shared.integers[j]->encoding = REDIS_ENCODING_INT;
 	}
 
@@ -725,7 +743,7 @@ void addReplyBulkCString(Buffer &buffer,const char *s)
 void addReplyDouble(Buffer &buffer,double d)
 {
 	char dbuf[128],sbuf[128];
-	int32_t dlen, slen;
+	int32_t dlen,slen;
 	dlen = snprintf(dbuf,sizeof(dbuf),"%.17g",d);
 	slen = snprintf(sbuf,sizeof(sbuf),"$%d\r\n%s\r\n",dlen,dbuf);
 	addReplyString(buffer,sbuf,slen);

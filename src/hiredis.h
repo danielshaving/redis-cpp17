@@ -186,13 +186,6 @@ private:
 	TcpConnectionPtr serverConn;
 	RedisAsyncCallbackList asyncCb;
 	std::mutex mtx;
-
-	struct
-	{
-		RedisCallbackList invalid;
-		std::unordered_map<rObj*,redisCallback> channels;
-		std::unordered_map<rObj*,redisCallback> patterns;
-	}sub;
 };
 
 class Hiredis
