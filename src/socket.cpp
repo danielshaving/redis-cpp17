@@ -114,7 +114,7 @@ void Socket::toIp(char *buf,size_t size,const struct sockaddr *addr)
 	{
 		assert(size >= INET_ADDRSTRLEN);
 		const struct sockaddr_in *addr4 = (const struct sockaddr_in*)(addr);
-		::inet_ntop(AF_INET,&addr4->sin_addr, buf, static_cast<socklen_t>(size));
+		::inet_ntop(AF_INET,&addr4->sin_addr,buf,static_cast<socklen_t>(size));
 	}
 	else if (addr->sa_family == AF_INET6)
 	{

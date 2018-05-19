@@ -1,6 +1,5 @@
 #include <httpcontext.h>
-
-#include "xBuffer.h"
+#include "buffer.h"
 
 bool xHttpContext::processRequestLine(const char *begin,const char *end)
 {

@@ -20,11 +20,11 @@ void HttpResponse::appendToBuffer(Buffer *output) const
 		output->append("Connection: Keep-Alive\r\n");
 	}
 
-	for (auto it = headers.begin(); it != headers.end(); ++it)
+	for(auto &it : headers)
 	{
-		output->append(it->first);
+		output->append(it.first);
 		output->append(": ");
-		output->append(it->second);
+		output->append(it.second);
 		output->append("\r\n");
 	}
 

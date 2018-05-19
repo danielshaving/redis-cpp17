@@ -30,7 +30,7 @@ typedef std::shared_ptr<Item> ItemPtr;
 typedef std::shared_ptr<const Item> ConstItemPtr;
 typedef std::shared_ptr<ThreadPool> ThreadPoolPtr;
 typedef std::unique_ptr<Acceptor> AcceptorPtr;
-typedef std::unique_ptr<Channel> ChannelPtr;
+typedef std::shared_ptr<Channel> ChannelPtr;
 typedef std::shared_ptr<TimerQueue> TimerQueuePtr;
 typedef std::unique_ptr<Poll> PollPtr;
 typedef std::unique_ptr<Epoll> EpollPtr;

@@ -5,14 +5,6 @@
 
 char favicon[555];
 bool benchmark = false;
-
-AsyncLogging *g_asyncLog = nullptr;
-void asyncOutput(const char* msg,int len)
-{
-	printf("%s\n",msg);
-	g_asyncLog->append(msg, len);
-}
-
 void onMessage(const HttpRequest &req,HttpResponse *resp)
 {
 	std::cout << "Headers " << req.methodString() << " " << req.getPath() << std::endl;
@@ -35,7 +27,7 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/html");
 			resp->addHeader("Server", "xHttp");
-			std::string now = xTimestamp::now().toFormattedString();
+			std::string now = TimeStamp::now().toFormattedString();
 			resp->setBody("<html><head><title>This is title</title></head>"
 				"<body><h1>Hello</h1>Now is " + now +
 				"</body></html>");
@@ -52,7 +44,7 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 			resp->setStatusCode(HttpResponse::k2000k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/plain");
-			resp->addHeader("Server", "xHttp");
+			resp->addHeader("Server","xHttp");
 			resp->setBody("hello, world!\n");
 		}
 		else
@@ -69,16 +61,11 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 	}
 }
 
-int main(int argc, char* argv[])
+int main(int argc,char* argv[])
 {
-	Logger::setOutput(asyncOutput);
-	AsyncLogging log("http", 4096);
-	log.start();
-	g_asyncLog = &log;
-
 	if(argc !=  4)
 	{
-		fprintf(stderr, "Usage: client <host_ip> <port> <thread>\n");
+		fprintf(stderr,"Usage: client <host_ip> <port> <thread>\n");
 		exit(1);
 	}
 

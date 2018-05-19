@@ -109,7 +109,6 @@ public:
 		}
 	}
 
-
 	void send()
 	{
 		char *cmd;
@@ -133,7 +132,6 @@ public:
 		int len = redisFormatCommandArgv(&cmd,argc,argv,nullptr);
 		conn->send(cmd,len);
 		zfree(cmd);
-
 	}
 
 	TcpClient client;
@@ -193,9 +191,9 @@ int main(int argc, char* argv[])
 		LOG_INFO<<"Client all connected";
 
 		TimeStamp start = TimeStamp::now();
-		for(auto it = clientPtr.begin(); it != clientPtr.end(); ++it)
+		for(auto &it : clientPtr)
 		{
-			(*it)->send();
+			it.send();
 		}
 
 		{

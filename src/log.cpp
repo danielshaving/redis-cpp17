@@ -27,7 +27,6 @@ size_t convert(char buf[],T value)
 	return p - buf;
 }
 
-
 size_t convertHex(char buf[],uintptr_t value)
 {
 	uintptr_t i = value;
@@ -77,7 +76,6 @@ void AppendFile::append(const char *logline,const size_t len)
 		n += x;
 		remain = len - n; // remain -= x
 	}
-
 	writtenBytes += len;
 }
 
@@ -117,7 +115,6 @@ lastRoll(0),
 lastFlush(0),
 filerename("redis.log")
 {
-
 	assert(basename.find('/') == std::string::npos);
 	rollFile();
 }
@@ -180,8 +177,10 @@ bool LogFile::rollFile()
 		startOfPeriod = start;
 		file->rename(filerename.c_str(),filename.c_str());
 		file.reset(new AppendFile(filerename));
+
 		return true;
 	}
+
 	return false;
 }
 
@@ -308,6 +307,7 @@ void AsyncLogging::threadFunc()
 		buffersToWrite.clear();
 		output.flush();
 	}
+
 	output.flush();
 }
 
@@ -380,6 +380,7 @@ LogStream &LogStream::operator<<(const void* p)
 		size_t len = convertHex(buf+2, v);
 		buffer.add(len+2);
 	}
+
 	return *this;
 }
 
@@ -391,6 +392,7 @@ LogStream &LogStream::operator<<(double v)
 		int32_t len = snprintf(buffer.current(),kMaxNumericSize,"%.12g", v);
 		buffer.add(len);
 	}
+
 	return *this;
 }
 
@@ -415,7 +417,6 @@ const char *LogLevelName[Logger::NUM_LOG_LEVELS] =
 	"ERROR ",
 	"FATAL ",
 };
-
 
 void defaultOutput(const char* msg,int32_t len)
 {
@@ -485,7 +486,6 @@ Logger::Logger(SourceFile file,int32_t line,bool toAbort)
 {
 
 }
-
 
 Logger::~Logger()
 {

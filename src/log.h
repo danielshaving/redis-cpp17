@@ -34,13 +34,13 @@ public:
 	char *current() { return cur; }
 	void add(size_t len) { cur += len; }
 
-	void reset(){ cur = data;}
-	void bzero(){ ::bzero(data,sizeof data); }
+	void reset() { cur = data;}
+	void bzero() { ::bzero(data,sizeof data); }
 
 	std::string toString() const { return std::string(data,length()); }
 	int32_t avail() const { return static_cast<int32_t>(end() - cur); }
 	const char *end() const { return data + sizeof data; }
-	StringPiece toStringPiece() const { return StringPiece(data, length()); }
+	StringPiece toStringPiece() const { return StringPiece(data,length()); }
 
 private:
 	FixedBuffer(const FixedBuffer&);

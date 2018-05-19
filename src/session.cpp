@@ -17,7 +17,6 @@ Session::Session(Redis *redis,const TcpConnectionPtr &conn)
 	clientConn->setMessageCallback(std::bind(&Session::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
 }
 
-
 Session::~Session()
 {
 	if(sdslen(command->ptr))
@@ -63,7 +62,6 @@ void Session::readCallBack(const TcpConnectionPtr &clientConn,Buffer *buffer)
 
 		processCommand();
 		reset();
-
 	}
 
 	if(clientBuffer.readableBytes() > 0 )
@@ -127,7 +125,7 @@ int32_t Session::processCommand()
 		}
 			
 		assert(!commands.empty());
-		char * key = commands[0]->ptr;
+		char *key = commands[0]->ptr;
 		int32_t hashslot = redis->getCluster()->keyHashSlot(key,sdslen(key));
 		
 		std::unique_lock <std::mutex> lck(redis->getClusterMutex());

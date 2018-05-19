@@ -55,6 +55,7 @@
 #include <sys/wait.h>
 #include <any>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 
 #ifdef __APPLE__
 #include <sys/event.h>
@@ -62,6 +63,7 @@
 #endif
 
 #ifdef __linux__
+#include <ares.h>
 #include <sys/sendfile.h>
 #include <sys/epoll.h>
 #include <linux/tcp.h>
@@ -155,7 +157,7 @@
 #define REDIS_DBCRON_DBS_PER_CALL 16
 #define REDIS_MAX_WRITE_PER_EVENT (1024*64)
 #define REDIS_SHARED_SELECT_CMDS 10
-#define REDIS_SHARED_INTEGERS 10000
+#define REDIS_SHARED_INTEGERS 100000
 #define REDIS_SHARED_BULKHDR_LEN 32
 #define REDIS_MAX_LOGMSG_LEN    1024 /* Default maximum lengthgth of syslog messages */
 #define REDIS_AOF_REWRITE_PERC  100

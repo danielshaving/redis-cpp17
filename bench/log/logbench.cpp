@@ -1,14 +1,14 @@
 #pragma once
-#include "xLog.h"
-#include "xTimer.h"
+#include "log.h"
+#include "timer.h"
 
-std::unique_ptr<xLogFile> g_logFile;
+std::unique_ptr<LogFile> g_logFile;
 int g_total;
 FILE* g_file;
 
-void outputFunc(const char* msg, int len)
+void outputFunc(const char *msg,int len)
 {
-	g_logFile->append(msg, len);
+	g_logFile->append(msg,len);
 }
 
 void flushFunc()
@@ -16,7 +16,7 @@ void flushFunc()
   	g_logFile->flush();
 }
 
-void dummyOutput(const char* msg,int len)
+void dummyOutput(const char *msg,int len)
 {
 	g_total += len;
 	if (g_file)
@@ -29,11 +29,10 @@ void dummyOutput(const char* msg,int len)
 	}
 }
 
-
-void bench(const char* type)
+void bench(const char *type)
 {
-	xLogger::setOutput(dummyOutput);
-	xTimeStamp start(xTimeStamp::now());
+	Logger::setOutput(dummyOutput);
+	TimeStamp start(TimeStamp::now());
 	g_total = 0;
 
 	int n = 1000*1000;
@@ -47,13 +46,13 @@ void bench(const char* type)
 	         << (kLongLog ? longStr : empty)
 	         << i;
 	}
-	xTimeStamp end(xTimeStamp::now());
+	TimeStamp end(TimeStamp::now());
 	double seconds = timeDifference(end, start);
 	printf("%12s: %f seconds, %d bytes, %10.2f msg/s, %.2f MiB/s\n",
 	     type, seconds, g_total, n / seconds, g_total / seconds / (1024 * 1024));
 }
 
-int main(int argc,char* argv[])
+int main(int argc,char *argv[])
 {
 	bench("nop");
 	
@@ -70,10 +69,10 @@ int main(int argc,char* argv[])
 	 fclose(g_file);
 	
 	 g_file = nullptr;
-	 g_logFile.reset(new xLogFile("test_log_st",500*1000*1000,false));
+	 g_logFile.reset(new LogFile("test_log_st",500*1000*1000,false));
 	 bench("test_log_st");
 	
-	 g_logFile.reset(new xLogFile("test_log_mt",500*1000*1000,true));
+	 g_logFile.reset(new LogFile("test_log_mt",500*1000*1000,true));
 	 bench("test_log_mt");
 	 g_logFile.reset();
 
@@ -81,9 +80,9 @@ int main(int argc,char* argv[])
 	sleep(1);
 	char name[256];
 	strncpy(name,argv[0],256);
-	g_logFile.reset(new xLogFile("log_benvh",200*1000));
-	xLogger::setOutput(outputFunc);
-	xLogger::setFlush(flushFunc);
+	g_logFile.reset(new LogFile("log_benvh",200*1000));
+	Logger::setOutput(outputFunc);
+	Logger::setFlush(flushFunc);
 	std::string line = "1234567890 abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
 	for (int i = 0; i < 100000; ++i)
 	{

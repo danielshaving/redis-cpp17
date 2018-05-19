@@ -64,7 +64,7 @@ public:
 	int32_t redisReaderGetReply(redisReply **reply);
 	void redisReaderSetError(int32_t type,const char *str);
 	void redisReaderSetErrorProtocolByte(char byte);
-	void redisReaderSetErrorOOM();
+	void redisReaderSetErrorOOM() {  redisReaderSetError(REDIS_ERR_OOM,"Out of memory"); }
 	void moveToNextTask();
 	int32_t processLineItem();
 	int32_t processBulkItem();
@@ -121,11 +121,11 @@ public:
 	~RedisContext();
 
 	int32_t redisvAppendCommand(const char *format,va_list ap);
-	void redisAppendCommand(const char *cmd,size_t len);
+	void redisAppendCommand(const char *cmd,size_t len) { sender.append(cmd,len); }
 	redisReply *redisCommand(const char *format,...);
 	redisReply *redisvCommand(const char *format,va_list ap);
 	redisReply *redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
-	void redisAppendFormattedCommand(const char *cmd,size_t len);
+	void redisAppendFormattedCommand(const char *cmd,size_t len) { redisAppendCommand(cmd,len); }
 	int32_t redisAppendCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
 	void redisSetError(int32_t type,const char *str);
 	redisReply *redisBlockForReply();
@@ -212,6 +212,7 @@ public:
 	auto &getMutex() { return rtx; }
 	auto &getAsyncContext() { return redisAsyncContexts; }
 	auto &getTcpClient() { return tcpClients; }
+
 	RedisAsyncContextPtr getIteratorNode();
 
 private:

@@ -6,7 +6,6 @@
 #include "util.h"
 
 class Redis;
-
 class Session : public std::enable_shared_from_this<Session>
 {
 public:
