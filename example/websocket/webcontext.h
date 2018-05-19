@@ -1,12 +1,12 @@
 #pragma once
-#include "httprequest.h"
+#include "webrequest.h"
 #include "tcpconnection.h"
 #include "log.h"
 
-class HttpContext
+class WebContext
 {
 public:
-	enum HttpRequestParseState
+	enum WebRequestParseState
 	{
 		kExpectRequestLine,
 		kExpectHeaders,
@@ -14,7 +14,7 @@ public:
 		kGotAll,
 	};
 
-	HttpContext()
+	WebContext()
 	:state(kExpectRequestLine)
 	{
 
@@ -22,15 +22,15 @@ public:
 
 	bool parseRequest(Buffer *buffer);
 	bool wsFrameExtractBuffer(const TcpConnectionPtr &conn,const char *buf,const size_t bufferSize,size_t &size,bool &fin);
-	bool wsFrameBuild(Buffer *buffer,HttpRequest::WebSocketType framType,bool ok = true,bool masking = false);
+	bool wsFrameBuild(Buffer *buffer,WebRequest::WebSocketType framType,bool ok = true,bool masking = false);
 
 	bool gotAll() const { return state == kGotAll; }
 	void reset() { request.reset(); }
 
-	HttpRequest &getRequest() { return request; }
+	WebRequest &getRequest() { return request; }
 	bool processRequestLine(const char *begin,const char *end);
 
 private:
-	HttpRequestParseState state;
-	HttpRequest request;
+	WebRequestParseState state;
+	WebRequest request;
 };

@@ -1,10 +1,10 @@
-#include "httpserver.h"
+#include "webserver.h"
 
 void onConnection(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
-		HttpContext context;
+		WebContext context;
 		conn->setContext(context);
 	}
 	else
@@ -13,16 +13,16 @@ void onConnection(const TcpConnectionPtr &conn)
 	}
 }
 
-void onMessage(HttpRequest &rep,const TcpConnectionPtr &conn)
+void onMessage(WebRequest &rep,const TcpConnectionPtr &conn)
 {
-	auto context = std::any_cast<HttpContext>(conn->getMutableContext());
+	auto context = std::any_cast<WebContext>(conn->getMutableContext());
 	Buffer sendBuf;
 	sendBuf.append(rep.getParseString().c_str(),rep.getParseString().size());
-	context->wsFrameBuild(sendBuf,HttpRequest::BINARY_FRAME,true,false);
+	context->wsFrameBuild(sendBuf,WebRequest::BINARY_FRAME,true,false);
 	conn->send(&sendBuf);
 }
 
-int main(int argc, char* argv[])
+int main(int argc,char* argv[])
 {
 	if(argc  !=  4)
 	{

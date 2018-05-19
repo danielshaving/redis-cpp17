@@ -1,22 +1,22 @@
 #pragma once
-#include "httpcontext.h"
-#include "httpresponse.h"
+#include "webcontext.h"
+#include "webresponse.h"
 #include "tcpserver.h"
 #include "util.h"
 
 class EventLoop;
-class HttpServer
+class WebServer
 {
 public:
-	typedef std::function<bool(HttpRequest *,const TcpConnectionPtr &)> HttpReadCallBack;
-	typedef std::function<void(const TcpConnectionPtr &)> HttpConnCallBack;
+	typedef std::function<bool(HttpRequest *,const TcpConnectionPtr &)> WebReadCallBack;
+	typedef std::function<void(const TcpConnectionPtr &)> WebConnCallBack;
 
-	HttpServer(EventLoop *loop,const char *ip,uint16_t  port);
-	~HttpServer();
+	WebServer(EventLoop *loop,const char *ip,uint16_t  port);
+	~WebServer();
 
 	void setThreadNum(int numThreads) { server.setThreadNum(numThreads); }
-	void setMessageCallback(HttpReadCallBack callback);
-	void setConnCallback(HttpConnCallBack callback);
+	void setMessageCallback(WebReadCallBack callback);
+	void setConnCallback(WebConnCallBack callback);
 	void start();
 	void onConnection(const TcpConnectionPtr &conn);
 	void onHandeShake(const TcpConnectionPtr &conn,Buffer *buffer);
@@ -26,7 +26,7 @@ public:
 private:
 	EventLoop *loop;
 	TcpServer server;
-	HttpReadCallBack httpReadCallback;
-	HttpConnCallBack httpConnCallback;
+	WebReadCallBack httpReadCallback;
+	WebConnCallBack httpConnCallback;
 	std::map<int32_t,std::shared_ptr<HttpContext>> webSockets;
 };

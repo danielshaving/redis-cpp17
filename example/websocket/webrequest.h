@@ -1,10 +1,10 @@
 #pragma once
 #include "buffer.h"
 
-class HttpRequest
+class WebRequest
 {
 public:
-	HttpRequest()
+	WebRequest()
 	: method(kInvalid),
 	  version(kUnknown)
 	{

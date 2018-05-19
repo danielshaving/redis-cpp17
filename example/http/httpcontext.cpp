@@ -1,7 +1,7 @@
-#include <httpcontext.h>
+#include "httpcontext.h"
 #include "buffer.h"
 
-bool xHttpContext::processRequestLine(const char *begin,const char *end)
+bool HttpContext::processRequestLine(const char *begin,const char *end)
 {
 	bool succeed = false;
 	const char *start = begin;
@@ -29,11 +29,11 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 			{
 				if (*(end-1) == '1')
 				{
-					request.setVersion(xHttpRequest::kHttp11);
+					request.setVersion(HttpRequest::kHttp11);
 				}
 				else if (*(end-1) == '0')
 				{
-					request.setVersion(xHttpRequest::kHttp10);
+					request.setVersion(HttpRequest::kHttp10);
 				}
 				else
 				{
@@ -46,7 +46,7 @@ bool xHttpContext::processRequestLine(const char *begin,const char *end)
 }
 
 
-bool xHttpContext::parseRequest(xBuffer *buf)
+bool HttpContext::parseRequest(Buffer *buf)
 {
 	bool ok = true;
 	bool hasMore = true;

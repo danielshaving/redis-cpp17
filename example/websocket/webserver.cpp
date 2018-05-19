@@ -1,41 +1,41 @@
-#include "httpserver.h"
+#include "webserver.h"
 
-HttpServer::HttpServer(EventLoop *loop,const char *ip,uint16_t port)
+WebServer::WebServer(EventLoop *loop,const char *ip,uint16_t port)
 :loop(loop),
  server(loop,ip,port,nullptr)
 {
-	server.setConnectionCallback(std::bind(&HttpServer::onConnection,this,std::placeholders::_1));
-	server.setMessageCallback(std::bind(&HttpServer::onHandeShake,this,std::placeholders::_1,std::placeholders::_2));
+	server.setConnectionCallback(std::bind(&WebServer::onConnection,this,std::placeholders::_1));
+	server.setMessageCallback(std::bind(&WebServer::onHandeShake,this,std::placeholders::_1,std::placeholders::_2));
 }
 
-void HttpServer::setConnCallback(HttpConnCallBack callback)
+void WebServer::setConnCallback(WebConnCallBack callback)
 {
 	httpConnCallback = callback;
 }
 
-void HttpServer::setMessageCallback(HttpReadCallBack callback)
+void WebServer::setMessageCallback(WebReadCallBack callback)
 {
 	httpReadCallback = callback;
 }
 
-HttpServer::~HttpServer()
+WebServer::~WebServer()
 {
 
 }
 
-void HttpServer::start()
+void WebServer::start()
 {
 	server.start();
 }
 
-void HttpServer::onConnection(const TcpConnectionPtr &conn)
+void WebServer::onConnection(const TcpConnectionPtr &conn)
 {
 	httpConnCallback(conn);
 }
 
-void HttpServer::onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
+void WebServer::onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
 {
-	auto context = std::any_cast<HttpContext>(conn->getMutableContext());
+	auto context = std::any_cast<WebContext>(conn->getMutableContext());
 	while(buffer->readableBytes() > 0)
 	{
 		size_t size = 0;
@@ -46,14 +46,14 @@ void HttpServer::onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
 			break;
 		}
 
-		if(context->getRequest().getOpCode() == HttpRequest::PING_FRAME ||
-						context->getRequest().getOpCode() == HttpRequest::PONG_FRAME ||
-						context->getRequest().getOpCode() == HttpRequest::CLOSE_FRAME)
+		if(context->getRequest().getOpCode() == WebRequest::PING_FRAME ||
+						context->getRequest().getOpCode() == WebRequest::PONG_FRAME ||
+						context->getRequest().getOpCode() == WebRequest::CLOSE_FRAME)
 		{
 			conn->forceClose();
 			break;
 		}
-		else if(context->getRequest().getOpCode() == HttpRequest::CONTINUATION_FRAME)
+		else if(context->getRequest().getOpCode() == WebRequest::CONTINUATION_FRAME)
 		{
 
 		}
@@ -76,11 +76,11 @@ void HttpServer::onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
 	}
 }
 
-void HttpServer::onHandeShake(const TcpConnectionPtr &conn,Buffer *buffer)
+void WebServer::onHandeShake(const TcpConnectionPtr &conn,Buffer *buffer)
 {
-	auto context = std::any_cast<HttpContext>(conn->getMutableContext());
+	auto context = std::any_cast<WebContext>(conn->getMutableContext());
 	if(!context->parseRequest(buffer) ||
-			context->getRequest().getMethod() != HttpRequest::kGet)
+			context->getRequest().getMethod() != WebRequest::kGet)
 	{
 		conn->send("HTTP/1.1 400 Bad Request\r\n\r\n");
 		conn->forceClose();
@@ -97,7 +97,7 @@ void HttpServer::onHandeShake(const TcpConnectionPtr &conn,Buffer *buffer)
 	}
 }
 
-void HttpServer::onRequest(const TcpConnectionPtr &conn,const HttpRequest &req)
+void WebServer::onRequest(const TcpConnectionPtr &conn,const WebRequest &req)
 {
 	auto &headers = req.getHeaders();
 	auto iter = headers.find("Sec-WebSocket-Key");
@@ -123,7 +123,7 @@ void HttpServer::onRequest(const TcpConnectionPtr &conn,const HttpRequest &req)
 	sendBuf.append(base64Str.data(),base64Str.size());
 	sendBuf.append("\r\n\r\n");
 	conn->send(&sendBuf);
-	conn->setMessageCallback(std::bind(&HttpServer::onMessage,this,std::placeholders::_1,std::placeholders::_2));
+	conn->setMessageCallback(std::bind(&WebServer::onMessage,this,std::placeholders::_1,std::placeholders::_2));
 }
 
 

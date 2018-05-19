@@ -32,7 +32,7 @@ int32_t main(int32_t argc,char *argv[])
 	if (argc == 1)
 	{
 		total = 3;
-		resolve(&resolver,"www.baidu.com");
+		resolve(&resolver,"www.chenshuo.com");
 		resolve(&resolver,"www.example.com");
 		resolve(&resolver,"www.google.com");
 	}

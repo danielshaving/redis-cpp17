@@ -6,7 +6,7 @@ class EventLoop;
 class HttpRequest;
 class HttpResponse;
 
-class HttpServer : boost::noncopyable
+class HttpServer
 {
 public:
 	typedef std::function<void(const HttpRequest &,HttpResponse*)> HttpCallBack;
@@ -22,7 +22,7 @@ public:
 	void setMessageCallback(HttpCallBack callback);
 	void start();
 	void onConnection(const TcpConnectionPtr &conn);
-	void onMessage(const TcpConnectionPtr &conn,xBuffer *buffer);
+	void onMessage(const TcpConnectionPtr &conn,Buffer *buffer);
 	void onRequest(const TcpConnectionPtr &conn,const HttpRequest &req);
 
 private:

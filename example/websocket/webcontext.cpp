@@ -1,6 +1,6 @@
-#include "httpcontext.h"
+#include "webcontext.h"
 
-bool HttpContext::processRequestLine(const char *begin,const char *end)
+bool WebContext::processRequestLine(const char *begin,const char *end)
 {
 	bool succeed = false;
 	const char *start = begin;
@@ -28,11 +28,11 @@ bool HttpContext::processRequestLine(const char *begin,const char *end)
 			{
 				if (*(end-1) == '1')
 				{
-					request.setVersion(HttpRequest::kHttp11);
+					request.setVersion(WebRequest::kHttp11);
 				}
 				else if (*(end-1) == '0')
 				{
-					request.setVersion(HttpRequest::kHttp10);
+					request.setVersion(WebRequest::kHttp10);
 				}
 				else
 				{
@@ -45,7 +45,8 @@ bool HttpContext::processRequestLine(const char *begin,const char *end)
 	return succeed;
 }
 
-bool HttpContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,const char *buf,const size_t bufferSize,size_t &size,bool &fin)
+bool WebContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,
+		const char *buf,const size_t bufferSize,size_t &size,bool &fin)
 {
 	if(bufferSize < 2)
 	{
@@ -134,18 +135,18 @@ bool HttpContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,const char *
 
 	if(fin)
 	{
-		getRequest().setOpCodeType((HttpRequest::WebSocketType)(buffer[0] & 0x0F));
+		getRequest().setOpCodeType((WebRequest::WebSocketType)(buffer[0] & 0x0F));
 	}
 	else
 	{
-		getRequest().setOpCodeType(HttpRequest::CONTINUATION_FRAME);
+		getRequest().setOpCodeType(WebRequest::CONTINUATION_FRAME);
 	}
 
 	size = len + pos;
 	return true;
 }
 
-bool HttpContext::wsFrameBuild(Buffer *buffer,HttpRequest::WebSocketType framType,bool ok,bool masking)
+bool WebContext::wsFrameBuild(Buffer *buffer,WebRequest::WebSocketType framType,bool ok,bool masking)
  {
 	 if (masking)
 	 {
@@ -196,7 +197,7 @@ bool HttpContext::wsFrameBuild(Buffer *buffer,HttpRequest::WebSocketType framTyp
 	return true;
  }
 
-bool HttpContext::parseRequest(Buffer *buffer)
+bool WebContext::parseRequest(Buffer *buffer)
 {
 	bool ok = true;
 	bool hasMore = true;

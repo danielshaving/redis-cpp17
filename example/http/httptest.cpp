@@ -13,7 +13,7 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 		auto &headers = req.getHeaders();
 		for (auto  it = headers.begin();it != headers.end(); ++it)
 		{
-			std::cout << it->first << ": " << it->second << std::endl;
+			//std::cout << it->first << ": " << it->second << std::endl;
 		}
 	}
 
@@ -23,10 +23,11 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 	{
 		if (req.getPath() == "/")
 		{
+			printf("");
 			resp->setStatusCode(HttpResponse::k2000k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/html");
-			resp->addHeader("Server", "xHttp");
+			resp->addHeader("Server","xHttp");
 			std::string now = TimeStamp::now().toFormattedString();
 			resp->setBody("<html><head><title>This is title</title></head>"
 				"<body><h1>Hello</h1>Now is " + now +
@@ -46,6 +47,16 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 			resp->setContentType("text/plain");
 			resp->addHeader("Server","xHttp");
 			resp->setBody("hello, world!\n");
+		}
+		else if (req.getPath() == "/test.txt")
+		{
+			std::string filename = "attachment;filename=";
+			filename += "test.txt";
+			resp->setStatusCode(HttpResponse::k2000k);
+			resp->setStatusMessage("OK");
+			resp->setContentType("text/plain");
+			resp->addHeader("Content-Disposition",filename);
+			resp->setBody("test!\n");
 		}
 		else
 		{
