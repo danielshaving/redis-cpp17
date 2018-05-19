@@ -63,7 +63,6 @@
 #endif
 
 #ifdef __linux__
-#include <ares.h>
 #include <sys/sendfile.h>
 #include <sys/epoll.h>
 #include <linux/tcp.h>
