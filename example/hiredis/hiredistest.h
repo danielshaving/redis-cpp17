@@ -1,10 +1,11 @@
 #pragma once
 #include "hiredis.h"
+#include <boost/noncopyable.hpp>
 
 class HiredisTest : boost::noncopyable
 {
 public:
-	HiredisTest(xEventLoop *loop,int8_t threadCount,
+	HiredisTest(EventLoop *loop,int8_t threadCount,
 			int16_t sessionCount,int32_t messageCount,const char *ip,int16_t port);
 	~HiredisTest();
 

@@ -70,15 +70,25 @@ void Channel::handleEventWithGuard()
 #ifdef __APPLE__
 	if ((revents & POLLHUP) && !(revents & POLLIN))
 	{
+		if (logHup)
+		{
+
+		}
+
 		if (closeCallback) closeCallback();
 	}
 
-	if (revents & POLLERR)
+	if (revents & POLLNVAL)
+	{
+
+	}
+
+	if (revents & (POLLERR | POLLNVAL))
 	{
 		if (errorCallback) errorCallback();
 	}
 
-	if (revents & (POLLIN | POLLPRI | POLLHUP))
+	if (revents & (POLLIN | POLLPRI))
 	{
 		if (readCallback) readCallback();
 	}

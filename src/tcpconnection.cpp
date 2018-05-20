@@ -85,7 +85,6 @@ void TcpConnection::handleRead()
 		{
 
 		}
-
 	}
 }
 
@@ -185,6 +184,7 @@ void TcpConnection::handleError()
 
 void TcpConnection::sendPipe(Buffer *buf)
 {
+#ifdef __linux__
 	if (state == kConnected)
 	{
 		if (loop->isInLoopThread())
@@ -196,15 +196,32 @@ void TcpConnection::sendPipe(Buffer *buf)
 			loop->runInLoop(std::bind(&bindSendPipeInLoop,this,buf->retrieveAllAsString()));
 		}
 	}
+#endif
+
+#ifdef __APPLE__
+	if (state == kConnected)
+	{
+		if (loop->isInLoopThread())
+		{
+			sendInLoop(buf->peek(),buf->readableBytes());
+		}
+		else
+		{
+			loop->runInLoop(std::bind(&bindSendInLoop,this,buf->retrieveAllAsString()));
+		}
+	}
+#endif
+
 }
 
 void TcpConnection::sendPipe(const void *message,int len)
 {
-    send(StringPiece(static_cast<const char*>(message),len));
+    sendPipe(StringPiece(static_cast<const char*>(message),len));
 }
 
 void TcpConnection::sendPipe(const StringPiece &message)
 {
+#ifdef __linux__
 	if (state == kConnected)
 	{
 		if (loop->isInLoopThread())
@@ -216,6 +233,21 @@ void TcpConnection::sendPipe(const StringPiece &message)
 			loop->runInLoop(std::bind(&bindSendPipeInLoop,this,message.as_string()));
 		}
 	}
+#endif
+
+#ifdef __APPLE__
+	if (state == kConnected)
+	{
+		if (loop->isInLoopThread())
+		{
+			sendInLoop(message.data(),message.size());
+		}
+		else
+		{
+			loop->runInLoop(std::bind(&bindSendInLoop,this,message.as_string()));
+		}
+	}
+#endif
 }
 
 void TcpConnection::send(const void *message,int len)
@@ -229,7 +261,7 @@ void TcpConnection::send(const StringPiece &message)
 	{
 		if (loop->isInLoopThread())
 		{
-		  	sendPipeInLoop(message.data(),message.size());
+		  	sendInLoop(message.data(),message.size());
 		}
 		else
 		{
@@ -259,7 +291,7 @@ void TcpConnection::bindSendPipeInLoop(TcpConnection *conn,const StringPiece &me
 
 void TcpConnection::bindSendInLoop(TcpConnection *conn,const StringPiece &message)
 {
-	 conn->sendInLoop(message.data(),message.size());
+	conn->sendInLoop(message.data(),message.size());
 }
 
 void TcpConnection::send(Buffer *buf)
@@ -268,7 +300,7 @@ void TcpConnection::send(Buffer *buf)
 	{
 		if (loop->isInLoopThread())
 		{
-		  	sendInLoop(buf->peek(), buf->readableBytes());
+		  	sendInLoop(buf->peek(),buf->readableBytes());
 		}
 		else
 		{
@@ -294,9 +326,38 @@ void TcpConnection::sendInLoop(const void *data,size_t len)
 		return;
 	}
 
+#ifdef __APPLE__
+	while (remaining)
+	{
+		nwrote = ::write(channel->getfd(),data,len);
+		if (nwrote >= 0)
+		{
+			remaining = len - nwrote;
+			if (remaining == 0 && writeCompleteCallback)
+			{
+				loop->queueInLoop(std::bind(writeCompleteCallback,shared_from_this()));
+			}
+		}
+		else // nwrote < 0
+		{
+			nwrote = 0;
+			if (errno != EWOULDBLOCK)
+			{
+				if (errno == EPIPE || errno == ECONNRESET) // FIXME: any others?
+				{
+					faultError = true;
+					assert(false);
+				}
+			}
+		}
+	}
+
+#endif
+
+#ifdef __linux__
 	if (!channel->isWriting() && sendBuff.readableBytes() == 0)
 	{
-		nwrote = ::write(channel->getfd(), data, len);
+		nwrote = ::write(channel->getfd(),data,len);
 		if (nwrote >= 0)
 		{
 			remaining = len - nwrote;
@@ -317,8 +378,10 @@ void TcpConnection::sendInLoop(const void *data,size_t len)
 			}
 		}
 	}
+#endif
 
 	assert(remaining <= len);
+#ifdef __linux__
 	if (!faultError && remaining > 0)
 	{
 		size_t oldLen = sendBuff.readableBytes();
@@ -329,12 +392,13 @@ void TcpConnection::sendInLoop(const void *data,size_t len)
 		  	loop->queueInLoop(std::bind(highWaterMarkCallback,shared_from_this(),oldLen + remaining));
 		}
 		
-		sendBuff.append(static_cast<const char*>(data)+nwrote,remaining);
+		sendBuff.append(static_cast<const char*>(data) + nwrote,remaining);
 		if (!channel->isWriting())
 		{
 		  	channel->enableWriting();
 		}
 	}
+#endif
 }
 
 void TcpConnection::connectEstablished()

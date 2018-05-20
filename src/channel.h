@@ -60,6 +60,7 @@ private:
 	bool tied;
 	bool eventHandling;
 	bool addedToLoop;
+	bool logHup;
 	std::weak_ptr<void> tie;
 
 };
