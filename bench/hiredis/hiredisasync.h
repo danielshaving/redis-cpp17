@@ -5,7 +5,7 @@
 int64_t startTime = 0;
 int64_t endTime = 0;
 
-class HiredisAsync : noncopyable
+class HiredisAsync
 {
 public:
 	HiredisAsync(EventLoop *loop,int8_t threadCount,const char *ip,int16_t port);

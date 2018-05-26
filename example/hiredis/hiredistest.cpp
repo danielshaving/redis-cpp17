@@ -150,6 +150,7 @@ void HiredisTest::string()
 	int32_t k = 0;
 	for(; k < messageCount; k++)
 	{
+		printf("%d\n",k);
 		auto redis = hiredis.getIteratorNode();
 		assert(redis != nullptr);
 		redis->redisAsyncCommand(std::bind(&HiredisTest::setCallback,
@@ -226,10 +227,9 @@ int main(int argc,char* argv[])
 
  		EventLoop loop;
 		HiredisTest hiredis(&loop,threadCount,sessionCount,messageCount,ip,port);
-		if(threadCount == 0)
-		{
-			hiredis.string();
-		}
+
+		hiredis.string();
+
 
 		//hiredis.hash();
 		//hiredis.list();

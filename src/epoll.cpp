@@ -75,7 +75,7 @@ void Epoll::updateChannel(Channel *channel)
 			assert(channels[fd] == channel);
 		}
 		channel->setIndex(kAdded);
-		update(EPOLL_CTL_ADD, channel);
+		update(EPOLL_CTL_ADD,channel);
 	}
 	else
 	{
@@ -120,7 +120,7 @@ void Epoll::removeChannel(Channel *channel)
 void Epoll::update(int32_t operation,Channel *channel)
 {
 	struct epoll_event event;
-	bzero(&event, sizeof event);
+	bzero(&event,sizeof event);
 	event.events = channel->getEvents();
 	event.data.ptr = channel;
 	int32_t fd = channel->getfd();

@@ -794,7 +794,7 @@ void RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,const std:
 		std::unique_lock<std::mutex> lk(mtx);
 		asyncCb.push_back(std::move(call));
 	}
-	serverConn->sendPipe(cmd,len);
+	serverConn->send(cmd,len);
 }
 
 

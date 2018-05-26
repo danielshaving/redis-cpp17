@@ -16,7 +16,6 @@ int64_t createTimerfd()
 }
 #endif
 
-
 struct timespec howMuchTimeFromNow(const TimeStamp &when)
 {
 	int64_t  microseconds = when.getMicroSecondsSinceEpoch()
@@ -46,17 +45,16 @@ void resetTimerfd(int64_t timerfd,const TimeStamp &expiration)
 		LOG_ERROR<<"timerfd_settime error";
 	}
 #endif
-  
 }
 
 void readTimerfd(int64_t timerfd,const TimeStamp &now)
 {
-  uint64_t howmany;
-  ssize_t n = ::read(timerfd,&howmany,sizeof howmany);
-  if (n != sizeof howmany)
-  {
-    assert(false);
-  }
+	uint64_t howmany;
+	ssize_t n = ::read(timerfd,&howmany,sizeof howmany);
+	if (n != sizeof howmany)
+	{
+		assert(false);
+	}
 }
 
 TimerQueue::TimerQueue(EventLoop *loop)
@@ -119,7 +117,6 @@ void TimerQueue::cancelInloop(Timer *timer)
 	{
 		cancelingTimers.insert(atimer);
 	}
-
 	assert(timerLists.size() == activeTimers.size());
 }
 
@@ -139,7 +136,6 @@ Timer *TimerQueue::getTimerBegin()
 	{
 		return nullptr;
 	}
-
 	return timerLists.begin()->second;
 }
 
@@ -160,9 +156,7 @@ void TimerQueue::handleRead()
 	{
 		it.second->run();
 	}
-
 	callingExpiredTimers = false;
-
 	reset(expired,now);
 }
 
@@ -188,7 +182,6 @@ bool TimerQueue::insert(Timer *timer)
 		std::pair<ActiveTimerSet::iterator,bool> result = activeTimers.insert(ActiveTimer(timer,timer->getSequence()));
 		assert(result.second); (void)result;
 	}
-
 	return earliestChanged;
 }
 
@@ -238,8 +231,6 @@ std::vector<TimerQueue::Entry> TimerQueue::getExpired(TimeStamp now)
 		size_t n = activeTimers.erase(timer);
 		assert(n == 1); (void)n;
 	}
-
 	assert(timerLists.size() == activeTimers.size());
 	return expired;
-
 }

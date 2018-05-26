@@ -28,7 +28,6 @@ public:
 		client.connect(ip,port);
 	}
 
-
 	void countDown()
 	{
 		connShutDown++;
@@ -198,7 +197,7 @@ int main(int argc, char* argv[])
 
 		{
 			std::unique_lock <std::mutex> lck(mtx);
-			while(connShutDown  < clients)
+			while(connShutDown < clients)
 			{
 				condition.wait(lck);
 			}
@@ -210,7 +209,6 @@ int main(int argc, char* argv[])
 		LOG_WARN << seconds << " sec";
 		LOG_WARN << 1.0 * clients * requests / seconds << " QPS";
 	}
-
 	return 0;
 }
 

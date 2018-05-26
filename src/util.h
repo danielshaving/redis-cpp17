@@ -21,16 +21,6 @@ public:
 		}
 	}
 
-	void setSeed(uint32_t s)
-	{
-		seed = (s & 0x7fffffffu);
-		// Avoid bad seeds.
-		if (seed == 0 || seed == 2147483647L)
-		{
-			seed = 1;
-		}
-	}
-
 	uint32_t next()
 	{
 		static const uint32_t M = 2147483647L;   // 2^31-1

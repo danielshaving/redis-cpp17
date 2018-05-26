@@ -102,7 +102,7 @@ void HiredisAsync::serverCron()
  {
  	if (argc != 5)
  	{
- 		fprintf(stderr, "Usage: client <host_ip> <port> <sessionCount> <threadCount> \n ");
+ 		fprintf(stderr,"Usage: client <host_ip> <port> <sessionCount> <threadCount> \n ");
  	}
  	else
  	{

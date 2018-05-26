@@ -1,9 +1,17 @@
 #include "channel.h"
 #include "eventloop.h"
 
+#ifdef __linux__
+const int32_t Channel::kNoneEvent = 0;
+const int32_t Channel::kReadEvent = EPOLLIN | EPOLLPRI;
+const int32_t Channel::kWriteEvent = EPOLLOUT;
+#endif
+
+#ifdef __APPLE__
 const int32_t Channel::kNoneEvent = 0;
 const int32_t Channel::kReadEvent = POLLIN | POLLPRI;
-const int32_t Channel::kWriteEvent = POLLOUT;
+const int32_t Channel::kWriteEvent = POLLOUT | POLLHUP;
+#endif
 
 Channel::Channel(EventLoop *loop,int32_t fd)
 :loop(loop),
@@ -44,13 +52,14 @@ void Channel::update()
 void Channel::handleEventWithGuard()
 {
 	eventHandling = true;
+
 #ifdef __linux__
 	if ((revents & EPOLLHUP) && !(revents & EPOLLIN))
 	{
 		if (closeCallback) closeCallback();
 	}
 
-	if (revents & EPOLLERR)
+	if (revents & (EPOLLERR | EPOLLNVAL))
 	{
 		if (errorCallback) errorCallback();
 	}
@@ -78,11 +87,6 @@ void Channel::handleEventWithGuard()
 		if (closeCallback) closeCallback();
 	}
 
-	if (revents & POLLNVAL)
-	{
-
-	}
-
 	if (revents & (POLLERR | POLLNVAL))
 	{
 		if (errorCallback) errorCallback();
@@ -93,7 +97,7 @@ void Channel::handleEventWithGuard()
 		if (readCallback) readCallback();
 	}
 
-	if (revents & POLLOUT)
+	if (revents & POLLOUT | POLLHUP)
 	{
 		if (writeCallback) writeCallback();
 	}

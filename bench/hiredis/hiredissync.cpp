@@ -12,11 +12,9 @@ void testCommand(RedisContextPtr c)
 	printf("PING: %s\n", reply->str);
 	freeReply(reply);
 
-
 	reply = c->redisCommand("SET %s %s", "foo", "hello world");
 	printf("SET: %s\n", reply->str);
 	freeReply(reply);
-
 
 	reply = c->redisCommand("SET %b %b", "bar", (size_t) 3, "hello", (size_t) 5);
 	printf("SET (binary API): %s\n", reply->str);
@@ -53,9 +51,7 @@ void testCommand(RedisContextPtr c)
 			printf("%u) %s\n", j, reply->element[j]->str);
 		}
 	}
-
 	freeReply(reply);
-
 }
 
 void testFormatCommand()
@@ -174,10 +170,7 @@ void testFormatCommand()
 	test_cond(strncmp(sds_cmd,"*3\r\n$3\r\nSET\r\n$7\r\nfoo\0xxx\r\n$3\r\nbar\r\n",len) == 0 &&
 	    len == 4+4+(3+2)+4+(7+2)+4+(3+2));
 	sdsfree(sds_cmd);
-
-
 }
-
 
 void testReplyReader()
 {
@@ -310,7 +303,6 @@ void testBlockingConecntionerros()
 	test("Returns error when the port is not open: ");
 	c = redisConnect("127.0.0.1", 1);
 	test_cond(c->err == REDIS_ERR_IO &&strcmp(c->errstr,"Connection refused") == 0);
-
 }
 
 void testBlockIoerrors()
@@ -421,7 +413,6 @@ void testThroughPut()
 	
 	zfree(replies);
 	printf("\t(%dx PING: %.3fs)\n", num, (t2-t1)/1000000.0);
-
 
 	replies = (redisReply**)zmalloc(sizeof(redisReply*) * num );
 	t1 = ustime();

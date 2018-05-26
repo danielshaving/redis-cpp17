@@ -236,8 +236,6 @@ private:
 	Cluster clus;
 	Rdb rdb;
 	Socket socket;
-
-
 };
 
 

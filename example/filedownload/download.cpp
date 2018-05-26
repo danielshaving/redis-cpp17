@@ -15,7 +15,7 @@ std::string readFile(const char *filename)
 		// inefficient!!!
 		const int kBufSize = 1024*1024;
 		char iobuf[kBufSize];
-		::setbuffer(fp, iobuf, sizeof iobuf);
+		::setbuffer(fp,iobuf,sizeof iobuf);
 
 		char buf[kBufSize];
 		size_t nread = 0;

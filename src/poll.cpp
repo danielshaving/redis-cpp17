@@ -82,7 +82,7 @@ void Poll::updateChannel(Channel *channel)
 		assert(channels[channel->getfd()] == channel);
 		int32_t idx = channel->getIndex();
 		assert(0 <= idx && idx < static_cast<int32_t>(events.size()));
-		struct pollfd& pfd = events[idx];
+		struct pollfd &pfd = events[idx];
 		assert(pfd.fd == channel->getfd() || pfd.fd == -channel->getfd()-1);
 		pfd.fd = channel->getfd();
 		pfd.events = static_cast<short>(channel->getEvents());
@@ -131,7 +131,7 @@ void Poll::fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) con
 		if((*it).revents > 0)
 		{
 			--numEvents;
-			auto  iter = channels.find((*it).fd);
+			auto iter = channels.find((*it).fd);
 			assert(iter != channels.end());
 			auto channel = iter->second;
 			assert(channel->getfd() == (*it).fd);
@@ -139,7 +139,6 @@ void Poll::fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) con
 			activeChannels->push_back(channel);
 		}
 	}
-
 }
 
 #endif
