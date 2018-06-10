@@ -1309,7 +1309,7 @@ bool Redis::slaveofCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 		if (ip.c_str() && !memcmp(ip.c_str(),obj[0]->ptr,sdslen(obj[0]->ptr))
 		&& this->port == port)
 		{
-			LOG_WARN<<"slave of  connect self error .";
+			LOG_WARN<<"slave of connect self error .";
 			addReplySds(session->getClientBuffer(),sdsnew("don't connect master self \r\n"));
 			return false;
 		}
@@ -1323,7 +1323,7 @@ bool Redis::slaveofCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 		}	
 
 		repli.replicationSetMaster(obj[0],port);
-		 LOG_INFO <<"slave of "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
+		LOG_INFO <<"slave of "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
 	}
 	
 	addReply(session->getClientBuffer(),shared.ok);
@@ -1336,16 +1336,16 @@ bool Redis::commandCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	return false;
 }
 
- void Redis::forkWait()
- {
-    forkCondWaitCount++;
-    expireCondition.notify_one();
+void Redis::forkWait()
+{
+	forkCondWaitCount++;
+	expireCondition.notify_one();
 
-    {
-        std::unique_lock <std::mutex> lck(forkMutex);
-        forkCondition.wait(lck);
-    }
- }
+	{
+	    std::unique_lock <std::mutex> lck(forkMutex);
+	    forkCondition.wait(lck);
+	}
+}
 
 bool Redis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 {

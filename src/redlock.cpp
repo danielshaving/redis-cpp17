@@ -34,7 +34,7 @@ RedLock::RedLock()
 	retryCount = defaultRetryCount;
 	retryDelay = defaultRetryDelay;
 	quoRum = 0;
-	fd = open("/dev/urandom", O_RDONLY);
+	fd = open("/dev/urandom",O_RDONLY);
 	if (fd == -1)
 	{
 		printf("Can't open file /dev/urandom\n");
@@ -66,14 +66,13 @@ sds RedLock::getUniqueLockId()
 	{
 		LOG_WARN<<"Error: GetUniqueLockId";
 	}
-
 	return nullptr;
 }
 
 int32_t RedLock::lockInstance(const RedisContextPtr &c,const char *resource,const char *val,const int32_t ttl)
 {
-	redisReply *reply;
-	reply = (redisReply *)c->redisCommand("set %s %s px %d nx",resource, val, ttl);
+	RedisReply *reply;
+	reply = (RedisReply *)c->redisCommand("set %s %s px %d nx",resource, val, ttl);
 
 	if (reply)
 	{
@@ -96,7 +95,7 @@ int32_t RedLock::lockInstance(const RedisContextPtr &c,const char *resource,cons
 	return -1;
 }
 
-redisReply *RedLock::commandArgv(const RedisContextPtr &c, int32_t argc, char **inargv)
+RedisReply *RedLock::commandArgv(const RedisContextPtr &c, int32_t argc, char **inargv)
 {
 	char **argv = convertToSds(argc, inargv);
 	size_t *argvlen;
@@ -106,8 +105,8 @@ redisReply *RedLock::commandArgv(const RedisContextPtr &c, int32_t argc, char **
 		argvlen[j] = sdslen(argv[j]);
 	}
 
-	redisReply *reply = nullptr;
-	reply = (redisReply *)c->redisCommandArgv(argc, (const char **)argv, argvlen);
+	RedisReply *reply = nullptr;
+	reply = (RedisReply *)c->redisCommandArgv(argc, (const char **)argv, argvlen);
 	if (reply)
 	{
 		LOG_INFO<<"redisCommandArgv return "<< reply->integer;
@@ -126,7 +125,7 @@ void RedLock::unlockInstance(const RedisContextPtr &c,const char *resource,const
 								(char*)"1",
 								(char*)resource,
 								(char*)val};
-	redisReply *reply = commandArgv(c, argc, unlockScriptArgv);
+	RedisReply *reply = commandArgv(c, argc, unlockScriptArgv);
 	if (reply)
 	{
 		freeReply(reply);
@@ -139,7 +138,6 @@ bool RedLock::unlock(const Lock &lock)
 	{
 		unlockInstance(it.second,lock.resource,lock.val);
 	}
-	
 	return true;
 }
 
@@ -170,10 +168,10 @@ bool RedLock::lock(const char *resource,const int32_t ttl,Lock &lock)
 				n++;
 				++it;
 			}
-			else if(r ==-1)
+			else if(r == -1)
 			{
 				LOG_INFO<<"reconnect redis..................";
-				auto c = redisConnectWithTimeout(it->second->ip, it->second->p, timeout);
+				auto c = redisConnectWithTimeout(it->second->ip,it->second->port,timeout);
 				if (c == nullptr || c->err)
 				{
 					if (c)
@@ -197,7 +195,6 @@ bool RedLock::lock(const char *resource,const int32_t ttl,Lock &lock)
 			{
 				++it;
 			}
-
 		}
 
 		int32_t drift = (ttl * clockDriftFactor) + 2;
@@ -210,9 +207,7 @@ bool RedLock::lock(const char *resource,const int32_t ttl,Lock &lock)
 			{
 				syncServers.insert(std::make_pair(it->fd,it));
 			}
-
 			disconnectServers.clear();
-
 			return true;
 		}
 		else
@@ -225,16 +220,14 @@ bool RedLock::lock(const char *resource,const int32_t ttl,Lock &lock)
 		count--;
 
 	}while(count > 0);
-
 	return false;
 }
-
 
 void RedLock::syncAddServerUrl(const char *ip,const int16_t port)
 {
 	RedisContextPtr c;
-	redisReply *reply;
-	c = redisConnectWithTimeout(ip, port, timeout);
+	RedisReply *reply;
+	c = redisConnectWithTimeout(ip,port,timeout);
 	if (c == nullptr || c->err)
 	{
 		if (c)

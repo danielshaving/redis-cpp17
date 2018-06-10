@@ -104,21 +104,22 @@ void Poll::removeChannel(Channel *channel)
 	int32_t idx = channel->getIndex();
 	assert(0 <= idx && idx < static_cast<int32_t>(events.size()));
 	const struct pollfd& pfd = events[idx]; (void)pfd;
-	assert(pfd.fd == -channel->getfd()-1 && pfd.events == channel->getEvents());
+	assert(pfd.fd == -channel->getfd() - 1 && pfd.events == channel->getEvents());
 	size_t n = channels.erase(channel->getfd());
 	assert(n == 1); (void)n;
-	if (idx == events.size()-1)
+	if (idx == events.size() - 1)
 	{
 		events.pop_back();
 	}
 	else
 	{
 		int32_t channelAtEnd = events.back().fd;
-		iter_swap(events.begin()+idx, events.end()-1);
+		iter_swap(events.begin() + idx,events.end() - 1);
 		if (channelAtEnd < 0)
 		{
-			channelAtEnd = -channelAtEnd-1;
+			channelAtEnd = -channelAtEnd - 1;
 		}
+
 		channels[channelAtEnd]->setIndex(idx);
 		events.pop_back();
 	}

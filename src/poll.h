@@ -11,7 +11,7 @@ class Poll
 public:
 	typedef std::vector<struct pollfd> EventList;
 	typedef std::vector<Channel*> ChannelList;
-	typedef std::unordered_map<int32_t, Channel*> ChannelMap;
+	typedef std::unordered_map<int32_t,Channel*> ChannelMap;
 
 	Poll(EventLoop *loop);
 	~Poll();

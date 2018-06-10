@@ -209,9 +209,6 @@ public:
 	std::atomic<int32_t> rdbChildPid;
 	std::atomic<int32_t> salveCount;
 
-	int32_t slavefd;
-	int32_t masterfd;
-
 	std::condition_variable expireCondition;
 	std::condition_variable forkCondition;
 
@@ -230,6 +227,8 @@ public:
 	int16_t threadCount;
 	int32_t masterPort;
 	int32_t dbnum;
+	int32_t slavefd;
+	int32_t masterfd;
 
 private:
 	Replication repli;

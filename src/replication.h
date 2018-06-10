@@ -32,17 +32,17 @@ private:
 	EventLoop *loop;
 	TcpClientPtr client;
 	std::string ip;
-	int32_t port;
-	int32_t replLen;
-	int32_t replState;
 	Buffer sendBuf;
-	int32_t connectCount;
 	Socket socket;
 	FILE *fp;
-	int32_t salveLen;
-	int32_t salveReadLen;
 	TcpConnectionPtr repliConn;
 	Timer *timer;
+	std::atomic<int32_t> port;
+	std::atomic<int32_t> replLen;
+	std::atomic<int32_t> replState;
+	std::atomic<int32_t> connectCount;
+	std::atomic<int32_t> salveLen;
+	std::atomic<int32_t> salveReadLen;
 	std::atomic<bool> slaveSyncEnabled;
 };
 

@@ -71,8 +71,8 @@ private:
 	EventLoop *loop;
 	Redis *redis;
 	Socket socket;
-	bool state;
-	bool isConnect;
+	std::atomic<bool> state;
+	std::atomic<bool> isConnect;
 	std::vector<TcpClientPtr> clusterConns;
 	std::map<int32_t,ClusterNode> clusterSlotNodes;
 	std::unordered_map<std::string,std::unordered_set<int32_t>> migratingSlosTos;

@@ -5,14 +5,14 @@
 #ifdef __linux__
 int64_t createTimerfd()
 {
-  int64_t timerfd = ::timerfd_create(CLOCK_MONOTONIC,
-                                 TFD_NONBLOCK | TFD_CLOEXEC);
-  if (timerfd < 0)
-  {	
-  	assert(false);
-  }
+	int64_t timerfd = ::timerfd_create(CLOCK_MONOTONIC,
+								 TFD_NONBLOCK | TFD_CLOEXEC);
+	if (timerfd < 0)
+	{
+		assert(false);
+	}
 
-  return timerfd;
+	return timerfd;
 }
 #endif
 

@@ -98,9 +98,9 @@ static int32_t intlen(int32_t i)
 }
 
 /* Create a reply object */
-redisReply *createReplyObject(int32_t type)
+RedisReply *createReplyObject(int32_t type)
 {
-	redisReply *r = (redisReply*)zcalloc( sizeof(*r));
+	RedisReply *r = (RedisReply*)zcalloc( sizeof(*r));
 	if (r == nullptr) { return nullptr; }
 	r->type = type;
 	return r;
@@ -191,9 +191,9 @@ const char *RedisReader::readBytes(uint32_t bytes)
 }
 
 /* Free a reply object */
-void freeReply(redisReply *reply)
+void freeReply(RedisReply *reply)
 {
-	redisReply *r = reply;
+	RedisReply *r = reply;
 	size_t j;
 	if (r == nullptr) { return ; }
 	switch (r->type)
@@ -222,9 +222,9 @@ void freeReply(redisReply *reply)
 	zfree(r);
 }
 
-redisReply *createString(const redisReadTask *task,const char *str,size_t len)
+RedisReply *createString(const RedisReadTask *task,const char *str,size_t len)
 {
-	redisReply *r,*parent;
+	RedisReply *r,*parent;
 	char *buffer;
 	r = createReplyObject(task->type);
 	if (r == nullptr) { return nullptr; }
@@ -248,21 +248,21 @@ redisReply *createString(const redisReadTask *task,const char *str,size_t len)
 
 	if (task->parent)
 	{
-		parent =(redisReply*)task->parent->obj;
+		parent =(RedisReply*)task->parent->obj;
 		assert(parent->type == REDIS_REPLY_ARRAY);
 		parent->element[task->idx] = r;
 	}
 	return r;
 }
 
-redisReply *createArray(const redisReadTask *task,int32_t elements)
+RedisReply *createArray(const RedisReadTask *task,int32_t elements)
 {
-	redisReply *r,*parent;
+	RedisReply *r,*parent;
 	r = createReplyObject(REDIS_REPLY_ARRAY);
 	if (r == nullptr) { return nullptr; }
 	if (elements > 0)
 	{
-		r->element = (redisReply**)zmalloc(elements * sizeof(redisReply *));
+		r->element = (RedisReply**)zmalloc(elements * sizeof(RedisReply *));
 		if (r->element == nullptr)
 		{
 			freeReply(r);
@@ -272,23 +272,23 @@ redisReply *createArray(const redisReadTask *task,int32_t elements)
 	r->elements = elements;
 	if (task->parent)
 	{
-		parent = (redisReply*)task->parent->obj;
+		parent = (RedisReply*)task->parent->obj;
 		assert(parent->type == REDIS_REPLY_ARRAY);
 		parent->element[task->idx] = r;
 	}
 	return r;
 }
 
-redisReply *createInteger(const redisReadTask *task,int64_t value)
+RedisReply *createInteger(const RedisReadTask *task,int64_t value)
 {
-	redisReply *r,*parent;
+	RedisReply *r,*parent;
 	r = createReplyObject(REDIS_REPLY_INTEGER);
 	if (r == nullptr) { return nullptr; }
 	r->integer = value;
 
 	if (task->parent)
 	{
-		parent = (redisReply*)task->parent->obj;
+		parent = (RedisReply*)task->parent->obj;
 		assert(parent->type == REDIS_REPLY_ARRAY);
 		parent->element[task->idx] = r;
 	}
@@ -296,14 +296,14 @@ redisReply *createInteger(const redisReadTask *task,int64_t value)
 }
 
 
-redisReply *createNil(const redisReadTask *task)
+RedisReply *createNil(const RedisReadTask *task)
 {
-	redisReply *r,*parent;
+	RedisReply *r,*parent;
 	r = createReplyObject(REDIS_REPLY_NIL);
 	if (r == nullptr) { return nullptr; }
 	if (task->parent)
 	{
-		parent = (redisReply*)task->parent->obj;
+		parent = (RedisReply*)task->parent->obj;
 		assert(parent->type == REDIS_REPLY_ARRAY);
 		parent->element[task->idx] = r;
 	}
@@ -351,7 +351,7 @@ void RedisContext::redisSetError(int32_t type,const char *str)
 
 void RedisReader::moveToNextTask()
 {
-	redisReadTask *cur,*prv;
+	RedisReadTask *cur,*prv;
 	while (ridx >= 0)
 	{
 		/* Return a.s.a.p. when the stack is now empty. */
@@ -375,8 +375,8 @@ void RedisReader::moveToNextTask()
 
 int32_t RedisReader::processLineItem()
 {
-	redisReadTask *cur = &(rstack[ridx]);
-	redisReply *obj;
+	RedisReadTask *cur = &(rstack[ridx]);
+	RedisReply *obj;
 	const char *p;
 	int32_t len;
 
@@ -411,8 +411,8 @@ int32_t RedisReader::processLineItem()
 
 int32_t RedisReader::processBulkItem()
 {
-	redisReadTask *cur = &(rstack[ridx]);
-	redisReply *obj = nullptr;
+	RedisReadTask *cur = &(rstack[ridx]);
+	RedisReply *obj = nullptr;
 	const char *p;
 	const char *s;
 	int32_t	len;
@@ -468,8 +468,8 @@ int32_t RedisReader::processBulkItem()
 
 int32_t RedisReader::processMultiBulkItem()
 {
-	redisReadTask *cur = &(rstack[ridx]);
-	redisReply *obj;
+	RedisReadTask *cur = &(rstack[ridx]);
+	RedisReply *obj;
 	const char *p;
 	int32_t elements;
 	int32_t  root = 0;
@@ -532,7 +532,7 @@ int32_t RedisReader::processMultiBulkItem()
 
 int32_t RedisReader::processItem()
 {
-	redisReadTask *cur = &(rstack[ridx]);
+	RedisReadTask *cur = &(rstack[ridx]);
 	const char *p;
 
 /* check if we need to read type */
@@ -590,7 +590,7 @@ int32_t RedisReader::processItem()
 	}
 }
 
-int32_t RedisReader::redisReaderGetReply(redisReply **reply)
+int32_t RedisReader::redisReaderGetReply(RedisReply **reply)
 {
 	if (reply != nullptr) { *reply = nullptr; }
 	if (err) { return REDIS_ERR; }
@@ -670,7 +670,7 @@ void RedisContext::setConnected()
 	flags != REDIS_CONNECTED;
 }
 
-int32_t RedisContext::redisGetReplyFromReader(redisReply **reply)
+int32_t RedisContext::redisGetReplyFromReader(RedisReply **reply)
 {
 	if (reader->redisReaderGetReply(reply) == REDIS_ERR)
 	{
@@ -739,10 +739,11 @@ int32_t RedisContext::redisBufferRead()
 	return REDIS_OK;
 }
 
-int32_t RedisContext::redisGetReply(redisReply **reply)
+
+int32_t RedisContext::redisGetReply(RedisReply **reply)
 {
 	int32_t wdone = 0;
-	redisReply *aux = nullptr;
+	RedisReply *aux = nullptr;
 
 	if (redisGetReplyFromReader(&aux) == REDIS_ERR)
 	{
@@ -782,11 +783,11 @@ int32_t RedisContext::redisAppendCommand(const char *format, ...)
 
 void RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,char *cmd,size_t len)
 {
-	redisCallback cb;
+	RedisCallback cb;
 	cb.fn = std::move(fn);
 	cb.privdata = privdata;
 
-	redisAsyncCallback call;
+	RedisAsyncCallback call;
 	call.data = cmd;
 	call.len = len;
 	call.cb = std::move(cb);
@@ -1082,9 +1083,9 @@ int RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
 	return status;
 }
 
-redisReply *RedisContext::redisBlockForReply()
+RedisReply *RedisContext::redisBlockForReply()
 {
-	redisReply *reply;
+	RedisReply *reply;
 	if (flags & REDIS_BLOCK)
 	{
 		if (redisGetReply(&reply) != REDIS_OK) { return nullptr; }
@@ -1115,17 +1116,17 @@ int32_t RedisContext::redisvAppendCommand(const char *format,va_list ap)
 	return REDIS_OK;
 }
 
-redisReply *RedisContext::redisCommand(const char *format, ...)
+RedisReply *RedisContext::redisCommand(const char *format, ...)
 {
 	va_list ap;
-	redisReply *reply = nullptr;
+	RedisReply *reply = nullptr;
 	va_start(ap,format);
 	reply = redisvCommand(format, ap);
 	va_end(ap);
 	return reply;
 }
 
-redisReply *RedisContext::redisvCommand(const char *format,va_list ap)
+RedisReply *RedisContext::redisvCommand(const char *format,va_list ap)
 {
 	if (redisvAppendCommand(format,ap) != REDIS_OK) { return nullptr; }
 	return redisBlockForReply();
@@ -1236,7 +1237,7 @@ int32_t RedisContext::redisAppendCommandArgv(int32_t argc,const char **argv,cons
 	return REDIS_OK;
 }
 
-redisReply *RedisContext::redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen)
+RedisReply *RedisContext::redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen)
 {
 	if (redisAppendCommandArgv(argc,argv,argvlen) != REDIS_OK) { return nullptr; }
 	return redisBlockForReply();
@@ -1309,12 +1310,49 @@ static int32_t redisContextTimeoutMsec(const struct timeval *timeout,int32_t *re
 		msec = (timeout->tv_sec * 1000) + ((timeout->tv_usec + 999) / 1000);
 		if (msec < 0 || msec > INT_MAX)	{ msec = INT_MAX; }
 	}
+
     *result = msec;
     return REDIS_OK;
 }
 
 
-int32_t RedisContext::redisContextConnectTcp(const char *addr,int16_t port,const struct timeval *timeout)
+int32_t RedisContext::redisContextConnectUnix(const char *path,const struct timeval *timeout)
+{
+	int32_t blocking = (flags & REDIS_BLOCK);
+	struct sockaddr_un sa;
+	int32_t timeoutMsec = -1;
+
+	Socket socket;
+	int32_t sockfd = socket.createSocket();
+	if (sockfd == -1){ return REDIS_ERR; }
+	fd = sockfd;
+	socket.setSocketNonBlock(sockfd);
+	if (this->path != path) { this->path = path; }
+	if (redisContextTimeoutMsec(timeout,&timeoutMsec) != REDIS_OK) { return REDIS_ERR; }
+
+	sa.sun_family = AF_LOCAL;
+    strncpy(sa.sun_path,path,sizeof(sa.sun_path)-1);
+
+    if (!socket.connect(sockfd,(struct sockaddr*)&sa)) 
+    {
+        if (errno == EINPROGRESS && !blocking) 
+        {
+            /* This is ok. */
+        } 
+        else 
+        {
+            if (redisContextWaitReady(timeoutMsec) != REDIS_OK) { return REDIS_ERR; }
+        }
+    }
+
+    if( !socket.setSocketBlock(sockfd)) { return REDIS_ERR; }
+	if( !socket.setTcpNoDelay(sockfd,true)) { return REDIS_ERR; }
+
+    flags |= REDIS_CONNECTED;
+    return REDIS_OK;
+}
+
+int32_t RedisContext::redisContextConnectTcp(const char *ip,int16_t port,const struct timeval *timeout)
 {	
 	int32_t rv;
 	struct addrinfo hints,*servinfo;
@@ -1322,16 +1360,15 @@ int32_t RedisContext::redisContextConnectTcp(const char *addr,int16_t port,const
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	char _port[6];
-	snprintf(_port, 6,"%d",port);
+	snprintf(_port,6,"%d",port);
 
-	if ((rv = getaddrinfo(addr,_port,&hints,&servinfo)) != 0)
+	if ((rv = getaddrinfo(ip,_port,&hints,&servinfo)) != 0)
 	{
 		redisSetError(REDIS_ERR_OTHER,gai_strerror(rv));
 		return REDIS_ERR;
 	}
 
 	int32_t timeoutMsec = -1;
-
 	if (timeout != nullptr)
 	{
 		if (redisContextTimeoutMsec(timeout,&timeoutMsec) != REDIS_OK)
@@ -1353,7 +1390,13 @@ int32_t RedisContext::redisContextConnectTcp(const char *addr,int16_t port,const
 	fd = sockfd;
 	socket.setSocketNonBlock(sockfd);
 
-	if (socket.connect(sockfd,addr,port) == -1)
+	struct sockaddr_in sin;
+	memset(&sin,0,sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(port);
+	sin.sin_addr.s_addr = inet_addr(ip);
+
+	if ( !socket.connect(sockfd,(struct sockaddr*)&sin)) 
 	{
 	 	 if (errno == EHOSTUNREACH) { return REDIS_ERR; }
 		 else if (errno == EINPROGRESS && !blocking) { }
@@ -1368,12 +1411,11 @@ int32_t RedisContext::redisContextConnectTcp(const char *addr,int16_t port,const
 		 }
 	}
 
-	socket.setSocketBlock(sockfd);
-	socket.setTcpNoDelay(sockfd,true);
+	if( !socket.setSocketBlock(sockfd)) { return REDIS_ERR; }
+	if( !socket.setTcpNoDelay(sockfd,true)) { return REDIS_ERR; }
 
-	ip = addr;
-	p = port;
-
+	this->ip = ip;
+	this->port = port;
 	return REDIS_OK;
 }
 
@@ -1391,7 +1433,7 @@ Hiredis::~Hiredis()
 
 void Hiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 {
-	auto callback = std::any_cast<redisAsyncCallback>(conn->getMutableContext());
+	auto callback = std::any_cast<RedisAsyncCallback>(conn->getMutableContext());
 	if (conn->connected())
 	{
 		RedisAsyncContextPtr ac(new RedisAsyncContext(conn->intputBuffer(),conn));
@@ -1410,7 +1452,7 @@ void Hiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 
 void Hiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 {
-	auto callback = std::any_cast<redisAsyncCallback>(conn->getMutableContext());
+	auto callback = std::any_cast<RedisAsyncCallback>(conn->getMutableContext());
 	if (conn->connected())
 	{
 		RedisAsyncContextPtr ac (new RedisAsyncContext(conn->intputBuffer(),conn));
@@ -1459,7 +1501,6 @@ void Hiredis::eraseRedisMap(int32_t sockfd)
 	{
 		node++;
 	}
-	
 	redisAsyncContexts.erase(it);
 }
 
@@ -1484,7 +1525,6 @@ RedisAsyncContextPtr Hiredis::getIteratorNode()
 
 	auto it = node;
 	node ++;
-
 	return it->second;
 }
 
@@ -1498,7 +1538,7 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 		redisPtr = it->second;
 	}
 
-	 redisReply *reply = nullptr;
+	 RedisReply *reply = nullptr;
 	 int32_t status;
 	 while((status = redisPtr->redisGetReply(&reply)) == REDIS_OK)
 	 {
@@ -1520,7 +1560,7 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 			int32_t port = atoi(s+1);
 			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<ip<<" "<<port;
 			
-			redisAsyncCallback call;
+			RedisAsyncCallback call;
 			{
 				std::unique_lock<std::mutex> lk(redisPtr->getMutex());
 				assert(!redisPtr->getCb().empty());
@@ -1546,7 +1586,7 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 		 }
 		 else
 		 {
-			 redisAsyncCallback asyncCb;
+			 RedisAsyncCallback asyncCb;
 			 {
 				 std::unique_lock<std::mutex> lk(redisPtr->getMutex());
 				 assert(!redisPtr->getCb().empty());
@@ -1561,6 +1601,13 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 	 }
 }
 
+RedisContextPtr redisConnectUnix(const char *path)
+{
+	RedisContextPtr c(new RedisContext);
+	c->setBlock();
+	c->redisContextConnectUnix(path,nullptr);
+	return c;
+}
 
 RedisContextPtr redisConnect(const char *ip,int16_t port)
 {

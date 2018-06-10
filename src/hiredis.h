@@ -8,37 +8,36 @@
 #include "threadpool.h"
 
 class RedisAsyncContext;
-struct redisReply
+struct RedisReply
 {
     int32_t type;
     int64_t integer;
     int32_t len;
     size_t elements;
     char *str;
-    struct redisReply **element;
+    struct RedisReply **element;
 };
 
-typedef std::function<void(const RedisAsyncContextPtr &context,redisReply*,const std::any &)> RedisCallbackFn;
-struct redisReadTask
+struct RedisReadTask
 {
     int32_t type;
     int32_t elements;
     int32_t idx;
     std::any privdata;
-    redisReply *obj;
-    struct redisReadTask *parent;
+    RedisReply *obj;
+    struct RedisReadTask *parent;
 };
 
-void freeReply(redisReply *reply);
-redisReply *createReplyObject(int32_t type);
-redisReply *createString(const redisReadTask *task,const char *str,size_t len);
-redisReply *createArray(const redisReadTask *task,int32_t elements);
-redisReply *createInteger(const redisReadTask *task,int64_t value);
-redisReply *createNil(const redisReadTask *task);
+void freeReply(RedisReply *reply);
+RedisReply *createReplyObject(int32_t type);
+RedisReply *createString(const RedisReadTask *task,const char *str,size_t len);
+RedisReply *createArray(const RedisReadTask *task,int32_t elements);
+RedisReply *createInteger(const RedisReadTask *task,int64_t value);
+RedisReply *createNil(const RedisReadTask *task);
 
-struct redisFunc
+struct RedisFunc
 {
-	redisFunc()
+	RedisFunc()
 	{
 		createStringFuc = createString;
 		createArrayFuc = createArray;
@@ -47,11 +46,11 @@ struct redisFunc
 		freeObjectFuc = freeReply;
 	}
 	
-	std::function<redisReply*(const redisReadTask*,const char*,size_t)> createStringFuc;
-	std::function<redisReply*(const redisReadTask*,int32_t)> createArrayFuc;
-	std::function<redisReply*(const redisReadTask*,int64_t)> createIntegerFuc;
-	std::function<redisReply*(const redisReadTask*)> createNilFuc;
-	std::function<void (redisReply*)> freeObjectFuc;
+	std::function<RedisReply*(const RedisReadTask*,const char*,size_t)> createStringFuc;
+	std::function<RedisReply*(const RedisReadTask*,int32_t)> createArrayFuc;
+	std::function<RedisReply*(const RedisReadTask*,int64_t)> createIntegerFuc;
+	std::function<RedisReply*(const RedisReadTask*)> createNilFuc;
+	std::function<void (RedisReply*)> freeObjectFuc;
 };
 
 class RedisReader
@@ -61,10 +60,10 @@ public:
 	RedisReader(Buffer *buffer);
 	~RedisReader();
 
-	int32_t redisReaderGetReply(redisReply **reply);
+	int32_t redisReaderGetReply(RedisReply **reply);
 	void redisReaderSetError(int32_t type,const char *str);
 	void redisReaderSetErrorProtocolByte(char byte);
-	void redisReaderSetErrorOOM() {  redisReaderSetError(REDIS_ERR_OOM,"Out of memory"); }
+	void redisReaderSetErrorOOM() { redisReaderSetError(REDIS_ERR_OOM,"Out of memory"); }
 	void moveToNextTask();
 	int32_t processLineItem();
 	int32_t processBulkItem();
@@ -81,27 +80,27 @@ private:
 
 public:
 	char errstr[128];
-	redisReadTask rstack[9];
+	RedisReadTask rstack[9];
 	int32_t ridx;
 	int32_t err;
 	size_t pos;
-	redisFunc fn;
+	RedisFunc fn;
 	Buffer buf;
 	Buffer *buffer;
-	redisReply *reply;
+	RedisReply *reply;
 	std::any privdata;
 };
 
-struct redisCallback
+typedef std::function<void(const RedisAsyncContextPtr &context,RedisReply*,const std::any &)> RedisCallbackFn;
+struct RedisCallback
 {
 	RedisCallbackFn fn;
     std::any privdata;
 };
 
-typedef std::list<redisCallback> RedisCallbackList;
-struct redisAsyncCallback
+struct RedisAsyncCallback
 {
-	redisAsyncCallback()
+	RedisAsyncCallback()
 	:data(nullptr),
 	 len(0)
 	{
@@ -109,10 +108,9 @@ struct redisAsyncCallback
 	}
 	char *data;
 	int32_t len;
-	redisCallback cb;
+	RedisCallback cb;
 };
 
-typedef std::list<redisAsyncCallback> RedisAsyncCallbackList;
 class RedisContext
 {
 public:
@@ -122,21 +120,22 @@ public:
 
 	int32_t redisvAppendCommand(const char *format,va_list ap);
 	void redisAppendCommand(const char *cmd,size_t len) { sender.append(cmd,len); }
-	redisReply *redisCommand(const char *format,...);
-	redisReply *redisvCommand(const char *format,va_list ap);
-	redisReply *redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
+	RedisReply *redisCommand(const char *format,...);
+	RedisReply *redisvCommand(const char *format,va_list ap);
+	RedisReply *redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
 	void redisAppendFormattedCommand(const char *cmd,size_t len) { redisAppendCommand(cmd,len); }
 	int32_t redisAppendCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
 	void redisSetError(int32_t type,const char *str);
-	redisReply *redisBlockForReply();
+	RedisReply *redisBlockForReply();
 	int32_t redisContextWaitReady(int32_t msec);
 	int32_t redisCheckSocketError();
 	int32_t redisBufferRead();
 	int32_t redisBufferWrite(int32_t *done);
-	int32_t redisGetReply(redisReply **reply);
-	int32_t redisGetReplyFromReader(redisReply **reply);
-	int32_t redisContextConnectTcp(const char *addr,int16_t port,const struct timeval *timeout);
+	int32_t redisGetReply(RedisReply **reply);
+	int32_t redisGetReplyFromReader(RedisReply **reply);
+	int32_t redisContextConnectTcp(const char *ip,int16_t port,const struct timeval *timeout);
 	int32_t redisAppendCommand(const char *format, ...);
+	int32_t redisContextConnectUnix(const char *path,const struct timeval *timeout);
 
 private:
 	RedisContext(const RedisContext&);
@@ -150,10 +149,11 @@ public:
 
 	char errstr[128];
 	const char *ip;
+	int16_t port;
+	const char *path;
 	int32_t err;
 	int32_t fd;
 	int8_t flags;
-	int16_t p;
 
 	Buffer sender;
 	RedisReaderPtr reader;
@@ -162,6 +162,7 @@ public:
 class RedisAsyncContext
 {
 public:
+	typedef std::list<RedisAsyncCallback> RedisAsyncCallbackList;
 	RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn);
 	~RedisAsyncContext();
 
@@ -169,7 +170,7 @@ public:
 	int redisvAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format,va_list ap);
 	int redisAsyncCommand(const RedisCallbackFn &fn,const std::any &privdata,const char *format, ...);
 
-	int32_t redisGetReply(redisReply **reply) { return context->redisGetReply(reply); }
+	int32_t redisGetReply(RedisReply **reply) { return context->redisGetReply(reply); }
 	RedisContextPtr getRedisContext() { return context; }
 	TcpConnectionPtr getServerConn() { return serverConn; }
 	std::mutex &getMutex() { return mtx;}
@@ -234,4 +235,5 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap);
 
 RedisContextPtr redisConnectWithTimeout(const char *ip,int16_t port,const struct timeval tv);
 RedisContextPtr redisConnect(const char *ip,int16_t port);
+RedisContextPtr redisConnectUnix(const char *path);
 

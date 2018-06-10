@@ -81,7 +81,7 @@ void TcpConnection::handleRead()
 	else
 	{
 		errno = savedErrno;
-		if(errno != ECONNRESET || errno != ETIMEDOUT)
+		if (errno != ECONNRESET || errno != ETIMEDOUT)
 		{
 
 		}
@@ -104,6 +104,7 @@ void TcpConnection::handleWrite()
 				{
 					loop->queueInLoop(std::bind(writeCompleteCallback,shared_from_this()));
 				}
+
 				if (state == kDisconnecting)
 				{
 					shutdownInLoop();

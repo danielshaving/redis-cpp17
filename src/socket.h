@@ -27,6 +27,7 @@ public:
 	void fromIpPort(const char *ip,uint16_t port,struct sockaddr_in6 *addr);
 
 	int32_t createSocket();
+	int32_t connect(int32_t sockfd,struct sockaddr *sin);
 	int32_t connect(int32_t sockfd,const char *ip,int16_t port);
 
 	bool isSelfConnect(int32_t sockfd);

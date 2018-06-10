@@ -36,7 +36,6 @@ rObj *createObject(int32_t type,char *ptr)
 int32_t getLongLongFromObject(rObj *o,int64_t *target)
 {
 	int64_t value;
-
 	if (o == nullptr)
 	{
 		value = 0;
@@ -58,7 +57,6 @@ int32_t getLongLongFromObject(rObj *o,int64_t *target)
 	}
 	
 	if (target) *target = value;
-
 	return REDIS_OK;
 }
 
@@ -80,7 +78,6 @@ int32_t getLongLongFromObjectOrReply(Buffer &buffer,rObj *o,int64_t *target,cons
     }
 
     *target = value;
-
     return REDIS_OK;
 }
 
@@ -98,12 +95,10 @@ int32_t getLongFromObjectOrReply(Buffer &buffer,rObj *o,int32_t *target,const ch
 		{
 			addReplyError(buffer, "value is no an integer or out of range");
 		}
-
 		return REDIS_ERR;
 	}
 	
 	*target = value;
-
 	return REDIS_OK;
 }
 
@@ -118,7 +113,6 @@ rObj *createStringObjectFromLongLong(int64_t value)
 	{
 		o = createObject(REDIS_STRING,sdsfromlonglong(value));
 	}
-
 	return o;
 }
 
@@ -135,12 +129,10 @@ int32_t getDoubleFromObjectOrReply(Buffer &buffer,rObj *o,double *target,const c
         {
             addReplyError(buffer,"value is no a valid float");
         }
-
         return REDIS_ERR;
     }
 
     *target = value;
-
     return REDIS_OK;
 }
 
@@ -176,7 +168,6 @@ int32_t getDoubleFromObject(const rObj *o,double *target)
     }
 
     *target = value;
-
     return REDIS_OK;
 }
 
@@ -390,7 +381,6 @@ void destorySharedObjects()
 
 	decrRefCount(shared.rIp);
 	decrRefCount(shared.rPort);
-
 }
 
 void createSharedObjects()

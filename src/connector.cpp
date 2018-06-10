@@ -254,7 +254,6 @@ bool Connector::syncConnect()
     {
     	return false;
     }
-
     return true;
 }
 
