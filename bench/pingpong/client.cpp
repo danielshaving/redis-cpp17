@@ -2,7 +2,7 @@
 #include "all.h"
 #include "tcpclient.h"
 #include "tcpconnection.h"
-#include "threadPool.h"
+#include "threadpool.h"
 #include "log.h"
 
 class Client;
@@ -33,7 +33,6 @@ public:
 		cli.disConnect();
 	}
 
-
 	int64_t getBytesRead() {  return bytesRead; }
 	int64_t getMessagesRead() { return messagesRead; }
 
@@ -58,7 +57,7 @@ private:
 
 };
 
-class Client : noncopyable
+class Client
 {
 public:
 	Client(EventLoop *loop,const char *ip,uint16_t port,int blockSize,int sessionCount,
@@ -68,11 +67,12 @@ public:
 		sessionCount(sessionCount),
 		timeOut(timeOut)
 	{
-		loop->runAfter(timeOut,nullptr,false, std::bind(&Client::handlerTimeout,this,std::placeholders::_1));
+		loop->runAfter(timeOut,false,std::bind(&Client::handlerTimeout,this));
 		if(threadCount > 1)
 		{
 			threadPool.setThreadNum(threadCount);
 		}
+
 		threadPool.start();
 
 		for(int i = 0; i < blockSize; i ++)
@@ -85,18 +85,16 @@ public:
 			std::shared_ptr<Connect> vsession (new Connect(threadPool.getNextLoop(),ip,port,this));
 			vsession->start();
     			sessions.push_back(vsession);
-			numConencted++;
 		}
 	}
 
 	void onConnect()
 	{
-		if (numConencted  == sessionCount)
+		if ( ++numConencted  == sessionCount)
 		{
 			LOG_WARN << "all connected";
 		}
 	}
-
 
 	void onDisconnect(const TcpConnectionPtr &conn)
 	{
@@ -122,7 +120,7 @@ public:
 
 	const std::string &getMessage() const { return message;	}
 	void quit() { loop->queueInLoop(std::bind(&EventLoop::quit,loop)); }
-	void handlerTimeout(const std::any &context)
+	void handlerTimeout()
 	{
 		 LOG_WARN << "stop";
 		 std::for_each(sessions.begin(),sessions.end(),std::mem_fn(&Connect::stop));

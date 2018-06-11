@@ -110,9 +110,9 @@ public:
     int noninteractive(int argc,char **argv);
     sds readArgFromStdin(void);
     int issueCommand(int argc,char **argv) { return issuseCommandRepeat(argc,argv,config.repeat); }
-    int issuseCommandRepeat(int argc,char **argv,int repat);
+    int issuseCommandRepeat(int argc,char **argv,int repeat);
     int pollWait(int fd,int mask,int64_t milliseconds);
-    int cliSendCommand(int argc,char **argv,int repeat);
+    int clientSendCommand(int argc,char **argv,int repeat);
 
 private:
     RedisContextPtr context;

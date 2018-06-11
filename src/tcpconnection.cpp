@@ -196,7 +196,6 @@ void TcpConnection::sendPipe(Buffer *buf)
 			loop->runInLoop(std::bind(&bindSendPipeInLoop,this,buf->retrieveAllAsString()));
 		}
 	}
-
 }
 
 void TcpConnection::sendPipe(const void *message,int len)
@@ -289,11 +288,7 @@ void TcpConnection::sendInLoop(const void *data,size_t len)
 	ssize_t nwrote = 0;
 	size_t remaining = len;
 	bool faultError = false;
-	if (state == kDisconnected)
-	{
-		assert(false);
-		return;
-	}
+	assert(state != kDisconnected);
 
 	if (!channel->isWriting() && sendBuff.readableBytes() == 0)
 	{

@@ -240,20 +240,20 @@ int RedisCli::noninteractive(int argc,char **argv)
 	return retval;
 }
 
-int RedisCli::cliSendCommand(int argc,char **argv,int repeat)
+int RedisCli::clientSendCommand(int argc,char **argv,int repeat)
 {
 
 }
 
-int RedisCli::issuseCommandRepeat(int argc,char **argv,int repat)
+int RedisCli::issuseCommandRepeat(int argc,char **argv,int repeat)
 {
 	while(1)
 	{
 		config.clusterReissueCommand = 0;
-		if (clieSendCommand(argc,argv,repeat) != REDIS_OK)
+		if (clientSendCommand(argc,argv,repeat) != REDIS_OK)
 		{
 			cliConnect(1);
-			if (clieSendCommand(argc,argv,repeat) != REDIS_OK)
+			if (clientSendCommand(argc,argv,repeat) != REDIS_OK)
 			{
 				return REDIS_ERR;
 			}

@@ -69,6 +69,7 @@
 #include <sys/timerfd.h>
 #include <sys/eventfd.h>
 #include <endian.h>
+#include <sys/un.h>
 #endif
 
 #define REDIS_CONNECT_RETRIES  10

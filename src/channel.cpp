@@ -1,17 +1,9 @@
 #include "channel.h"
 #include "eventloop.h"
 
-#ifdef __linux__
-const int32_t Channel::kNoneEvent = 0;
-const int32_t Channel::kReadEvent = EPOLLIN | EPOLLPRI;
-const int32_t Channel::kWriteEvent = EPOLLOUT;
-#endif
-
-#ifdef __APPLE__
 const int32_t Channel::kNoneEvent = 0;
 const int32_t Channel::kReadEvent = POLLIN | POLLPRI;
 const int32_t Channel::kWriteEvent = POLLOUT | POLLHUP;
-#endif
 
 Channel::Channel(EventLoop *loop,int32_t fd)
 :loop(loop),
@@ -52,31 +44,6 @@ void Channel::update()
 void Channel::handleEventWithGuard()
 {
 	eventHandling = true;
-
-#ifdef __linux__
-	if ((revents & EPOLLHUP) && !(revents & EPOLLIN))
-	{
-		if (closeCallback) closeCallback();
-	}
-
-	if (revents & (EPOLLERR | EPOLLNVAL))
-	{
-		if (errorCallback) errorCallback();
-	}
-
-	if (revents & (EPOLLIN | EPOLLPRI | EPOLLRDHUP))
-	{
-		if (readCallback) readCallback();
-	}
-
-	if (revents & EPOLLOUT)
-	{
-		if (writeCallback) writeCallback();
-	}
-
-#endif
-
-#ifdef __APPLE__
 	if ((revents & POLLHUP) && !(revents & POLLIN))
 	{
 		if (logHup)
@@ -92,7 +59,7 @@ void Channel::handleEventWithGuard()
 		if (errorCallback) errorCallback();
 	}
 
-	if (revents & (POLLIN | POLLPRI))
+	if (revents & (POLLIN | POLLPRI | POLLRDHUP))
 	{
 		if (readCallback) readCallback();
 	}
@@ -101,7 +68,7 @@ void Channel::handleEventWithGuard()
 	{
 		if (writeCallback) writeCallback();
 	}
-#endif
+
 	eventHandling = false;
 }
 

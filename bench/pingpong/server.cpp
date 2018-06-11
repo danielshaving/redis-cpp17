@@ -20,6 +20,7 @@ void onConnection(const TcpConnectionPtr &conn)
 void onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
 {
 	conn->send(buffer);
+	buffer->retrieveAll();
 }
 
 int main(int argc,char* argv[])
@@ -37,7 +38,6 @@ int main(int argc,char* argv[])
 		int threadCount = atoi(argv[3]);
 
 		EventLoop loop;
-
 		TcpServer server(&loop, ip,port,nullptr);
 		server.setConnectionCallback(onConnection);
 		server.setMessageCallback(onMessage);
@@ -48,7 +48,6 @@ int main(int argc,char* argv[])
 		}
 
 		server.start();
-
 		loop.run();
 	}
 }
