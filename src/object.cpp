@@ -10,18 +10,9 @@ void rObj::calHash()
 bool rObj::operator < (const rObj &r) const
 {
 	auto cmp = memcmp(ptr,r.ptr,sdslen(ptr));
-	if (cmp < 0)
-	{
-		return true;
-	}
-	else if (cmp == 0)
-	{
-		return memcmp(ptr,r.ptr,sdslen(ptr)) < 0;
-	}
-	else
-	{
-		return false;
-	}
+	if (cmp < 0) { return true; }
+	else if (cmp == 0) { return memcmp(ptr,r.ptr,sdslen(ptr)) < 0; }
+	else { return false; }
 }
 
 rObj *createObject(int32_t type,char *ptr)
@@ -36,26 +27,14 @@ rObj *createObject(int32_t type,char *ptr)
 int32_t getLongLongFromObject(rObj *o,int64_t *target)
 {
 	int64_t value;
-	if (o == nullptr)
-	{
-		value = 0;
-	}
+	if (o == nullptr) { value = 0; }
 	else
 	{
-		if (sdsEncodedObject(o))
-		{
-			if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0) return REDIS_ERR;
-		}
-		else if (o->encoding == OBJ_ENCODING_INT)
-		{
-			if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0) return REDIS_ERR;
-		}
-		else
-		{
-			assert(false);
-		}
+		if (sdsEncodedObject(o)) { if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0) { return REDIS_ERR; } }
+		else if (o->encoding == OBJ_ENCODING_INT) { if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0) return REDIS_ERR; }
+		else { assert(false); }
 	}
-	
+
 	if (target) *target = value;
 	return REDIS_OK;
 }
@@ -65,15 +44,8 @@ int32_t getLongLongFromObjectOrReply(Buffer &buffer,rObj *o,int64_t *target,cons
     int64_t value;
     if (getLongLongFromObject(o,&value) != REDIS_OK)
     {
-        if (msg != nullptr)
-        {
-            addReplyError(buffer,(char*)msg);
-        }
-        else
-        {
-            addReplyError(buffer,"value is no an integer or out of range");
-        }
-
+        if (msg != nullptr) { addReplyError(buffer,(char*)msg); }
+        else { addReplyError(buffer,"value is no an integer or out of range"); }
         return REDIS_ERR;
     }
 
@@ -87,14 +59,8 @@ int32_t getLongFromObjectOrReply(Buffer &buffer,rObj *o,int32_t *target,const ch
 	int64_t value;
 	if (getLongLongFromObject(o,&value) != REDIS_OK)
 	{
-		if (msg != nullptr) 
-		{
-			addReplyError(buffer,(char*)msg);
-		}
-		else 
-		{
-			addReplyError(buffer, "value is no an integer or out of range");
-		}
+		if (msg != nullptr) { addReplyError(buffer,(char*)msg); }
+		else { addReplyError(buffer, "value is no an integer or out of range"); }
 		return REDIS_ERR;
 	}
 	
@@ -105,14 +71,8 @@ int32_t getLongFromObjectOrReply(Buffer &buffer,rObj *o,int32_t *target,const ch
 rObj *createStringObjectFromLongLong(int64_t value)
 {
 	rObj *o;
-	if (value >= 0 && value < REDIS_SHARED_INTEGERS)
-	{
-		o = shared.integers[value - 1];
-	}
-	else
-	{
-		o = createObject(REDIS_STRING,sdsfromlonglong(value));
-	}
+	if (value >= 0 && value < REDIS_SHARED_INTEGERS) { o = shared.integers[value - 1]; }
+	else { o = createObject(REDIS_STRING,sdsfromlonglong(value)); }
 	return o;
 }
 
@@ -121,14 +81,8 @@ int32_t getDoubleFromObjectOrReply(Buffer &buffer,rObj *o,double *target,const c
     double value;
     if (getDoubleFromObject(o,&value) != REDIS_OK)
     {
-        if (msg != nullptr)
-        {
-            addReplyError(buffer,(char*)msg);
-        }
-        else
-        {
-            addReplyError(buffer,"value is no a valid float");
-        }
+        if (msg != nullptr) { addReplyError(buffer,(char*)msg); }
+        else { addReplyError(buffer,"value is no a valid float"); }
         return REDIS_ERR;
     }
 
@@ -142,10 +96,7 @@ int32_t getDoubleFromObject(const rObj *o,double *target)
     double value;
     char *eptr;
 
-    if (o == nullptr)
-    {
-        value = 0;
-    }
+    if (o == nullptr) { value = 0; }
     else
     {
         if (sdsEncodedObject(o))
@@ -157,14 +108,8 @@ int32_t getDoubleFromObject(const rObj *o,double *target)
                 (errno == ERANGE && value == 0) || errno == EINVAL)
                 return REDIS_ERR;
         }
-        else if (o->encoding == OBJ_ENCODING_INT)
-        {
-            value = (long)o->ptr;
-        }
-        else
-        {
-            LOG_WARN<<"Unknown string encoding";
-        }
+        else if (o->encoding == OBJ_ENCODING_INT) { value = (long)o->ptr; }
+        else { LOG_WARN<<"Unknown string encoding"; }
     }
 
     *target = value;
@@ -173,42 +118,27 @@ int32_t getDoubleFromObject(const rObj *o,double *target)
 
 void freeStringObject(rObj *o)
 {
-    if (o->encoding == OBJ_ENCODING_RAW)
-    {
-        sdsfree((sds)o->ptr);
-    }
+    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
 void freeListObject(rObj *o)
 {
-    if (o->encoding == OBJ_ENCODING_RAW)
-    {
-        sdsfree((sds)o->ptr);
-    }
+    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
 void freeHashObject(rObj *o)
 {
-    if (o->encoding == OBJ_ENCODING_RAW)
-    {
-        sdsfree((sds)o->ptr);
-    }
+    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
 void freeSetObject(rObj *o)
 {
-    if (o->encoding == OBJ_ENCODING_RAW)
-    {
-        sdsfree((sds)o->ptr);
-    }
+    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
 void freeZsetObject(rObj *o)
 {
-    if (o->encoding == OBJ_ENCODING_RAW)
-    {
-        sdsfree((sds)o->ptr);
-    }
+    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
 void decrRefCount(rObj *o)
@@ -223,10 +153,7 @@ void decrRefCount(rObj *o)
 		default: assert(false); break;
 	}
 
-	if(o->encoding != OBJ_ENCODING_INT)
-	{
-		zfree(o);
-	}
+	if(o->encoding != OBJ_ENCODING_INT) { zfree(o); }
 }
 
 void destorySharedObjects()
@@ -586,10 +513,7 @@ rObj *createEmbeddedStringObject(char *ptr,size_t len)
 	    memcpy(sh->buf,ptr,len);
 	    sh->buf[len] = '\0';
 	}
-	else
-	{
-	    memset(sh->buf,0,len+1);
-	}
+	else { memset(sh->buf,0,len+1); }
    	return o;
 }
 
@@ -597,30 +521,26 @@ void addReplyBulkLen(Buffer &buffer,rObj *obj)
 {
 	size_t len;
 
-	if (sdsEncodedObject(obj))
-	{
-	    len = sdslen((const sds)obj->ptr);
-	}
+	if (sdsEncodedObject(obj)) { len = sdslen((const sds)obj->ptr); }
 	else
 	{
 	    long n = (long)obj->ptr;
 	    len = 1;
+
 	    if (n < 0)
 	    {
 	        len++;
 	        n = -n;
 	    }
+
 	    while((n = n/10) != 0)
 	    {
 	        len++;
 	    }
 	}
 
-	if (len < REDIS_SHARED_BULKHDR_LEN)
-	    addReply(buffer,shared.bulkhdr[len]);
-	else
-	    addReplyLongLongWithPrefix(buffer,len,'$');
-
+	if (len < REDIS_SHARED_BULKHDR_LEN) { addReply(buffer,shared.bulkhdr[len]); }
+	else { addReplyLongLongWithPrefix(buffer,len,'$'); }
 }
 
 void addReplyBulk(Buffer &buffer,rObj *obj)
@@ -634,16 +554,8 @@ void addReplyLongLongWithPrefix(Buffer &buffer,int64_t ll,char prefix)
 {
 	char buf[128];
 	int32_t len;
-	if (prefix == '*' && ll < REDIS_SHARED_BULKHDR_LEN) 
-	{
-	    addReply(buffer,shared.mbulkhdr[ll]);
-	    return;
-	} 
-	else if (prefix == '$' && ll < REDIS_SHARED_BULKHDR_LEN) 
-	{
-	    addReply(buffer,shared.bulkhdr[ll]);
-	    return;
-	}
+	if (prefix == '*' && ll < REDIS_SHARED_BULKHDR_LEN) { addReply(buffer,shared.mbulkhdr[ll]); return; }
+	else if (prefix == '$' && ll < REDIS_SHARED_BULKHDR_LEN) { addReply(buffer,shared.bulkhdr[ll]); return; }
 
 	buf[0] = prefix;
 	len = ll2string(buf+1,sizeof(buf)-1,ll);
@@ -654,12 +566,9 @@ void addReplyLongLongWithPrefix(Buffer &buffer,int64_t ll,char prefix)
 
 void addReplyLongLong(Buffer &buffer,size_t len)
 {
-	if (len == 0)
-		addReply(buffer,shared.czero);
-	else if (len == 1)
-		addReply(buffer,shared.cone);
-	else
-		addReplyLongLongWithPrefix(buffer,len,':');
+	if (len == 0) { addReply(buffer,shared.czero); }
+	else if (len == 1) { addReply(buffer,shared.cone); }
+	else { addReplyLongLongWithPrefix(buffer,len,':'); }
 }
 
 void addReplyStatusLength(Buffer &buffer,char *s,size_t len)
@@ -687,18 +596,15 @@ void addReply(Buffer &buffer,rObj *obj)
 /* Add sds to reply (takes ownership of sds and frees it) */
 void addReplyBulkSds(Buffer &buffer,sds s)
 {
-	addReplySds(buffer,sdscatfmt(sdsempty(),"$%u\r\n",
-	    (unsigned long)sdslen(s)));
+	addReplySds(buffer,sdscatfmt(sdsempty(),"$%u\r\n",(unsigned long)sdslen(s)));
 	addReplySds(buffer,s);
 	addReply(buffer,shared.crlf);
 }
 
 void addReplyMultiBulkLen(Buffer &buffer,int32_t length)
 {
-	if (length < REDIS_SHARED_BULKHDR_LEN)
-        addReply(buffer,shared.mbulkhdr[length]);
-    else
-        addReplyLongLongWithPrefix(buffer,length,'*');
+	if (length < REDIS_SHARED_BULKHDR_LEN) { addReply(buffer,shared.mbulkhdr[length]); }
+    else { addReplyLongLongWithPrefix(buffer,length,'*'); }
 }
 
 void prePendReplyLongLongWithPrefix(Buffer &buffer,int32_t length)
@@ -708,26 +614,14 @@ void prePendReplyLongLongWithPrefix(Buffer &buffer,int32_t length)
 	int32_t len = ll2string(buf+1,sizeof(buf)-1,length);
 	buf[len+1] = '\r';
 	buf[len+2] = '\n';
-	if(length == 0)
-	{
-		buffer.append(buf,len + 3);
-	}
-	else
-	{
-		buffer.prepend(buf,len + 3);
-	}
+	if(length == 0) { buffer.append(buf,len + 3); }
+	else { buffer.prepend(buf,len + 3); }
 }
 
 void addReplyBulkCString(Buffer &buffer,const char *s)
 {
-	if (s == nullptr)
-	{
-		addReply(buffer,shared.nullbulk);
-	}
-	else 
-	{
-		addReplyBulkCBuffer(buffer,s,strlen(s));
-	}
+	if (s == nullptr) { addReply(buffer,shared.nullbulk); }
+	else { addReplyBulkCBuffer(buffer,s,strlen(s)); }
 }
 
 void addReplyDouble(Buffer &buffer,double d)
@@ -754,10 +648,7 @@ void addReplyErrorFormat(Buffer &buffer,const char *fmt, ...)
 	sds s = sdscatvprintf(sdsempty(),fmt,ap);
 	va_end(ap);
 	l = sdslen(s);
-	for (j = 0; j < l; j++)
-	{
-	    if (s[j] == '\r' || s[j] == '\n') s[j] = ' ';
-	}
+	for (j = 0; j < l; j++) { if (s[j] == '\r' || s[j] == '\n') s[j] = ' '; }
 	addReplyErrorLength(buffer,s,sdslen(s));
 	sdsfree(s);
 }

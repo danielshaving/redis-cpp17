@@ -12,10 +12,7 @@ Epoll::Epoll(EventLoop *loop)
 loop(loop),
 epollFd(::epoll_create1(EPOLL_CLOEXEC))
 {
-	if (epollFd < 0)
-	{
-		LOG_WARN<<"create epollFd Failed error " << epollFd <<strerror(errno);
-	}
+	assert(epollFd >= 0);
 }
 
 Epoll::~Epoll()
@@ -31,10 +28,7 @@ void Epoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 	if (numEvents > 0)
 	{
 		fillActiveChannels(numEvents,activeChannels);
-		if (numEvents == events.size())
-		{
-			events.resize(events.size() * 2);
-		}
+		if (numEvents == events.size()) { events.resize(events.size() * 2); }
 	}
 	else if (numEvents == 0)
 	{

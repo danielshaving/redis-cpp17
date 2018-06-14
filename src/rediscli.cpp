@@ -206,7 +206,6 @@ int RedisCli::redsCli(int argc,char **argv)
 	/* Do AUTH and select the right DB. */
 	if (cliAuth() != REDIS_OK) { return REDIS_ERR; }
 	if (cliSelect() != REDIS_OK) { return REDIS_ERR; }
-
 	return REDIS_OK;
 }
 
@@ -221,7 +220,6 @@ sds RedisCli::readArgFromStdin(void)
 		if (nread == 0) { break; }
 		else if (nread == -1) {  perror("Reading from standard input"); exit(1); }
 		arg = sdscatlen(arg,buf,nread);
-
 	}
 	return arg;
 }
@@ -236,12 +234,142 @@ int RedisCli::noninteractive(int argc,char **argv)
 		retval = issueCommand(argc + 1,argv);
 	}
 	else { retval = issueCommand(argc,argv); }
-
 	return retval;
 }
 
 int RedisCli::clientSendCommand(int argc,char **argv,int repeat)
 {
+	char *command = argv[0];
+	size_t *argvlen;
+	int j,outputRaw;
+
+	if (!config.evalLdb && /* In debugging mode, let's pass "help" to Redis. */
+		(!strcasecmp(command,"help") || !strcasecmp(command,"?")))
+	{
+		clientOutputHelp(--argc,++argv);
+		return REDIS_OK;
+	}
+
+    if (context == nullptr) { return REDIS_ERR; }
+
+	return REDIS_OK;
+}
+
+void RedisCli::clientOutputGenericHelp()
+{
+	printf(
+			"redis-cli %s\n"
+			"To get help about Redis commands type:\n"
+			"      \"help @<group>\" to get a list of commands in <group>\n"
+			"      \"help <command>\" for help on <command>\n"
+			"      \"help <tab>\" to get a list of possible help topics\n"
+			"      \"quit\" to exit\n"
+			"\n"
+			"To set redis-cli preferences:\n"
+			"      \":set hints\" enable online hints\n"
+			"      \":set nohints\" disable online hints\n"
+			"Set your preferences in ~/.redisclirc\n");
+}
+
+void RedisCli::clientInitHelp()
+{
+	int commandslen = sizeof(CommandHelp)/sizeof(struct CommandHelp);
+	int groupslen = sizeof(CommandGroups)/sizeof(char*);
+	int i,len,pos = 0;
+	HelpEntry tmp;
+
+	helpEntriesLen = len = commandslen + groupslen;
+	helpEntries = (HelpEntry*)zmalloc(sizeof(HelpEntry)*len);
+
+	for (i = 0; i < groupslen; i++)
+	{
+		tmp.argc = 1;
+		tmp.argv = (sds*)zmalloc(sizeof(sds));
+		tmp.argv[0] = sdscatprintf(sdsempty(),"@%s",CommandGroups[i]);
+		tmp.full = tmp.argv[0];
+		tmp.type = CLI_HELP_GROUP;
+		tmp.org = nullptr;
+		helpEntries[pos++] = tmp;
+	}
+
+	for (i = 0; i < commandslen; i++)
+	{
+		tmp.argv = sdssplitargs(commandHelp[i].name,&tmp.argc);
+		tmp.full = sdsnew(commandHelp[i].name);
+		tmp.type = CLI_HELP_COMMAND;
+		tmp.org = &commandHelp[i];
+		helpEntries[pos++] = tmp;
+	}
+}
+
+void RedisCli::clientOutputCommandHelp(struct CommandHelp *help,int group)
+{
+	printf("\r\n  \x1b[1m%s\x1b[0m \x1b[90m%s\x1b[0m\r\n",help->name,help->params);
+	printf("  \x1b[33msummary:\x1b[0m %s\r\n",help->summary);
+	printf("  \x1b[33msince:\x1b[0m %s\r\n",help->since);
+	if (group)
+	{
+		printf("  \x1b[33mgroup:\x1b[0m %s\r\n",CommandGroups[help->group]);
+	}
+}
+
+void RedisCli::clientOutputHelp(int argc,char **argv)
+{
+	int i, j, len;
+	int group = -1;
+	HelpEntry *entry;
+	struct CommandHelp *help;
+
+	if (argc == 0)
+	{
+		clientOutputGenericHelp();
+		return;
+	}
+	else if (argc > 0 && argv[0][0] == '@')
+	{
+		len = sizeof(CommandGroups)/sizeof(char*);
+		for (i = 0; i < len; i++)
+		{
+			if (strcasecmp(argv[0]+1,CommandGroups[i]) == 0)
+			{
+				group = i;
+				break;
+			}
+		}
+	}
+
+	assert(argc > 0);
+	for (i = 0; i < helpEntriesLen; i++)
+	{
+		entry = &helpEntries[i];
+		if (entry->type != CLI_HELP_COMMAND) continue;
+
+		help = entry->org;
+		if (group == -1)
+		{
+			/* Compare all arguments */
+			if (argc == entry->argc)
+			{
+				for (j = 0; j < argc; j++)
+				{
+					if (strcasecmp(argv[j],entry->argv[j]) != 0) break;
+				}
+
+				if (j == argc)
+				{
+					clientOutputCommandHelp(help,1);
+				}
+			}
+		}
+		else
+		{
+			if (group == help->group)
+			{
+				clientOutputCommandHelp(help,0);
+			}
+		}
+	}
+	printf("\r\n");
 
 }
 

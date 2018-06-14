@@ -54,19 +54,15 @@ static size_t chrtos(char *buffer,size_t size,char byte)
     switch(byte)
     {
 		case '\\':
-		case '"':
-			len = snprintf(buffer,size,"\"\\%c\"",byte);
-			break;
+		case '"': { len = snprintf(buffer,size,"\"\\%c\"",byte); break; }
 		case '\n': len = snprintf(buffer,size,"\"\\n\""); break;
 		case '\r': len = snprintf(buffer,size,"\"\\r\""); break;
 		case '\t': len = snprintf(buffer,size,"\"\\t\""); break;
 		case '\a': len = snprintf(buffer,size,"\"\\a\""); break;
 		case '\b': len = snprintf(buffer,size,"\"\\b\""); break;
 		default:
-			if (isprint(byte))
-				len = snprintf(buffer,size,"\"%c\"",byte);
-			else
-				len = snprintf(buffer,size,"\"\\x%02x\"",(unsigned char)byte);
+			if (isprint(byte)) { len = snprintf(buffer,size,"\"%c\"",byte); }
+			else { len = snprintf(buffer,size,"\"\\x%02x\"",(unsigned char)byte); }
 			break;
     }
     return len;

@@ -142,7 +142,6 @@ void EventLoop::runInLoop(Functor &&cb)
 	}
 	else
 	{
-
 		queueInLoop(std::move(cb));
 	}
 }
@@ -150,8 +149,8 @@ void EventLoop::runInLoop(Functor &&cb)
 void EventLoop::queueInLoop(Functor &&cb)
 {
 	{
-		 std::unique_lock<std::mutex> lk(mutex);
-		 pendingFunctors.push_back(std::move(cb));
+		std::unique_lock<std::mutex> lk(mutex);
+		pendingFunctors.push_back(std::move(cb));
 	}
 
 	if (!isInLoopThread() || callingPendingFunctors)
@@ -175,7 +174,6 @@ void EventLoop::doPendingFunctors()
 	}
 
 	functors.clear();
-
 	callingPendingFunctors = false;
 }
 
@@ -192,7 +190,6 @@ void EventLoop::run()
 			currentActiveChannel = it;
 			currentActiveChannel->handleEvent();
 		}
-
 		currentActiveChannel = nullptr;
 		eventHandling = false;
 		doPendingFunctors();

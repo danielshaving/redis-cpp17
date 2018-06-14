@@ -13,8 +13,8 @@
 
  Acceptor::~Acceptor()
  {
-	 channel.disableAll();
-	 channel.remove();
+	channel.disableAll();
+	channel.remove();
 	::close(listenfd);
  }
 
@@ -39,15 +39,11 @@
 			socket.setSocketNonBlock(connfd);
 			newConnectionCallback(connfd);
 		}
-		else
-		{
-			::close(connfd);
-			LOG_WARN<<"handleRead";
-		}
+		else { ::close(connfd); }
 	}
 	else
 	{
-		LOG_SYSERR << "in Acceptor::handleRead";
+
 	}
  }
 

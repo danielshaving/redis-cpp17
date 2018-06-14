@@ -105,7 +105,6 @@ size_t Rdb::rioRead(Rio *r,void *buf,size_t len)
 		len -= bytesToRead;
 		r->processedBytes += bytesToRead;
 	}
-
 	return 1;
 }
 
@@ -124,7 +123,6 @@ size_t Rdb::rioFileWrite(Rio *r,const void *buf,size_t len)
 	 {
 	 	fflush(r->io.file.fp);
 	 }
-
 	 return retval;
 }
 
@@ -204,16 +202,10 @@ int32_t Rdb::rdbTryIntegerEncoding(char *s,size_t len,uint8_t *enc)
 	char *endptr,buf[32];
 
 	value = strtoll(s,&endptr,10);
-	if (endptr[0] != '\0')
-	{
-		return 0;
-	}
+	if (endptr[0] != '\0') { return 0; }
 	
 	ll2string(buf,32,value);
-	if (strlen(buf) != len || memcmp(buf,s,len)) 
-	{
-		return 0;	
-	}
+	if (strlen(buf) != len || memcmp(buf,s,len)) { return 0; }
   	return rdbEncodeInteger(value,enc);
 }
 
@@ -222,47 +214,15 @@ uint32_t Rdb::rdbLoadLen(Rio *rdb,int32_t *isencoded)
 	unsigned char buf[2];
 	uint32_t len;
 	int32_t type;
-	if (isencoded)
-	{
-		*isencoded = 0;
-	}
-
-	if (rioRead(rdb,buf,1) == 0)
-	{
-		return REDIS_RDB_LENERR;
-	}
-
+	if (isencoded) { *isencoded = 0; }
+	if (rioRead(rdb,buf,1) == 0) { return REDIS_RDB_LENERR; }
 	type = (buf[0]&0xC0)>>6;
 
-	if (type == REDIS_RDB_ENCVAL)
-	{
-		if (isencoded)
-		{
-			*isencoded = 1;
-		}
-		return buf[0]&0x3F;
-	}
-	else if (type == REDIS_RDB_6BITLEN)
-	{
-		return buf[0]&0x3F;
-	}
-	else if (type == REDIS_RDB_14BITLEN)
-	{
-		if (rioRead(rdb,buf+1,1) == 0)
-		{
-			return REDIS_RDB_LENERR;	
-		}
-        return ((buf[0]&0x3F)<<8)|buf[1];
-	}
-	else
-	{
-		if (rioRead(rdb,&len,4) == 0)
-		{
-			return REDIS_RDB_LENERR;
-		}
-        return ntohl(len);
-	}
-	
+	if (type == REDIS_RDB_ENCVAL) { if (isencoded) { *isencoded = 1; } return buf[0]&0x3F; }
+	else if (type == REDIS_RDB_6BITLEN) { return buf[0]&0x3F; }
+	else if (type == REDIS_RDB_14BITLEN) { if (rioRead(rdb,buf+1,1) == 0) { return REDIS_RDB_LENERR; }
+		return ((buf[0]&0x3F)<<8)|buf[1]; }
+	else { if (rioRead(rdb,&len,4) == 0) { return REDIS_RDB_LENERR; } return ntohl(len); }
 }
 
 rObj *Rdb::rdbLoadIntegerObject(Rio *rdb,int32_t enctype,int32_t encode)
@@ -295,10 +255,8 @@ rObj *Rdb::rdbLoadIntegerObject(Rio *rdb,int32_t enctype,int32_t encode)
 		LOG_ERROR<<"Unknown RDB integer encoding type";
 	}
 
-	if (encode)
-        return createStringObjectFromLongLong(val);
-    else
-        return createObject(REDIS_STRING,sdsfromlonglong(val));
+	if (encode) { return createStringObjectFromLongLong(val); }
+    else { return createObject(REDIS_STRING,sdsfromlonglong(val)); }
 }
 
 rObj *Rdb::rdbLoadEncodedStringObject(Rio *rdb)
@@ -353,11 +311,9 @@ rObj *Rdb::rdbGenericLoadStringObject(Rio *rdb,int32_t encode)
 		}
 	}
 
-	if (len == REDIS_RDB_LENERR) return nullptr;
-
+	if (len == REDIS_RDB_LENERR) { return nullptr; }
 	o = createStringObject(nullptr,len);
-	if (len && rioRead(rdb,(void*)o->ptr,len) == 0) return nullptr;
-
+	if (len && rioRead(rdb,(void*)o->ptr,len) == 0) { return nullptr; }
 	return o;
 }
 
@@ -397,7 +353,7 @@ int32_t Rdb::rdbSaveStruct(Rio *rdb)
 				assert(iterr != stringMap.end());
 				assert(iterr->first->type == OBJ_STRING);
 
-				if (rdbSaveKeyValuePair(rdb,iterr->first,iterr->second,expire,now) == -1) return -1;
+				if (rdbSaveKeyValuePair(rdb,iterr->first,iterr->second,expire,now) == -1) { return -1; }
 			}
 			else if (iter->type == OBJ_LIST)
 			{
@@ -405,13 +361,10 @@ int32_t Rdb::rdbSaveStruct(Rio *rdb)
 				assert(iterr != listMap.end());
 				assert(iterr->first->type == OBJ_LIST);
 
-				if (rdbSaveKey(rdb,iterr->first) == -1) return -1;
-				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
+				if (rdbSaveKey(rdb,iterr->first) == -1) { return -1; }
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) { return -1; }
 
-				for (auto &iterrr : iterr->second)
-				{
-					if (rdbSaveValue(rdb,iterrr) == -1) return -1;
-				}
+				for (auto &iterrr : iterr->second) { if (rdbSaveValue(rdb,iterrr) == -1) return -1; }
 			}
 			else if (iter->type == OBJ_HASH)
 			{
@@ -419,13 +372,13 @@ int32_t Rdb::rdbSaveStruct(Rio *rdb)
 				assert(iterr != hashMap.end());
 				assert(iterr->first->type == OBJ_HASH);
 
-				if (rdbSaveKey(rdb,iterr->first) == -1) return -1;
-				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
+				if (rdbSaveKey(rdb,iterr->first) == -1) { return -1; }
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) { return -1; }
 
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveValue(rdb,iterrr.first) == -1) return -1;
-					if (rdbSaveValue(rdb,iterrr.second) == -1) return -1;
+					if (rdbSaveValue(rdb,iterrr.first) == -1) { return -1; }
+					if (rdbSaveValue(rdb,iterrr.second) == -1) { return -1; }
 				}
 			}
 			else if (iter->type == OBJ_ZSET)
@@ -435,13 +388,13 @@ int32_t Rdb::rdbSaveStruct(Rio *rdb)
 				assert(iterr->first->type == OBJ_ZSET);
 				assert(iterr->second.first.size() == iterr->second.second.size());
 
-				if (rdbSaveKey(rdb,iterr->first) == -1) return -1;
-				if (rdbSaveLen(rdb,iterr->second.first.size()) == -1) return -1;
+				if (rdbSaveKey(rdb,iterr->first) == -1) { return -1; }
+				if (rdbSaveLen(rdb,iterr->second.first.size()) == -1) { return -1; }
 			
 				for (auto &iterrr : iterr->second.first)
 				{
-					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1) return -1;
-					if (rdbSaveValue(rdb,iterrr.first) == -1) return -1;
+					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1) { return -1; }
+					if (rdbSaveValue(rdb,iterrr.first) == -1) { return -1; }
 				}
 			}
 			else if (iter->type == OBJ_SET)
@@ -450,23 +403,16 @@ int32_t Rdb::rdbSaveStruct(Rio *rdb)
 				assert(iterr != setMap.end());
 				assert(iterr->first->type == OBJ_SET);
 
-				if (rdbSaveKey(rdb,iterr->first) == -1) return -1;
-				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
+				if (rdbSaveKey(rdb,iterr->first) == -1) { return -1; }
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) { return -1; }
 	
-				for (auto &iterrr : iterr->second)
-				{
-					if (rdbSaveValue(rdb,iterrr) == -1) return -1;
-				}
+				for (auto &iterrr : iterr->second) { if (rdbSaveValue(rdb,iterrr) == -1) { return -1; } }
 			}
-			else
-			{
-				assert(false);
-			}
+			else { assert(false); }
 		}
 		
 		if (blockEnabled) mu.unlock();
 	}
-
 	return 1;
 }
 
@@ -475,18 +421,18 @@ int32_t Rdb::rdbLoadSet(Rio *rdb,int32_t type)
 	rObj *key;
 	int32_t len;
 
-	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
 
 	key->type = OBJ_SET;
 	key->calHash();
 
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) { return -1; }
 
 	std::unordered_set<rObj*,Hash,Equal> set;
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
-		if ((val = rdbLoadObject(type,rdb)) == nullptr) return -1;
+		if ((val = rdbLoadObject(type,rdb)) == nullptr) { return -1; }
 
 		val->type = OBJ_SET;
 		val->calHash();
@@ -509,7 +455,6 @@ int32_t Rdb::rdbLoadSet(Rio *rdb,int32_t type)
 		assert(it == setMap.end());
 		setMap.insert(std::make_pair(key,std::move(set)));
 	}
-
 	return 1;
 }
 
@@ -518,12 +463,12 @@ int32_t Rdb::rdbLoadZset(Rio *rdb,int32_t type)
 	rObj *key;
 	int32_t rdbver;
 	int32_t len;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
 
 	key->type = OBJ_ZSET;
 	key->calHash();
 
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) { return -1; }
 
 	Redis::SortIndexMap indexMap;
 	Redis::SortMap sortMap;
@@ -531,8 +476,8 @@ int32_t Rdb::rdbLoadZset(Rio *rdb,int32_t type)
 	{
 		rObj *val;
 		double socre;
-		if (rdbLoadBinaryDoubleValue(rdb,&socre) == -1) return -1;
-		if ((val = rdbLoadObject(type,rdb)) == nullptr) return -1;
+		if (rdbLoadBinaryDoubleValue(rdb,&socre) == -1) { return -1; }
+		if ((val = rdbLoadObject(type,rdb)) == nullptr) { return -1; }
 
 		val->type = OBJ_ZSET;
 		val->calHash();
@@ -559,7 +504,6 @@ int32_t Rdb::rdbLoadZset(Rio *rdb,int32_t type)
 		zsetMap.insert(std::make_pair(key,std::make_pair(std::move(indexMap),std::move(sortMap))));
 		map.insert(key);
 	}
-		
 	return 1;
 }
 
@@ -569,17 +513,17 @@ int32_t Rdb::rdbLoadList(Rio *rdb, int32_t type)
 	rObj *key;
 	int32_t rdbver;
 	int32_t len;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
 
 	key->type = OBJ_LIST;
 	key->calHash();
 	
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) { return -1; }
 
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
-		if ((val = rdbLoadObject(rdbver,rdb)) == nullptr) return -1;
+		if ((val = rdbLoadObject(rdbver,rdb)) == nullptr) { return -1; }
 
 		val->type = OBJ_LIST;
 		val->calHash();
@@ -595,7 +539,6 @@ int32_t Rdb::rdbLoadList(Rio *rdb, int32_t type)
 	auto &listMap = redisShards[index].listMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
-
 		auto it = listMap.find(key);
 		assert(it == listMap.end());
 
@@ -613,21 +556,21 @@ int32_t Rdb::rdbLoadHash(Rio *rdb,int32_t type)
 {
 	rObj *key;
 	int32_t len,rdbver;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
 	key->calHash();
 	key->type = OBJ_HASH;
 	
 	std::unordered_map<rObj*,rObj*,Hash,Equal> rhash;
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) { return -1; }
 	for (int32_t i = 0; i < len; i ++)
 	{
 		rObj *key,*val;
-		if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
+		if ((key = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
 		
 		key->calHash();
 		key->type = OBJ_HASH;
 		
-		if ((val = rdbLoadStringObject(rdb)) == nullptr) return -1;
+		if ((val = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
 		
 		val->calHash();
 		val->type = OBJ_HASH;
@@ -652,14 +595,13 @@ int32_t Rdb::rdbLoadHash(Rio *rdb,int32_t type)
 		hashMap.insert(std::make_pair(key,std::move(rhash)));
 		map.insert(key);
 	}
-	
 	return 1;
 }
 
 int32_t Rdb::rdbRestoreString(rObj *key,Rio *rdb,int32_t type)
 {
 	rObj *val;
-	if ((val = rdbLoadObject(type,rdb)) == nullptr) return -1;
+	if ((val = rdbLoadObject(type,rdb)) == nullptr) { return -1; }
 
 	key->calHash();
 	val->calHash();
@@ -667,7 +609,6 @@ int32_t Rdb::rdbRestoreString(rObj *key,Rio *rdb,int32_t type)
 	val->type = OBJ_STRING;
 
 	auto &redisShards = redis->getRedisShards();
-
 	size_t index  = key->hash % redis->kShards;
 	auto &mu = redisShards[index].mtx;
 	auto &map = redisShards[index].redisMap;
@@ -683,7 +624,6 @@ int32_t Rdb::rdbRestoreString(rObj *key,Rio *rdb,int32_t type)
 		map.insert(key);
 		stringMap.insert(std::make_pair(key,val));
 	}
-
 	return 1;
 }
 
@@ -694,20 +634,19 @@ int32_t Rdb::rdbRestoreHash(rObj *key,Rio *rdb,int32_t type)
 	key->calHash();
 	key->type = OBJ_HASH;
 	
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) { return -1; }
 	for (int32_t i = 0 ; i < len; i ++)
 	{
 		rObj *key,*val;
-		if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
+		if ((key = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
 		
 		key->calHash();
 		key->type = OBJ_HASH;
 		
-		if ((val = rdbLoadStringObject(rdb)) == nullptr) return -1;
+		if ((val = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
 		
 		val->calHash();
 		val->type = OBJ_HASH;
-
 		rhash.insert(std::make_pair(key,val));
 	}
 	assert(!rhash.empty());
@@ -719,7 +658,6 @@ int32_t Rdb::rdbRestoreHash(rObj *key,Rio *rdb,int32_t type)
 	auto &hashMap = redisShards[index].hashMap;
 	{
 		std::unique_lock <std::mutex> lck(mu);
-	
 		auto it = hashMap.find(key);
 		assert(it == hashMap.end());
 
@@ -728,7 +666,6 @@ int32_t Rdb::rdbRestoreHash(rObj *key,Rio *rdb,int32_t type)
 		hashMap.insert(std::make_pair(key,std::move(rhash)));
 		map.insert(key);
 	}
-
 	return 1;
 }
 
@@ -740,12 +677,12 @@ int32_t Rdb::rdbRestoreList(rObj *key,Rio *rdb,int32_t type)
 	key->type = OBJ_LIST;
 	key->calHash();
 	
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) { return -1; }
 
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
-		if ((val = rdbLoadObject(rdbver,rdb)) == nullptr) return -1;
+		if ((val = rdbLoadObject(rdbver,rdb)) == nullptr) { return -1; }
 
 		val->type = OBJ_LIST;
 		val->calHash();
@@ -767,7 +704,6 @@ int32_t Rdb::rdbRestoreList(rObj *key,Rio *rdb,int32_t type)
 		map.insert(key);
 		listMap.insert(std::make_pair(key,std::move(list)));
 	}
-
 	return 1;
 }
 
@@ -778,19 +714,19 @@ int32_t Rdb::rdbRestoreZset(rObj *key,Rio *rdb,int32_t type)
 	
 	int32_t rdbver;
 	int32_t len;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
 
 	key->type = OBJ_ZSET;
 	key->calHash();
 
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) { return -1; }
 
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
 		double socre;
-		if (rdbLoadBinaryDoubleValue(rdb,&socre) == -1) return -1;	
-		if ((val = rdbLoadObject(type, rdb)) == nullptr) return -1;
+		if (rdbLoadBinaryDoubleValue(rdb,&socre) == -1) { return -1; }
+		if ((val = rdbLoadObject(type, rdb)) == nullptr) { return -1; }
 
 		val->type = OBJ_ZSET;
 		val->calHash();
@@ -815,7 +751,6 @@ int32_t Rdb::rdbRestoreZset(rObj *key,Rio *rdb,int32_t type)
 		zsetMap.insert(std::make_pair(key,std::make_pair(std::move(indexMap),std::move(sortMap))));
 		map.insert(key);
 	}
-		
 	return 1;
 }
 
@@ -825,7 +760,7 @@ int32_t Rdb::rdbRestoreSet(rObj *key,Rio *rdb,int32_t type)
 	key->type = OBJ_ZSET;
 	key->calHash();
 
-	if ((len = rdbLoadLen(rdb,nullptr)) == -1) return -1;
+	if ((len = rdbLoadLen(rdb,nullptr)) == -1) { return -1; }
 
 	std::unordered_set<rObj*,Hash,Equal> set;
 	set.reserve(len);
@@ -833,7 +768,7 @@ int32_t Rdb::rdbRestoreSet(rObj *key,Rio *rdb,int32_t type)
 	for (int32_t i = 0; i < len; i++)
 	{
 		rObj *val;
-		if ((val = rdbLoadObject(type,rdb)) == nullptr) return -1;
+		if ((val = rdbLoadObject(type,rdb)) == nullptr) { return -1; }
 
 		val->type = OBJ_ZSET;
 		val->calHash();
@@ -884,8 +819,8 @@ int32_t Rdb::rdbRestoreExpire(rObj *key,Rio *rdb,int32_t type)
 int32_t Rdb::rdbLoadString(Rio *rdb,int32_t type,int64_t expiretime,int64_t now)
 {
 	rObj *key,*val;
-	if ((key = rdbLoadStringObject(rdb)) == nullptr) return -1;
-	if ((val = rdbLoadObject(type,rdb)) == nullptr) return -1;
+	if ((key = rdbLoadStringObject(rdb)) == nullptr) { return -1; }
+	if ((val = rdbLoadObject(type,rdb)) == nullptr) { return -1; }
 
 	key->calHash();
 	key->type = OBJ_STRING;
@@ -918,7 +853,7 @@ bool Rdb::rdbReplication(char *filename,const TcpConnectionPtr &conn)
 {
 	Rio rdb;
 	FILE *fp ;
-	if ((fp = ::fopen(filename,"r")) == nullptr) return false;
+	if ((fp = ::fopen(filename,"r")) == nullptr) { return false; }
 	
 	rioInitWithFile(&rdb,fp);
 	int32_t sendlen = startLoading(fp);
@@ -979,7 +914,7 @@ int32_t Rdb::createDumpPayload(Rio *rdb,rObj *obj)
 				auto iterr = stringMap.find(obj);
 				assert(iterr != stringMap.end());
 				assert(iterr->first->type == OBJ_STRING);
-				if (rdbSaveValue(rdb,iterr->second) == -1) return -1;
+				if (rdbSaveValue(rdb,iterr->second) == -1) { return -1; }
 
 			}
 			else if ((*iter)->type == OBJ_LIST)
@@ -987,11 +922,11 @@ int32_t Rdb::createDumpPayload(Rio *rdb,rObj *obj)
 				auto iterr = listMap.find(obj);
 				assert(iterr != listMap.end());
 				assert(iterr->first->type == OBJ_LIST);
-				if (rdbSaveLen(rdb, iterr->second.size()) == -1) return -1;
+				if (rdbSaveLen(rdb, iterr->second.size()) == -1) { return -1; }
 		
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveValue(rdb,iterrr) == -1) return -1;
+					if (rdbSaveValue(rdb,iterrr) == -1) { return -1; }
 				}
 			}
 			else if ((*iter)->type == OBJ_HASH)
@@ -999,11 +934,11 @@ int32_t Rdb::createDumpPayload(Rio *rdb,rObj *obj)
 				auto iterr = hashMap.find(obj);
 				assert(iterr != hashMap.end());
 				assert(iterr->first->type == OBJ_HASH);
-				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) { return -1; }
 
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second,-1,-1) == -1) return -1;
+					if (rdbSaveKeyValuePair(rdb,iterrr.first,iterrr.second,-1,-1) == -1) { return -1; }
 				}
 			}
 			else if ((*iter)->type == OBJ_ZSET)
@@ -1015,8 +950,8 @@ int32_t Rdb::createDumpPayload(Rio *rdb,rObj *obj)
 				if (rdbSaveLen(rdb,iterr->second.first.size()) == -1) return -1;			
 				for (auto &iterrr : iterr->second.first)
 				{
-					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1) return -1;
-					if (rdbSaveValue(rdb,iterrr.first) == -1) return -1;
+					if (rdbSaveBinaryDoubleValue(rdb,iterrr.second) == -1) { return -1; }
+					if (rdbSaveValue(rdb,iterrr.first) == -1) { return -1; }
 				}
 			}
 			else if ((*iter)->type == OBJ_SET)
@@ -1024,11 +959,11 @@ int32_t Rdb::createDumpPayload(Rio *rdb,rObj *obj)
 				auto iterr = setMap.find(obj);
 				assert(iterr != setMap.end());
 				assert(iterr->first->type == OBJ_SET);
-				if (rdbSaveLen(rdb,iterr->second.size()) == -1) return -1;
+				if (rdbSaveLen(rdb,iterr->second.size()) == -1) { return -1; }
 
 				for (auto &iterrr : iterr->second)
 				{
-					if (rdbSaveValue(rdb,iterrr) == -1) return -1;
+					if (rdbSaveValue(rdb,iterrr) == -1) { return -1; }
 				}
 			}
 			else
@@ -1038,8 +973,7 @@ int32_t Rdb::createDumpPayload(Rio *rdb,rObj *obj)
 		}
 	}
 
-	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1) return -1;
-
+	if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1) { return -1; }
 	return 1;
 }
 
@@ -1787,7 +1721,7 @@ ssize_t Rdb::rdbSaveRawString(Rio *rdb,uint8_t *s,size_t len)
 ssize_t Rdb::rdbSaveAuxField(Rio *rdb,char *key,size_t keylen,char *val,size_t vallen)
 {
     ssize_t ret,len = 0;
-    if ((ret = rdbSaveType(rdb,RDB_OPCODE_AUX)) == -1) return -1;
+    if ((ret = rdbSaveType(rdb,RDB_OPCODE_AUX)) == -1) { return -1; }
     len += ret;
     if ((ret = rdbSaveRawString(rdb,key,keylen)) == -1) return -1;
     len += ret;
@@ -1818,11 +1752,10 @@ int32_t Rdb::rdbSaveInfoAuxFields(Rio *rdb,int32_t flags)
     char version = REDIS_RDB_VERSION;
 
     /* Add a few fields about the state when the RDB was created. */
-    if (rdbSaveAuxFieldStrStr(rdb,"redis-ver",&version) == -1) return -1;
-    if (rdbSaveAuxFieldStrInt(rdb,"redis-bits",redisBits) == -1) return -1;
-    if (rdbSaveAuxFieldStrInt(rdb,"ctime",time(0)) == -1) return -1;
-    if (rdbSaveAuxFieldStrInt(rdb,"used-mem",zmalloc_used_memory()) == -1) return -1;
-
+    if (rdbSaveAuxFieldStrStr(rdb,"redis-ver",&version) == -1) { return -1; }
+    if (rdbSaveAuxFieldStrInt(rdb,"redis-bits",redisBits) == -1) { return -1; }
+    if (rdbSaveAuxFieldStrInt(rdb,"ctime",time(0)) == -1) { return -1; }
+    if (rdbSaveAuxFieldStrInt(rdb,"used-mem",zmalloc_used_memory()) == -1) { return -1; }
     if (rdbSaveAuxFieldStrInt(rdb,"aof-preamble",aofPreamble) == -1) return -1;
     return 1;
 }

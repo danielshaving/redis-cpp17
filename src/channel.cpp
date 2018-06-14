@@ -22,10 +22,8 @@ Channel::~Channel()
 {
 	assert(!eventHandling);
 	assert(!addedToLoop);
-	if (loop->isInLoopThread())
-	{
-		assert(!loop->hasChannel(this));
-	}
+
+	if (loop->isInLoopThread()) { assert(!loop->hasChannel(this)); }
 }
 
 void Channel::remove()
@@ -44,29 +42,35 @@ void Channel::update()
 void Channel::handleEventWithGuard()
 {
 	eventHandling = true;
+
 	if ((revents & POLLHUP) && !(revents & POLLIN))
 	{
-		if (logHup)
-		{
-
-		}
-
-		if (closeCallback) closeCallback();
+		if (logHup) { }
+		if (closeCallback) { closeCallback(); }
 	}
 
 	if (revents & (POLLERR | POLLNVAL))
 	{
-		if (errorCallback) errorCallback();
+		if (errorCallback) { errorCallback(); }
 	}
 
+#ifdef __linux__
 	if (revents & (POLLIN | POLLPRI | POLLRDHUP))
 	{
-		if (readCallback) readCallback();
+		if (readCallback) { readCallback(); }
 	}
+#endif
+
+#ifdef __APPLE__
+	if (revents & (POLLIN | POLLPRI))
+	{
+		if (readCallback) { readCallback(); }
+	}
+#endif
 
 	if (revents & POLLOUT | POLLHUP)
 	{
-		if (writeCallback) writeCallback();
+		if (writeCallback) { writeCallback(); }
 	}
 
 	eventHandling = false;
@@ -78,15 +82,9 @@ void Channel::handleEvent()
 	if (tied)
 	{
 		guard = tie.lock();
-		if (guard)
-		{
-			handleEventWithGuard();
-		}
+		if (guard) { handleEventWithGuard(); }
 	}
-	else
-	{
-		handleEventWithGuard();
-	}
+	else { handleEventWithGuard(); }
 }
 
 void Channel::setTie(const std::shared_ptr<void> &obj)

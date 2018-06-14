@@ -1,7 +1,7 @@
-#include "xRedis.h"
-#include "xLog.h"
+#include "redis.h"
+#include "log.h"
 
-xAsyncLogging *glog;
+AsyncLogging *glog;
 void asyncOutput(const char *msg,int32_t len)
 {
 	printf("%s\n",msg);
@@ -34,8 +34,8 @@ int main(int argc,char *argv[])
 	signal(SIGPIPE,SIG_IGN);
 	signal(SIGHUP,SIG_IGN);
 
-	xLogger::setOutput(asyncOutput);
-	xAsyncLogging log("redis",4096);
+	Logger::setOutput(asyncOutput);
+	AsyncLogging log("redis",4096);
 	log.start();
 	glog = &log;
 	printf("%s\n",ascii_logo);
@@ -46,7 +46,7 @@ int main(int argc,char *argv[])
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int16_t threadCount = atoi(argv[3]);
 		bool clusterEnbaled = atoi(argv[4]);
-		xRedis redis(ip,port,threadCount,clusterEnbaled);
+		Redis redis(ip,port,threadCount,clusterEnbaled);
 		LOG_INFO<<"ip:"<<ip;
 		LOG_INFO<<"port:"<<port;
 		LOG_INFO<<"thread:"<<threadCount;
@@ -55,7 +55,7 @@ int main(int argc,char *argv[])
 	}
 	else if (argc == 1)
 	{
-		xRedis redis("0.0.0.0",6379,0);
+		Redis redis("0.0.0.0",6379,0);
 		redis.run();
 	}
 	else

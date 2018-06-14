@@ -69,14 +69,8 @@ public:
 	void retrieve(size_t len)
 	{
 		assert(len <= readableBytes());
-		if (len < readableBytes())
-		{
-			readerIndex += len;
-		}
-		else
-		{
-			retrieveAll();
-		}
+		if (len < readableBytes()) { readerIndex += len; }
+		else { retrieveAll(); }
 	}
 
 	void retrieveUntil(const char *end)
@@ -86,25 +80,10 @@ public:
 		retrieve(end - peek());
 	}
 
-	void retrieveInt64()
-	{
-		retrieve(sizeof(int64_t));
-	}
-
-	void retrieveInt32()
-	{
-		retrieve(sizeof(int32_t));
-	}
-
-	void retrieveInt16()
-	{
-		retrieve(sizeof(int16_t));
-	}
-
-	void retrieveInt8()
-	{
-		retrieve(sizeof(int8_t));
-	}
+	void retrieveInt64() { retrieve(sizeof(int64_t)); }
+	void retrieveInt32() { retrieve(sizeof(int32_t)); }
+	void retrieveInt16() { retrieve(sizeof(int16_t)); }
+	void retrieveInt8() { retrieve(sizeof(int8_t)); }
 
 	void retrieveAll()
 	{
@@ -112,16 +91,7 @@ public:
 		writerIndex = kCheapPrepend;
 	}
 
-	void resize()
-	{
-
-	}
-
-	std::string retrieveAllAsString()
-	{
-		return retrieveAsString(readableBytes());;
-	}
-
+	std::string retrieveAllAsString() { return retrieveAsString(readableBytes());; }
 	std::string retrieveAsString(size_t len)
 	{
 		assert(len <= readableBytes());
@@ -137,15 +107,8 @@ public:
 		hasWritten(len);
 	}
 
-	void append(const StringPiece &str)
-	{
-		append(str.data(),str.size());
-	}
-
-	void append(const void *data,size_t len)
-	{
-		append(static_cast<const char*>(data),len);
-	}
+	void append(const StringPiece &str) { append(str.data(),str.size()); }
+	void append(const void *data,size_t len) { append(static_cast<const char*>(data),len); }
 
 	void appendInt32(int32_t x)
 	{
@@ -193,15 +156,8 @@ public:
 		prepend(&be16,sizeof be16);
 	}
 
-	void prependInt8(int8_t x)
-	{
-		prepend(&x,sizeof x);
-	}
-
-	void prependUInt8(uint8_t x)
-	{
-		prepend(&x,sizeof x);
-	}
+	void prependInt8(int8_t x) { prepend(&x,sizeof x); }
+	void prependUInt8(uint8_t x) { prepend(&x,sizeof x); }
 
 	void prepend(const void *data,size_t len)
 	{
@@ -211,10 +167,7 @@ public:
 		std::copy(d,d + len,begin() + readerIndex);
 	}
 
-	void preapend(const void *data,size_t len)
-	{
-		prepend(static_cast<const char*>(data),len);
-	}
+	void preapend(const void *data,size_t len) { prepend(static_cast<const char*>(data),len); }
 
 	void preapend(const char *data,size_t len)
 	{
@@ -226,10 +179,7 @@ public:
 
 	void ensureWritableBytes(size_t len)
 	{
-		if (writableBytes() < len)
-		{
-			makeSpace(len);
-		}
+		if (writableBytes() < len) { makeSpace(len); }
 		assert(writableBytes() >= len);
 	}
 
@@ -324,6 +274,7 @@ public:
 	{
 		return buffer.capacity();
 	}
+
 	ssize_t readFd(int32_t fd,int32_t *savedErrno);
 
 private:

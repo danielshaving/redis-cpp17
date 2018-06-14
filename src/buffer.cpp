@@ -16,14 +16,8 @@ ssize_t Buffer::readFd(int32_t fd,int32_t *savedErrno)
 	vec[1].iov_len = sizeof extrabuf;
 	const int32_t iovcnt = (writable < sizeof extrabuf) ? 2 : 1;
 	const ssize_t n = ::readv(fd,vec,iovcnt);
-	if (n < 0)
-	{
-		*savedErrno = errno;
-	}
-	else if (size_t(n) <= writable)
-	{
-		writerIndex += n;
-	}
+	if (n < 0) { *savedErrno = errno; }
+	else if (size_t(n) <= writable) { writerIndex += n; }
 	else
 	{
 		writerIndex = buffer.size();
