@@ -666,6 +666,9 @@ void RedisContext::setConnected()
 	flags != REDIS_CONNECTED;
 }
 
+/* Internal helper function to try and get a reply from the reader,
+ * or set an error in the context otherwise. */
+
 int32_t RedisContext::redisGetReplyFromReader(RedisReply **reply)
 {
 	if (reader->redisReaderGetReply(reply) == REDIS_ERR)
@@ -676,6 +679,16 @@ int32_t RedisContext::redisGetReplyFromReader(RedisReply **reply)
 	return REDIS_OK;
 }
 
+/* Write the output buffer to the socket.
+ *
+ * Returns REDIS_OK when the buffer is empty, or (a part of) the buffer was
+ * successfully written to the socket. When the buffer is empty after the
+ * write operation, "done" is set to 1 (if given).
+ *
+ * Returns REDIS_ERR if an error occurred trying to write and sets
+ * c->errstr to hold the appropriate error string.
+ */
+
 int32_t RedisContext::redisBufferWrite(int32_t *done)
 {
 	int32_t nwritten;
@@ -684,32 +697,49 @@ int32_t RedisContext::redisBufferWrite(int32_t *done)
 	if (sender.readableBytes() > 0)
 	{
 		nwritten = ::write(fd,sender.peek(),sender.readableBytes());
-		if (nwritten  < 0 )
+		if (nwritten < 0 )
 		{
 			if ((errno == EAGAIN && ! (flags & REDIS_BLOCK)) || (errno == EINTR))
 			{
 				/* Try again later */
 			}
 			else
-			{
+            {
 				redisSetError(REDIS_ERR_IO,nullptr);
 				return REDIS_ERR;
 			}
 		}
 		else if (nwritten > 0)
 		{
-			if (nwritten == (signed) sender.readableBytes()) { sender.retrieveAll(); }
-			else { sender.retrieve(nwritten); }
+			if (nwritten == sender.readableBytes())
+			{
+			    sender.retrieveAll();
+			}
+			else
+			{
+			    sender.retrieve(nwritten);
+			}
 		}
 	}
 
-	if (done != nullptr) { *done =(sender.readableBytes() == 0); }
+	if (done != nullptr)
+	{
+	    *done =(sender.readableBytes() == 0);
+	}
 	return REDIS_OK;
 }
+
+/* Use this function to handle a read event on the descriptor. It will try
+ * and read some bytes from the socket and feed them to the reply parser.
+ *
+ * After this function is called, you may use redisContextReadReply to
+ * see if there is a reply available. */
 
 int32_t RedisContext::redisBufferRead()
 {
 	int32_t savedErrno = 0;
+    /* Return early when the context has seen an error. */
+	if(err) { return REDIS_ERR; }
 	ssize_t n = reader->buffer->readFd(fd,&savedErrno);
 	if (n > 0)
 	{
@@ -724,7 +754,7 @@ int32_t RedisContext::redisBufferRead()
 	{
 		if ((errno == EAGAIN && ! (flags & REDIS_BLOCK)) || (errno == EINTR))
 		{
-
+            /* Try again later */
 		}
 		else
 		{
@@ -735,26 +765,29 @@ int32_t RedisContext::redisBufferRead()
 	return REDIS_OK;
 }
 
-
 int32_t RedisContext::redisGetReply(RedisReply **reply)
 {
 	int32_t wdone = 0;
 	RedisReply *aux = nullptr;
-
+    /* Try to read pending replies */
 	if (redisGetReplyFromReader(&aux) == REDIS_ERR)
-	{
+    {
 		redisSetError(reader->err,reader->errstr);
 		return REDIS_ERR;
 	}
 
+    /* For the blocking context, flush output buffer and read reply */
 	if (aux == nullptr && flags & REDIS_BLOCK)
 	{
+        /* Write until done */
 		do
 		{
 			if (redisBufferWrite(&wdone) == REDIS_ERR) { return REDIS_ERR; }
 
 		}while(!wdone);
 
+
+        /* Read until there is a reply */
 		do
 		{
 			if (redisBufferRead() == REDIS_ERR) { return REDIS_ERR; }
@@ -762,6 +795,7 @@ int32_t RedisContext::redisGetReply(RedisReply **reply)
 		}while(aux == nullptr);
 	}
 
+    /* Set reply object */
 	if (reply != nullptr) { *reply = aux; }
 	return REDIS_OK;
 }
@@ -791,9 +825,8 @@ void RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,const std:
 		std::unique_lock<std::mutex> lk(mtx);
 		asyncCb.push_back(std::move(call));
 	}
-	serverConn->send(cmd,len);
+	serverConn->sendPipe(cmd,len);
 }
-
 
 int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 {
@@ -1188,7 +1221,7 @@ int32_t redisFormatSdsCommandArgv(sds *target,int32_t argc,const char **argv,con
     if (target == nullptr) { return -1; }
 
     /* Calculate our total size */
-    totlen = 1+ countDigits(argc)+2;
+    totlen = 1 + countDigits(argc)+2;
     for (j = 0; j < argc; j++)
     {
         len = argvlen ? argvlen[j] : strlen(argv[j]);
@@ -1216,6 +1249,16 @@ int32_t redisFormatSdsCommandArgv(sds *target,int32_t argc,const char **argv,con
     return totlen;
 }
 
+void RedisContext::redisAppendCommand(const char *cmd,size_t len)
+{
+	sender.append(cmd,len);
+}
+
+void RedisContext::redisAppendFormattedCommand(const char *cmd,size_t len)
+{
+	redisAppendCommand(cmd,len);
+}
+
 int32_t RedisContext::redisAppendCommandArgv(int32_t argc,const char **argv,const size_t *argvlen)
 {
 	char *cmd;
@@ -1224,12 +1267,12 @@ int32_t RedisContext::redisAppendCommandArgv(int32_t argc,const char **argv,cons
 
 	if (len == -1)
 	{
-		LOG_WARN<<"Out of memory";
+        redisSetError(REDIS_ERR_OOM,"Out of memory");
 		return REDIS_ERR;
 	}
 
 	redisAppendCommand(cmd,len);
-	zfree(cmd);
+    zfree(cmd);
 	return REDIS_OK;
 }
 
@@ -1311,7 +1354,6 @@ static int32_t redisContextTimeoutMsec(const struct timeval *timeout,int32_t *re
     return REDIS_OK;
 }
 
-
 int32_t RedisContext::redisContextConnectUnix(const char *path,const struct timeval *timeout)
 {
 	int32_t blocking = (flags & REDIS_BLOCK);
@@ -1319,17 +1361,27 @@ int32_t RedisContext::redisContextConnectUnix(const char *path,const struct time
 	int32_t timeoutMsec = -1;
 
 	Socket socket;
-	int32_t sockfd = socket.createSocket();
-	if (sockfd == -1){ return REDIS_ERR; }
-	fd = sockfd;
-	socket.setSocketNonBlock(sockfd);
-	if (this->path != path) { this->path = path; }
-	if (redisContextTimeoutMsec(timeout,&timeoutMsec) != REDIS_OK) { return REDIS_ERR; }
+	fd = socket.createSocket();
+	if (fd == -1)
+    {
+        return REDIS_ERR;
+    }
+
+	socket.setSocketNonBlock(fd);
+	if (this->path != path)
+	{
+	    this->path = path;
+	}
+
+	if (redisContextTimeoutMsec(timeout,&timeoutMsec) != REDIS_OK)
+	{
+	    return REDIS_ERR;
+	}
 
 	sa.sun_family = AF_LOCAL;
     strncpy(sa.sun_path,path,sizeof(sa.sun_path)-1);
 
-    if (!socket.connect(sockfd,(struct sockaddr*)&sa)) 
+    if (socket.connect(fd,(struct sockaddr*)&sa) == -1)
     {
         if (errno == EINPROGRESS && !blocking) 
         {
@@ -1337,32 +1389,24 @@ int32_t RedisContext::redisContextConnectUnix(const char *path,const struct time
         } 
         else 
         {
-            if (redisContextWaitReady(timeoutMsec) != REDIS_OK) { return REDIS_ERR; }
+            if (redisContextWaitReady(timeoutMsec) != REDIS_OK)
+            {
+                return REDIS_ERR;
+            }
         }
     }
 
-    if( !socket.setSocketBlock(sockfd)) { return REDIS_ERR; }
-	if( !socket.setTcpNoDelay(sockfd,true)) { return REDIS_ERR; }
+    if(socket.setSocketBlock(fd) == -1) { return REDIS_ERR; }
+	if(socket.setTcpNoDelay(fd,true) == -1) { return REDIS_ERR; }
 
     flags |= REDIS_CONNECTED;
     return REDIS_OK;
 }
 
 int32_t RedisContext::redisContextConnectTcp(const char *ip,int16_t port,const struct timeval *timeout)
-{	
-	int32_t rv;
-	struct addrinfo hints,*servinfo;
-	memset(&hints,0,sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	char _port[6];
-	snprintf(_port,6,"%d",port);
-
-	if ((rv = getaddrinfo(ip,_port,&hints,&servinfo)) != 0)
-	{
-		redisSetError(REDIS_ERR_OTHER,gai_strerror(rv));
-		return REDIS_ERR;
-	}
+{
+    this->ip = ip;
+    this->port = port;
 
 	int32_t timeoutMsec = -1;
 	if (timeout != nullptr)
@@ -1379,39 +1423,50 @@ int32_t RedisContext::redisContextConnectTcp(const char *ip,int16_t port,const s
 	int32_t reuses = 0;
 
 	Socket socket;
-	int32_t sockfd = socket.createSocket();
+	fd = socket.createSocket();
+    if (fd == -1)
+    {
+        return REDIS_ERR;
+    }
 
-	if (sockfd == -1){ return REDIS_ERR; }
+    if (!socket.setSocketNonBlock(fd))
+    {
+        return REDIS_ERR;
+    }
 
-	fd = sockfd;
-	socket.setSocketNonBlock(sockfd);
+	if (socket.connect(fd,ip,port) == -1)
+    {
+        if (errno == EHOSTUNREACH)
+        {
+            return REDIS_ERR;
+        }
+        else if (errno == EINPROGRESS && !blocking)
+        {
 
-	struct sockaddr_in sin;
-	memset(&sin,0,sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(port);
-	sin.sin_addr.s_addr = inet_addr(ip);
-
-	if ( !socket.connect(sockfd,(struct sockaddr*)&sin)) 
-	{
-	 	 if (errno == EHOSTUNREACH) { return REDIS_ERR; }
-		 else if (errno == EINPROGRESS && !blocking) { }
-		 else if (errno == EADDRNOTAVAIL && reuseaddr)
-		 {
-		 	 if (++reuses >= REDIS_CONNECT_RETRIES) { return REDIS_ERR; }
-			 else { return REDIS_ERR; }
-		 }
-		 else 
-		 {
-		 	 if (redisContextWaitReady(timeoutMsec)!= REDIS_OK) { return REDIS_ERR; }
-		 }
+        }
+        else if (errno == EADDRNOTAVAIL && reuseaddr)
+        {
+            if (++reuses >= REDIS_CONNECT_RETRIES)
+            {
+                return REDIS_ERR;
+            }
+            else
+            {
+                return REDIS_ERR;
+            }
+        }
+        else
+        {
+            if (redisContextWaitReady(timeoutMsec)!= REDIS_OK)
+            {
+                return REDIS_ERR;
+            }
+        }
 	}
 
-	if( !socket.setSocketBlock(sockfd)) { return REDIS_ERR; }
-	if( !socket.setTcpNoDelay(sockfd,true)) { return REDIS_ERR; }
+	if (socket.setSocketBlock(fd) == -1) { return REDIS_ERR; }
+	if (socket.setTcpNoDelay(fd,true) == -1) { return REDIS_ERR; }
 
-	this->ip = ip;
-	this->port = port;
 	return REDIS_OK;
 }
 
@@ -1605,6 +1660,9 @@ RedisContextPtr redisConnectUnix(const char *path)
 	return c;
 }
 
+/* Connect to a Redis instance. On error the field error in the returned
+ * context will be set to the return value of the error function.
+ * When no set of reply functions is given, the default set will be used. */
 RedisContextPtr redisConnect(const char *ip,int16_t port)
 {
 	RedisContextPtr c(new RedisContext);

@@ -316,11 +316,11 @@ public:
 	static void setFlush(FlushFunc);
 
 private:
-	class xImpl
+	class Impl
 	{
 	public:
 		 typedef Logger::LogLevel LogLevel;
-		 xImpl(LogLevel level,int32_t oldErrno,const SourceFile &file,int32_t line);
+		 Impl(LogLevel level,int32_t oldErrno,const SourceFile &file,int32_t line);
 		 void formatTime();
 		 void finish();
 
@@ -329,7 +329,7 @@ private:
 		 int32_t line;
 		 SourceFile baseName;
 	};
-	xImpl impl;
+	Impl impl;
 };
 
 extern Logger::LogLevel g_logLevel;

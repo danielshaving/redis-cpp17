@@ -1,14 +1,9 @@
+//
+// Created by zhanghao on 2018/6/17.
+//
+
 #include "redis.h"
-#include "log.h"
-
-AsyncLogging *glog;
-void asyncOutput(const char *msg,int32_t len)
-{
-	printf("%s\n",msg);
-	glog->append(msg, len);
-}
-
-char *ascii_logo =
+char *logo =
 "                _._                                                  \n"
 "           _.-``__ ''-._                                             \n"
 "      _.-``    `.  `_.  ''-._           xredis 1.0 	beta		  \n"
@@ -31,14 +26,10 @@ char *ascii_logo =
 
 int main(int argc,char *argv[])
 {
+
 	signal(SIGPIPE,SIG_IGN);
 	signal(SIGHUP,SIG_IGN);
-
-	Logger::setOutput(asyncOutput);
-	AsyncLogging log("redis",4096);
-	log.start();
-	glog = &log;
-	printf("%s\n",ascii_logo);
+	printf("%s\n",logo);
 
 	if(argc == 5)
 	{
@@ -62,7 +53,6 @@ int main(int argc,char *argv[])
 	{
 		fprintf(stderr,"Usage: client <host_ip> <port> <threads> <cluster>\n");
 	}
-
 	return 0;
 }
 

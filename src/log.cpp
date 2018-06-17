@@ -434,7 +434,7 @@ void defaultFlush()
 Logger::OutputFunc g_output = defaultOutput;
 Logger::FlushFunc g_flush = defaultFlush;
 
-Logger::xImpl::xImpl(LogLevel level,int32_t savedErrno,const SourceFile &file,int32_t line)
+Logger::Impl::Impl(LogLevel level,int32_t savedErrno,const SourceFile &file,int32_t line)
 :stream(),
 level(level),
 line(line),
@@ -443,7 +443,7 @@ baseName(file)
 	formatTime();
 }
 
-void Logger::xImpl::formatTime()
+void Logger::Impl::formatTime()
 {
 	char t_time[32];
 	char timebuf[32];
@@ -458,7 +458,7 @@ void Logger::xImpl::formatTime()
 	stream<<"  ";
 }
 
-void Logger::xImpl::finish()
+void Logger::Impl::finish()
 {
 	stream << "  " << T(baseName.data,baseName.size)<< ':' << line<<"\r";
 }

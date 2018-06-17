@@ -46,7 +46,6 @@ dbnum(1)
 		std::thread thread(std::bind(&Cluster::connectCluster,&clus));
 		thread.detach();
 	}
-
 	LOG_INFO<<"Ready to accept connections";
 }
 
@@ -59,7 +58,7 @@ Redis::~Redis()
 
 bool Redis::clearClusterMigradeCommand()
 {
-	return true;
+    return true;
 }
 
 void Redis::replyCheck()

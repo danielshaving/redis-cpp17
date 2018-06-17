@@ -1,3 +1,6 @@
+//
+// Created by zhanghao on 2018/6/17.
+//
 #pragma once
 #include "sds.h"
 #include "tcpconnection.h"
@@ -119,11 +122,11 @@ public:
 	~RedisContext();
 
 	int32_t redisvAppendCommand(const char *format,va_list ap);
-	void redisAppendCommand(const char *cmd,size_t len) { sender.append(cmd,len); }
+	void redisAppendCommand(const char *cmd,size_t len);
 	RedisReply *redisCommand(const char *format,...);
 	RedisReply *redisvCommand(const char *format,va_list ap);
 	RedisReply *redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
-	void redisAppendFormattedCommand(const char *cmd,size_t len) { redisAppendCommand(cmd,len); }
+	void redisAppendFormattedCommand(const char *cmd,size_t len);
 	int32_t redisAppendCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
 	void redisSetError(int32_t type,const char *str);
 	RedisReply *redisBlockForReply();

@@ -156,6 +156,7 @@ void Socket::fromIpPort(const char *ip,uint16_t port,struct sockaddr_in6 *addr)
 
 int32_t Socket::createSocket()
 {
+    return ::socket(AF_INET,SOCK_STREAM,0);
 #ifdef __linux__
 	return ::socket(AF_INET,SOCK_STREAM | SOCK_CLOEXEC,0);
 #endif
@@ -184,10 +185,8 @@ bool Socket::connectWaitReady(int32_t fd,int32_t msec)
 			 return false;
 		 }
 	}
-
 	return true;
 }
-
 
 int32_t Socket::connect(int32_t sockfd,const char *ip,int16_t port)
 {
@@ -206,8 +205,8 @@ int32_t Socket::connect(int32_t sockfd,struct sockaddr *sin)
 
 int32_t Socket::setFlag(int32_t fd,int32_t flag)
 {
-	int32_t ret = ::fcntl(fd, F_GETFD);
-	return ::fcntl(fd, F_SETFD, ret | flag);
+	int32_t ret = ::fcntl(fd,F_GETFD);
+	return ::fcntl(fd,F_SETFD,ret | flag);
 }
 
 bool Socket::setTimeOut(int32_t sockfd,const struct timeval tv)

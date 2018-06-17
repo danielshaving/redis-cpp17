@@ -19,7 +19,7 @@ class Redis
 public:
 	Redis(const char *ip,int16_t port,int16_t threadCount,bool enbaledCluster = false);
 	~Redis();
-	
+
 	void initConfig();
 	void timeOut() { loop.quit(); }
 	void serverCron();

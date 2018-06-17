@@ -117,14 +117,14 @@ static char *CommandGroups[] =
     "geo"
 };
 
-struct CommandHelp
+static struct CommandHelp
 {
     char *name;
     char *params;
     char *summary;
     int group;
     char *since;
-} commandHelp[] =
+}commandHelp[] =
 {
     { "APPEND",
             "key value",
@@ -1131,7 +1131,7 @@ public:
     RedisCli();
     ~RedisCli();
 
-    int redsCli(int argc,char **argv);
+    int redisCli(int argc,char **argv);
     int parseOptions(int argc,char **argv);
     void usage();
     int cliConnect(int force);
@@ -1142,11 +1142,24 @@ public:
     int issueCommand(int argc,char **argv) { return issuseCommandRepeat(argc,argv,config.repeat); }
     int issuseCommandRepeat(int argc,char **argv,int repeat);
     int pollWait(int fd,int mask,int64_t milliseconds);
-    int clientSendCommand(int argc,char **argv,int repeat);
-    void clientOutputHelp(int argc,char **argv);
-    void clientOutputGenericHelp();
-    void clientInitHelp();
-    void clientOutputCommandHelp(struct CommandHelp *help,int group);
+    int cliSendCommand(int argc,char **argv,int repeat);
+    void cliOutputHelp(int argc,char **argv);
+    void cliOutputGenericHelp();
+    void cliInitHelp();
+    void cliOutputCommandHelp(struct CommandHelp *help,int group);
+
+    int cliReadReply(int outputRawString);
+    void cliPrintContextError();
+    void cliRefreshPrompt();
+    sds cliFormatReplyRaw(RedisReply *r);
+    sds sdsCatColorizedLdbReply(sds o,char *s,size_t len);
+    sds cliFormatReplyTTY(RedisReply *r,char *prefix);
+    sds cliFormatReplyCSV(RedisReply *r);
+
+    sds sdscatcolor(sds o,char *s,size_t len,char *color);
+    int isColorTerm();
+    char **convertToSds(int count,char** args);
+    Config *getConfig() { return &config; }
 
 private:
     RedisContextPtr context;
