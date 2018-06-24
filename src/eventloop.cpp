@@ -70,7 +70,7 @@ void EventLoop::removeChannel(Channel *channel)
 	if (eventHandling)
 	{
 		assert(currentActiveChannel == channel ||
-		std::find(activeChannels.begin(), activeChannels.end(), channel) == activeChannels.end());
+		std::find(activeChannels.begin(),activeChannels.end(),channel) == activeChannels.end());
 	}
 	epoller->removeChannel(channel);
 }

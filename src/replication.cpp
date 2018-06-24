@@ -59,7 +59,7 @@ void Replication::syncWithMaster(const TcpConnectionPtr &conn)
 	   sockerr = errno;
 	if (sockerr) 
 	{
-	   LOG_WARN<<"error condition on socket for sync"<< strerror(sockerr);
+	   LOG_WARN<<"Error condition on socket for sync"<< strerror(sockerr);
 	   return ;
 	}
 	syncWrite(conn);	
@@ -76,7 +76,7 @@ void Replication::readCallBack(const TcpConnectionPtr &conn, Buffer *buffer)
 			{
 				::fclose(fp);
 				conn->forceClose();
-				LOG_WARN << "length is too large";
+				LOG_WARN << "Length is too large";
 				break;
 			}
 
@@ -96,7 +96,7 @@ void Replication::readCallBack(const TcpConnectionPtr &conn, Buffer *buffer)
 			::fclose(fp);
 			conn->forceClose();
 			salveLen = 0;
-			LOG_WARN << "slave read data failure";
+			LOG_WARN << "Slave read data failure";
 		}
 		if (salveLen == salveReadLen)
 		{
@@ -114,14 +114,14 @@ void Replication::readCallBack(const TcpConnectionPtr &conn, Buffer *buffer)
 				}
 
 				conn->send(shared.ok->ptr,sdslen(shared.ok->ptr));
-				LOG_INFO << "replication load rdb success";
+				LOG_INFO << "Replication load rdb success";
 			}
 			else
 			{
 				::fclose(fp);
 				conn->forceClose();
 				salveLen = 0;
-				LOG_INFO << "replication load rdb failure";
+				LOG_INFO << "Replication load rdb failure";
 			}
 		}
 	}
@@ -162,7 +162,7 @@ void Replication::slaveCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 						sessions[conn->getSockfd()] = session;
 					}
 
-					LOG_INFO << "slaveof sync success";
+					LOG_INFO << "Slaveof sync success";
 				}
 			}
 		}
@@ -206,13 +206,13 @@ void Replication::connCallBack(const TcpConnectionPtr &conn)
 		LOG_INFO<<"connect master disconnect";
 	}
 }
-
+ 
 void Replication::reconnectTimer(const std::any &context)
 {
 	client->asyncConnect();
 }
 
-void Replication::replicationSetMaster(rObj *obj,int16_t port)
+void Replication::replicationSetMaster(RedisObject *obj,int16_t port)
 {
 	this->ip = obj->ptr;
 	this->port = port;

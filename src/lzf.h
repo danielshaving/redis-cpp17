@@ -1,3 +1,6 @@
+//
+// Created by zhanghao on 2018/6/17.
+//
 #pragma once
 
 #define LZF_VERSION 0x0105 /* 1.5, API version */

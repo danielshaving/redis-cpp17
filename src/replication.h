@@ -1,3 +1,7 @@
+//
+// Created by zhanghao on 2018/6/17.
+//
+
 #pragma once
 #include "all.h"
 #include "object.h"
@@ -12,7 +16,7 @@ public:
 	~Replication();
 	
 	void connectMaster();
-	void replicationSetMaster(rObj *obj,int16_t port);
+	void replicationSetMaster(RedisObject *obj,int16_t port);
 
 	void slaveCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
 	void readCallBack(const TcpConnectionPtr &conn,Buffer *buffer);

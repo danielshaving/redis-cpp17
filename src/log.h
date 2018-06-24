@@ -1,3 +1,6 @@
+//
+// Created by zhanghao on 2018/6/17.
+//
 #pragma once
 #include "all.h"
 #include "buffer.h"
@@ -195,7 +198,7 @@ public:
 	self &operator<<(double);
 	self &operator<<(char v)
 	{
-		buffer.append(&v, 1);
+		buffer.append(&v,1);
 		return *this;
 	}
 
@@ -337,7 +340,6 @@ inline Logger::LogLevel Logger::logLevel()
 {
 	return g_logLevel;
 }
-
 
 #define LOG_TRACE if (Logger::logLevel() <= Logger::TRACE) \
   Logger(__FILE__, __LINE__, Logger::TRACE, __func__).stream()

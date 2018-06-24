@@ -90,7 +90,7 @@ void Session::readCallBack(const TcpConnectionPtr &clientConn,Buffer *buffer)
 	}
 }
 
-bool Session::checkCommand(rObj *commands)
+bool Session::checkCommand(RedisObject *commands)
 {
 	auto it = redis->commands.find(commands);
 	if (it == redis->commands.end())
@@ -322,7 +322,7 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 		}
 		else
 		{
-			rObj * obj = (rObj*)createStringObject(argv[j],sdslen(argv[j]));
+			RedisObject * obj = (RedisObject*)createStringObject(argv[j],sdslen(argv[j]));
 			obj->calHash();
 			commands.push_back(obj);
 		}
@@ -445,7 +445,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			}
 			else
 			{
-				rObj *obj = (rObj*)createStringObject((char*)(queryBuf + pos),bulklen);
+				RedisObject *obj = (RedisObject*)createStringObject((char*)(queryBuf + pos),bulklen);
 				obj->calHash();
 				commands.push_back(obj);
 			}

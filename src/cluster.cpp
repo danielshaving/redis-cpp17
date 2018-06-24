@@ -183,7 +183,7 @@ uint32_t Cluster::keyHashSlot(char *key,int32_t keylen)
 	return crc16(key + s + 1, e - s - 1) & 0x3FFF;
 }
 
-int32_t Cluster::getSlotOrReply(const SessionPtr &session,rObj *o)
+int32_t Cluster::getSlotOrReply(const SessionPtr &session,RedisObject *o)
 {
 	int64_t slot;
 
@@ -212,7 +212,7 @@ void Cluster::structureProtocolSetCluster(std::string ip,int16_t port,
 	clear();
 }
 
-void Cluster::delClusterImport(std::deque<rObj*> &robj)
+void Cluster::delClusterImport(std::deque<RedisObject*> &robj)
 {
 	auto &clusterConn = redis->getClusterConn();
 	for (auto &it : clusterConn)
@@ -247,7 +247,7 @@ void Cluster::clear()
 	buffer.retrieveAll();
 }
 
-bool Cluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr &session,
+bool Cluster::replicationToNode(const std::deque<RedisObject*> &obj,const SessionPtr &session,
 	const std::string &ip,int16_t port,int8_t copy,int8_t replace,int32_t numKeys,int32_t firstKey)
 {
 	clear();
@@ -309,7 +309,7 @@ bool Cluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr &s
 				return false;
 			}
 
-			rObj * dump = redis->createDumpPayload(it);
+			RedisObject * dump = redis->createDumpPayload(it);
 			if (dump == nullptr)
 			{
 				return false;
@@ -329,7 +329,7 @@ bool Cluster::replicationToNode(const std::deque<rObj*> &obj,const SessionPtr &s
 			return false;
 		}
 
-		rObj *dump = redis->createDumpPayload(obj[2]);
+		RedisObject *dump = redis->createDumpPayload(obj[2]);
 		if (dump == nullptr)
 		{
 			return false;
@@ -422,7 +422,7 @@ void Cluster::eraseImportingSlot(const std::string &name)
 	importingSlotsFroms.erase(name);
 }
 
-void Cluster::addSlotDeques(rObj *slot,std::string name)
+void Cluster::addSlotDeques(RedisObject *slot,std::string name)
 {
 	commands.push_back(shared.cluster);
 	commands.push_back(shared.addsync);
@@ -432,7 +432,7 @@ void Cluster::addSlotDeques(rObj *slot,std::string name)
 	commands.push_back(createStringObject(name.data(),name.length()));
 }
 
-void Cluster::delSlotDeques(rObj *obj,int32_t slot)
+void Cluster::delSlotDeques(RedisObject *obj,int32_t slot)
 {
 	commands.push_back(shared.cluster);
 	commands.push_back(shared.delsync);
@@ -461,7 +461,7 @@ sds Cluster::showClusterNodes()
 	return ci;
 }
 
-void Cluster::getKeyInSlot(int32_t hashslot,std::vector<rObj*> &keys,int32_t count)
+void Cluster::getKeyInSlot(int32_t hashslot,std::vector<RedisObject*> &keys,int32_t count)
 {
 	int32_t j = 0;
 	auto &redisShards = redis->getRedisShards();

@@ -2,12 +2,12 @@
 
 struct SharedObjectsStruct shared;
 
-void rObj::calHash()
+void RedisObject::calHash()
 {
 	hash = dictGenHashFunction(ptr,sdslen(ptr));
 }
 
-bool rObj::operator < (const rObj &r) const
+bool RedisObject::operator < (const RedisObject &r) const
 {
 	auto cmp = memcmp(ptr,r.ptr,sdslen(ptr));
 	if (cmp < 0) { return true; }
@@ -15,16 +15,16 @@ bool rObj::operator < (const rObj &r) const
 	else { return false; }
 }
 
-rObj *createObject(int32_t type,char *ptr)
+RedisObject *createObject(int32_t type,char *ptr)
 {
-	rObj *o = (rObj*)zmalloc(sizeof(rObj));
+	RedisObject *o = (RedisObject*)zmalloc(sizeof(RedisObject));
 	o->encoding = REDIS_ENCODING_RAW;
 	o->type = type;
 	o->ptr = ptr;
 	return o;
 }
 
-int32_t getLongLongFromObject(rObj *o,int64_t *target)
+int32_t getLongLongFromObject(RedisObject *o,int64_t *target)
 {
 	int64_t value;
 	if (o == nullptr) { value = 0; }
@@ -39,7 +39,7 @@ int32_t getLongLongFromObject(rObj *o,int64_t *target)
 	return REDIS_OK;
 }
 
-int32_t getLongLongFromObjectOrReply(Buffer &buffer,rObj *o,int64_t *target,const char *msg)
+int32_t getLongLongFromObjectOrReply(Buffer &buffer,RedisObject *o,int64_t *target,const char *msg)
 {
     int64_t value;
     if (getLongLongFromObject(o,&value) != REDIS_OK)
@@ -54,7 +54,7 @@ int32_t getLongLongFromObjectOrReply(Buffer &buffer,rObj *o,int64_t *target,cons
 }
 
 
-int32_t getLongFromObjectOrReply(Buffer &buffer,rObj *o,int32_t *target,const char *msg)
+int32_t getLongFromObjectOrReply(Buffer &buffer,RedisObject *o,int32_t *target,const char *msg)
 {
 	int64_t value;
 	if (getLongLongFromObject(o,&value) != REDIS_OK)
@@ -68,15 +68,15 @@ int32_t getLongFromObjectOrReply(Buffer &buffer,rObj *o,int32_t *target,const ch
 	return REDIS_OK;
 }
 
-rObj *createStringObjectFromLongLong(int64_t value)
+RedisObject *createStringObjectFromLongLong(int64_t value)
 {
-	rObj *o;
+	RedisObject *o;
 	if (value >= 0 && value < REDIS_SHARED_INTEGERS) { o = shared.integers[value - 1]; }
 	else { o = createObject(REDIS_STRING,sdsfromlonglong(value)); }
 	return o;
 }
 
-int32_t getDoubleFromObjectOrReply(Buffer &buffer,rObj *o,double *target,const char *msg)
+int32_t getDoubleFromObjectOrReply(Buffer &buffer,RedisObject *o,double *target,const char *msg)
 {
     double value;
     if (getDoubleFromObject(o,&value) != REDIS_OK)
@@ -91,7 +91,7 @@ int32_t getDoubleFromObjectOrReply(Buffer &buffer,rObj *o,double *target,const c
 }
 
 
-int32_t getDoubleFromObject(const rObj *o,double *target)
+int32_t getDoubleFromObject(const RedisObject *o,double *target)
 {
     double value;
     char *eptr;
@@ -116,32 +116,32 @@ int32_t getDoubleFromObject(const rObj *o,double *target)
     return REDIS_OK;
 }
 
-void freeStringObject(rObj *o)
+void freeStringObject(RedisObject *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
-void freeListObject(rObj *o)
+void freeListObject(RedisObject *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
-void freeHashObject(rObj *o)
+void freeHashObject(RedisObject *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
-void freeSetObject(rObj *o)
+void freeSetObject(RedisObject *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
-void freeZsetObject(rObj *o)
+void freeZsetObject(RedisObject *o)
 {
     if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
 }
 
-void decrRefCount(rObj *o)
+void decrRefCount(RedisObject *o)
 {
 	switch(o->type)
 	{
@@ -487,19 +487,19 @@ void createSharedObjects()
 	}
 }
 
-rObj *createStringObject(char *ptr,size_t len)
+RedisObject *createStringObject(char *ptr,size_t len)
 {
 	return createEmbeddedStringObject(ptr,len);
 }
 
-rObj *createRawStringObject(char *ptr,size_t len)
+RedisObject *createRawStringObject(char *ptr,size_t len)
 {
 	return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
 
-rObj *createEmbeddedStringObject(char *ptr,size_t len)
+RedisObject *createEmbeddedStringObject(char *ptr,size_t len)
 {
-	rObj *o = (rObj*)zmalloc(sizeof(rObj)+sizeof(struct sdshdr)+len+1);
+	RedisObject *o = (RedisObject*)zmalloc(sizeof(RedisObject)+sizeof(struct sdshdr)+len+1);
 	struct sdshdr *sh = (sdshdr*)(o+1);
 
 	o->type = REDIS_NULL;
@@ -517,7 +517,7 @@ rObj *createEmbeddedStringObject(char *ptr,size_t len)
    	return o;
 }
 
-void addReplyBulkLen(Buffer &buffer,rObj *obj)
+void addReplyBulkLen(Buffer &buffer,RedisObject *obj)
 {
 	size_t len;
 
@@ -543,7 +543,7 @@ void addReplyBulkLen(Buffer &buffer,rObj *obj)
 	else { addReplyLongLongWithPrefix(buffer,len,'$'); }
 }
 
-void addReplyBulk(Buffer &buffer,rObj *obj)
+void addReplyBulk(Buffer &buffer,RedisObject *obj)
 {
 	addReplyBulkLen(buffer,obj);
 	addReply(buffer,obj);
@@ -588,7 +588,7 @@ void addReplyError(Buffer &buffer,const char *str)
 	addReplyErrorLength(buffer,str,strlen(str));
 }
 
-void addReply(Buffer &buffer,rObj *obj)
+void addReply(Buffer &buffer,RedisObject *obj)
 {
 	buffer.append(obj->ptr,sdslen((const sds)obj->ptr));
 }

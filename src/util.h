@@ -1,3 +1,8 @@
+//
+// Created by zhanghao on 2018/6/17.
+//
+
+
 #pragma once
 #include "all.h"
 #include "sha1.h"
@@ -15,10 +20,7 @@ public:
 	Random(uint32_t s)
 	:seed(s & 0x7fffffffu)
 	{
-		if (seed == 0 || seed == 2147483647L)
-		{
-			seed = 1;
-		}
+		if (seed == 0 || seed == 2147483647L) { seed = 1; }
 	}
 
 	uint32_t next()
@@ -38,11 +40,7 @@ public:
 		// The first reduction may overflow by 1 bit, so we may need to
 		// repeat.  mod == M is not possible; using > allows the faster
 		// sign-bit-based test.
-		if (seed > M)
-		{
-			seed -= M;
-		}
-
+		if (seed > M) { seed -= M; }
 		return seed;
 	}
 	// Returns a uniformly distributed value in the range [0..n-1]

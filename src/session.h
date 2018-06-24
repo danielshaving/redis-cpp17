@@ -1,3 +1,7 @@
+//
+// Created by zhanghao on 2018/6/17.
+//
+
 #pragma once
 #include "all.h"
 #include "tcpconnection.h"
@@ -19,7 +23,7 @@ public:
 	int32_t processMultibulkBuffer(Buffer *buffer);
 	int32_t processInlineBuffer(Buffer *buffer);
 	int32_t processCommand();
-	bool checkCommand(rObj *robjs);
+	bool checkCommand(RedisObject *robjs);
 	void onMessage(const TcpConnectionPtr &conn,Buffer *buffer);
 	Buffer &getClientBuffer() { return clientBuffer; }
 	TcpConnectionPtr getClientConn() { return clientConn; }
@@ -30,8 +34,8 @@ private:
 	void operator=(const Session&);
 
 	Redis *redis;
-	rObj *command;
-	std::deque<rObj*> commands;
+	RedisObject *command;
+	std::deque<RedisObject*> commands;
 
 	int32_t reqtype;
 	int32_t multibulklen;

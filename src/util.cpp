@@ -1,3 +1,7 @@
+//
+// Created by zhanghao on 2018/6/17.
+//
+
 #include "util.h"
 
 const uint32_t dict_hash_function_seed = 5381;

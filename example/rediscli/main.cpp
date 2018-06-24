@@ -4,11 +4,11 @@
 
 #include "rediscli.h"
 
-int main()
+int main(int argc,char **argv)
 {
     RedisCli cli;
 
-    int firstarg = cli.parseOptions(argc, argv);
+    int firstarg = cli.parseOptions(argc,argv);
     argc -= firstarg;
     argv += firstarg;
 

@@ -37,22 +37,22 @@ public:
 
 	bool getKeySlot(const std::string &name);
 	void structureProtocolSetCluster(std::string host,int16_t port,Buffer &buffer,const TcpConnectionPtr &conn);
-	int32_t getSlotOrReply(const SessionPtr &session,rObj *o);
+	int32_t getSlotOrReply(const SessionPtr &session,RedisObject *o);
 	uint32_t keyHashSlot(char *key,int32_t keylen);
 	void syncClusterSlot();
 	void clusterRedirectClient(const SessionPtr &session,ClusterNode *node,int32_t hashSlot,int32_t errCode);
-	bool replicationToNode(const std::deque<rObj*> &obj,const SessionPtr &session,
+	bool replicationToNode(const std::deque<RedisObject*> &obj,const SessionPtr &session,
 		const std::string &ip,int16_t port,int8_t copy,int8_t replace,int32_t numKeys,int32_t firstKey);
-	void delClusterImport(std::deque<rObj*> &robj);
+	void delClusterImport(std::deque<RedisObject*> &robj);
 	
 	void eraseClusterNode(const std::string &ip,int16_t port);
 	void eraseClusterNode(int32_t slot);
-	void getKeyInSlot(int32_t slot,std::vector<rObj*> &keys,int32_t count);
+	void getKeyInSlot(int32_t slot,std::vector<RedisObject*> &keys,int32_t count);
 
 	ClusterNode *checkClusterSlot(int32_t slot);
 	sds showClusterNodes();
-	void delSlotDeques(rObj *obj,int32_t slot);
-	void addSlotDeques(rObj *slot,std::string name);
+	void delSlotDeques(RedisObject *obj,int32_t slot);
+	void addSlotDeques(RedisObject *slot,std::string name);
 
 	auto &getMigrating() { return migratingSlosTos; } 
 	auto &getImporting() { return importingSlotsFroms; }
@@ -80,11 +80,11 @@ private:
 	std::map<int32_t,ClusterNode> clusterSlotNodes;
 	std::unordered_map<std::string,std::unordered_set<int32_t>> migratingSlosTos;
 	std::unordered_map<std::string,std::unordered_set<int32_t>> importingSlotsFroms;
-	std::vector<rObj*> clusterDelKeys;
-	std::vector<rObj*> clusterDelCopys;
+	std::vector<RedisObject*> clusterDelKeys;
+	std::vector<RedisObject*> clusterDelCopys;
 	std::condition_variable condition;
 	std::atomic<int32_t> replyCount;
-	std::deque<rObj*> commands;
+	std::deque<RedisObject*> commands;
 	std::unordered_set<int32_t> slotSets;
 	Buffer buffer;
 	

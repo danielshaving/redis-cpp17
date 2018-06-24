@@ -149,7 +149,7 @@ void Redis::slaveRepliTimeOut(int32_t context)
 	LOG_INFO <<"sync connect repli timeout ";
 }
 
-void Redis::clearCommand(std::deque<rObj*> &commands)
+void Redis::clearCommand(std::deque<RedisObject*> &commands)
 {
 	for (auto &it : commands)
 	{
@@ -181,7 +181,7 @@ void Redis::clearPubSubState(int32_t sockfd)
 	}
 }
 
-void Redis::setExpire(rObj *key,double when)
+void Redis::setExpire(RedisObject *key,double when)
 {
 	{
 		std::unique_lock <std::mutex> lck(expireMutex);
@@ -286,7 +286,7 @@ void Redis::loadDataFromDisk()
  	}
 }
 
-bool Redis::subscribeCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::subscribeCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() < 1)
 	{
@@ -334,37 +334,37 @@ bool Redis::subscribeCommand(const std::deque<rObj*> &obj,const SessionPtr &sess
 	return true;
 }
 
-bool Redis::unsubscribeCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::unsubscribeCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	return true;
 }
 
-bool Redis::psubscribeCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::psubscribeCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	return true;
 }
 
-bool Redis::punsubscribeCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::punsubscribeCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	return true;
 }
 
-bool Redis::publishCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::publishCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	return true;
 }
 
-bool Redis::pubsubCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::pubsubCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	return true;
 }
 
-bool Redis::sentinelCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
+bool Redis::sentinelCommand(const std::deque<RedisObject*> &obj, const SessionPtr &session)
 {
 	return false;
 }
 
-bool Redis::memoryCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::memoryCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size()  > 2)
 	{
@@ -392,7 +392,7 @@ bool Redis::memoryCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	return false;
 }
 
-bool Redis::infoCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::infoCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size()  < 0)
 	{
@@ -487,7 +487,7 @@ bool Redis::infoCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false ;
 }
 
-bool Redis::clientCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::clientCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 1)
 	{
@@ -498,7 +498,7 @@ bool Redis::clientCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	return false;
 }
 
-bool Redis::echoCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::echoCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 1)
 	{
@@ -509,7 +509,7 @@ bool Redis::echoCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::authCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::authCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 1)
 	{
@@ -535,7 +535,7 @@ bool Redis::authCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::configCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::configCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 3 || obj.size() == 0)
 	{
@@ -572,7 +572,7 @@ bool Redis::configCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	return false;
 }
 
-bool Redis::migrateCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::migrateCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() < 5)
 	{
@@ -664,7 +664,7 @@ bool Redis::migrateCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	return false;
 }
 
-bool Redis::clusterCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::clusterCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (!clusterEnabled)
 	{
@@ -765,7 +765,7 @@ bool Redis::clusterCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	}
 	else if (!strcasecmp(obj[0]->ptr,"nodes") && obj.size() == 1)
 	{
-		rObj *o = createObject(OBJ_STRING,clus.showClusterNodes());
+		RedisObject *o = createObject(OBJ_STRING,clus.showClusterNodes());
 		addReplyBulk(session->getClientBuffer(),o);
 		decrRefCount(o);
 		return false;
@@ -787,7 +787,7 @@ bool Redis::clusterCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 			return false;
 		}
 		
-		std::vector<rObj*> keys;
+		std::vector<RedisObject*> keys;
 		clus.getKeyInSlot(slot,keys,maxkeys);
 		addReplyMultiBulkLen(session->getClientBuffer(),numkeys);
 		
@@ -1103,7 +1103,7 @@ bool Redis::clusterCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	return false;
 }
 
-void Redis::structureRedisProtocol(Buffer &buffer,std::deque<rObj*> &robjs)
+void Redis::structureRedisProtocol(Buffer &buffer,std::deque<RedisObject*> &robjs)
 {
 	int32_t len, j;
 	char buf[32];
@@ -1125,7 +1125,7 @@ void Redis::structureRedisProtocol(Buffer &buffer,std::deque<rObj*> &robjs)
 	}
 }
 
-bool Redis::getClusterMap(rObj *command)
+bool Redis::getClusterMap(RedisObject *command)
 {
 	auto it = cluterCommands.find(command);
 	if (it == cluterCommands.end())
@@ -1245,7 +1245,7 @@ int32_t Redis::rdbSaveBackground(bool enabled)
 	return REDIS_OK; /* unreached */
 }
 
-bool Redis::bgsaveCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::bgsaveCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 0)
 	{
@@ -1257,7 +1257,7 @@ bool Redis::bgsaveCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	return true;
 }
 
-bool Redis::saveCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::saveCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 0)
 	{
@@ -1282,7 +1282,7 @@ bool Redis::saveCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return true;
 }
 
-bool Redis::slaveofCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::slaveofCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() !=  2)
 	{
@@ -1329,7 +1329,7 @@ bool Redis::slaveofCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	return false;
 }
 
-bool Redis::commandCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::commandCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {	
 	addReply(session->getClientBuffer(),shared.ok);
 	return false;
@@ -1346,7 +1346,7 @@ void Redis::forkWait()
 	}
 }
 
-bool Redis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::lpushCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() < 2)
 	{
@@ -1368,7 +1368,7 @@ bool Redis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 		{
 			auto iter = listMap.find(obj[0]);
 			assert(iter == listMap.end());
-			std::deque<rObj*> list;
+			std::deque<RedisObject*> list;
 			for (int32_t i = 1; i < obj.size(); i++)
 			{
 				obj[i]->type = OBJ_LIST;
@@ -1404,7 +1404,7 @@ bool Redis::lpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return true;
 }
 
-bool Redis::lpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::lpopCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -1451,7 +1451,7 @@ bool Redis::lpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::lrangeCommand(const std::deque<rObj*> &obj, const SessionPtr &session)
+bool Redis::lrangeCommand(const std::deque<RedisObject*> &obj, const SessionPtr &session)
 {
 	if (obj.size() != 3)
 	{
@@ -1532,7 +1532,7 @@ bool Redis::lrangeCommand(const std::deque<rObj*> &obj, const SessionPtr &sessio
 	return false;
 }
 
-bool Redis::rpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::rpushCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size()  <  2)
 	{
@@ -1554,7 +1554,7 @@ bool Redis::rpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 			auto iter = listMap.find(obj[0]);
 			assert(iter == listMap.end());
 			obj[0]->type = OBJ_LIST;
-			std::deque<rObj*> list;
+			std::deque<RedisObject*> list;
 			for (int64_t i = 1; i < obj.size(); i++)
 			{
 				obj[i]->type = OBJ_LIST;
@@ -1589,7 +1589,7 @@ bool Redis::rpushCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return true;
 }
 
-bool Redis::rpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::rpopCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size()  !=  1)
 	{
@@ -1637,7 +1637,7 @@ bool Redis::rpopCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::llenCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::llenCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -1675,7 +1675,7 @@ bool Redis::llenCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::syncCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::syncCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() >  0)
 	{
@@ -1747,12 +1747,12 @@ bool Redis::syncCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 }
 
 
-bool Redis::psyncCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::psyncCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	return false;
 }
 
-int64_t Redis::getExpire(rObj *obj)
+int64_t Redis::getExpire(RedisObject *obj)
 {
 	std::unique_lock <std::mutex> lck(expireMutex);
 	auto it = expireTimers.find(obj);
@@ -1783,7 +1783,7 @@ size_t Redis::getDbsize()
 	return size;
 }
 
-bool Redis::dbsizeCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::dbsizeCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 0)
 	{
@@ -1794,7 +1794,7 @@ bool Redis::dbsizeCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 	return true;
 }
 
-bool Redis::removeCommand(rObj *obj)
+bool Redis::removeCommand(RedisObject *obj)
 {
 	size_t hash = obj->hash;
 	int32_t index = hash % kShards;
@@ -1898,7 +1898,7 @@ bool Redis::removeCommand(rObj *obj)
 	return false;
 }
 
-bool Redis::delCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::delCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() < 1)
 	{
@@ -1918,7 +1918,7 @@ bool Redis::delCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::pingCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::pingCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 0)
 	{
@@ -1929,7 +1929,7 @@ bool Redis::pingCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::debugCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::debugCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() == 1)
 	{
@@ -2059,7 +2059,7 @@ void Redis::clearCommand()
 	}
 }
 
-bool Redis::keysCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::keysCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1 )
 	{
@@ -2128,7 +2128,7 @@ bool Redis::keysCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::flushdbCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::flushdbCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 0)
 	{
@@ -2142,13 +2142,13 @@ bool Redis::flushdbCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	return true;
 }
 
-bool Redis::quitCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::quitCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	session->getClientConn()->forceClose();
 	return true;
 }
 
-bool Redis::zaddCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::zaddCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() < 3)
 	{
@@ -2219,7 +2219,7 @@ bool Redis::zaddCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 						{
 							if (!memcmp(iterr->second->ptr,obj[i + 1]->ptr,sdslen(obj[i + 1]->ptr)))
 							{
-								rObj *v = iterr->second;
+								RedisObject *v = iterr->second;
 								sortMap.erase(iterr);
 								sortMap.insert(std::make_pair(scores,v));
 								mark = true;
@@ -2283,7 +2283,7 @@ bool Redis::zaddCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 						{
 							if (!memcmp(iterrr->second->ptr,obj[i + 1]->ptr,sdslen(obj[i + 1]->ptr)))
 							{
-								rObj * v = iterrr->second;
+								RedisObject * v = iterrr->second;
 								iter->second.second.erase(iterrr);
 								iter->second.second.insert(std::make_pair(scores,v));
 								mark = true;
@@ -2307,12 +2307,12 @@ bool Redis::zaddCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return true;
 }
 
-bool Redis::zrangeCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::zrangeCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	return zrangeGenericCommand(obj,session,0);
 }
 
-bool Redis::zcardCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::zcardCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size()  != 1 )
 	{
@@ -2353,12 +2353,12 @@ bool Redis::zcardCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::zrevrangeCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::zrevrangeCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	return zrangeGenericCommand(obj,session,1);
 }
 
-bool Redis::scardCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::scardCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1 )
 	{
@@ -2393,9 +2393,9 @@ bool Redis::scardCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-rObj* Redis::createDumpPayload(rObj *dump)
+RedisObject* Redis::createDumpPayload(RedisObject *dump)
 {
-	rObj *o,*dumpobj;
+	RedisObject *o,*dumpobj;
 	Rio payload;
 	unsigned char buf[2];
 	uint64_t crc;
@@ -2417,7 +2417,7 @@ rObj* Redis::createDumpPayload(rObj *dump)
 	return dumpobj;
 }
 
-bool Redis::dumpCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::dumpCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -2425,7 +2425,7 @@ bool Redis::dumpCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 		return false;
 	}
 
-	rObj *dumpobj = createDumpPayload(obj[0]);
+	RedisObject *dumpobj = createDumpPayload(obj[0]);
 	if (dumpobj == nullptr)
 	{
 		addReplyErrorFormat(session->getClientBuffer(),"RDB dump error");
@@ -2436,7 +2436,7 @@ bool Redis::dumpCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::restoreCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::restoreCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() < 3 || obj.size()  > 4 )
 	{
@@ -2517,7 +2517,7 @@ bool Redis::restoreCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	}
 
 	rdb.rioInitWithBuffer(&payload,obj[2]->ptr);
-	rObj *key = createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
+	RedisObject *key = createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
 	if (rdb.verifyDumpPayload(&payload,key) == REDIS_ERR)
 	{
 		decrRefCount(key);
@@ -2527,7 +2527,7 @@ bool Redis::restoreCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 
 	if (ttl > 0)
 	{
-		rObj *ex = createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
+		RedisObject *ex = createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
 		ex->calHash();
 		ex->type = OBJ_EXPIRE;
 		std::unique_lock <std::mutex> lck(slaveMutex);
@@ -2541,7 +2541,7 @@ bool Redis::restoreCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	return false;
 }
 
-bool Redis::existsCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::existsCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() > 0)
 	{
@@ -2569,7 +2569,7 @@ bool Redis::existsCommand(const std::deque<rObj*> &obj,const SessionPtr &session
 }
 
 
-bool Redis::saddCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::saddCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() < 2)
 	{
@@ -2593,7 +2593,7 @@ bool Redis::saddCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 			auto iter = setMap.find(obj[0]);
 			assert(iter == setMap.end());
 			
-			std::unordered_set<rObj*,Hash,Equal> set;
+			std::unordered_set<RedisObject*,Hash,Equal> set;
 			for (int i = 1; i < obj.size(); i ++)
 			{
 				obj[i]->type = OBJ_SET;
@@ -2646,7 +2646,7 @@ bool Redis::saddCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return true;
 }	
 
-bool Redis::zrangeGenericCommand(const std::deque<rObj*> &obj,const SessionPtr &session,int reverse)
+bool Redis::zrangeGenericCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session,int reverse)
 {
 	if (obj.size()  != 4)
 	{
@@ -2777,7 +2777,7 @@ bool Redis::zrangeGenericCommand(const std::deque<rObj*> &obj,const SessionPtr &
 }
 
 
-bool Redis::hgetallCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::hgetallCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -2822,7 +2822,7 @@ bool Redis::hgetallCommand(const std::deque<rObj*> &obj,const SessionPtr &sessio
 	return false;
 }
 
-bool Redis::hgetCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::hgetCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 2)
 	{
@@ -2869,7 +2869,7 @@ bool Redis::hgetCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::hkeysCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::hkeysCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -2915,7 +2915,7 @@ bool Redis::hkeysCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::hlenCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::hlenCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -2958,7 +2958,7 @@ bool Redis::hlenCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::hsetCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::hsetCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 3)
 	{
@@ -2984,7 +2984,7 @@ bool Redis::hsetCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 		{
 			auto iter = hashMap.find(obj[0]);
 			assert(iter == hashMap.end());
-			std::unordered_map<rObj*,rObj*,Hash,Equal> rhash;
+			std::unordered_map<RedisObject*,RedisObject*,Hash,Equal> rhash;
 			rhash.insert(std::make_pair(obj[1],obj[2]));
 			hashMap.insert(std::make_pair(obj[0],std::move(rhash)));
 			map.insert(obj[0]);
@@ -3022,7 +3022,7 @@ bool Redis::hsetCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return true;
 }
 
-bool Redis::setCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::setCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {	
 	if (obj.size() <  2 || obj.size() > 8 )
 	{
@@ -3031,15 +3031,15 @@ bool Redis::setCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	}
 
 	int32_t j;
-	rObj *expire = nullptr;
-	rObj *ex = nullptr;
+	RedisObject *expire = nullptr;
+	RedisObject *ex = nullptr;
 	int32_t unit = UNIT_SECONDS;
 	int32_t flags = OBJ_SET_NO_FLAGS;
 
 	for (j = 2; j < obj.size(); j++)
 	{
 		const char *a = obj[j]->ptr;
-		rObj *next = (j == obj.size() - 1) ? nullptr : obj[j + 1];
+		RedisObject *next = (j == obj.size() - 1) ? nullptr : obj[j + 1];
 
 		if ((a[0] == 'n' || a[0] == 'N') &&
 		(a[1] == 'x' || a[1] == 'X') && a[2] == '\0' &&
@@ -3180,7 +3180,7 @@ bool Redis::setCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return true;
 }
 
-bool Redis::getCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::getCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {	
 	if (obj.size() != 1)
 	{
@@ -3220,7 +3220,7 @@ bool Redis::getCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return false;
 }
 
-bool Redis::incrCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::incrCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -3230,7 +3230,7 @@ bool Redis::incrCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return incrDecrCommand(obj[0],session,1);
 }
 
-bool Redis::decrCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::decrCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{
@@ -3240,7 +3240,7 @@ bool Redis::decrCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
 	return incrDecrCommand(obj[0],session,-1);
 }
 
-bool Redis::incrDecrCommand(rObj *obj,const SessionPtr &session,int64_t incr)
+bool Redis::incrDecrCommand(RedisObject *obj,const SessionPtr &session,int64_t incr)
 {
 	size_t hash= obj->hash;
 	size_t index = hash % kShards;
@@ -3297,7 +3297,7 @@ bool Redis::incrDecrCommand(rObj *obj,const SessionPtr &session,int64_t incr)
 	}
 }
 
-bool Redis::ttlCommand(const std::deque<rObj*> &obj,const SessionPtr &session)
+bool Redis::ttlCommand(const std::deque<RedisObject*> &obj,const SessionPtr &session)
 {
 	if (obj.size() != 1)
 	{

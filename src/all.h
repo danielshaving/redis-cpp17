@@ -102,7 +102,7 @@
 #define REDIS_REQ_MULTIBULK 2
 /* Error codes */
 #define REDIS_OK                1
-#define REDIS_ERR               0
+#define REDIS_ERR               -1
 #define REDIS_INLINE_MAX_SIZE   (4096 * 64 *10 * 10) /* Max size of inline reads */
 #define REDIS_LRU_BITS 24
 #define REDIS_MBULK_BIG_ARG     (4096 * 11 * 10 * 10)
@@ -218,7 +218,7 @@
 
 /* The current RDB version. When the format changes in a way that is no longer
  * backward compatible this number gets incremented. */
-#define REDIS_RDB_VERSION 9
+#define REDIS_RDB_VERSION 1
 
 /* Defines related to the dump file format. To store 32 bits lengthgths for short
  * keys requires a lot of space, so we check the most significant 2 bits of
@@ -418,3 +418,4 @@
 #define UNUSED(V) ((void) V)
 
 #define SDS_MAX_PREALLOC (1024*1024)
+
