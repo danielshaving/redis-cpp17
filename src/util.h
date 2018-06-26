@@ -57,6 +57,29 @@ public:
 	uint32_t skewed(int maxLog) { return uniform(1 << uniform(maxLog + 1)); }
 };
 
+
+class StringArg
+{
+public:
+	StringArg(const char *str)
+	:str(str)
+	{
+
+	}
+	StringArg(const std::string &str)
+	:str(str.c_str())
+	{
+
+	}
+	const char *c_str() const { return str; }
+
+private:
+	const char *str;
+};
+
+typedef std::string_view StringPiece;
+
+
 void memrev16(void *p);
 void memrev32(void *p);
 void memrev64(void *p);

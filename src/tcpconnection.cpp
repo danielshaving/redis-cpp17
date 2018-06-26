@@ -213,7 +213,9 @@ void TcpConnection::sendPipe(const StringPiece &message)
 		}
 		else
 		{
-			loop->runInLoop(std::bind(&bindSendPipeInLoop,this,message.as_string()));
+			void (TcpConnection::*fp)(const StringPiece& message) = &TcpConnection::sendPipeInLoop;
+			loop->runInLoop( std::bind(fp, this, std::string(message)));
+			//loop->runInLoop(std::bind(&bindSendPipeInLoop,this,std::string(message)));
 		}
 	}
 }
@@ -233,7 +235,9 @@ void TcpConnection::send(const StringPiece &message)
 		}
 		else
 		{
-		  	loop->runInLoop(std::bind(&bindSendInLoop,this,message.as_string()));
+			void (TcpConnection::*fp)(const StringPiece& message) = &TcpConnection::sendInLoop;
+			loop->runInLoop( std::bind(fp, this, std::string(message)));
+		  	//loop->runInLoop(std::bind(&bindSendInLoop,this,std::string(message)));
 		}
 	}
 }

@@ -4,7 +4,7 @@
 #pragma once
 #ifdef __linux__
 #include "all.h"
-#include "stringpiece.h"
+#include "util.h"
 #include "log.h"
 
 class Channel;

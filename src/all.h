@@ -59,7 +59,7 @@
 #include <any>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-
+#include <string_view>
 #ifdef __APPLE__
 #include <sys/event.h>
 #include <sys/un.h>
