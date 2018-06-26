@@ -54,7 +54,6 @@ void Channel::handleEventWithGuard()
 
 	}
 
-  
 	if (revents & (POLLERR | POLLNVAL))
 	{
 		if (errorCallback) { errorCallback(); }

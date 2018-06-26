@@ -36,6 +36,7 @@
  */
 
 #include "zmalloc.h"
+
 typedef char *sds;
 struct sdshdr
 {

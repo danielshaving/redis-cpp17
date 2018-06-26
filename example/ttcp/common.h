@@ -31,7 +31,3 @@ struct PayloadMessage
 	int32_t length;
 	char data[0];
 };
-
-void transmit(const Options& opt);
-
-void receive(const Options& opt);

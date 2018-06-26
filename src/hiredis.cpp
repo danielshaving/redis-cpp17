@@ -1,21 +1,16 @@
 #include "hiredis.h"
 
 RedisReader::RedisReader(Buffer *buffer)
-:buffer(buffer)
+:buffer(buffer),pos(0),err(0),ridx(-1)
 {
-	pos = 0;
-	err = 0;
 	errstr[0] = '\0';
-	ridx = -1;
 }
 
 RedisReader::RedisReader()
+:pos(0),err(0),ridx(-1)
 {
 	buffer = &buf;
-	pos = 0;
-	err = 0;
 	errstr[0] = '\0';
-	ridx = -1;
 }
 
 RedisReader::~RedisReader()

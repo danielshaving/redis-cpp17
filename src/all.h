@@ -94,8 +94,6 @@
 /* Flag that is set when we should set SO_REUSEADDR before calling bind() */
 #define REDIS_REUSEADDR 0x80
 
-
-
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
 /* Client request types */
 #define REDIS_REQ_INLINE 1

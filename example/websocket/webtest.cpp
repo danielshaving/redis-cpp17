@@ -41,7 +41,6 @@ int main(int argc,char* argv[])
 	server.setConnCallback(onConnection);
 	server.start();
 	loop.run();
-
 	return 0;
 }
 

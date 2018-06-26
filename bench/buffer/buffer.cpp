@@ -1,4 +1,4 @@
-#include "xBuffer.h"
+#include "buffer.h"
 
 //#define BOOST_TEST_MODULE BufferTest
 #define BOOST_TEST_MAIN

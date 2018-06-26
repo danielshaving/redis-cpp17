@@ -12,7 +12,7 @@ public:
 	~HiredisAsync();
 
 	void redisConnCallBack(const TcpConnectionPtr& conn);
-	xHiredis *getHiredis() { return &hiredis; }
+	Hiredis *getHiredis() { return &hiredis; }
 	void serverCron();
 	void getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
 	void setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
