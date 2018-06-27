@@ -160,17 +160,17 @@ int main()
 		}
 	}
 
+	srand(time(0));
 	std::map<char,char> handBrands;
 	int64_t startTime = ustime();
 	int i = 0;
 	const int k = 500000;
 	for(i = 0; i < k; i++)
 	{
-		srand(i);
 		random_shuffle(brands.begin(),brands.end());
 		for(int j = 0; j < 14; j++)
 		{
-			handBrands[brands[j]++];
+			handBrands[brands[j]]++;
 		}
 
 		huBrand(handBrands);
