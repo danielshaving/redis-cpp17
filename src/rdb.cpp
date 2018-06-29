@@ -1262,7 +1262,6 @@ int32_t Rdb::rdbLoadRio(Rio *rdb)
 		LOG_WARN<<"Wrong RDB checksum. Aborting now";
 		return REDIS_ERR;
 	}
-
 	return REDIS_OK;
 }
 
@@ -1271,7 +1270,7 @@ int32_t Rdb::rdbLoad(char *filename)
 	FILE *fp;
 	Rio rdb;
 	int32_t retval;
-	if ((fp = ::fopen(filename,"r")) == nullptr) return REDIS_ERR;
+	if ((fp = ::fopen(filename,"r")) == nullptr) { return REDIS_ERR; }
 
 	startLoading(fp);
 	rioInitWithFile(&rdb,fp);

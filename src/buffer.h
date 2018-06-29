@@ -110,7 +110,7 @@ public:
 		hasWritten(len);
 	}
 
-	void append(const StringPiece &str) { append(str.data(),str.size()); }
+	void append(const std::string_view &str) { append(str.data(),str.size()); }
 	void append(const void *data,size_t len) { append(static_cast<const char*>(data),len); }
 
 	void appendInt32(int32_t x)
@@ -260,16 +260,16 @@ public:
 		return x;
 	}
 
-	StringPiece toStringPiece() const
+	std::string_view toStringView() const
 	{
-		return StringPiece(peek(),static_cast<int32_t>(readableBytes()));
+		return std::string_view(peek(),static_cast<int32_t>(readableBytes()));
 	}
 
 	void shrink(size_t reserve)
 	{
 		Buffer other;
 		other.ensureWritableBytes(readableBytes()+reserve);
-		other.append(toStringPiece());
+		other.append(toStringView());
 		swap(other);
 	}
 

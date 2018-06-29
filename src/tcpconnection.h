@@ -36,20 +36,20 @@ public:
 	{ closeCallback = cb; }
 
 	void sendInLoop(const void *message,size_t len);
-	void sendInLoop(const StringPiece &message);
+	void sendInLoop(const std::string_view &message);
 	void sendPipeInLoop(const void *message,size_t len);
-	void sendPipeInLoop(const StringPiece &message);
+	void sendPipeInLoop(const std::string_view &message);
 
-	static void bindSendInLoop(TcpConnection *conn,const StringPiece &message);
-	static void bindSendPipeInLoop(TcpConnection *conn,const StringPiece &message);
+	static void bindSendInLoop(TcpConnection *conn,const std::string_view &message);
+	static void bindSendPipeInLoop(TcpConnection *conn,const std::string_view &message);
 	
-	void sendPipe(const StringPiece &message);
+	void sendPipe(const std::string_view &message);
 	void sendPipe(Buffer *message);
 	void sendPipe(const void *message,int32_t len);
 
   	void send(const void *message,int32_t len);
 	void send(Buffer *message);
-	void send(const StringPiece &message);
+	void send(const std::string_view &message);
 
 	bool disconnected() const { return state == kDisconnected; }
 	bool connected() { return state == kConnected; }

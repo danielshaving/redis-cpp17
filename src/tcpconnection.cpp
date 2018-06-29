@@ -200,10 +200,10 @@ void TcpConnection::sendPipe(Buffer *buf)
 
 void TcpConnection::sendPipe(const void *message,int len)
 {
-    sendPipe(StringPiece(static_cast<const char*>(message),len));
+    sendPipe(std::string_view(static_cast<const char*>(message),len));
 }
 
-void TcpConnection::sendPipe(const StringPiece &message)
+void TcpConnection::sendPipe(const std::string_view &message)
 {
 	if (state == kConnected)
 	{
@@ -213,8 +213,8 @@ void TcpConnection::sendPipe(const StringPiece &message)
 		}
 		else
 		{
-			void (TcpConnection::*fp)(const StringPiece& message) = &TcpConnection::sendPipeInLoop;
-			loop->runInLoop( std::bind(fp, this, std::string(message)));
+			void (TcpConnection::*fp)(const std::string_view& message) = &TcpConnection::sendPipeInLoop;
+			loop->runInLoop(std::bind(fp,this,std::string(message)));
 			//loop->runInLoop(std::bind(&bindSendPipeInLoop,this,std::string(message)));
 		}
 	}
@@ -222,10 +222,10 @@ void TcpConnection::sendPipe(const StringPiece &message)
 
 void TcpConnection::send(const void *message,int len)
 {
-	send(StringPiece(static_cast<const char*>(message),len));
+	send(std::string_view(static_cast<const char*>(message),len));
 }
 
-void TcpConnection::send(const StringPiece &message)
+void TcpConnection::send(const std::string_view &message)
 {
 	if (state == kConnected)
 	{
@@ -235,14 +235,14 @@ void TcpConnection::send(const StringPiece &message)
 		}
 		else
 		{
-			void (TcpConnection::*fp)(const StringPiece& message) = &TcpConnection::sendInLoop;
-			loop->runInLoop( std::bind(fp, this, std::string(message)));
+			void (TcpConnection::*fp)(const std::string_view& message) = &TcpConnection::sendInLoop;
+			loop->runInLoop( std::bind(fp,this,std::string(message)));
 		  	//loop->runInLoop(std::bind(&bindSendInLoop,this,std::string(message)));
 		}
 	}
 }
 
-void TcpConnection::sendPipeInLoop(const StringPiece &message)
+void TcpConnection::sendPipeInLoop(const std::string_view &message)
 {
 	sendPipeInLoop(message.data(),message.size());
 }
@@ -256,12 +256,12 @@ void TcpConnection::sendPipeInLoop(const void *message,size_t len)
 	}
 }
 
-void TcpConnection::bindSendPipeInLoop(TcpConnection *conn,const StringPiece &message)
+void TcpConnection::bindSendPipeInLoop(TcpConnection *conn,const std::string_view &message)
 {
 	conn->sendPipeInLoop(message.data(),message.size());
 }
 
-void TcpConnection::bindSendInLoop(TcpConnection *conn,const StringPiece &message)
+void TcpConnection::bindSendInLoop(TcpConnection *conn,const std::string_view &message)
 {
 	conn->sendInLoop(message.data(),message.size());
 }
@@ -281,7 +281,7 @@ void TcpConnection::send(Buffer *buf)
 	}
 }
 
-void TcpConnection::sendInLoop(const StringPiece &message)
+void TcpConnection::sendInLoop(const std::string_view &message)
 {
 	sendInLoop(message.data(),message.size());
 }

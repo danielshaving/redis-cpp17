@@ -242,7 +242,7 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 		conn->setip(buf);
 		conn->setport(port);
 
-		printf("%s %d\n",buf,port);
+		//printf("%s %d\n",buf,port);
 
 		std::shared_ptr<Session> session (new Session(this,conn));
 		std::unique_lock <std::mutex> lck(mtx);

@@ -857,7 +857,7 @@ int RedisCli::issuseCommandRepeat(int argc,char **argv,int repeat)
 			cliConnect(1);
 			/* If we still cannot send the command print error.
             * We'll try to reconnect the next time. */
-			if (cliSendCommand(argc, argv, repeat) != REDIS_OK)
+			if (cliSendCommand(argc,argv,repeat) != REDIS_OK)
 			{
 				cliPrintContextError();
 				return REDIS_ERR;

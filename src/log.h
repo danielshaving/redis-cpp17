@@ -43,7 +43,7 @@ public:
 	std::string toString() const { return std::string(data,length()); }
 	int32_t avail() const { return static_cast<int32_t>(end() - cur); }
 	const char *end() const { return data + sizeof data; }
-	StringPiece toStringPiece() const { return StringPiece(data,length()); }
+	std::string_view toStringView() const { return std::string_view(data,length()); }
 
 private:
 	FixedBuffer(const FixedBuffer&);
@@ -226,7 +226,7 @@ public:
 		return *this;
 	}
 
-	self &operator<<(const StringPiece &v)
+	self &operator<<(const std::string_view &v)
 	{
 		buffer.append(v.data(),v.size());
 		return *this;
@@ -235,7 +235,7 @@ public:
 
 	self &operator<<(const Buffer &v)
 	{
-		*this << v.toStringPiece();
+		*this << v.toStringView();
 		return *this;
 	}
 
