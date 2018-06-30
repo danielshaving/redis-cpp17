@@ -58,25 +58,24 @@ int main(int argc,char *argv[])
 	
 	char buffer[64*1024];
 	
-	 g_file = fopen("/dev/null","w");
-	 setbuffer(g_file,buffer,sizeof buffer);
-	 bench("/dev/null");
-	 fclose(g_file);
+	g_file = fopen("/dev/null","w");
+	setbuffer(g_file,buffer,sizeof buffer);
+	bench("/dev/null");
+	fclose(g_file);
 	
-	 g_file = fopen("/tmp/log","w");
-	 setbuffer(g_file, buffer,sizeof buffer);
-	 bench("/tmp/log");
-	 fclose(g_file);
+	g_file = fopen("/tmp/log","w");
+	setbuffer(g_file, buffer,sizeof buffer);
+	bench("/tmp/log");
+	fclose(g_file);
 	
-	 g_file = nullptr;
-	 g_logFile.reset(new LogFile("test_log_st",500*1000*1000,false));
-	 bench("test_log_st");
+	g_file = nullptr;
+	g_logFile.reset(new LogFile("test_log_st",500*1000*1000,false));
+	bench("test_log_st");
 	
-	 g_logFile.reset(new LogFile("test_log_mt",500*1000*1000,true));
-	 bench("test_log_mt");
-	 g_logFile.reset();
+	g_logFile.reset(new LogFile("test_log_mt",500*1000*1000,true));
+	bench("test_log_mt");
+	g_logFile.reset();
 
-	LOG_INFO<<"---------";
 	sleep(1);
 	char name[256];
 	strncpy(name,argv[0],256);

@@ -3,7 +3,6 @@
 //
 #pragma once
 #include "all.h"
-#include "buffer.h"
 
 const int32_t kSmallBuffer = 4000;
 const int32_t kLargeBuffer = 4000*10;
@@ -38,10 +37,10 @@ public:
 	void add(size_t len) { cur += len; }
 
 	void reset() { cur = data;}
-	void bzero() { ::bzero(data,sizeof data); }
+	void bzero() { memset(data,0,sizeof data); }
 
 	std::string toString() const { return std::string(data,length()); }
-	int32_t avail() const { return static_cast<int32_t>(end() - cur); }
+	size_t avail() const { return static_cast<size_t>(end() - cur); }
 	const char *end() const { return data + sizeof data; }
 	std::string_view toStringView() const { return std::string_view(data,length()); }
 
@@ -56,7 +55,7 @@ private:
 class AppendFile
 {
 public:
-	explicit AppendFile(std::string &filename);
+	explicit AppendFile(const std::string &filename);
 	~AppendFile();
 	void append(const char *logline,const size_t len);
 	void flush();
@@ -72,7 +71,6 @@ private:
 	char buffer[64*1024];
 	size_t writtenBytes;
 };
-
 
 class LogFile
 {
@@ -100,7 +98,6 @@ private:
 	const int32_t checkEveryN;
 
 	std::string filename;
-	std::string filerename;
 	int32_t count;
 	std::mutex mutex;
 	time_t startOfPeriod;
@@ -133,7 +130,7 @@ public:
 		std::thread t(std::bind(&AsyncLogging::threadFunc,this));
 		t.detach();
 	}
-	void append(const char *loline,int32_t len);
+	void append(const char *loline, size_t len);
 
 private:
 	AsyncLogging(const AsyncLogging&);

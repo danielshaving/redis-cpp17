@@ -274,11 +274,12 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 
 void Redis::loadDataFromDisk()
 {
-	int64_t start = mstime();
+	int64_t start = ustime();
 	if (rdb.rdbLoad("dump.rdb") == REDIS_OK)
 	{
-		int64_t end = mstime();
-		LOG_INFO <<"db loaded from disk milseconds: "<<end - start;
+		int64_t end = ustime();
+		double diff = double(end - end) / (1000 * 1000);
+		LOG_INFO <<"db loaded from disk seconds: "<< double(end - start) / 1000;
 	}
 	else if (errno != ENOENT)
 	{

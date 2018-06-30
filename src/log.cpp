@@ -1,5 +1,8 @@
 #include "log.h"
 
+#ifdef WIN32
+#pragma warning(disable:4996)  
+#endif
 const char digits[] = "9876543210123456789";
 const char digitsHex[] = "0123456789ABCDEF";
 const char *zero = digits + 9;
@@ -23,7 +26,6 @@ size_t convert(char buf[],T value)
 
 	*p = '\0';
 	std::reverse(buf,p);
-
 	return p - buf;
 }
 
@@ -44,12 +46,15 @@ size_t convertHex(char buf[],uintptr_t value)
 	return p - buf;
 }
 
-AppendFile::AppendFile(std::string &filename)
-  :fp(::fopen(filename.c_str(),"ae")),  // 'e' for O_CLOEXEC
-   writtenBytes(0)
+AppendFile::AppendFile(const std::string &filename)
+ :writtenBytes(0)
 {
+#ifdef WIN32
+	assert(!fopen_s(&fp,filename.c_str(),"a"));
+#else
+	fp = ::fopen(filename.c_str(),"ae"); // 'e' for O_CLOEXEC
 	assert(fp);
-	::setbuffer(fp,buffer,sizeof(buffer));
+#endif
 }
 
 AppendFile::~AppendFile()
@@ -69,7 +74,11 @@ void AppendFile::append(const char *logline,const size_t len)
 			int32_t err = ferror(fp);
 			if (err)
 			{
-				LOG_ERROR<<"AppendFile::append() failed "<< strerror(err);
+#ifdef WIN32
+				LOG_ERROR << "AppendFile append failed:" << err;
+#else
+				LOG_ERROR << "AppendFile append failed:" << strerror(err);
+#endif
 			}
 			break;
 		}
@@ -91,13 +100,7 @@ void AppendFile::rename(const std::string &oldname,const std::string &newname)
 
 size_t AppendFile::write(const char *logline,size_t len)
 {
-#ifdef __linux__
-  return ::fwrite_unlocked(logline,1,len,fp);
-#endif
-
-#ifdef __APPLE__
-  return ::fwrite(logline,1,len,fp);
-#endif
+	return ::fwrite(logline,1,len,fp);
 }
 
 LogFile::LogFile(const std::string &basename,
@@ -112,8 +115,7 @@ checkEveryN(checkEveryN),
 count(0),
 startOfPeriod(0),
 lastRoll(0),
-lastFlush(0),
-filerename("redis.log")
+lastFlush(0)
 {
 	assert(basename.find('/') == std::string::npos);
 	rollFile();
@@ -175,12 +177,9 @@ bool LogFile::rollFile()
 		lastRoll = now;
 		lastFlush = now;
 		startOfPeriod = start;
-		file->rename(filerename.c_str(),filename.c_str());
-		file.reset(new AppendFile(filerename));
-
+		file.reset(new AppendFile(filename));
 		return true;
 	}
-
 	return false;
 }
 
@@ -192,7 +191,11 @@ void LogFile::getLogFileName(const std::string &basename,time_t *now)
 	char timebuf[32];
 	struct tm tm;
 	*now = time(0);
-	gmtime_r(now,&tm);
+#ifdef WIN32
+	tm = *(localtime(now));
+#else
+	gmtime_r(now, &tm);
+#endif
 	strftime(timebuf,sizeof timebuf,".%Y%m%d-%H%M%S",&tm);
 	filename += timebuf;
 	filename += ".log";
@@ -212,7 +215,7 @@ AsyncLogging::AsyncLogging(std::string baseName,size_t rollSize,int32_t interval
 	buffers.reserve(16);
 }
 
-void AsyncLogging::append(const char *logline,int32_t len)
+void AsyncLogging::append(const char *logline, size_t len)
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	if (currentBuffer->avail() > len)
@@ -307,7 +310,6 @@ void AsyncLogging::threadFunc()
 		buffersToWrite.clear();
 		output.flush();
 	}
-
 	output.flush();
 }
 
@@ -398,12 +400,16 @@ LogStream &LogStream::operator<<(double v)
 
 Logger::LogLevel initLogLevel()
 {
+#ifdef WIN32
+	return Logger::INFO;
+#else
 	if (::getenv("TRACE"))
 		return Logger::TRACE;
 	else if (::getenv("DEBUG"))
 		return Logger::DEBUG;
 	else
 		return Logger::INFO;
+#endif
 }
 
 Logger::LogLevel g_logLevel = initLogLevel();
@@ -420,7 +426,7 @@ const char *LogLevelName[Logger::NUM_LOG_LEVELS] =
 
 void defaultOutput(const char* msg,int32_t len)
 {
-	size_t n = fwrite(msg,1,len,stdout);
+	size_t n = ::fwrite(msg,1,len,stdout);
 	//FIXME check n
 	(void)n;
 	printf("%s\n",msg);
@@ -445,16 +451,19 @@ baseName(file)
 
 void Logger::Impl::formatTime()
 {
-	char t_time[32];
-	char timebuf[32];
-	struct tm tm_time;
+	char ttime[32];
+	struct tm tmtime;
 	time_t now = time(0);
-	gmtime_r(&now,&tm_time);
-	int32_t len = snprintf(t_time,sizeof(t_time),"%4d%02d%02d %02d:%02d:%02d",
-	tm_time.tm_year + 1900,tm_time.tm_mon + 1,tm_time.tm_mday,
-	tm_time.tm_hour + 8,tm_time.tm_min,tm_time.tm_sec);
+#ifdef WIN32
+	tmtime = *(localtime(&now));
+#else
+	gmtime_r(&now,&tmtime);
+#endif
+	int32_t len = snprintf(ttime,sizeof(ttime),"%4d%02d%02d %02d:%02d:%02d",
+		tmtime.tm_year + 1900, tmtime.tm_mon + 1, tmtime.tm_mday,
+		tmtime.tm_hour + 8, tmtime.tm_min, tmtime.tm_sec);
 	assert(len == 17); (void)len;
-	stream<<T(t_time,17);
+	stream<<T(ttime,17);
 	stream<<"  ";
 }
 

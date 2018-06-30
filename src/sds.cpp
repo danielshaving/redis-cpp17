@@ -6,7 +6,7 @@ sds sdsnewlen(const void *init,size_t initlen)
     // T = O(N)
     if (init)
     {
-        sh = (sdshdr*)zmalloc(sizeof(struct sdshdr)+initlen+1);
+		sh = (sdshdr*)zmalloc(sizeof(struct sdshdr)+initlen+1);
     }
     else
     {

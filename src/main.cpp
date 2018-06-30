@@ -22,8 +22,16 @@ char *logo =
 	"          `-._        _.-'                                           \n"
 	"              `-.__.-'                                               \n";
 
+std::unique_ptr<LogFile> logFile;
+void dummyOutput(const char *msg,int len)
+{
+	logFile->append(msg,len);
+}
+
 int main(int argc,char *argv[])
 {
+	logFile.reset(new LogFile("redis",4096,false));
+	Logger::setOutput(dummyOutput);
 
 	signal(SIGPIPE,SIG_IGN);
 	signal(SIGHUP,SIG_IGN);
@@ -35,11 +43,11 @@ int main(int argc,char *argv[])
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int16_t threadCount = atoi(argv[3]);
 		bool clusterEnbaled = atoi(argv[4]);
-		Redis redis(ip,port,threadCount,clusterEnbaled);
 		LOG_INFO<<"ip:"<<ip;
 		LOG_INFO<<"port:"<<port;
 		LOG_INFO<<"thread:"<<threadCount;
 		LOG_INFO<<"cluster:"<<clusterEnbaled;
+		Redis redis(ip,port,threadCount,clusterEnbaled);
 		redis.run();
 	}
 	else if (argc == 1)
@@ -53,6 +61,8 @@ int main(int argc,char *argv[])
 	}
 	return 0;
 }
+
+
 
 
 
