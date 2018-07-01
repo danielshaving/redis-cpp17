@@ -20,7 +20,6 @@ public:
 	inline uint32_t networkToHost32(uint32_t net32) { return be32toh(net32); }
 	inline uint16_t networkToHost16(uint16_t net16) { return be16toh(net16); }
 #endif
-
 	struct sockaddr_in6 getPeerAddr(int32_t sockfd);
 	struct sockaddr_in6 getLocalAddr(int32_t sockfd);
 	void toIpPort(char *buf,size_t size,const struct sockaddr *addr);
@@ -30,8 +29,6 @@ public:
 	void fromIpPort(const char *ip,uint16_t port,struct sockaddr_in *addr);
 	void fromIpPort(const char *ip,uint16_t port,struct sockaddr_in6 *addr);
 
-	bool getTcpInfo(struct tcp_info* tcpi) const;
-	bool getTcpInfoString(char* buf, int len) const;
 	int32_t createSocket();
 	int32_t connect(int32_t sockfd,struct sockaddr *sin);
 	int32_t connect(int32_t sockfd,const char *ip,int16_t port);

@@ -26,7 +26,6 @@ bool parseInternalKey(const std::string_view &internalKey,ParsedInternalKey *res
 	return (c <= static_cast<unsigned char>(kTypeValue));
 }
 
-
 std::string ParsedInternalKey::DebugString() const
 {
   char buf[50];
@@ -90,21 +89,21 @@ void BytewiseComparatorImpl::findShortSuccessor(std::string *key) const
 
 void InternalKeyComparator::findShortestSeparator(std::string *start,const std::string_view &limit) const
 {
-  // Attempt to shorten the user portion of the key
-  std::string_view userStart = extractUserKey(*start);
-  std::string_view userLimit = extractUserKey(limit);
-  std::string tmp(userStart.data(),userStart.size());
-  userComparator.findShortestSeparator(&tmp,userLimit);
-  if (tmp.size() < userStart.size() &&
-      userComparator.compare(userStart,tmp) < 0) 
-  {
-    // User key has become shorter physically, but larger logically.
-    // Tack on the earliest possible number to the shortened user key.
-    putFixed64(&tmp,packSequenceAndType(kMaxSequenceNumber,kValueTypeForSeek));
-    assert(this->compare(*start,tmp) < 0);
-    assert(this->compare(tmp,limit) < 0);
-    start->swap(tmp);
-  }
+    // Attempt to shorten the user portion of the key
+    std::string_view userStart = extractUserKey(*start);
+    std::string_view userLimit = extractUserKey(limit);
+    std::string tmp(userStart.data(),userStart.size());
+    userComparator.findShortestSeparator(&tmp,userLimit);
+    if (tmp.size() < userStart.size() &&
+      userComparator.compare(userStart,tmp) < 0)
+    {
+        // User key has become shorter physically, but larger logically.
+        // Tack on the earliest possible number to the shortened user key.
+        putFixed64(&tmp,packSequenceAndType(kMaxSequenceNumber,kValueTypeForSeek));
+        assert(this->compare(*start,tmp) < 0);
+        assert(this->compare(tmp,limit) < 0);
+        start->swap(tmp);
+    }
 }
 
 void InternalKeyComparator::findShortSuccessor(std::string *key) const
@@ -145,7 +144,6 @@ int InternalKeyComparator::compare(const std::string_view &akey,const std::strin
 	}
  	return r;
 }
-
 
 LookupKey::LookupKey(const std::string_view &userKey,uint64_t s)
 {

@@ -2,7 +2,8 @@
 #include "coding.h"
 
 MemTable::MemTable()
-:refs(0)
+:memoryUsage(0),
+ refs(0)
 {
 
 }

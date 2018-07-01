@@ -58,7 +58,7 @@ struct ParsedInternalKey
 	ValueType type;
 
 	ParsedInternalKey() { }  // Intentionally left uninitialized (for speed)
-	ParsedInternalKey(const std::string_view &u, const uint64_t &seq, ValueType t)
+	ParsedInternalKey(const std::string_view &u,const uint64_t &seq,ValueType t)
 	  :userKey(u),
 	  sequence(seq), 
 	  type(t) { }
@@ -67,10 +67,10 @@ struct ParsedInternalKey
 };
 
 // Return the length of the encoding of "key".
-inline size_t internalKeyEncodingLength(const ParsedInternalKey& key) {  return key.userKey.size() + 8; }
+inline size_t internalKeyEncodingLength(const ParsedInternalKey &key) { return key.userKey.size() + 8; }
 
 // Append the serialization of "key" to *result.
-void appendInternalKey(std::string* result, const ParsedInternalKey& key);
+void appendInternalKey(std::string *result,const ParsedInternalKey &key);
 
 // Attempt to parse an internal key from "internal_key".  On success,
 // stores the parsed data in "*result", and returns true.
@@ -104,8 +104,7 @@ public:
 	void findShortestSeparator(std::string *start,const std::string_view &limit) const;
 	void findShortSuccessor(std::string *key) const;
 	int compare(const std::string_view &a,const std::string_view &b) const;
-	int compare(const InternalKey &a, const InternalKey &b) const;
-
+	int compare(const InternalKey &a,const InternalKey &b) const;
 private:
 	BytewiseComparatorImpl userComparator;
 };

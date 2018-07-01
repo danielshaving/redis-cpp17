@@ -17,7 +17,7 @@
 #include "callback.h"
 
 class EventLoop
-{
+{	 
 public:
 	typedef std::function<void()> Functor;
 	EventLoop();

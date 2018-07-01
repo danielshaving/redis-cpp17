@@ -11,27 +11,56 @@ struct DBImpl::Writer
 	bool done;
 };
 
-Status DBImpl::put(const WriteOptions&,const std::string_view &key,const std::string_view &value)
+Status DBImpl::put(const WriteOptions &opt,const std::string_view &key,const std::string_view &value)
+{
+    WriteBatch batch;
+    batch.put();
+    return write(opt,&batch);
+}
+
+Status DBImpl::erase(const WriteOptions &opt,const std::string_view &key)
 {
 
 }
 
-Status DBImpl::erase(const WriteOptions&,const std::string_view &key)
+// REQUIRES: mutex_ is held
+// REQUIRES: this thread is currently at the front of the writer queue
+Status DBImpl::makeRoomForWrite(bool force)
+{
+    assert(!writers.empty());
+    bool allowDelay = !force;
+    Status s;
+    while(true)
+    {
+        if (!force && mem->getMemoryUsage() <= opt.writeBufferSize)
+        {
+            break;
+        }
+        else if (imm != nullptr)
+        {
+
+        }
+    }
+}
+
+Status DBImpl::write(const WriteOptions &opt,WriteBatch *updates)
+{
+    std::shared_ptr<Writer> w(new Writer());
+    w->batch = updates;
+    w->sync = opt.sync;
+    w->done = false;
+
+    writers.push_back(&w);
+    // May temporarily unlock and wait.
+    Status status = makeRoomForWrite(updates == nullptr);
+}
+
+Status DBImpl::get(const ReadOptions &opt,const std::string_view &key,std::string *value)
 {
 
 }
 
-Status DBImpl::write(const WriteOptions &options,WriteBatch *updates)
-{
-
-}
-
-Status DBImpl::get(const ReadOptions &options,const std::string_view &key,std::string *value)
-{
-
-}
-
-Status DBImpl::open(const Options& options,const std::string& dbname)
+Status DBImpl::open(const Options &opt,const std::string& dbname)
 {
 
 }

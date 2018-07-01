@@ -12,6 +12,7 @@ public:
 	MemTable();
 	~MemTable();
 
+	size_t getMemoryUsage() { return memoryUsage; }
 private:
 	struct KeyComparator
 	{
@@ -21,6 +22,6 @@ private:
 
 	typedef std::set<const char *,KeyComparator> Table;
 	Table table;
-
+	size_t memoryUsage;
 	int refs;
 };

@@ -18,6 +18,7 @@ public:
 	Status write(const WriteOptions &options,WriteBatch *updates);
 	Status get(const ReadOptions &options,const std::string_view &key,std::string *value);
 	Status open(const Options& options,const std::string& dbname);
+	Status makeRoomForWrite(bool force /* compact even if there is room? */);
 
 private:
 	struct Writer;
@@ -28,8 +29,6 @@ private:
 	 // Queue of writers.
 	std::deque<std::shared_ptr<Writer>> writers;
 	std::shared_ptr<WriteBatch>	tmpBatch;
-
-
 	std::shared_ptr<MemTable> mem;
 	std::shared_ptr<MemTable> imm;
 };
