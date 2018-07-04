@@ -25,12 +25,13 @@ char *logo =
 std::unique_ptr<LogFile> logFile;
 void dummyOutput(const char *msg,int len)
 {
+	printf("%s\n",msg);
 	logFile->append(msg,len);
 }
 
 int main(int argc,char *argv[])
 {
-	logFile.reset(new LogFile("redis",4096,false));
+	logFile.reset(new LogFile("redislog","redis",4096,false));
 	Logger::setOutput(dummyOutput);
 
 	signal(SIGPIPE,SIG_IGN);
@@ -61,6 +62,10 @@ int main(int argc,char *argv[])
 	}
 	return 0;
 }
+
+
+
+
 
 
 

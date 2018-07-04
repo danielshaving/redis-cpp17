@@ -1,8 +1,8 @@
 #include "log.h"
-
 #ifdef WIN32
 #pragma warning(disable:4996)  
 #endif
+
 const char digits[] = "9876543210123456789";
 const char digitsHex[] = "0123456789ABCDEF";
 const char *zero = digits + 9;
@@ -49,12 +49,8 @@ size_t convertHex(char buf[],uintptr_t value)
 AppendFile::AppendFile(const std::string &filename)
  :writtenBytes(0)
 {
-#ifdef WIN32
-	assert(!fopen_s(&fp,filename.c_str(),"a"));
-#else
 	fp = ::fopen(filename.c_str(),"ae"); // 'e' for O_CLOEXEC
 	assert(fp);
-#endif
 }
 
 AppendFile::~AppendFile()
@@ -74,11 +70,7 @@ void AppendFile::append(const char *logline,const size_t len)
 			int32_t err = ferror(fp);
 			if (err)
 			{
-#ifdef WIN32
-				LOG_ERROR << "AppendFile append failed:" << err;
-#else
 				LOG_ERROR << "AppendFile append failed:" << strerror(err);
-#endif
 			}
 			break;
 		}
@@ -103,12 +95,13 @@ size_t AppendFile::write(const char *logline,size_t len)
 	return ::fwrite(logline,1,len,fp);
 }
 
-LogFile::LogFile(const std::string &basename,
+LogFile::LogFile(const std::string &filePath,const std::string &basename,
 size_t rollSize,
 bool threadSafe,
 int32_t interval,
 int32_t checkEveryN)
-:basename(basename),
+:filePath(filePath),
+basename(basename),
 rollSize(rollSize),
 interval(interval),
 checkEveryN(checkEveryN),
@@ -118,7 +111,9 @@ lastRoll(0),
 lastFlush(0)
 {
 	assert(basename.find('/') == std::string::npos);
+	fs::create_directories(filePath);
 	rollFile();
+
 }
 
 LogFile::~LogFile()
@@ -169,7 +164,7 @@ void LogFile::append_unlocked(const char *logline,int32_t len)
 bool LogFile::rollFile()
 {
 	time_t now = 0;
-	getLogFileName(basename,&now);
+	getLogFileName(&now);
 	time_t start = now / kRollPerSeconds * kRollPerSeconds;
 
 	if (now > lastRoll)
@@ -183,10 +178,13 @@ bool LogFile::rollFile()
 	return false;
 }
 
-void LogFile::getLogFileName(const std::string &basename,time_t *now)
+void LogFile::getLogFileName(time_t *now)
 {
 	filename.clear();
-	filename = basename;
+	filename += "./";
+	filename += filePath;
+	filename += "/";
+	filename += basename;
 
 	char timebuf[32];
 	struct tm tm;
@@ -194,15 +192,16 @@ void LogFile::getLogFileName(const std::string &basename,time_t *now)
 #ifdef WIN32
 	tm = *(localtime(now));
 #else
-	gmtime_r(now, &tm);
+	gmtime_r(now,&tm);
 #endif
 	strftime(timebuf,sizeof timebuf,".%Y%m%d-%H%M%S",&tm);
 	filename += timebuf;
 	filename += ".log";
 }
 
-AsyncLogging::AsyncLogging(std::string baseName,size_t rollSize,int32_t interval)
-:baseName(baseName),
+AsyncLogging::AsyncLogging(std::string filePath,std::string baseName,size_t rollSize,int32_t interval)
+:filePath(filePath),
+ baseName(baseName),
  interval(interval),
  running(false),
  rollSize(rollSize),
@@ -233,7 +232,6 @@ void AsyncLogging::append(const char *logline, size_t len)
 		{
 			currentBuffer.reset(new Buffer);
 		}
-
 		currentBuffer->append(logline,len);
 		condition.notify_one();
 	}
@@ -241,7 +239,7 @@ void AsyncLogging::append(const char *logline, size_t len)
 
 void AsyncLogging::threadFunc()
 {
-	LogFile output(baseName,rollSize,false);
+	LogFile output(filePath,baseName,rollSize,false);
 	BufferPtr newBuffer1(new Buffer);
 	BufferPtr newBuffer2(new Buffer);
 	newBuffer1->bzero();
@@ -382,7 +380,6 @@ LogStream &LogStream::operator<<(const void* p)
 		size_t len = convertHex(buf+2, v);
 		buffer.add(len+2);
 	}
-
 	return *this;
 }
 
@@ -394,7 +391,6 @@ LogStream &LogStream::operator<<(double v)
 		int32_t len = snprintf(buffer.current(),kMaxNumericSize,"%.12g", v);
 		buffer.add(len);
 	}
-
 	return *this;
 }
 

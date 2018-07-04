@@ -50,7 +50,7 @@ Status DBImpl::write(const WriteOptions &opt,WriteBatch *updates)
     w->sync = opt.sync;
     w->done = false;
 
-    writers.push_back(&w);
+    writers.push_back(w);
     // May temporarily unlock and wait.
     Status status = makeRoomForWrite(updates == nullptr);
 }

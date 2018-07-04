@@ -3,7 +3,6 @@
 //
 #pragma once
 #include "all.h"
-
 const int32_t kSmallBuffer = 4000;
 const int32_t kLargeBuffer = 4000*10;
 
@@ -75,7 +74,7 @@ private:
 class LogFile
 {
  public:
-	LogFile(const std::string &basename,
+	LogFile(const std::string &filePath,const std::string &basename,
 	  size_t rollSize,
 	  bool threadSafe = true,
 	  int32_t interval = 3,
@@ -91,7 +90,8 @@ private:
 	void operator=(const LogFile&);
 
 	void append_unlocked(const char *logline,int32_t len);
-	void getLogFileName(const std::string& basename,time_t *now);
+	void getLogFileName(time_t *now);
+	const std::string filePath;
 	const std::string basename;
 	const size_t rollSize;
 	const int32_t interval;
@@ -104,13 +104,13 @@ private:
 	time_t lastRoll;
 	time_t lastFlush;
 	std::unique_ptr<AppendFile> file;
-	const static int32_t kRollPerSeconds = 60*60*24;
+	const static int32_t kRollPerSeconds = 60 * 60 * 24;
 };
 
 class AsyncLogging
 {
 public:
-	AsyncLogging(std::string baseName,size_t rollSize,int32_t interval = 3);
+	AsyncLogging(std::string filePath,std::string baseName,size_t rollSize,int32_t interval = 3);
 	~AsyncLogging()
 	{
 		if(running)
@@ -141,6 +141,7 @@ private:
 	typedef FixedBuffer<kLargeBuffer> Buffer;
 	typedef std::vector<std::unique_ptr<Buffer>> BufferVector;
 	typedef std::unique_ptr<Buffer> BufferPtr;
+	std::string filePath;
 	std::string baseName;
 	const int32_t interval;
 	bool running;
