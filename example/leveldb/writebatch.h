@@ -5,6 +5,8 @@
 #include "status.h"
 #include "memtable.h"
 
+class WriteBatchInternal;
+
 class WriteBatch
 {
 public:
@@ -20,7 +22,7 @@ public:
 	void put(const std::string_view &key,const std::string_view &value);
 
 	// If the database contains a mapping for "key", erase it.  Else do nothing.
-	void erase(const std::string_view &key);
+	void del(const std::string_view &key);
 
 	// Clear all updates buffered in this batch.
 	void clear();
@@ -33,6 +35,12 @@ public:
 	// releases. It is intended for LevelDB usage metrics.
 	size_t approximateSize();
 
+	std::string rep;
+};
+
+class WriteBatchInternal
+{
+public:
 	 // Return the number of entries in the batch.
 	static int count(const WriteBatch *b);
 
@@ -53,7 +61,6 @@ public:
 	static void setContents(WriteBatch *b,const std::string_view &contents);
 
 	static void append(WriteBatch *dst,const WriteBatch *src);
-private:
-	std::string rep;
-	uint64_t sequence;
+
+	static Status insertInto(const WriteBatch *batch,const std::shared_ptr<MemTable> &memtable);
 };

@@ -89,7 +89,7 @@ private:
 	LogFile(const LogFile&);
 	void operator=(const LogFile&);
 
-	void append_unlocked(const char *logline,int32_t len);
+	void appendUnlocked(const char *logline,int32_t len);
 	void getLogFileName(time_t *now);
 	const std::string filePath;
 	const std::string basename;

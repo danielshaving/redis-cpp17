@@ -1,5 +1,5 @@
-TARGET= ./redis-server
-CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17   #-DUSE_JEMALLOC
+TARGET= ./leveldb-cpp20
+CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++2a
 ccfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(ccfiles) $(cfiles))
@@ -8,7 +8,7 @@ CXXOBJS=${patsubst %.cc,./%.o,$(ccfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB=  #./libjemalloc.a # ./libhiredis.a    /usr/lib64/libprofiler.so.0 #-ltcmalloc
+LIB= 
 
 SO_LIB= 
 
@@ -18,11 +18,11 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread  #-lz -lcurl
-${CXXOBJS}:./%.o:../src/%.cc
-	g++-7 -MMD -c -o $@ $< ${CFLAGS} 
+	g++ -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread  #-lz -lcurl
+${CXXOBJS}:./%.o:./%.cc
+	g++ -MMD -c -o $@ $< ${CFLAGS} 
 
-${COBJS}:./%.o:../src/%.c
+${COBJS}:./%.o:./%.c
 	${CC} -MMD -c -o $@ $< ${CFLAGS} 
 
 -include $(DEPS)

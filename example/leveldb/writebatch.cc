@@ -18,10 +18,26 @@ void WriteBatch::clear()
 	rep.resize(kHeader);
 }
 
+void WriteBatch::del(const std::string_view &key)
+{
+	WriteBatchInternal::setCount(this,WriteBatchInternal::count(this) + 1);
+	rep.push_back(static_cast<char>(kTypeDeletion));
+	putLengthPrefixedSlice(&rep,key);
+}
+
+void WriteBatch::put(const std::string_view &key,const std::string_view &value)
+{
+	WriteBatchInternal::setCount(this,WriteBatchInternal::count(this) + 1);
+	rep.push_back(static_cast<char>(kTypeValue));
+	putLengthPrefixedSlice(&rep,key);
+	putLengthPrefixedSlice(&rep,value);
+}
+
 size_t WriteBatch::approximateSize() 
 {
 	return rep.size();
 }
+
 
 Status WriteBatch::iterate(uint64_t sequence,const std::shared_ptr<MemTable> &mem) const 
 {
@@ -45,7 +61,7 @@ Status WriteBatch::iterate(uint64_t sequence,const std::shared_ptr<MemTable> &me
 			{
 				if (getLengthPrefixedSlice(&input,&key) && getLengthPrefixedSlice(&input,&value)) 
 				{
-					//mem->put(key,value);
+					mem->add(sequence++,kTypeValue,key,value);
 				} 
 				else 
 				{
@@ -57,7 +73,7 @@ Status WriteBatch::iterate(uint64_t sequence,const std::shared_ptr<MemTable> &me
 			{
 				if (getLengthPrefixedSlice(&input,&key)) 
 				{
-					//mem->erase(key);
+					mem->add(sequence++,kTypeDeletion,key,std::string_view());
 				} 
 				else 
 				{
@@ -70,58 +86,49 @@ Status WriteBatch::iterate(uint64_t sequence,const std::shared_ptr<MemTable> &me
 		}
 	}
 
-	if (found != count(this)) 
+	if (found != WriteBatchInternal::count(this))
 	{
 		return Status::corruption("WriteBatch has wrong count");
 	} 
 	else 
 	{
-		return Status::oK();
+		Status s;
+		return s;
 	}
 }
 
-int WriteBatch::count(const WriteBatch *b) 
+Status WriteBatchInternal::insertInto(const WriteBatch *batch,const std::shared_ptr<MemTable> &memtable)
+{
+	return batch->iterate(getSequence(batch),memtable);
+}
+
+int WriteBatchInternal::count(const WriteBatch *b)
 {
   	return decodeFixed32(b->rep.data() + 8);
 }
 
-void WriteBatch::setCount(WriteBatch *b,int n) 
+void WriteBatchInternal::setCount(WriteBatch *b,int n)
 {
   	encodeFixed32(&b->rep[8],n);
 }
 
-uint64_t WriteBatch::getSequence(const WriteBatch *b) 
+uint64_t WriteBatchInternal::getSequence(const WriteBatch *b)
 {
 	return uint64_t(decodeFixed64(b->rep.data()));
 }
 
-void WriteBatch::setSequence(WriteBatch *b,uint64_t seq) 
+void WriteBatchInternal::setSequence(WriteBatch *b,uint64_t seq)
 {
 	encodeFixed64(&b->rep[0],seq);
 }
 
-void WriteBatch::put(const std::string_view &key,const std::string_view &value) 
-{
-	setCount(this,count(this) + 1);
-	rep.push_back(static_cast<char>(kTypeValue));
-	putLengthPrefixedSlice(&rep,key);
-	putLengthPrefixedSlice(&rep,value);
-}
-
-void WriteBatch::erase(const std::string_view &key) 
-{
-	setCount(this,count(this) + 1);
-	rep.push_back(static_cast<char>(kTypeDeletion));
-	putLengthPrefixedSlice(&rep,key);
-}
-
-void WriteBatch::setContents(WriteBatch *b,const std::string_view &contents) 
+void WriteBatchInternal::setContents(WriteBatch *b,const std::string_view &contents)
 {
 	assert(contents.size() >= kHeader);
 	b->rep.assign(contents.data(),contents.size());
 }
 
-void WriteBatch::append(WriteBatch *dst,const WriteBatch *src) 
+void WriteBatchInternal::append(WriteBatch *dst,const WriteBatch *src)
 {
 	setCount(dst,count(dst) + count(src));
 	assert(src->rep.size() >= kHeader);

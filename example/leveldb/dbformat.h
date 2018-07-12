@@ -105,6 +105,8 @@ public:
 	void findShortSuccessor(std::string *key) const;
 	int compare(const std::string_view &a,const std::string_view &b) const;
 	int compare(const InternalKey &a,const InternalKey &b) const;
+	const BytewiseComparatorImpl *getComparator() const { return &userComparator; }
+
 private:
 	BytewiseComparatorImpl userComparator;
 };

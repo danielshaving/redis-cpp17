@@ -8,17 +8,17 @@ class Status
 {
 public:
 	// Create a success status.
-	Status() noexcept : state(nullptr) { }
-	~Status() { zfree((void*)state); }
+	Status() noexcept : state(nullptr)
+	{
+	
+	}
+	~Status()	{ zfree((void*)state); }
 
 	Status(const Status &rhs);
 	Status &operator=(const Status &rhs);
 
 	Status(Status &&rhs) noexcept : state(rhs.state) { rhs.state = nullptr; }
 	Status &operator=(Status &&rhs) noexcept;
-
-	// Return a success status.
-	static Status oK() { return Status(); }
 
 	// Return error status of an appropriate type.
 	static Status notFound(const std::string_view &msg,const std::string_view &msg2 = std::string_view())

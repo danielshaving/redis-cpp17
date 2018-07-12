@@ -61,7 +61,6 @@
 #include <netinet/in.h>
 #include <string_view>
 #include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
 
 #ifdef __APPLE__
 #include <sys/event.h>

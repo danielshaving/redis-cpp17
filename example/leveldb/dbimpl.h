@@ -6,19 +6,26 @@
 #include "option.h"
 #include "status.h"
 #include "writebatch.h"
+#include "versionset.h"
+#include "log-writer.h"
+#include "posix.h"
+#include "version-edit.h"
+
 
 class DBImpl
 {
 public:
 	DBImpl(const Options &options,const std::string &dbname);
 	~DBImpl();
-	// Implementations of the DB interface
+
+	Status open();
 	Status put(const WriteOptions&,const std::string_view &key,const std::string_view &value);
-	Status erase(const WriteOptions&,const std::string_view &key);
+	Status del(const WriteOptions&,const std::string_view &key);
 	Status write(const WriteOptions &options,WriteBatch *updates);
 	Status get(const ReadOptions &options,const std::string_view &key,std::string *value);
-	Status open(const Options& options,const std::string& dbname);
-	Status makeRoomForWrite(bool force /* compact even if there is room? */);
+	// Implementations of the DB interface
+
+	Status recover(VersionEdit *edit,bool *saveManifest);
 
 private:
 	struct Writer;
@@ -26,9 +33,17 @@ private:
 	DBImpl(const DBImpl&);
 	void operator=(const DBImpl&);
 
+	Status makeRoomForWrite(bool force /* compact even if there is room? */);
+	WriteBatch *buildBatchGroup(Writer **lastWriter);
 	 // Queue of writers.
-	std::deque<std::shared_ptr<Writer>> writers;
+	std::deque<Writer*> writers;
 	std::shared_ptr<WriteBatch>	tmpBatch;
 	std::shared_ptr<MemTable> mem;
 	std::shared_ptr<MemTable> imm;
+	std::shared_ptr<VersionSet> versions;
+	std::shared_ptr<LogWriter> log;
+	std::shared_ptr<PosixWritableFile> logfile;
+	const Options options;  // options_.comparator == &internal_comparator_
+	uint64_t logfileNumber;
+	const std::string dbname;
 };

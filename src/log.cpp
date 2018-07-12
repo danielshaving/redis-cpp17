@@ -1,8 +1,4 @@
 #include "log.h"
-#ifdef WIN32
-#pragma warning(disable:4996)  
-#endif
-
 const char digits[] = "9876543210123456789";
 const char digitsHex[] = "0123456789ABCDEF";
 const char *zero = digits + 9;
@@ -111,7 +107,7 @@ lastRoll(0),
 lastFlush(0)
 {
 	assert(basename.find('/') == std::string::npos);
-	fs::create_directories(filePath);
+	std::experimental::filesystem::create_directories(filePath);
 	rollFile();
 
 }
@@ -124,7 +120,7 @@ LogFile::~LogFile()
 void LogFile::append(const char *logline,int32_t len)
 {
 	std::unique_lock<std::mutex> lk(mutex);
-	append_unlocked(logline,len);
+	appendUnlocked(logline,len);
 }
 
 void LogFile::flush()
@@ -133,7 +129,7 @@ void LogFile::flush()
 	file->flush();
 }
 
-void LogFile::append_unlocked(const char *logline,int32_t len)
+void LogFile::appendUnlocked(const char *logline,int32_t len)
 {
 	file->append(logline,len);
 	if (file->getWrittenBytes() > rollSize)
