@@ -3,11 +3,14 @@
 
  Acceptor::Acceptor(EventLoop* loop,const char *ip,int16_t port)
  :loop(loop),
-  socket(ip,port),
+  sock(socket.createTcpSocket(ip,port)),
   channel(loop,socket.getListenFd()),
   listenfd(socket.getListenFd()),
-  listenning(false)
+  listenning(false),
+  idleFd(::open("/dev/null",O_RDONLY | O_CLOEXEC))
  {
+	 assert(sock);
+	 assert(idleFd >= 0);
 	 channel.setReadCallback(std::bind(&Acceptor::handleRead,this));
  }
 
@@ -39,7 +42,10 @@
 			socket.setSocketNonBlock(connfd);
 			newConnectionCallback(connfd);
 		}
-		else { ::close(connfd); }
+		else
+		{
+			::close(connfd);
+		}
 	}
 	else
 	{

@@ -9,7 +9,6 @@ class Socket
 {
 public:
 	Socket();
-	Socket(const char *ip,int16_t port);
 	~Socket();
 
 #ifdef __linux__
@@ -37,11 +36,13 @@ public:
 	int32_t getSocketError(int32_t sockfd);
 	int32_t getListenFd();
 	void setkeepAlive(int32_t fd,int32_t idle);
-	bool createTcpListenSocket(const char *ip,int16_t port);
+	bool createTcpSocket(const char *ip,int16_t port);
 	bool setSocketNonBlock(int32_t sockfd);
 	bool setSocketBlock(int32_t sockfd);
 	bool setTcpNoDelay(int32_t sockfd,bool on);
 	bool setTimeOut(int32_t sockfd,const struct timeval tc);
+	void setReuseAddr(bool on);
+	void setReusePort(bool on);
 	int32_t setFlag(int32_t fd,int32_t flag);
 	bool connectWaitReady(int32_t fd,int32_t msec);
 

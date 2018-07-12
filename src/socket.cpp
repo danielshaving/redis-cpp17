@@ -1,11 +1,6 @@
 #include "socket.h"
 #include "log.h"
 
-Socket::Socket(const char *ip,int16_t port)
-{
-	assert(createTcpListenSocket(ip,port));
-}
-
 Socket::Socket()
 {
 
@@ -255,7 +250,34 @@ void Socket::setkeepAlive(int32_t fd,int32_t idle)
 #endif
 }
 
-bool Socket::createTcpListenSocket(const char *ip,int16_t port)
+
+void Socket::setReuseAddr(bool on)
+{
+	int optval = on ? 1 : 0;
+	::setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,
+			   &optval,static_cast<socklen_t>(sizeof optval));
+	// FIXME CHECK
+}
+
+void Socket::setReusePort(bool on)
+{
+#ifdef SO_REUSEPORT
+	int optval = on ? 1 : 0;
+	int ret = ::setsockopt(sockfd,SOL_SOCKET,SO_REUSEPORT,
+						 &optval,static_cast<socklen_t>(sizeof optval));
+	if (ret < 0 && on)
+	{
+		LOG_SYSERR << "SO_REUSEPORT failed.";
+	}
+#else
+	if (on)
+	{
+		LOG_ERROR << "SO_REUSEPORT is not supported.";
+	}
+#endif
+}
+
+bool Socket::createTcpSocket(const char *ip,int16_t port)
 {
 #ifdef __linux__
 	struct sockaddr_in sa;
@@ -276,13 +298,13 @@ bool Socket::createTcpListenSocket(const char *ip,int16_t port)
     sockfd = createSocket();
     if (sockfd < 0)
     {
-        LOG_WARN<<"Create Tcp Socket Failed! "<< strerror(errno);
+        LOG_SYSERR<<"Create Tcp Socket Failed! "<< strerror(errno);
         return false;
     }
 
     if (!setSocketNonBlock(sockfd))
     {
-		LOG_WARN<<"Set listen socket to non-block failed!";
+		LOG_SYSERR<<"Set listen socket to non-block failed!";
 		return false;
     }
 
@@ -346,14 +368,14 @@ bool Socket::setSocketBlock(int32_t socketFd)
     int32_t opt = ::fcntl(socketFd,F_GETFL);
     if (opt < 0)
     {
-        LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+        LOG_SYSERR<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
 
     opt = opt &~ O_NONBLOCK;
     if (::fcntl(socketFd,F_SETFL,opt) < 0)
     {
-    	LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+    	LOG_SYSERR<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
     return true;
@@ -364,14 +386,14 @@ bool Socket::setSocketNonBlock(int32_t socketFd)
     int32_t opt = ::fcntl(socketFd,F_GETFL);
     if (opt < 0)
     {
-        LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+        LOG_SYSERR<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
 
     opt = opt | O_NONBLOCK;
     if (::fcntl(socketFd,F_SETFL,opt) < 0)
     {
-    	LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+    	LOG_SYSERR<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
     return true;
