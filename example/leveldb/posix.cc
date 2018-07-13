@@ -151,6 +151,51 @@ Status PosixWritableFile::writeRaw(const char *p,size_t n)
 	return s;
 }
 
+PosixSequentialFile::PosixSequentialFile(const std::string &fname,int fd)
+  : filename(fname),fd(fd)
+{
+
+}
+
+PosixSequentialFile::~PosixSequentialFile()
+{
+	::close(fd);
+}
+
+Status PosixSequentialFile::read(size_t n,std::string_view *result,char *scratch)
+{
+	Status s;
+	while (true)
+	{
+		ssize_t r = ::read(fd,scratch,n);
+		if (r < 0)
+		{
+			if (errno == EINTR)
+			{
+				continue;  // Retry
+			}
+
+			s = posixError(filename,errno);
+			break;
+		}
+
+		*result = std::string_view(scratch,r);
+		break;
+	}
+	return s;
+}
+
+Status PosixSequentialFile::skip(uint64_t n)
+{
+	Status s;
+	if (::lseek(fd,n,SEEK_CUR) == static_cast<off_t>(-1))
+	{
+		return posixError(filename,errno);
+	}
+	return s;
+};
+
+
 Status PosixEnv::newWritableFile(const std::string &fname,std::shared_ptr<PosixWritableFile> &result)
  {
 	Status s;
@@ -234,7 +279,24 @@ Status PosixEnv::getChildren(const std::string &dir,std::vector<std::string> *re
 	}
 	::closedir(d);
 	return s;
- }
+}
+
+Status PosixEnv::newSequentialFile(const std::string &fname,std::shared_ptr<PosixSequentialFile> &result)
+{
+	Status s;
+	int fd = open(fname.c_str(),O_RDONLY);
+	if (fd < 0)
+	{
+		result = nullptr;
+		return posixError(fname,errno);
+	}
+	else
+	{
+		result = std::shared_ptr<PosixSequentialFile>(new PosixSequentialFile(fname,fd));
+		return s;
+	}
+}
+
 
 
 

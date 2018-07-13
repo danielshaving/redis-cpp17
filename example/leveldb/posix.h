@@ -1,5 +1,4 @@
 #pragma once
-
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -64,6 +63,19 @@ private:
 	Status writeRaw(const char *p,size_t n);
 };
 
+class PosixSequentialFile
+{
+private:
+	std::string filename;
+	int fd;
+public:
+	PosixSequentialFile(const std::string &fname,int fd);
+	~PosixSequentialFile();
+
+	Status read(size_t n,std::string_view *result,char *scratch);
+	Status skip(uint64_t n);
+};
+
 class PosixEnv
 {
 public:
@@ -74,6 +86,7 @@ public:
 	Status deleteDir(const std::string &name);
 	Status getFileSize(const std::string &fname,uint64_t *size);
 	Status getChildren(const std::string &dir,std::vector<std::string> *result);
+	Status newSequentialFile(const std::string &fname,std::shared_ptr<PosixSequentialFile> &result);
 };
 
 

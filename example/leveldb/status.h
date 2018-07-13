@@ -12,7 +12,13 @@ public:
 	{
 	
 	}
-	~Status()	{ zfree((void*)state); }
+	~Status()
+	{
+		if (state != nullptr)
+		{
+			zfree((void*)state);
+		}
+	}
 
 	Status(const Status &rhs);
 	Status &operator=(const Status &rhs);

@@ -1,5 +1,6 @@
 #include "dbimpl.h"
 #include "filename.h"
+#include "log-reader.h"
 
 const int kNumNonTableCacheFiles = 10;
 
@@ -26,19 +27,27 @@ DBImpl::~DBImpl()
 
 Status DBImpl::open()
 {
+	Status s = options.env->createDir(dbname);
+	printf("%s\n",s.toString().c_str());
 	versions.reset(new VersionSet(dbname,&options));
 	mem.reset(new MemTable);
 	imm.reset(new MemTable);
-
-	uint64_t newLogNumber = versions->newFileNumber();
-	std::shared_ptr<PosixWritableFile> r;
-	Status s = options.env->newWritableFile(logFileName(dbname,newLogNumber),r);
+	VersionEdit edit;
+	bool saveManifest = false;
+	s = recover(&edit,&saveManifest);
 	if (s.ok())
 	{
-		logfile = r;
-		log.reset(new LogWriter(logfile.get()));
-		logfileNumber = newLogNumber;
+		uint64_t newLogNumber = versions->newFileNumber();
+		std::shared_ptr<PosixWritableFile> r;
+		s = options.env->newWritableFile(logFileName(dbname,newLogNumber),r);
+		if (s.ok())
+		{
+			logfile = r;
+			log.reset(new LogWriter(logfile.get()));
+			logfileNumber = newLogNumber;
+		}
 	}
+	return s;
 }
 
 Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
@@ -82,7 +91,6 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 	}
 
 	std::sort(logs.begin(),logs.end());
-
 	for (size_t i = 0; i < logs.size(); i++)
 	{
 		s = recoverLogFile(logs[i],(i == logs.size() - 1),saveManifest,edit,&maxSequence);
@@ -90,7 +98,53 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 		{
 			return s;
 		}
+	}
+}
 
+Status DBImpl::recoverLogFile(uint64_t logNumber,bool lastLog,
+		bool *saveManifest,VersionEdit *edit,uint64_t *maxSequence)
+{
+	// Open the log file
+	std::string fname = logFileName(dbname,logNumber);
+	std::shared_ptr<PosixSequentialFile> file;
+	Status status = options.env->newSequentialFile(fname,file);
+	if (!status.ok())
+	{
+		//MaybeIgnoreError(&status);
+		return status;
+	}
+
+	LogReporter reporter;
+	// We intentionally make log::Reader do checksumming even if
+	// paranoid_checks==false so that corruptions cause entire commits
+	// to be skipped instead of propagating bad information (like overly
+	// large sequence numbers).
+	Reader reader(file.get(),&reporter,true/*checksum*/,0/*initial_offset*/);
+	std::string scratch;
+	std::string_view record;
+	WriteBatch batch;
+	int compactions = 0;
+
+	while (reader.readRecord(&record,&scratch) && status.ok())
+	{
+	    if (record.size() < 12)
+	    {
+			reporter.corruption(record.size(),Status::corruption("log record too small"));
+			continue;
+	    }
+
+	    WriteBatchInternal::setContents(&batch,record);
+	    status = WriteBatchInternal::insertInto(&batch, mem);
+	    if (!status.ok())
+	    {
+	    	break;
+	    }
+
+	    const uint64_t lastSeq = WriteBatchInternal::getSequence(&batch) + WriteBatchInternal::count(&batch) - 1;
+	    if (lastSeq > *maxSequence)
+	    {
+	    	*maxSequence = lastSeq;
+	    }
 	}
 }
 
@@ -141,7 +195,7 @@ WriteBatch *DBImpl::buildBatchGroup(Writer **lastWriter)
 	}
 
 	*lastWriter = first;
-	std::deque<Writer*>::iterator iter = writers.begin();
+	auto iter = writers.begin();
 	++iter;
 
 	for (; iter != writers.end(); ++iter)

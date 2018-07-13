@@ -6,10 +6,10 @@
 #include "option.h"
 #include "status.h"
 #include "writebatch.h"
-#include "versionset.h"
 #include "log-writer.h"
 #include "posix.h"
 #include "version-edit.h"
+#include "version-set.h"
 
 
 class DBImpl
@@ -26,6 +26,8 @@ public:
 	// Implementations of the DB interface
 
 	Status recover(VersionEdit *edit,bool *saveManifest);
+	Status recoverLogFile(uint64_t logNumber, bool lastLog,
+			bool *saveManifest, VersionEdit *edit,uint64_t *maxSequence);
 
 private:
 	struct Writer;

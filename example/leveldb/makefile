@@ -18,7 +18,7 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	g++ -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread  #-lz -lcurl
+	g++ -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread
 ${CXXOBJS}:./%.o:./%.cc
 	g++ -MMD -c -o $@ $< ${CFLAGS} 
 
