@@ -10,3 +10,9 @@ VersionSet::~VersionSet()
 {
 
 }
+
+
+Status VersionSet::recover(bool manifest)
+{
+
+}

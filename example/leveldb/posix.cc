@@ -206,7 +206,7 @@ Status PosixEnv::newWritableFile(const std::string &fname,std::shared_ptr<PosixW
 	}
 	else
 	{
-		result = std::shared_ptr<PosixWritableFile>(new PosixWritableFile(fname,fd));
+		result.reset(new PosixWritableFile(fname,fd));
 	}
 	return s;
 }
@@ -292,7 +292,7 @@ Status PosixEnv::newSequentialFile(const std::string &fname,std::shared_ptr<Posi
 	}
 	else
 	{
-		result = std::shared_ptr<PosixSequentialFile>(new PosixSequentialFile(fname,fd));
+		result.reset(new PosixSequentialFile(fname,fd));
 		return s;
 	}
 }

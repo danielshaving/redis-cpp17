@@ -28,21 +28,19 @@ DBImpl::~DBImpl()
 Status DBImpl::open()
 {
 	Status s = options.env->createDir(dbname);
-	printf("%s\n",s.toString().c_str());
-	versions.reset(new VersionSet(dbname,&options));
-	mem.reset(new MemTable);
-	imm.reset(new MemTable);
 	VersionEdit edit;
 	bool saveManifest = false;
 	s = recover(&edit,&saveManifest);
 	if (s.ok())
 	{
+		versions.reset(new VersionSet(dbname,&options));
+		mem.reset(new MemTable);
+		imm.reset(new MemTable);
+
 		uint64_t newLogNumber = versions->newFileNumber();
-		std::shared_ptr<PosixWritableFile> r;
-		s = options.env->newWritableFile(logFileName(dbname,newLogNumber),r);
+		s = options.env->newWritableFile(logFileName(dbname,newLogNumber),logfile);
 		if (s.ok())
 		{
-			logfile = r;
 			log.reset(new LogWriter(logfile.get()));
 			logfileNumber = newLogNumber;
 		}
@@ -50,15 +48,61 @@ Status DBImpl::open()
 	return s;
 }
 
+Status DBImpl::newDB()
+{
+	VersionEdit newDb;
+	new_db.setLogNumber(0);
+	new_db.setNextFile(2);
+	new_db.setLastSequence(0);
+	const std::string manifest = descriptorFileName(dbname,1);
+	std::shared_ptr<PosixWritableFile> file;
+	Status s = option.env->newWritableFile(manifest,&file);
+	if (!s.ok())
+	{
+		return s;
+	}
+
+	LogWriter log(file);
+	std::string record;
+	newDb.encodeTo(&record);
+
+}
+
 Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 {
 	Status s;
 	options.env->createDir(dbname);
-//	s = versions->recover(saveManifest);
-//	if (!s.ok())
-//	{
-//		return s;
-//	}
+
+	if (!options.env->fileExists(currentFileName(dbname)))
+	{
+		if (options.createIfMissing)
+		{
+			s = newDB();
+			if (!s.ok())
+			{
+				return s;
+			}
+		}
+		else
+		{
+			return Status::invalidArgument(
+					dbname, "does not exist (create_if_missing is false)");
+		}
+	}
+	else
+	{
+		if (options.errorIfExists)
+		{
+			return Status::invalidArgument(
+					dbname,"exists (error_if_exists is true)");
+		}
+	}
+
+	s = versions->recover(saveManifest);
+	if (!s.ok())
+	{
+		return s;
+	}
 
 	// Recover from all newer log files than the ones named in the
 	// descriptor (new log files may have been added by the previous

@@ -1,13 +1,16 @@
 #include "dbimpl.h"
 #include "option.h"
 
-int main()
+int main(int argc,char *argv[])
 {
 	Options options;
 	options.createIfMissing = true;
 	DBImpl db(options,"db");
 	Status s = db.open();
-	assert(s.ok());
+	if(!s.ok())
+	{
+		printf("%s\n",s.toString().c_str());
+	}
 
 	for(int i = 0 ; i < 1; i++)
 	{

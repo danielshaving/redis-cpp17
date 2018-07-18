@@ -28,6 +28,7 @@ public:
 	Status recover(VersionEdit *edit,bool *saveManifest);
 	Status recoverLogFile(uint64_t logNumber, bool lastLog,
 			bool *saveManifest, VersionEdit *edit,uint64_t *maxSequence);
+	Status newDB();
 
 private:
 	struct Writer;

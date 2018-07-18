@@ -26,7 +26,7 @@ bool parseInternalKey(const std::string_view &internalKey,ParsedInternalKey *res
 	return (c <= static_cast<unsigned char>(kTypeValue));
 }
 
-std::string ParsedInternalKey::DebugString() const
+std::string ParsedInternalKey::debugString() const
 {
   char buf[50];
   snprintf(buf,sizeof(buf),"' @ %llu : %d",

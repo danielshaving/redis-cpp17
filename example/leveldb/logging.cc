@@ -34,3 +34,18 @@ bool consumeDecimalNumber(std::string_view *in,uint64_t* val)
 	in->remove_prefix(digitsConsumed);
 	return digitsConsumed != 0;
 }
+
+std::string numberToString(uint64_t num)
+{
+	std::string r;
+	appendNumberTo(&r,num);
+	return r;
+}
+
+void appendNumberTo(std::string *str,uint64_t num)
+{
+	char buf[30];
+	snprintf(buf, sizeof(buf), "%llu", (unsigned long long) num);
+	str->append(buf);
+}
+

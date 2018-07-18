@@ -63,7 +63,7 @@ struct ParsedInternalKey
 	  sequence(seq), 
 	  type(t) { }
 
-	std::string DebugString() const;
+	std::string debugString() const;
 };
 
 // Return the length of the encoding of "key".
