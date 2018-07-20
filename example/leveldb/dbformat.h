@@ -48,8 +48,7 @@ static const ValueType kValueTypeForSeek = kTypeValue;
 
 // We leave eight bits empty at the bottom so a type and sequence#
 // can be packed together into 64-bits.
-static const uint64_t kMaxSequenceNumber =
-    ((0x1ull << 56) - 1);
+static const uint64_t kMaxSequenceNumber = ((0x1ull << 56) - 1);
 
 struct ParsedInternalKey 
 {
@@ -111,7 +110,6 @@ private:
 	BytewiseComparatorImpl userComparator;
 };
 
-
 // Modules in this directory should keep internal keys wrapped inside
 // the following class instead of plain strings so that we do not
 // incorrectly use string comparisons instead of an InternalKeyComparator.
@@ -136,12 +134,13 @@ public:
 
 	std::string_view userKey() const { extractUserKey(rep); }
 
-	void SetFrom(const ParsedInternalKey &p)
+	void setFrom(const ParsedInternalKey &p)
 	{
 		rep.clear();
 		appendInternalKey(&rep,p);
 	}
 
+	std::string debugString() const;
 	void clear() { rep.clear(); }  
 };
 

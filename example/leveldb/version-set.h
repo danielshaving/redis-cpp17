@@ -24,7 +24,7 @@ public:
 	}
 
 	uint64_t newFileNumber() { return nextFileNumber++; }
-	Status recover(bool manifest);
+	Status recover(bool *manifest);
 
 private:
 	uint64_t lastSequence;

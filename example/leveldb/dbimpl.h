@@ -1,5 +1,4 @@
 #pragma once
-
 #include <deque>
 #include <set>
 #include <memory>
@@ -10,7 +9,6 @@
 #include "posix.h"
 #include "version-edit.h"
 #include "version-set.h"
-
 
 class DBImpl
 {

@@ -4,6 +4,9 @@
 #include <string>
 #include <string.h>
 #include <assert.h>
+#include "status.h"
+
+class PosixEnv;
 
 enum FileType
 {
@@ -59,3 +62,8 @@ std::string oldInfoLogFileName(const std::string &dbname);
 // The number encoded in the filename is stored in *number.  If the
 // filename was successfully parsed, returns true.  Else return false.
 bool parseFileName(const std::string &filename,uint64_t *number,FileType* type);
+
+// Make the CURRENT file point to the descriptor file with the
+// specified number.
+Status setCurrentFile(PosixEnv *env,const std::string &dbname,uint64_t descriptorNumber);
+

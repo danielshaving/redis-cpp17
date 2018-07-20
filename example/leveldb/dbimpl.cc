@@ -50,22 +50,37 @@ Status DBImpl::open()
 
 Status DBImpl::newDB()
 {
-	VersionEdit newDb;
-	new_db.setLogNumber(0);
-	new_db.setNextFile(2);
-	new_db.setLastSequence(0);
+	VersionEdit newdb;
+	newdb.setLogNumber(0);
+	newdb.setNextFile(2);
+	newdb.setLastSequence(0);
 	const std::string manifest = descriptorFileName(dbname,1);
 	std::shared_ptr<PosixWritableFile> file;
-	Status s = option.env->newWritableFile(manifest,&file);
+	Status s = options.env->newWritableFile(manifest,file);
 	if (!s.ok())
 	{
 		return s;
 	}
 
-	LogWriter log(file);
+	LogWriter log(file.get());
 	std::string record;
-	newDb.encodeTo(&record);
+	newdb.encodeTo(&record);
+	s = log.addRecord(record);
+	if (s.ok())
+	{
+		s = file->close();
+	}
 
+	if (s.ok())
+	{
+		// Make "CURRENT" file that points to the new manifest file.
+		s = setCurrentFile(options.env,dbname,1);
+	}
+	else
+	{
+		options.env->deleteFile(manifest);
+	}
+	return s;
 }
 
 Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
@@ -86,7 +101,7 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 		else
 		{
 			return Status::invalidArgument(
-					dbname, "does not exist (create_if_missing is false)");
+					dbname,"does not exist (create_if_missing is false)");
 		}
 	}
 	else
@@ -143,6 +158,12 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 			return s;
 		}
 	}
+
+	if (versions->getLastSequence() < maxSequence)
+	{
+	    versions->setLastSequence(maxSequence);
+	}
+	return s;
 }
 
 Status DBImpl::recoverLogFile(uint64_t logNumber,bool lastLog,

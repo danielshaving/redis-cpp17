@@ -1,6 +1,7 @@
 #include "version-edit.h"
 #include "version-set.h"
 #include "coding.h"
+#include "logging.h"
 
 // Tag numbers for serialized VersionEdit.  These numbers are written to
 // disk and should not be changed.
@@ -74,9 +75,9 @@ void VersionEdit::encodeTo(std::string *dst) const
 
 	for (auto iter = deletedFiles.begin(); iter != deletedFiles.end(); ++iter)
 	{
-		PutVarint32(dst, kDeletedFile);
-		PutVarint32(dst, iter->first);   // level
-		PutVarint64(dst, iter->second);  // file number
+		putVarint32(dst,kDeletedFile);
+		putVarint32(dst,iter->first);   // level
+		putVarint64(dst,iter->second);  // file number
 	}
 
 	for (size_t i = 0; i < newFiles.size(); i++)
@@ -85,7 +86,7 @@ void VersionEdit::encodeTo(std::string *dst) const
 		putVarint32(dst,kNewFile);
 		putVarint32(dst,newFiles[i].first);  // level
 		putVarint64(dst,f.number);
-		putVarint64(dst,f.file_size);
+		putVarint64(dst,f.fileSize);
 		putLengthPrefixedSlice(dst,f.smallest.encode());
 		putLengthPrefixedSlice(dst,f.largest.encode());
 	}
@@ -108,7 +109,7 @@ static bool getInternalKey(std::string_view *input,InternalKey *dst)
 static bool getLevel(std::string_view *input,int *level)
 {
 	uint32_t v;
-	if (getVarint32(input,&v) && v < config::kNumLevels)
+	if (getVarint32(input,&v) && v < kNumLevels)
 	{
 		*level = v;
 		return true;
@@ -174,7 +175,7 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 		  case kNextFileNumber:
 			if (getVarint64(&input,&nextFileNumber))
 			{
-				hasNextFileNumber_ = true;
+				hasNextFileNumber = true;
 			}
 			else
 			{

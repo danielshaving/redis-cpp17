@@ -1,5 +1,6 @@
 #include "dbformat.h"
 #include "coding.h"
+#include "logging.h"
 
 static uint64_t packSequenceAndType(uint64_t seq, ValueType t)
 {
@@ -33,7 +34,7 @@ std::string ParsedInternalKey::debugString() const
            (uint64_t) sequence,
            int(type));
   std::string result = "'";
-  //result += EscapeString(userKey.ToString());
+  result += escapeString(std::string(userKey.data(),userKey.size()));
   result += buf;
   return result;
 }
@@ -135,14 +136,30 @@ int InternalKeyComparator::compare(const std::string_view &akey,const std::strin
 		const uint64_t bnum = decodeFixed64(bkey.data() + bkey.size() - 8);
 		if (anum > bnum)
 		{
-			r = -1;
+			r = - 1;
 		}
 		else if (anum < bnum) 
 		{
-			r = +1;
+			r = + 1;
 		}
 	}
  	return r;
+}
+
+std::string InternalKey::debugString() const
+{
+	std::string result;
+	ParsedInternalKey parsed;
+	if (parseInternalKey(rep,&parsed))
+	{
+		result = parsed.debugString();
+	}
+	else
+	{
+		result = "(bad)";
+		result.append(escapeString(rep));
+	}
+	return result;
 }
 
 LookupKey::LookupKey(const std::string_view &userKey,uint64_t s)

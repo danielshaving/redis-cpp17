@@ -281,6 +281,16 @@ Status PosixEnv::getChildren(const std::string &dir,std::vector<std::string> *re
 	return s;
 }
 
+Status PosixEnv::renameFile(const std::string &src,const std::string &target)
+{
+	Status result;
+	if (::rename(src.c_str(),target.c_str()) != 0)
+	{
+		result = posixError(src,errno);
+	}
+	return result;
+}
+
 Status PosixEnv::newSequentialFile(const std::string &fname,std::shared_ptr<PosixSequentialFile> &result)
 {
 	Status s;

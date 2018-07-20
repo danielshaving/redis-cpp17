@@ -139,3 +139,24 @@ bool parseFileName(const std::string &filename,uint64_t *number,FileType *type)
 	}
 	return true;
 }
+
+Status setCurrentFile(PosixEnv *env,const std::string &dbname,uint64_t descriptorNumber)
+{
+	std::string manifest = descriptorFileName(dbname,descriptorNumber);
+	std::string_view contents = manifest;
+	assert(startsWith(contents,dbname + "/"));
+
+	contents.remove_prefix(dbname.size() + 1);
+	std::string tmp = tempFileName(dbname,descriptorNumber);
+	Status s = writeStringToFileSync(env,std::string(contents.data(),contents.size()) + "\n",tmp);
+	if (s.ok())
+	{
+		s = env->renameFile(tmp,currentFileName(dbname));
+	}
+
+	if (!s.ok())
+	{
+		env->deleteFile(tmp);
+	}
+	return s;
+}

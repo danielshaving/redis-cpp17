@@ -87,7 +87,9 @@ public:
 	Status getFileSize(const std::string &fname,uint64_t *size);
 	Status getChildren(const std::string &dir,std::vector<std::string> *result);
 	Status newSequentialFile(const std::string &fname,std::shared_ptr<PosixSequentialFile> &result);
+	Status renameFile(const std::string &src,const std::string &target);
 };
+
 
 
 
