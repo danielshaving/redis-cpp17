@@ -7,7 +7,6 @@
 #include "sds.h"
 #include "crc64.h"
 #include "object.h"
-#include "lzf.h"
 #include "session.h"
 
 /* At every loading step try to remember what we were about to do, so that
@@ -126,7 +125,8 @@ public:
 	int32_t rdbSaveRio(Rio *rdb,int32_t *error,int32_t flags);
 	int32_t rdbSaveObject(Rio *rdb,RedisObject *o);
 	int32_t rdbSaveStringObject(Rio *rdb,RedisObject *obj);
-	int32_t rdbSaveKeyValuePair(Rio *rdb,RedisObject *key,RedisObject *val,int64_t expiretime,int64_t now);
+	int32_t rdbSaveKeyValuePair(Rio *rdb,RedisObject *key,
+			RedisObject *val,int64_t expiretime,int64_t now);
 	size_t rdbSaveRawString(Rio *rdb,const char *s,size_t len);
 	int32_t rdbSaveLzfStringObject(Rio *rdb,uint8_t *s,size_t len);
 	int32_t rdbSaveValue(Rio *rdb,RedisObject *value);

@@ -9,6 +9,7 @@ class Socket
 {
 public:
 	Socket();
+	Socket(const char *ip,int16_t port);
 	~Socket();
 
 #ifdef __linux__

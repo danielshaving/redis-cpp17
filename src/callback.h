@@ -21,7 +21,7 @@ class Poll;
 class Epoll;
 class Thread;
 typedef std::shared_ptr<HiredisAsync> HiredisAsyncPtr;
-typedef std::shared_ptr<Buffer> xBufferPtr;
+typedef std::shared_ptr<Buffer> BufferPtr;
 typedef std::shared_ptr<RedisReader> RedisReaderPtr;
 typedef std::shared_ptr<RedisContext> RedisContextPtr;
 typedef std::shared_ptr<RedisAsyncContext> RedisAsyncContextPtr;

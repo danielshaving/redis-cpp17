@@ -276,7 +276,7 @@ RedisObject *Rdb::rdbLoadLzfStringObject(Rio *rdb)
 	if ((c = (unsigned char *)zmalloc(clen)) == nullptr) goto err;
 	if ((val = sdsnewlen(nullptr,len)) == nullptr) goto err;
 	if (rioRead(rdb,c,clen) == 0) goto err;
-	if (lzf_decompress(c,clen,val,len) == 0) goto err;
+	//if (lzf_decompress(c,clen,val,len) == 0) goto err;
 
 	obj = createStringObject(val,len);
 	sdsfree(val);
@@ -1329,27 +1329,28 @@ int32_t Rdb::rdbSaveLzfStringObject(Rio *rdb,uint8_t *s,size_t len)
 	int32_t n,nwritten = 0;
 	void *out;
 
-	if (len <=4 ) return 0;
+	if (len <=4 ) { return REDIS_NULL; }
 	outlen = len- 4;
-	if ((out = zmalloc(outlen + REDIS_OK)) == nullptr) return 0;
-	comprlen = lzf_compress(s,len,out,outlen);
+	if ((out = zmalloc(outlen + REDIS_OK)) == nullptr) { return REDIS_NULL; }
+	//comprlen = lzf_compress(s,len,out,outlen);
+	comprlen = outlen;
 	if (comprlen == 0)
 	{
 		zfree(out);
-		return 0;
+		return REDIS_NULL;
 	}
 
     byte = (REDIS_RDB_ENCVAL<<6)|REDIS_RDB_ENC_LZF;
     if ((n = rdbWriteRaw(rdb,&byte,REDIS_OK)) == REDIS_ERR) { return REDIS_ERR; }
     nwritten += n;
 
-    if ((n = rdbSaveLen(rdb,comprlen)) == REDIS_ERR) return REDIS_ERR;
+    if ((n = rdbSaveLen(rdb,comprlen)) == REDIS_ERR) { return REDIS_ERR; }
     nwritten += n;
 
-    if ((n = rdbSaveLen(rdb,len)) == REDIS_ERR) return REDIS_ERR;
+    if ((n = rdbSaveLen(rdb,len)) == REDIS_ERR) { return REDIS_ERR; }
     nwritten += n;
 
-    if ((n = rdbWriteRaw(rdb,out,comprlen)) == REDIS_ERR) return REDIS_ERR;
+    if ((n = rdbWriteRaw(rdb,out,comprlen)) == REDIS_ERR) { return REDIS_ERR; }
     nwritten += n;
 
     zfree(out);
@@ -1361,7 +1362,7 @@ size_t Rdb::rdbSaveRawString(Rio *rdb,const char *s,size_t len)
 	int32_t enclen;
 	int32_t n,nwritten = 0;
 
-	if ( len > 20)
+	if (len > 20)
 	{
 		n = rdbSaveLzfStringObject(rdb,(unsigned char*)s,len);
 		if (n == REDIS_ERR) { return REDIS_ERR; }

@@ -33,8 +33,10 @@ public:
 	sds getUniqueLockId();
 	bool lock(const char *resource,const int32_t ttl,Lock &lock);
 	bool unlock(const Lock &lock);
-	void unlockInstance(const RedisContextPtr &c,const char *resource,const char *val);
-	int32_t lockInstance(const RedisContextPtr &c,const char *resource,const char *val,const int32_t ttl);
+	void unlockInstance(const RedisContextPtr &c,
+			const char *resource,const char *val);
+	int32_t lockInstance(const RedisContextPtr &c,
+			const char *resource,const char *val,const int32_t ttl);
 
 private:
 	RedLock(const RedLock&);
@@ -52,7 +54,7 @@ private:
 	Lock continueLock;
 	sds continueLockScript;
 
-	struct timeval timeout = { 1,500000 };
+	struct timeval timeout;
 	std::vector<RedisContextPtr> disconnectServers;
 	std::unordered_map<int32_t,RedisContextPtr> syncServers;
 	HiredisAsyncPtr	asyncServers;

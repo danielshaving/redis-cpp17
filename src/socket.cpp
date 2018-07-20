@@ -1,6 +1,11 @@
 #include "socket.h"
 #include "log.h"
 
+Socket::Socket(const char *ip,int16_t port)
+{
+	assert(createTcpSocket(ip,port));
+}
+
 Socket::Socket()
 {
 

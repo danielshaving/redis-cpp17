@@ -30,6 +30,5 @@ private:
 
 	NewConnectionCallback newConnectionCallback;
 	bool listenning;
-	bool sock;
 	bool idleFd;
 };

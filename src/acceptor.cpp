@@ -3,13 +3,12 @@
 
  Acceptor::Acceptor(EventLoop* loop,const char *ip,int16_t port)
  :loop(loop),
-  sock(socket.createTcpSocket(ip,port)),
+  socket(ip,port),
   channel(loop,socket.getListenFd()),
   listenfd(socket.getListenFd()),
   listenning(false),
   idleFd(::open("/dev/null",O_RDONLY | O_CLOEXEC))
  {
-	 assert(sock);
 	 assert(idleFd >= 0);
 	 channel.setReadCallback(std::bind(&Acceptor::handleRead,this));
  }

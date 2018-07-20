@@ -14,7 +14,8 @@ Session::Session(Redis *redis,const TcpConnectionPtr &conn)
  fromSlave(false)
 {
 	command = createStringObject(nullptr,REDIS_COMMAND_LENGTH);
-	clientConn->setMessageCallback(std::bind(&Session::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
+	clientConn->setMessageCallback(std::bind(&Session::readCallBack,
+			this,std::placeholders::_1,std::placeholders::_2));
 }
 
 Session::~Session()
@@ -158,7 +159,8 @@ int32_t Session::processCommand()
 		auto it = redis->getCluster()->checkClusterSlot(hashslot);
 		if (it == nullptr)
 		{
-			redis->getCluster()->clusterRedirectClient(shared_from_this(), nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
+			redis->getCluster()->clusterRedirectClient(shared_from_this(),
+					nullptr,hashslot,CLUSTER_REDIR_DOWN_UNBOUND);
 			clearObj();
 			return REDIS_ERR;
 		}
@@ -170,7 +172,8 @@ int32_t Session::processCommand()
 			}
 			else
 			{
-				redis->getCluster()->clusterRedirectClient(shared_from_this(), it, hashslot, CLUSTER_REDIR_MOVED);
+				redis->getCluster()->clusterRedirectClient(shared_from_this(),
+						it,hashslot,CLUSTER_REDIR_MOVED);
 				clearObj();
 				return REDIS_ERR;
 			}
@@ -205,7 +208,6 @@ jump:
 			if (checkCommand(command))
 			{
 				commands.push_front(command);
-
 				{
 					std::unique_lock <std::mutex> lck(redis->getSlaveMutex());
 					if (redis->salveCount < redis->getSlaveConn().size())
@@ -279,7 +281,7 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 {
     const char *newline;
 	const char *queryBuf = buffer->peek();
-	int32_t  j;
+	int32_t j;
 	size_t queryLen;
 	sds *argv, aux;
 	  
@@ -322,7 +324,7 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 		}
 		else
 		{
-			RedisObject * obj = (RedisObject*)createStringObject(argv[j],sdslen(argv[j]));
+			RedisObject *obj = (RedisObject*)createStringObject(argv[j],sdslen(argv[j]));
 			obj->calHash();
 			commands.push_back(obj);
 		}
@@ -370,7 +372,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 		if (!ok || ll > 1024 * 1024)
 		{
 			addReplyError(clientBuffer,"Protocol error: invalid multibulk length");
-			LOG_INFO<<"Protocol error: invalid multibulk length";
+			LOG_WARN<<"Protocol error: invalid multibulk length";
 			buffer->retrieveAll();
 			return REDIS_ERR;
 		}
@@ -394,7 +396,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 				if (buffer->readableBytes() > REDIS_INLINE_MAX_SIZE)
 				{
 					addReplyError(clientBuffer,"Protocol error: too big bulk count string");
-					LOG_INFO<<"Protocol error: too big bulk count string";
+					LOG_WARN<<"Protocol error: too big bulk count string";
 					buffer->retrieveAll();
 					return REDIS_ERR;
 				}
@@ -410,7 +412,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			if (queryBuf[pos] != '$')
 			{
 				addReplyErrorFormat(clientBuffer,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
-				LOG_INFO<<"Protocol error: expected '$'";
+				LOG_WARN<<"Protocol error: expected '$'";
 				buffer->retrieveAll();
 				return REDIS_ERR;
 			}
@@ -419,7 +421,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			if (!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
 				addReplyError(clientBuffer,"Protocol error: invalid bulk length");
-				LOG_INFO<<"Protocol error: invalid bulk length";
+				LOG_WARN<<"Protocol error: invalid bulk length";
 				buffer->retrieveAll();
 				return REDIS_ERR;
 			}
@@ -465,7 +467,6 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 	{
 		return REDIS_OK;
 	}
-
 	return REDIS_ERR;
 }
 

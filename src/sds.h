@@ -1,8 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
-
-#pragma once
 /* SDSLib 1.0 -- A C dynamic strings library
  *
  * Copyright (c) 2006-2015, Salvatore Sanfilippo <antirez at gmail dot com>
@@ -34,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
+#pragma once
 #include "zmalloc.h"
 
 typedef char *sds;

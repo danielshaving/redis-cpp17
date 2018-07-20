@@ -1,21 +1,21 @@
 #include "hiredis.h"
 
 RedisReader::RedisReader(Buffer *buffer)
-:buffer(buffer),pos(0),err(0),ridx(-1)
+:buffer(buffer),
+ pos(0),
+ err(0),
+ ridx(-1)
 {
 	errstr[0] = '\0';
 }
 
 RedisReader::RedisReader()
-:pos(0),err(0),ridx(-1)
+:buffer(new Buffer),
+ pos(0),
+ err(0),
+ ridx(-1)
 {
-	buffer = &buf;
 	errstr[0] = '\0';
-}
-
-RedisReader::~RedisReader()
-{
-
 }
 
 void RedisReader::redisReaderSetError(int32_t type,const char *str)
@@ -579,6 +579,11 @@ int32_t RedisReader::processItem()
 		default:
 			return REDIS_ERR; /* Avoid warning. */
 	}
+}
+
+void RedisReader::redisReaderSetErrorOOM()
+{
+	redisReaderSetError(REDIS_ERR_OOM,"Out of memory");
 }
 
 int32_t RedisReader::redisReaderGetReply(RedisReply **reply)

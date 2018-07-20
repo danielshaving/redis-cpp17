@@ -1,9 +1,5 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
-
 #include "all.h"
-
+#pragma once
 typedef struct
 {
     uint32_t state[5];
