@@ -2,7 +2,6 @@
 // Created by zhanghao on 2018/6/17.
 //
 #pragma once
-#include <malloc.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

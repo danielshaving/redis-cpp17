@@ -2,7 +2,7 @@
 #include "coding.h"
 #include "logging.h"
 
-static uint64_t packSequenceAndType(uint64_t seq, ValueType t)
+static uint64_t packSequenceAndType(uint64_t seq,ValueType t)
 {
 	assert(seq <= kMaxSequenceNumber);
 	assert(t <= kValueTypeForSeek);

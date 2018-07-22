@@ -45,7 +45,7 @@ bool MemTable::get(const LookupKey &key,std::string *value,Status *s)
 		uint32_t keyLength;
 		const char *keyPtr = getVarint32Ptr(entry,entry+5,&keyLength);
 
-		if (compar.comparator.getComparator()->compare(std::string_view(keyPtr,keyLength - 8),
+		if (kcmp.comparator.getComparator()->compare(std::string_view(keyPtr,keyLength - 8),
 	            key.userKey()) == 0)
 		{
 			const uint64_t tag = decodeFixed64(keyPtr + keyLength - 8);

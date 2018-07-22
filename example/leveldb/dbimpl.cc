@@ -33,7 +33,7 @@ Status DBImpl::open()
 	s = recover(&edit,&saveManifest);
 	if (s.ok())
 	{
-		versions.reset(new VersionSet(dbname,&options));
+		versions.reset(new VersionSet(dbname,options));
 		mem.reset(new MemTable);
 		imm.reset(new MemTable);
 
@@ -184,7 +184,7 @@ Status DBImpl::recoverLogFile(uint64_t logNumber,bool lastLog,
 	// paranoid_checks==false so that corruptions cause entire commits
 	// to be skipped instead of propagating bad information (like overly
 	// large sequence numbers).
-	Reader reader(file.get(),&reporter,true/*checksum*/,0/*initial_offset*/);
+	LogReader reader(file.get(),&reporter,true/*checksum*/,0/*initial_offset*/);
 	std::string scratch;
 	std::string_view record;
 	WriteBatch batch;

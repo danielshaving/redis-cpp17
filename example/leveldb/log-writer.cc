@@ -1,9 +1,3 @@
-/*
- * log-writer.cc
- *
- *  Created on: 2018Äê7ÔÂ9ÈÕ
- *      Author: zhanghao
- */
 #include "log-writer.h"
 #include "crc32c.h"
 #include "coding.h"

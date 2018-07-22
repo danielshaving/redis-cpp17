@@ -99,6 +99,9 @@ public:
 class InternalKeyComparator
 {
 public:
+	InternalKeyComparator() { }
+	~InternalKeyComparator() { }
+
 	const char *name() const;
 	void findShortestSeparator(std::string *start,const std::string_view &limit) const;
 	void findShortSuccessor(std::string *key) const;

@@ -12,7 +12,7 @@ public:
 
 	// Some corruption was detected.  "size" is the approximate number
 	// of bytes dropped due to the corruption.
-	void corruption(size_t bytes, const Status &status);
+	void corruption(size_t bytes,const Status &status);
 
 	PosixEnv *env;
 	//Logger *infoLog;
@@ -20,7 +20,7 @@ public:
 	Status *status;
 };
 
-class Reader
+class LogReader
 {
 public:
 	// Create a reader that will return log records from "*file".
@@ -34,10 +34,10 @@ public:
 	//
 	// The Reader will start reading at the first record located at physical
 	// position >= initial_offset within the file.
-	Reader(PosixSequentialFile *file,LogReporter *reporter,bool checksum,
+	LogReader(PosixSequentialFile *file,LogReporter *reporter,bool checksum,
 		 uint64_t initialOffset);
 
-	~Reader();
+	~LogReader();
 
 	// Read the next record into *record.  Returns true if read
 	// successfully, false if we hit end of the input.  May use
@@ -98,6 +98,6 @@ private:
 	void reportDrop(uint64_t bytes,const Status &reason);
 
 	// No copying allowed
-	Reader(const Reader&);
-	void operator=(const Reader&);
+	LogReader(const LogReader&);
+	void operator=(const LogReader&);
 };

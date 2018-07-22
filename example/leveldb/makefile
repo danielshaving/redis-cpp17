@@ -1,5 +1,6 @@
-TARGET= ./leveldb-cpp20
-CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++2a
+TARGET= ./leveldb-cpp17
+CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated\
+-Wl,--no-as-needed -std=c++17
 ccfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(ccfiles) $(cfiles))

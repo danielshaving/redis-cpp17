@@ -1,10 +1,3 @@
-/*
- * log-writer.h
- *
- *  Created on: 2018Äê7ÔÂ9ÈÕ
- *      Author: zhanghao
- */
-
 #pragma once
 #include "option.h"
 #include "status.h"

@@ -1,7 +1,6 @@
 #include "cluster.h"
 #include "redis.h"
 #include "log.h"
-#include "crc16.h"
 #include "util.h"
 
 Cluster::Cluster(Redis *redis)

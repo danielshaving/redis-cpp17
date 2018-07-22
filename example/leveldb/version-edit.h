@@ -87,13 +87,9 @@ public:
 
 	void encodeTo(std::string *dst) const;
 	Status decodeFrom(const std::string_view &src);
-
 	std::string debugString() const;
 
-private:
-
 	typedef std::set<std::pair<int,uint64_t>> DeletedFileSet;
-
 	std::string comparator;
 	uint64_t logNumber;
 	uint64_t prevLogNumber;
@@ -105,7 +101,7 @@ private:
 	bool hasNextFileNumber;
 	bool hasLastSequence;
 
-	std::vector< std::pair<int,InternalKey>> compactPointers;
+	std::vector<std::pair<int,InternalKey>> compactPointers;
 	DeletedFileSet deletedFiles;
-	std::vector< std::pair<int,FileMetaData>> newFiles;
+	std::vector<std::pair<int,FileMetaData>> newFiles;
 };

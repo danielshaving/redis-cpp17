@@ -4,10 +4,9 @@
 
 #pragma once
 #include "all.h"
-#include "sds.h"
-#include "crc64.h"
 #include "object.h"
 #include "session.h"
+#include "util.h"
 
 /* At every loading step try to remember what we were about to do, so that
  * we can log this information when an error is encountered. */

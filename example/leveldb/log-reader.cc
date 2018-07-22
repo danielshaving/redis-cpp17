@@ -15,7 +15,7 @@ void LogReporter::corruption(size_t bytes,const Status &status)
 
 }
 
-Reader::Reader(PosixSequentialFile *file,LogReporter *reporter,bool checksum,
+LogReader::LogReader(PosixSequentialFile *file,LogReporter *reporter,bool checksum,
 		 uint64_t initialOffset)
 :file(file),
 reporter(reporter),
@@ -31,12 +31,12 @@ resyncing(initialOffset > 0)
 
 }
 
-Reader::~Reader()
+LogReader::~LogReader()
 {
 	zfree(backingStore);
 }
 
-bool Reader::skipToInitialBlock()
+bool LogReader::skipToInitialBlock()
 {
 	const size_t offsetInBlock = initialOffset % kBlockSize;
 	uint64_t blockStartLocation = initialOffset - offsetInBlock;
@@ -62,7 +62,7 @@ bool Reader::skipToInitialBlock()
 	return true;
 }
 
-bool Reader::readRecord(std::string_view *record,std::string *scratch)
+bool LogReader::readRecord(std::string_view *record,std::string *scratch)
 {
 	if (lastRecordOffset < initialOffset)
 	{
@@ -201,17 +201,17 @@ bool Reader::readRecord(std::string_view *record,std::string *scratch)
 	return false;
 }
 
-uint64_t Reader::getLastRecordOffset()
+uint64_t LogReader::getLastRecordOffset()
 {
 	return lastRecordOffset;
 }
 
-void Reader::reportCorruption(uint64_t bytes,const char *reason)
+void LogReader::reportCorruption(uint64_t bytes,const char *reason)
 {
 	reportDrop(bytes,Status::corruption(reason));
 }
 
-void Reader::reportDrop(uint64_t bytes,const Status &reason)
+void LogReader::reportDrop(uint64_t bytes,const Status &reason)
 {
 	if (reporter != nullptr &&
 	  endofBufferOffset - buffer.size() - bytes >= initialOffset)
@@ -220,7 +220,7 @@ void Reader::reportDrop(uint64_t bytes,const Status &reason)
 	}
 }
 
-unsigned int Reader::readPhysicalRecord(std::string_view *result)
+unsigned int LogReader::readPhysicalRecord(std::string_view *result)
 {
 	while (true)
 	{

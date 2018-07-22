@@ -26,7 +26,7 @@ private:
 		int operator()(const char *a,const char *b) const;
 	};
 
-	KeyComparator compar;
+	KeyComparator kcmp;
 	typedef std::set<const char *,KeyComparator> Table;
 	Table table;
 	size_t memoryUsage;
