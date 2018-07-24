@@ -4,6 +4,7 @@
 #pragma once
 #include "all.h"
 #include "util.h"
+#include "socket.h"
 
 class Buffer
 {
@@ -143,24 +144,27 @@ public:
 
 	void prependInt64(int64_t x)
 	{
-		int64_t be64 = x;
+		int64_t be64 = Socket::hostToNetwork64(x);
 		prepend(&be64,sizeof be64);
 	}
 
 	void prependInt32(int32_t x)
 	{
-		int32_t be32 = x;
+		int64_t be32 = Socket::hostToNetwork32(x);
 		prepend(&be32,sizeof be32);
 	}
 
 	void prependInt16(int16_t x)
 	{
-		int16_t be16 = x;
+		int64_t be16 = Socket::hostToNetwork16(x);
 		prepend(&be16,sizeof be16);
 	}
 
-	void prependInt8(int8_t x) { prepend(&x,sizeof x); }
-	void prependUInt8(uint8_t x) { prepend(&x,sizeof x); }
+	void prependInt8(int8_t x)
+	{
+		int64_t be8 = x;
+		prepend(&be8,sizeof be8);
+	}
 
 	void prepend(const void *data,size_t len)
 	{
@@ -234,7 +238,7 @@ public:
 		assert(readableBytes() >= sizeof(int64_t));
 		int64_t be64 = 0;
 		::memcpy(&be64,peek(),sizeof be64);
-		return be64;
+		return Socket::networkToHost64(be64);
 	}
 
 	int32_t peekInt32() const
@@ -242,7 +246,7 @@ public:
 		assert(readableBytes() >= sizeof(int32_t));
 		int32_t be32 = 0;
 		::memcpy(&be32,peek(),sizeof be32);
-		return be32;
+		return Socket::networkToHost32(be32);
 	}
 
 	int16_t peekInt16() const
@@ -250,14 +254,15 @@ public:
 		assert(readableBytes() >= sizeof(int16_t));
 		int16_t be16 = 0;
 		::memcpy(&be16,peek(),sizeof be16);
-		return be16;
+		return Socket::networkToHost16(be16);
+
 	}
 
 	int8_t peekInt8() const
 	{
 		assert(readableBytes() >= sizeof(int8_t));
-		int8_t x = *peek();
-		return x;
+		int8_t be8 = *peek();
+		return be8;
 	}
 
 	std::string_view toStringView() const

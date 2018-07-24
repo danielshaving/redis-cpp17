@@ -12,8 +12,7 @@ size_t Rdb::rioBufferWrite(Rio *r,const void *buf,size_t len)
 /* Returns REDIS_OK or 0 for success/failure. */
 size_t Rdb::rioBufferRead(Rio *r,void *buf,size_t len)
 {
-    if (sdslen(r->io.buffer.ptr)-r->io.buffer.pos < len)
-        return 0; /* not enough buffer to return len bytes. */
+    if (sdslen(r->io.buffer.ptr)-r->io.buffer.pos < len) return 0; /* not enough buffer to return len bytes. */
     memcpy(buf,r->io.buffer.ptr+r->io.buffer.pos,len);
     r->io.buffer.pos += len;
     return REDIS_OK;
@@ -218,11 +217,31 @@ uint32_t Rdb::rdbLoadLen(Rio *rdb,int32_t *isencoded)
 	if (rioRead(rdb,buf,REDIS_OK) == 0) { return REDIS_RDB_LENERR; }
 	type = (buf[0]&0xC0)>>6;
 
-	if (type == REDIS_RDB_ENCVAL) { if (isencoded) { *isencoded = REDIS_OK; } return buf[0]&0x3F; }
+	if (type == REDIS_RDB_ENCVAL)
+	{
+		if (isencoded)
+		{
+			*isencoded = REDIS_OK;
+		}
+		return buf[0]&0x3F;
+	}
 	else if (type == REDIS_RDB_6BITLEN) { return buf[0]&0x3F; }
-	else if (type == REDIS_RDB_14BITLEN) { if (rioRead(rdb,buf+REDIS_OK,REDIS_OK) == 0) { return REDIS_RDB_LENERR; }
-		return ((buf[0]&0x3F)<<8)|buf[REDIS_OK]; }
-	else { if (rioRead(rdb,&len,4) == 0) { return REDIS_RDB_LENERR; } return ntohl(len); }
+	else if (type == REDIS_RDB_14BITLEN)
+	{
+		if (rioRead(rdb,buf + 1,REDIS_OK) == 0)
+		{
+			return REDIS_RDB_LENERR;
+		}
+		return ((buf[0]&0x3F)<<8)|buf[REDIS_OK];
+	}
+	else
+	{
+		if (rioRead(rdb,&len,4) == 0)
+		{
+			return REDIS_RDB_LENERR;
+		}
+		return ntohl(len);
+	}
 }
 
 RedisObject *Rdb::rdbLoadIntegerObject(Rio *rdb,int32_t enctype,int32_t encode)
@@ -276,7 +295,7 @@ RedisObject *Rdb::rdbLoadLzfStringObject(Rio *rdb)
 	if ((c = (unsigned char *)zmalloc(clen)) == nullptr) goto err;
 	if ((val = sdsnewlen(nullptr,len)) == nullptr) goto err;
 	if (rioRead(rdb,c,clen) == 0) goto err;
-	//if (lzf_decompress(c,clen,val,len) == 0) goto err;
+	if (lzfDecompress(c,clen,val,len) == 0) goto err;
 
 	obj = createStringObject(val,len);
 	sdsfree(val);
@@ -1329,11 +1348,10 @@ int32_t Rdb::rdbSaveLzfStringObject(Rio *rdb,uint8_t *s,size_t len)
 	int32_t n,nwritten = 0;
 	void *out;
 
-	if (len <=4 ) { return REDIS_NULL; }
-	outlen = len- 4;
-	if ((out = zmalloc(outlen + REDIS_OK)) == nullptr) { return REDIS_NULL; }
-	//comprlen = lzf_compress(s,len,out,outlen);
-	comprlen = outlen;
+	if (len <= 4 ) { return REDIS_NULL; }
+	outlen = len - 4;
+	if ((out = zmalloc(outlen + 1)) == nullptr) { return REDIS_NULL; }
+	comprlen = lzfCompress(s,len,out,outlen);
 	if (comprlen == 0)
 	{
 		zfree(out);

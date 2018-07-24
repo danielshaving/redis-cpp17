@@ -232,7 +232,7 @@ RedisReply *createString(const RedisReadTask *task,const char *str,size_t len)
 			task->type == REDIS_REPLY_STRING);
 
 	/* Copy string value */
-	memcpy(buffer, str, len);
+	memcpy(buffer,str,len);
 	buffer[len] = '\0';
 	r->str = buffer;
 	r->len = len;
@@ -285,7 +285,6 @@ RedisReply *createInteger(const RedisReadTask *task,int64_t value)
 	}
 	return r;
 }
-
 
 RedisReply *createNil(const RedisReadTask *task)
 {
