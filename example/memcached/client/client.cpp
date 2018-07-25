@@ -115,14 +115,14 @@ public:
 		char req[256];
 		if (operation == kSet)
 		{
-			snprintf(req, sizeof req, "set foo%d 0 0 %d\r\n", sent % keys, valueLen);
+			snprintf(req, sizeof req,"set foo%d 0 0 %d\r\n",sent % keys,valueLen);
 			++sent;
 			buf.append(req);
 			buf.append("foo\r\n");
 		}
 		else
 		{
-			snprintf(req, sizeof req, "get foo%d\r\n", sent % keys);
+			snprintf(req, sizeof req,"get foo%d\r\n",sent % keys);
 			++sent;
 			buf.append(req);
 		}
@@ -139,7 +139,7 @@ public:
 
 };
 
-std::vector<std::shared_ptr<Client>> clientPtr;
+std::vector<std::shared_ptr<Client>> ClientPtr;
 
 int main(int argc, char* argv[])
 {
@@ -174,7 +174,7 @@ int main(int argc, char* argv[])
 		for(int i = 0; i< clients; i++)
 		{
 			std::shared_ptr<Client> client(new Client(pool.getNextLoop(),ip,port,opertion));
-			clientPtr.push_back(client);
+			ClientPtr.push_back(client);
 		}
 
 

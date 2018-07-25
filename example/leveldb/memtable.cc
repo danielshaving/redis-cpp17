@@ -43,7 +43,7 @@ bool MemTable::get(const LookupKey &key,std::string *value,Status *s)
 
 		const char *entry = *it;
 		uint32_t keyLength;
-		const char *keyPtr = getVarint32Ptr(entry,entry+5,&keyLength);
+		const char *keyPtr = getVarint32Ptr(entry,entry + 5,&keyLength);
 
 		if (kcmp.comparator.getComparator()->compare(std::string_view(keyPtr,keyLength - 8),
 	            key.userKey()) == 0)
@@ -101,5 +101,15 @@ int MemTable::KeyComparator::operator()(const char *aptr,const char *bptr) const
 	std::string_view a = getLengthPrefixedSlice(aptr);
 	std::string_view b = getLengthPrefixedSlice(bptr);
 	return comparator.compare(a,b);
+}
+
+void MemTable::clear()
+{
+	for(auto &iter : table)
+	{
+		zfree((void*)iter);
+	}
+
+	table.clear();
 }
 

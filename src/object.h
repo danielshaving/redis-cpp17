@@ -11,8 +11,9 @@
 #include "util.h"
 
 #define OBJ_SHARED_REFCOUNT INT_MAX
-struct RedisObject
+class RedisObject
 {
+public:
 	void calHash();
 	bool operator < (const RedisObject &r) const;
 	unsigned type :4;

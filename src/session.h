@@ -23,7 +23,6 @@ public:
 	int32_t processMultibulkBuffer(Buffer *buffer);
 	int32_t processInlineBuffer(Buffer *buffer);
 	int32_t processCommand();
-	bool checkCommand(RedisObject *robjs);
 	void onMessage(const TcpConnectionPtr &conn,Buffer *buffer);
 	Buffer &getClientBuffer() { return clientBuffer; }
 	TcpConnectionPtr getClientConn() { return clientConn; }
@@ -34,7 +33,7 @@ private:
 	void operator=(const Session&);
 
 	Redis *redis;
-	RedisObject *command;
+	RedisObject *cmd;
 	std::deque<RedisObject*> commands;
 
 	int32_t reqtype;

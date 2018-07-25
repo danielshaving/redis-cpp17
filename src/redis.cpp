@@ -3326,6 +3326,16 @@ void Redis::flush()
 
 }
 
+bool Redis::checkCommand(RedisObject *cmd)
+{
+	auto it = checkCommands.find(cmd);
+	if (it == checkCommands.end())
+	{
+		return false;
+	}
+	return true;
+}
+
 void Redis::initConfig()
 {
 	LOG_INFO<<"Server initialized";
@@ -3439,7 +3449,7 @@ void Redis::initConfig()
 
 #define REGISTER_REDIS_CHECK_COMMAND(msgId) \
 	msgId->calHash(); \
-	replyCommands.insert(msgId);
+	checkCommands.insert(msgId);
 	REGISTER_REDIS_CHECK_COMMAND(shared.set);
 	REGISTER_REDIS_CHECK_COMMAND(shared.set);
 	REGISTER_REDIS_CHECK_COMMAND(shared.lpush);

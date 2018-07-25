@@ -6,7 +6,6 @@
 #include "object.h"
 
 class Item;
-
 typedef std::shared_ptr<Item> ItemPtr;
 typedef std::shared_ptr<const Item> ConstItemPtr;
 
@@ -24,14 +23,14 @@ public:
 		kCas,
 	};
 
-	static ItemPtr makeItem(StringPiece keyArg,uint32_t flagsArg,
+	static ItemPtr makeItem(std::string_view keyArg,uint32_t flagsArg,
 			int exptimeArg,int valuelen,uint64_t casArg)
 	{
 		return std::make_shared<Item>(keyArg, flagsArg, exptimeArg, valuelen, casArg);
 	}
 
 	
-	Item(StringPiece keyArg,
+	Item(std::string_view keyArg,
 		 uint32_t flagsArg,
 		 int exptimeArg,
 		 int valuelen,
@@ -41,6 +40,7 @@ public:
 	{
 	 	zfree(data);
 	}
+
 	int getRelExptime() const  {  return relExptime; }
 	uint32_t getFlags() const {  return flags; }
 	const char* value() const {  return data +keyLen; }
@@ -49,10 +49,10 @@ public:
 	void setCas(uint64_t casArg) { cas = casArg;}
 	size_t neededBytes() const;
 	size_t getHash() const { return hash; }
-	StringPiece getKey()const { return StringPiece(data,keyLen); }
+	std::string_view getKey()const { return std::string_view(data,keyLen); }
 	void append(const char* data, size_t len);
 	void output(Buffer* out, bool needCas = false) const;
-	void resetKey(StringPiece k);
+	void resetKey(std::string_view k);
 
 	bool endsWithCRLF() const
 	{
@@ -60,7 +60,6 @@ public:
 		&& data[totalLen()-2] == '\r'
 		&& data[totalLen()-1] == '\n';
 	}
-
 	
 private:
 	 int totalLen() const { return keyLen + valueLen; }
@@ -93,20 +92,18 @@ public:
 	{
 		 conn->setMessageCallback(std::bind(&Connect::onMessage,this,std::placeholders::_1,std::placeholders::_2));
 	}
-	
 
-	void onMessage(const TcpConnectionPtr  &conn,Buffer *buf);
-
+	void onMessage(const TcpConnectionPtr &conn,Buffer *buf);
 	void onWriteComplete(const TcpConnectionPtr &conn);
 	void receiveValue(Buffer *buf);
 	void discardValue(Buffer *buf);
 
-	bool processRequest(StringPiece request);
+	bool processRequest(std::string_view request);
 	void resetRequest();
-	void reply(StringPiece msg);
+	void reply(std::string_view msg);
 	struct Reader;
-	bool doUpdate(std::vector<StringPiece>::iterator &beg,std::vector<StringPiece>::iterator end);
-	void doDelete(std::vector<StringPiece>::iterator &beg, std::vector<StringPiece>::iterator end);
+	bool doUpdate(std::vector<std::string_view>::iterator &beg,std::vector<std::string_view>::iterator end);
+	void doDelete(std::vector<std::string_view>::iterator &beg,std::vector<std::string_view>::iterator end);
 	
 private:
 	 enum State
@@ -123,7 +120,7 @@ private:
 	    kAuto,
 	  };
 
-	MemcacheServer * owner;
+	MemcacheServer *owner;
 	TcpConnectionPtr conn;
 	State state;
 	Protocol protocol;
@@ -141,7 +138,7 @@ private:
 };
 
 const int kLongestKeySize = 250;
-std::string Connect::kLongestKey(kLongestKeySize, 'x');
+std::string Connect::kLongestKey(kLongestKeySize,'x');
 typedef std::shared_ptr<Connect> SessionPtr;
 
 class MemcacheServer
@@ -153,7 +150,7 @@ public:
 		std::string ip;
 	};
 
-	MemcacheServer(EventLoop *loop,const Options & op);
+	MemcacheServer(EventLoop *loop,const Options &op);
 	~MemcacheServer();
 
 	
@@ -164,38 +161,37 @@ public:
 	void stop();
 
 	time_t getStartTime() const { return startTime; }
-	bool storeItem(const ItemPtr & item, Item::UpdatePolicy policy,bool *exists);
-	ConstItemPtr getItem(const ConstItemPtr & key) const;
-	bool deleteItem(const ConstItemPtr & key);
+	bool storeItem(const ItemPtr &item,Item::UpdatePolicy policy,bool *exists);
+	ConstItemPtr getItem(const ConstItemPtr &key) const;
+	bool deleteItem(const ConstItemPtr &key);
 
 private:
 	void onConnection(const TcpConnectionPtr &conn);
 
 	EventLoop *loop;
-	std::unordered_map<int32_t,SessionPtr>  sessions;
+	std::unordered_map<int32_t,SessionPtr> sessions;
 	Options ops;
 	const time_t startTime;
 	std::mutex mtx;
 	std::atomic<int64_t> cas;
 
-	struct xHash
+	struct Hash
 	{
-		size_t operator()(const ConstItemPtr & x) const 
+		size_t operator()(const ConstItemPtr &x) const
 		{
 			return x->getHash();	
 		}
 	};
 
-	struct xEqual
+	struct Equal
 	{
-		bool operator()(const ConstItemPtr & x,const ConstItemPtr & y) const
+		bool operator()(const ConstItemPtr &x,const ConstItemPtr &y) const
 		{
 			return x->getKey() == y->getKey();
 		}
 	};
 
-	typedef std::unordered_set<ConstItemPtr,xHash,xEqual> ItemMap;
-	
+	typedef std::unordered_set<ConstItemPtr,Hash,Equal> ItemMap;
 	struct MapWithLock
 	{
 		ItemMap items;

@@ -40,6 +40,10 @@ static Status posixError(const std::string &context,int err)
 	}
 }
 
+// Log the specified data to *info_log if info_log is non-null.
+//void Log(Logger *infoLog,const char *format,...);
+
+
 class PosixWritableFile
 {
 private:
@@ -79,14 +83,41 @@ public:
 class PosixEnv
 {
 public:
+	// Returns true iff the named file exists.
 	bool fileExists(const std::string &fname);
+	// Create an object that writes to a new file with the specified
+	// name.  Deletes any existing file with the same name and creates a
+	// new file.  On success, stores a pointer to the new file in
+	// *result and returns OK.  On failure stores nullptr in *result and
+	// returns non-OK.
+	//
+	// The returned file will only be accessed by one thread at a time.
+
 	Status newWritableFile(const std::string &fname,std::shared_ptr<PosixWritableFile> &result);
+	// Delete the named file.
 	Status deleteFile(const std::string &fname);
+	// Create the specified directory.
 	Status createDir(const std::string &name);
+	// Delete the specified directory.
 	Status deleteDir(const std::string &name);
+	// Store the size of fname in *file_size.
 	Status getFileSize(const std::string &fname,uint64_t *size);
+
+	// Store in *result the names of the children of the specified directory.
+	// The names are relative to "dir".
+	// Original contents of *results are dropped.
 	Status getChildren(const std::string &dir,std::vector<std::string> *result);
-	Status newSequentialFile(const std::string &fname,std::shared_ptr<PosixSequentialFile> &result);
+	// Create a brand new sequentially-readable file with the specified name.
+	// On success, stores a pointer to the new file in *result and returns OK.
+	// On failure stores nullptr in *result and returns non-OK.  If the file does
+	// not exist, returns a non-OK status.  Implementations should return a
+	// NotFound status when the file does not exist.
+	//
+	// The returned file will only be accessed by one thread at a time.
+
+	Status newSequentialFile(const std::string &fname,
+							 std::shared_ptr<PosixSequentialFile> &result);
+	// Rename file src to target.
 	Status renameFile(const std::string &src,const std::string &target);
 	
 	// Create an object that either appends to an existing file, or
@@ -103,8 +134,12 @@ public:
   // an Env that does not support appending.
 	Status newAppendableFile(const std::string &fname,
                                    std::shared_ptr<PosixWritableFile> &result);
-								   
+
+	// Returns the number of micro-seconds since some fixed point in time. Only
+	// useful for computing deltas of time.
+	uint64_t nowMicros();
 };
+
 
 
 

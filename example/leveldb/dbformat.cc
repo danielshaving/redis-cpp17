@@ -39,7 +39,8 @@ std::string ParsedInternalKey::debugString() const
   return result;
 }
 
-void BytewiseComparatorImpl::findShortestSeparator(std::string *start,const std::string_view &limit)const
+void BytewiseComparatorImpl::findShortestSeparator(
+		std::string *start,const std::string_view &limit) const
 {
 	 // Find length of common prefix
     size_t minLength = std::min(start->size(),limit.size());

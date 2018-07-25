@@ -1,42 +1,35 @@
 #include "server.h"
 
-Item::Item(xStringPiece keyArg,
-           uint32_t flagsArg,
-           int exptimeArg,
-           int valuelen,
-           uint64_t casArg)
-  : keyLen(keyArg.size()),
-    flags(flagsArg),
-    relExptime(exptimeArg),
-    valueLen(valuelen),
-    receivedBytes(0),
-    cas(casArg),
-    hash(dictGenHashFunction(keyArg.data(),keyArg.size())),
-    data(static_cast<char*>(zmalloc(totalLen())))
+Item::Item(std::string_view keyArg,uint32_t flagsArg,
+int exptimeArg,int valuelen,uint64_t casArg)
+:keyLen(keyArg.size()),
+flags(flagsArg),
+relExptime(exptimeArg),
+valueLen(valuelen),
+receivedBytes(0),
+cas(casArg),
+hash(dictGenHashFunction(keyArg.data(),keyArg.size())),
+data(static_cast<char*>(zmalloc(totalLen())))
 {
-  assert(valuelen >= 2);
-  assert(receivedBytes < totalLen());
-  append(keyArg.data(), keyLen);
+	assert(valuelen >= 2);
+	assert(receivedBytes < totalLen());
+	append(keyArg.data(), keyLen);
 }
 
-
 size_t Item::neededBytes() const
- {
+{
 	return totalLen() - receivedBytes;
- }
+}
 
-
-
-void Item::append(const char* data, size_t len)
+void Item::append(const char *data,size_t len)
 {
 	assert(len <= neededBytes());
-	memcpy(this->data + receivedBytes, data, len);
+	memcpy(this->data + receivedBytes,data,len);
 	receivedBytes += static_cast<int>(len);
 	assert(receivedBytes <= totalLen());
 }
 
-
-void Item::output(xBuffer* out, bool needCas) const
+void Item::output(Buffer *out,bool needCas) const
 {	
 	out->append("VALUE ");
 	out->append(data, keyLen);
@@ -48,11 +41,11 @@ void Item::output(xBuffer* out, bool needCas) const
 	}
 	
 	buf << "\r\n";
-	out->append(buf.getBuffer().getData(), buf.getBuffer().length());
+	out->append(buf.getBuffer().getData(),buf.getBuffer().length());
 	out->append(value(), valueLen);
 }
 
-void Item::resetKey(xStringPiece k)
+void Item::resetKey(std::string_view k)
 {
 	assert(k.size() <= 250);
 	keyLen = k.size();
@@ -61,7 +54,6 @@ void Item::resetKey(xStringPiece k)
 	hash = dictGenHashFunction(k.data(),k.size());
 }
 
-
 static bool isBinaryProtocol(uint8_t firstByte)
 {
 	return firstByte == 0x80;
@@ -69,7 +61,7 @@ static bool isBinaryProtocol(uint8_t firstByte)
 
 struct Connect::Reader
 {
-	Reader(std::vector<xStringPiece>::iterator &beg, std::vector<xStringPiece>::iterator end)
+	Reader(std::vector<std::string_view>::iterator &beg,std::vector<std::string_view>::iterator end)
 	  : first(beg),
 	    last(end)
 	{
@@ -93,17 +85,16 @@ struct Connect::Reader
 	}
 
  private:
- 	std::vector<xStringPiece>::iterator  first;
-	std::vector<xStringPiece>::iterator  last;
+ 	std::vector<std::string_view>::iterator first;
+	std::vector<std::string_view>::iterator last;
 };
 
-
-void Connect::receiveValue(xBuffer* buf)
+void Connect::receiveValue(Buffer *buf)
 {
 	assert(currItem.get());
 	assert(state == kReceiveValue);
 
-	const size_t avail = std::min(buf->readableBytes(), currItem->neededBytes());
+	const size_t avail = std::min(buf->readableBytes(),currItem->neededBytes());
 	assert(currItem.unique());
 	currItem->append(buf->peek(), avail);
 	buf->retrieve(avail);
@@ -126,12 +117,12 @@ void Connect::receiveValue(xBuffer* buf)
 					}
 					else
 					{
-					   	 reply("NOT_FOUND\r\n");
+						reply("NOT_FOUND\r\n");
 					}
 				}
 				else
 				{
-				        reply("NOT_STORED\r\n");
+				   reply("NOT_STORED\r\n");
 				}
 			}
 		}
@@ -145,7 +136,7 @@ void Connect::receiveValue(xBuffer* buf)
   	}
 }
 
-void Connect::discardValue(xBuffer* buf)
+void Connect::discardValue(Buffer *buf)
 {
 	assert(!currItem);
 	assert(state == kDiscardValue);
@@ -163,9 +154,7 @@ void Connect::discardValue(xBuffer* buf)
 	}
 }
 
-
-
-bool Connect::processRequest(xStringPiece request)
+bool Connect::processRequest(std::string_view request)
 {
 	assert(command.empty());
 	assert(!noreply);
@@ -176,7 +165,7 @@ bool Connect::processRequest(xStringPiece request)
 	
 	if (request.size() >= 8)
 	{
-		xStringPiece end(request.end() - 8, 8);
+		std::string_view end(request.end() - 8, 8);
 		if (end == " noreply")
 		{
 			noreply = true;
@@ -184,7 +173,7 @@ bool Connect::processRequest(xStringPiece request)
 		}
 	}
 
-	std::vector<xStringPiece> tokenizers;
+	std::vector<std::string_view> tokenizers;
 	const char *next = request.begin();
 	const char *end = request.end();
 	
@@ -197,7 +186,7 @@ bool Connect::processRequest(xStringPiece request)
 			break;
 		}
 
-		xStringPiece tok;
+		std::string_view tok;
 		const char * start = next;
 		const char* sp = static_cast<const char*>(memchr(start, ' ', end - start));
 		if (sp)
@@ -226,14 +215,14 @@ bool Connect::processRequest(xStringPiece request)
 	  || command == "append" || command == "prepend" || command == "cas")
 	{
 	
-		return doUpdate(beg, tokenizers.end());
+		return doUpdate(beg,tokenizers.end());
 	}
 	else if (command == "get" || command == "gets")
 	{
 		bool cas = command == "gets";
 		while (beg != tokenizers.end())
 		{
-			xStringPiece key = *beg;
+			std::string_view key = *beg;
 			bool good = key.size() <= kLongestKeySize;
 			if (!good)
 			{
@@ -246,7 +235,7 @@ bool Connect::processRequest(xStringPiece request)
 			++beg;
 			if (item)
 			{
-				item->output(&outputBuf, cas);
+				item->output(&outputBuf,cas);
 			}
 		}
 		outputBuf.append("END\r\n");
@@ -294,8 +283,7 @@ void Connect::resetRequest()
 }
 
 
-
-void Connect::reply(xStringPiece msg)
+void Connect::reply(std::string_view msg)
 {
 	if (!noreply)
 	{
@@ -304,8 +292,7 @@ void Connect::reply(xStringPiece msg)
 }
 
 
-
-bool Connect::doUpdate(std::vector<xStringPiece>::iterator  &beg, std::vector<xStringPiece>::iterator  end)
+bool Connect::doUpdate(std::vector<std::string_view>::iterator &beg,std::vector<std::string_view>::iterator end)
 {
 	if (command == "set")
 		policy = Item::kSet;
@@ -322,7 +309,7 @@ bool Connect::doUpdate(std::vector<xStringPiece>::iterator  &beg, std::vector<xS
 	else
 	assert(false);
 
-	xStringPiece key = (*beg);
+	std::string_view key = (*beg);
 	++beg;
 	bool good = key.size() <= kLongestKeySize;
 
@@ -371,16 +358,16 @@ bool Connect::doUpdate(std::vector<xStringPiece>::iterator  &beg, std::vector<xS
 	}
 	else
 	{
-		currItem = Item::makeItem(key, flags, relExptime, bytes + 2, cas);
+		currItem = Item::makeItem(key,flags,relExptime,bytes + 2,cas);
 		state = kReceiveValue;
 		return false;
 	}
 }
 
-void Connect::doDelete(std::vector<xStringPiece>::iterator &beg, std::vector<xStringPiece>::iterator end)
+void Connect::doDelete(std::vector<std::string_view>::iterator &beg, std::vector<std::string_view>::iterator end)
 {
 	assert(command == "delete");
-	xStringPiece key = *beg;
+	std::string_view key = *beg;
 	bool good = key.size() <= kLongestKeySize;
 	++beg;
 	if (!good)
@@ -405,7 +392,7 @@ void Connect::doDelete(std::vector<xStringPiece>::iterator &beg, std::vector<xSt
 	}
 }
 
-void Connect::onMessage(const TcpConnectionPtr &conn,xBuffer *buf,void * data)
+void Connect::onMessage(const TcpConnectionPtr &conn,Buffer *buf,void *data)
 {
 	const size_t initialReadable = buf->readableBytes();
 
@@ -430,7 +417,7 @@ void Connect::onMessage(const TcpConnectionPtr &conn,xBuffer *buf,void * data)
 				if (crlf)
 				{
 					int len = static_cast<int>(crlf - buf->peek());
-					xStringPiece request(buf->peek(), len);
+					std::string_view request(buf->peek(), len);
 					if (processRequest(request))
 					{
 						resetRequest();
@@ -462,7 +449,7 @@ void Connect::onMessage(const TcpConnectionPtr &conn,xBuffer *buf,void * data)
 	}
 }
 
-MemcacheServer::MemcacheServer(xEventLoop *loop,const Options & op)
+MemcacheServer::MemcacheServer(EventLoop *loop,const Options & op)
 :loop(loop),
 ops(op),
 startTime(time(0))
@@ -495,7 +482,7 @@ void MemcacheServer::stop()
 	loop->runAfter(3.0,nullptr,false,std::bind(&MemcacheServer::quit,this));
 }
 
-bool MemcacheServer::storeItem(const ItemPtr & item,Item::UpdatePolicy policy,bool *exists)
+bool MemcacheServer::storeItem(const ItemPtr &item,Item::UpdatePolicy policy,bool *exists)
 {
 	assert(item->neededBytes() == 0);
 	std::mutex &mutex = shards[item->getHash() % kShards].mutex;
@@ -544,7 +531,7 @@ bool MemcacheServer::storeItem(const ItemPtr & item,Item::UpdatePolicy policy,bo
 		{
 			if (*exists)
 			{
-				const ConstItemPtr& oldItem = *it;
+				const ConstItemPtr &oldItem = *it;
 				int newLen = static_cast<int>(item->valueLength() + oldItem->valueLength() - 2);
 				ItemPtr newItem(Item::makeItem(item->getKey(),
 								   oldItem->getFlags(),
@@ -553,13 +540,13 @@ bool MemcacheServer::storeItem(const ItemPtr & item,Item::UpdatePolicy policy,bo
 								   cas++));
 				if (policy == Item::kAppend)
 				{
-					newItem->append(oldItem->value(), oldItem->valueLength() - 2);
-					newItem->append(item->value(), item->valueLength());
+					newItem->append(oldItem->value(),oldItem->valueLength() - 2);
+					newItem->append(item->value(),item->valueLength());
 				}
 				else
 				{
-					newItem->append(item->value(), item->valueLength() - 2);
-					newItem->append(oldItem->value(), oldItem->valueLength());
+					newItem->append(item->value(),item->valueLength() - 2);
+					newItem->append(oldItem->value(),oldItem->valueLength());
 				}
 				assert(newItem->neededBytes() == 0);
 				assert(newItem->endsWithCRLF());
@@ -589,12 +576,10 @@ bool MemcacheServer::storeItem(const ItemPtr & item,Item::UpdatePolicy policy,bo
 		  assert(false);
 		}
 	}
-
-	
 	return true;
 }
 
-ConstItemPtr MemcacheServer::getItem(const ConstItemPtr & key) const
+ConstItemPtr MemcacheServer::getItem(const ConstItemPtr &key) const
 {
 	std::mutex & mutex  = shards[key->getHash() % kShards].mutex;
 	const ItemMap& items = shards[key->getHash() % kShards].items;
@@ -603,7 +588,7 @@ ConstItemPtr MemcacheServer::getItem(const ConstItemPtr & key) const
 	return it != items.end() ? *it : ConstItemPtr();
 }
 
-bool MemcacheServer::deleteItem(const ConstItemPtr & key)
+bool MemcacheServer::deleteItem(const ConstItemPtr &key)
 {
 	std::mutex & mutex= shards[key->getHash() % kShards].mutex;
 	ItemMap& items = shards[key->getHash() % kShards].items;
@@ -611,8 +596,7 @@ bool MemcacheServer::deleteItem(const ConstItemPtr & key)
 	return items.erase(key) == 1;
 }
 
-
-void MemcacheServer::onConnection(const TcpConnectionPtr & conn)
+void MemcacheServer::onConnection(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
@@ -629,15 +613,13 @@ void MemcacheServer::onConnection(const TcpConnectionPtr & conn)
 	}
 }
 
-
-
 int main(int argc, char* argv[])
 {	
 	MemcacheServer::Options options;
 	options.ip = "127.0.0.1";
 	options.port = 11211;
 
-	xEventLoop loop;
+	EventLoop loop;
 	MemcacheServer memcache(&loop,options);
 	memcache.init();
 	memcache.setThreadNum(4);

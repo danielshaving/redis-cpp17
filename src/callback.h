@@ -20,6 +20,8 @@ class TimerQueue;
 class Poll;
 class Epoll;
 class Thread;
+class RedisObject;
+typedef std::shared_ptr<RedisObject> RedisObjectPtr;
 typedef std::shared_ptr<HiredisAsync> HiredisAsyncPtr;
 typedef std::shared_ptr<Buffer> BufferPtr;
 typedef std::shared_ptr<RedisReader> RedisReaderPtr;

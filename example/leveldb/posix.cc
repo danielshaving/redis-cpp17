@@ -1,5 +1,16 @@
 #include "posix.h"
 
+//void Log(Logger *infoLog,const char *format, ...)
+//{
+//	if (infoLog != nullptr)
+//	{
+//		va_list ap;
+//		va_start(ap,format);
+//		infoLog->Logv(format,ap);
+//		va_end(ap);
+//	}
+//}
+
 PosixWritableFile::PosixWritableFile(const std::string &fname,int fd)
 :filename(fname),fd(fd),pos(0)
 {
@@ -322,9 +333,12 @@ Status PosixEnv::newAppendableFile(const std::string &fname,std::shared_ptr<Posi
     }
     return s;
 }
-									   
 
-
-
+uint64_t PosixEnv::nowMicros()
+{
+	struct timeval tv;
+	gettimeofday(&tv,nullptr);
+	return static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
+}
 
 

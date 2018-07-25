@@ -59,7 +59,6 @@ Status DBImpl::open()
 	{
 		//RecordBackgroundError(s);
 	}
-
 	return s;
 }
 
@@ -279,7 +278,7 @@ Status DBImpl::recoverLogFile(uint64_t logNumber,bool lastLog,
 	    }
 
 	    WriteBatchInternal::setContents(&batch,record);
-	    status = WriteBatchInternal::insertInto(&batch, mem);
+	    status = WriteBatchInternal::insertInto(&batch,mem);
 	    if (!status.ok())
 	    {
 	    	break;
@@ -291,6 +290,8 @@ Status DBImpl::recoverLogFile(uint64_t logNumber,bool lastLog,
 	    	*maxSequence = lastSeq;
 	    }
 	}
+	printf("logNumber %d# memtable:size %d\n",logNumber,mem->getTableSize());
+	return status;
 }
 
 Status DBImpl::put(const WriteOptions &opt,const std::string_view &key,const std::string_view &value)
@@ -433,7 +434,25 @@ Status DBImpl::get(const ReadOptions &opt,const std::string_view &key,std::strin
 	{
 //	  s = current->Get(options, lkey, value, &stats);
 //	  have_stat_update = true;
+        s = Status::notFound(std::string_view());
 	}
 	return s;
 }
 
+Status DBImpl::writeLevel0Table(VersionEdit *edit,Version *base)
+{
+	const uint64_t startMicros = options.env->nowMicros();
+	FileMetaData meta;
+	meta.number = versions->newFileNumber();
+	pendingOutPuts.insert(meta.number);
+	//Iterator* iter = mem->NewIterator();
+	printf("Level-0 table #%llu: started",
+		(unsigned long long) meta.number);
+
+	Status s;
+	{
+
+		//s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
+
+	}
+}

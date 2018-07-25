@@ -145,6 +145,8 @@ public:
 	std::string &getIp() { return ip; }
 	int16_t getPort() { return port; }
 
+	bool checkCommand(RedisObject *cmd);
+
 public:
 	typedef std::function<bool(const std::deque<RedisObject*> &,const SessionPtr &)> CommandFunc;
 	typedef std::unordered_map<RedisObject*,RedisObject*,Hash,Equal> StringMap;
@@ -156,7 +158,7 @@ public:
 	typedef std::unordered_map<RedisObject*,std::unordered_set<RedisObject*,Hash,Equal>,Hash,Equal> SetMap;
 	typedef std::unordered_set<RedisObject*,Hash,Equal> RedisMap;
 
-	std::unordered_set<RedisObject*,Hash,Equal> commands;
+	std::unordered_set<RedisObject*,Hash,Equal> checkCommands;
 	std::unordered_set<RedisObject*,Hash,Equal> stopReplis;
 	std::unordered_set<RedisObject*,Hash,Equal> replyCommands;
 	std::unordered_set<RedisObject*,Hash,Equal> cluterCommands;

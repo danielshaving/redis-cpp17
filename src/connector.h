@@ -11,7 +11,7 @@
 class Connector : public std::enable_shared_from_this<Connector>
 {
 public:
-	typedef std::function<void(int32_t sockfd)> NewConnectionCallback;
+	typedef std::function<void(int32_t)> NewConnectionCallback;
 	typedef std::function<void()> ErrorConnectionCallback;
 
 	Connector(EventLoop *loop,const char *ip,int16_t port);

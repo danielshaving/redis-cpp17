@@ -38,7 +38,6 @@ size_t WriteBatch::approximateSize()
 	return rep.size();
 }
 
-
 Status WriteBatch::iterate(uint64_t sequence,const std::shared_ptr<MemTable> &mem) const 
 {
 	std::string_view input(rep);

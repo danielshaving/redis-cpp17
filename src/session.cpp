@@ -13,17 +13,14 @@ Session::Session(Redis *redis,const TcpConnectionPtr &conn)
  fromMaster(false),
  fromSlave(false)
 {
-	command = createStringObject(nullptr,REDIS_COMMAND_LENGTH);
+	cmd = createStringObject(nullptr,REDIS_COMMAND_LENGTH);
 	clientConn->setMessageCallback(std::bind(&Session::readCallBack,
 			this,std::placeholders::_1,std::placeholders::_2));
 }
 
 Session::~Session()
 {
-	if (sdslen(command->ptr))
-	{
-		zfree(command);
-	}
+	zfree(cmd);
 }
 
 void Session::readCallBack(const TcpConnectionPtr &clientConn,Buffer *buffer)
@@ -91,15 +88,6 @@ void Session::readCallBack(const TcpConnectionPtr &clientConn,Buffer *buffer)
 	}
 }
 
-bool Session::checkCommand(RedisObject *commands)
-{
-	auto it = redis->commands.find(commands);
-	if (it == redis->commands.end())
-	{
-		return false;
-	}
-	return true;
-}
 
 int32_t Session::processCommand()
 {
@@ -118,7 +106,7 @@ int32_t Session::processCommand()
 
 	if (redis->clusterEnabled)
 	{
-		if (redis->getClusterMap(command))
+		if (redis->getClusterMap(cmd))
 		{
 			goto jump;
 		}
@@ -187,27 +175,28 @@ jump:
 		if (clientConn->getSockfd() == redis->masterfd)
 		{
 			fromMaster = true;
-			if (!checkCommand(command))
+
+			if (!redis->checkCommand(cmd))
 			{
 				clearObj();
-				LOG_WARN<<"master sync command unknow " << command;
+				LOG_WARN<<"master sync cmd unknow " << cmd->ptr;
 				return REDIS_ERR;
 			}
 		}
 		else if (redis->masterfd > 0)
 		{
-			if (checkCommand(command))
+			if (redis->checkCommand(cmd))
 			{
 				clearObj();
-				addReplyErrorFormat(clientBuffer,"slaveof command unknown");
+				addReplyErrorFormat(clientBuffer,"slaveof cmd unknown");
 				return REDIS_ERR;
 			}
 		}
  		else
 		{
-			if (checkCommand(command))
+			if (redis->checkCommand(cmd))
 			{
-				commands.push_front(command);
+				commands.push_front(cmd);
 				{
 					std::unique_lock <std::mutex> lck(redis->getSlaveMutex());
 					if (redis->salveCount < redis->getSlaveConn().size())
@@ -226,11 +215,11 @@ jump:
 
 
 	auto &map = redis->getHandlerCommandMap();
-	auto it = map.find(command);
+	auto it = map.find(cmd);
 	if (it == map.end())
 	{
 		clearObj();
-		addReplyErrorFormat(clientBuffer,"command unknown");
+		addReplyErrorFormat(clientBuffer,"cmd unknown");
 		return REDIS_ERR;
 	}
 
@@ -319,8 +308,8 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 	{
 		if (j == 0)
 		{
-			sdscpylen((sds)(command->ptr),argv[j],sdslen(argv[j]));
-			command->calHash();
+			sdscpylen((sds)(cmd->ptr),argv[j],sdslen(argv[j]));
+			cmd->calHash();
 		}
 		else
 		{
@@ -442,8 +431,8 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 		{
 			if (++argc == 1)
 			{
-				sdscpylen(command->ptr,queryBuf + pos,bulklen);
-				command->calHash();
+				sdscpylen(cmd->ptr,queryBuf + pos,bulklen);
+				cmd->calHash();
 			}
 			else
 			{

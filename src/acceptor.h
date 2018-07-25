@@ -10,7 +10,7 @@
 class Acceptor
 {
 public:
-	typedef std::function<void (int32_t sockfd)> NewConnectionCallback;
+	typedef std::function<void (int32_t)> NewConnectionCallback;
 	Acceptor(EventLoop *loop,const char *ip,int16_t port);
 	~Acceptor();
 
