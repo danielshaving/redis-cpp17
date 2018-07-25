@@ -19,7 +19,7 @@ public:
 	:hash(0),
 	 ptr(nullptr)
 	{
-		calHash();
+
 	}
 
 	~RedisObject()

@@ -30,6 +30,7 @@ RedisObjectPtr createObject(int32_t type,char *ptr)
 	o->encoding = REDIS_ENCODING_RAW;
 	o->type = type;
 	o->ptr = ptr;
+	o->calHash();
 	return o;
 }
 
