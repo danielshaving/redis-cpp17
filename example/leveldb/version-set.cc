@@ -61,7 +61,9 @@ VersionSet::VersionSet(const std::string &dbname,const Options &options)
  nextFileNumber(2),
  logNumber(0),
  prevLogNumber(0),
- manifestFileNumber(0)
+ manifestFileNumber(0),
+ descriptorLog(nullptr),
+ descriptorFile(nullptr)
 {
 	std::shared_ptr<Version> v(new Version(this));
     appendVersion(v);
@@ -330,6 +332,78 @@ Status VersionSet::logAndApply(VersionEdit *edit)
 	{
 		edit->setPrevLogNumber(prevLogNumber);
 	}
+
+	edit->setNextFile(nextFileNumber);
+	edit->setLastSequence(lastSequence);
+
+    std::shared_ptr<Version> v(new Version(this));
+    {
+        Builder builder(this,versions.back().get());
+        builder.apply(edit);
+        builder.saveTo(v.get());
+    }
+    finalize(v.get());
+
+    // Initialize new descriptor log file if necessary by creating
+    // a temporary file that contains a snapshot of the current version.
+    std::string newManifestFile;
+    Status s;
+    if (descriptorLog == nullptr)
+    {
+        // No reason to unlock *mu here since we only hit this path in the
+        // first call to LogAndApply (when opening the database).
+        assert(descriptorFile == nullptr);
+        newManifestFile = descriptorFileName(dbname,manifestFileNumber);
+        edit->setNextFile(nextFileNumber);
+        s = options.env->newWritableFile(newManifestFile,descriptorFile);
+        if (s.ok())
+        {
+            descriptorLog.reset(new LogWriter(descriptorFile.get()));
+            //s = WriteSnapshot(descriptor_log_);
+        }
+    }
+
+
+    // Write new record to MANIFEST log
+    if (s.ok())
+    {
+        std::string record;
+        edit->encodeTo(&record);
+        s = descriptorLog->addRecord(record);
+        if (s.ok())
+        {
+            s = descriptorFile->sync();
+        }
+
+        if (!s.ok())
+        {
+            printf("MANIFEST write: %s\n", s.toString().c_str());
+        }
+    }
+
+    // If we just created a new descriptor file, install it by writing a
+    // new CURRENT file that points to it.
+    if (s.ok() && !newManifestFile.empty())
+    {
+        s = setCurrentFile(options.env,dbname,manifestFileNumber);
+    }
+
+    // Install the new version
+    if (s.ok())
+    {
+        appendVersion(v);
+        logNumber = edit->logNumber;
+        prevLogNumber = edit->prevLogNumber;
+    }
+    else
+    {
+        if (!newManifestFile.empty())
+        {
+            options.env->deleteFile(newManifestFile);
+        }
+    }
+
+    return s;
 }
 
 // Apply all of the edits in *edit to the current state.
@@ -449,6 +523,7 @@ void Builder::maybeAddFile(Version *v,int level,const std::shared_ptr<FileMetaDa
 			assert(vset->icmp.compare(files[files.size()-1]->largest,
 										f->smallest) < 0);
 		}
+
 		f->refs++;
 		files.push_back(f);
 	}

@@ -154,6 +154,7 @@ public:
 	uint64_t newFileNumber() { return nextFileNumber++; }
 	Status recover(bool *manifest);
 	void markFileNumberUsed(uint64_t number);
+	uint64_t getManifestFileNumber() { return manifestFileNumber; }
 	void appendVersion(const std::shared_ptr<Version> &v);
 	bool reuseManifest(const std::string &dscname,const std::string &dscbase);
 

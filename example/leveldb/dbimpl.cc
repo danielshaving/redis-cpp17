@@ -48,10 +48,71 @@ Status DBImpl::open()
 	{
 		edit.setPrevLogNumber(0);  // No older logs needed after recovery.
 		edit.setLogNumber(logfileNumber);
-		//s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
+		s = versions->logAndApply(&edit);
 	}
-  
+
+	if (s.ok())
+	{
+		deleteObsoleteFiles();
+	}
+	else
+	{
+		//RecordBackgroundError(s);
+	}
+
 	return s;
+}
+
+void DBImpl::deleteObsoleteFiles()
+{
+	// Make a set of all of the live files
+	std::set<uint64_t> live = pendingOutPuts;
+	versions->addLiveFiles(&live);
+
+	std::vector<std::string> filenames;
+	options.env->getChildren(dbname,&filenames);  // Ignoring errors on purpose
+	uint64_t number;
+	FileType type;
+	for (size_t i = 0; i < filenames.size(); i++)
+	{
+		if (parseFileName(filenames[i],&number,&type))
+		{
+			bool keep = true;
+			switch (type)
+			{
+				case kLogFile:
+					keep = ((number >= versions->getLogNumber()) ||
+							(number == versions->getPrevLogNumber()));
+					break;
+				case kDescriptorFile:
+					// Keep my manifest file, and any newer incarnations'
+					// (in case there is a race that allows other incarnations)
+					keep = (number >= versions->getManifestFileNumber());
+					break;
+				case kTableFile:
+					keep = (live.find(number) != live.end());
+					break;
+				case kTempFile:
+					// Any temp files that are currently being written to must
+					// be recorded in pending_outputs_, which is inserted into "live"
+					keep = (live.find(number) != live.end());
+					break;
+				case kCurrentFile:
+				case kDBLockFile:
+				case kInfoLogFile:
+					keep = true;
+					break;
+			}
+
+			if (!keep)
+			{
+				printf("Delete type=%d #%lld\n",
+					static_cast<int>(type),
+					static_cast<unsigned long long>(number));
+				options.env->deleteFile(dbname + "/" + filenames[i]);
+			}
+		}
+	}
 }
 
 Status DBImpl::newDB()

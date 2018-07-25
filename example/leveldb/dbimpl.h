@@ -23,6 +23,7 @@ public:
 	Status get(const ReadOptions &options,const std::string_view &key,std::string *value);
 	// Implementations of the DB interface
 
+	void deleteObsoleteFiles();
 	Status recover(VersionEdit *edit,bool *saveManifest);
 	Status recoverLogFile(uint64_t logNumber, bool lastLog,
 			bool *saveManifest, VersionEdit *edit,uint64_t *maxSequence);
@@ -47,4 +48,8 @@ private:
 	const Options options;  // options_.comparator == &internal_comparator_
 	uint64_t logfileNumber;
 	const std::string dbname;
+
+	// Set of table files to protect from deletion because they are
+	// part of ongoing compactions.
+	std::set<uint64_t> pendingOutPuts;
 };
