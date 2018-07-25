@@ -25,7 +25,7 @@ static const size_t kBufSize = 65536;
 
 static bool startsWith(const std::string_view &x,const std::string_view &y)
 {
-	return ((x.size() >= y.size()) && (memcmp(x.data(),y.data(),x.size()) == 0));
+	return ((x.size() >= y.size()) && (memcmp(x.data(),y.data(),y.size()) == 0));
 }
 
 static Status posixError(const std::string &context,int err)
@@ -88,6 +88,22 @@ public:
 	Status getChildren(const std::string &dir,std::vector<std::string> *result);
 	Status newSequentialFile(const std::string &fname,std::shared_ptr<PosixSequentialFile> &result);
 	Status renameFile(const std::string &src,const std::string &target);
+	
+	// Create an object that either appends to an existing file, or
+  // writes to a new file (if the file does not exist to begin with).
+  // On success, stores a pointer to the new file in *result and
+  // returns OK.  On failure stores nullptr in *result and returns
+  // non-OK.
+  //
+  // The returned file will only be accessed by one thread at a time.
+  //
+  // May return an IsNotSupportedError error if this Env does
+  // not allow appending to an existing file.  Users of Env (including
+  // the leveldb implementation) must be prepared to deal with
+  // an Env that does not support appending.
+	Status newAppendableFile(const std::string &fname,
+                                   std::shared_ptr<PosixWritableFile> &result);
+								   
 };
 
 

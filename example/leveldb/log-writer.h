@@ -31,7 +31,6 @@ private:
 	// No copying allowed
 	LogWriter(const LogWriter&);
 	void operator=(const LogWriter&);
-
 };
 
 

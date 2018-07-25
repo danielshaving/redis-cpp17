@@ -17,7 +17,9 @@ DBImpl::DBImpl(const Options &options,const std::string &dbname)
 :options(options),
  dbname(dbname)
 {
-
+    versions.reset(new VersionSet(dbname,options));
+    mem.reset(new MemTable);
+    imm.reset(new MemTable);
 }
 
 DBImpl::~DBImpl()
@@ -31,12 +33,8 @@ Status DBImpl::open()
 	VersionEdit edit;
 	bool saveManifest = false;
 	s = recover(&edit,&saveManifest);
-	if (s.ok())
-	{
-		versions.reset(new VersionSet(dbname,options));
-		mem.reset(new MemTable);
-		imm.reset(new MemTable);
-
+	if (s.ok() && imm->getMemoryUsage() == 0)
+    {
 		uint64_t newLogNumber = versions->newFileNumber();
 		s = options.env->newWritableFile(logFileName(dbname,newLogNumber),logfile);
 		if (s.ok())
@@ -45,6 +43,14 @@ Status DBImpl::open()
 			logfileNumber = newLogNumber;
 		}
 	}
+	
+	if (s.ok() && saveManifest) 
+	{
+		edit.setPrevLogNumber(0);  // No older logs needed after recovery.
+		edit.setLogNumber(logfileNumber);
+		//s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
+	}
+  
 	return s;
 }
 
@@ -127,6 +133,10 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 	// attention to it in case we are recovering a database
 	// produced by an older version of leveldb.
 
+
+	const uint64_t minLog = versions->getLogNumber();
+	const uint64_t prevLog = versions->getPrevLogNumber();
+
 	std::vector<std::string> filenames;
 	s = options.env->getChildren(dbname,&filenames);
 	if (!s.ok())
@@ -135,17 +145,21 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 	}
 
 	uint64_t maxSequence(0);
+	std::set<uint64_t> expected;
+	versions->addLiveFiles(&expected);
+	uint64_t number;
+
 	FileType type;
 	std::vector<uint64_t> logs;
-	uint64_t number;
 	for (size_t i = 0; i < filenames.size(); i++)
 	{
 		if (parseFileName(filenames[i],&number,&type))
 		{
-			 if (type == kLogFile)
-			 {
-				 logs.push_back(number);
-			 }
+			expected.erase(number);
+			if (type == kLogFile && ((number >= minLog) || (number == prevLog)))
+			{
+				logs.push_back(number);
+			}
 		}
 	}
 
@@ -157,6 +171,11 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 		{
 			return s;
 		}
+
+		// The previous incarnation may not have written any MANIFEST
+		// records after allocating this log number.  So we manually
+		// update the file number allocation counter in VersionSet.
+		versions->markFileNumberUsed(logs[i]);
 	}
 
 	if (versions->getLastSequence() < maxSequence)

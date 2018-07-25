@@ -307,6 +307,23 @@ Status PosixEnv::newSequentialFile(const std::string &fname,std::shared_ptr<Posi
 	}
 }
 
+Status PosixEnv::newAppendableFile(const std::string &fname,std::shared_ptr<PosixWritableFile> &result)
+{
+	Status s;
+    int fd = open(fname.c_str(),O_APPEND | O_WRONLY | O_CREAT,0644);
+    if (fd < 0) 
+	{
+		result = nullptr;
+		s = posixError(fname,errno);
+    } 
+	else 
+	{
+		result.reset(new PosixWritableFile(fname,fd));
+    }
+    return s;
+}
+									   
+
 
 
 
