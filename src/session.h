@@ -33,8 +33,8 @@ private:
 	void operator=(const Session&);
 
 	Redis *redis;
-	RedisObject *cmd;
-	std::deque<RedisObject*> commands;
+	RedisObjectPtr cmd;
+	std::deque<RedisObjectPtr> redisCommands;
 
 	int32_t reqtype;
 	int32_t multibulklen;

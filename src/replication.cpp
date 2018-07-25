@@ -212,14 +212,14 @@ void Replication::reconnectTimer(const std::any &context)
 	client->asyncConnect();
 }
 
-void Replication::replicationSetMaster(RedisObject *obj,int16_t port)
+void Replication::replicationSetMaster(const RedisObjectPtr &obj,int16_t port)
 {
 	this->ip = obj->ptr;
 	this->port = port;
 
 	if(redis->repliEnabled)
 	{
-		std::unique_lock <std::mutex> lck(redis->getSlaveMutex());
+		std::unique_lock<std::mutex> lck(redis->getSlaveMutex());
 		auto &slaveConns = redis->getSlaveConn();
 		for (auto &it : slaveConns)
 		{

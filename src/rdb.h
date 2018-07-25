@@ -60,7 +60,7 @@ struct Rio
 struct RdbState
 {
     Rio *rio;
-    RedisObject *key;           /* Current key we are reading. */
+    RedisObjectPtr key;           /* Current key we are reading. */
     int32_t keyType;           /* Current key type if != -1. */
     uint32_t keys;             /* Number of keys processed. */
     uint32_t expires;          /* Number of keys with an expire. */
@@ -122,16 +122,16 @@ public:
 	int32_t rdbSaveLen(Rio *rdb,uint32_t len);
 	int32_t rdbSave(char *filename);
 	int32_t rdbSaveRio(Rio *rdb,int32_t *error,int32_t flags);
-	int32_t rdbSaveObject(Rio *rdb,RedisObject *o);
-	int32_t rdbSaveStringObject(Rio *rdb,RedisObject *obj);
-	int32_t rdbSaveKeyValuePair(Rio *rdb,RedisObject *key,
-			RedisObject *val,int64_t expiretime,int64_t now);
+	int32_t rdbSaveObject(Rio *rdb,const RedisObjectPtr &o);
+	int32_t rdbSaveStringObject(Rio *rdb,const RedisObjectPtr &obj);
+	int32_t rdbSaveKeyValuePair(Rio *rdb,const RedisObjectPtr &key,
+			const RedisObjectPtr &val,int64_t expiretime,int64_t now);
 	size_t rdbSaveRawString(Rio *rdb,const char *s,size_t len);
 	int32_t rdbSaveLzfStringObject(Rio *rdb,uint8_t *s,size_t len);
-	int32_t rdbSaveValue(Rio *rdb,RedisObject *value);
-	int32_t rdbSaveKey(Rio *rdb,RedisObject *value);
+	int32_t rdbSaveValue(Rio *rdb,const RedisObjectPtr &value);
+	int32_t rdbSaveKey(Rio *rdb,const RedisObjectPtr &value);
 	int32_t rdbSaveStruct(Rio *rdb);
-	int32_t rdbSaveObjectType(Rio *rdb,RedisObject *o);
+	int32_t rdbSaveObjectType(Rio *rdb,const RedisObjectPtr &o);
 
 	int32_t rdbLoadType(Rio *rdb);
 	uint32_t rdbLoadUType(Rio *rdb);
@@ -139,13 +139,6 @@ public:
 	int64_t rdbLoadMillisecondTime(Rio *rdb);
 	int32_t rdbLoadBinaryDoubleValue(Rio *rdb,double *val);
 
-	int32_t rdbRestoreString(RedisObject *key,Rio *rdb,int32_t type);
-	int32_t rdbRestoreHash(RedisObject *key,Rio *rdb,int32_t type);
-	int32_t rdbRestoreList(RedisObject *key,Rio *rdb,int32_t type);
-	int32_t rdbRestoreZset(RedisObject *key,Rio *rdb,int32_t type);
-	int32_t rdbRestoreSet(RedisObject *key,Rio *rdb,int32_t type);
-	int32_t rdbRestoreExpire(RedisObject *key,Rio *rdb,int32_t type);
-	
 	int32_t rdbLoadString(Rio *rdb,int32_t type,int64_t expiretime,int64_t now);
 	int32_t rdbLoadHash(Rio *rdb,int32_t type);
 	int32_t rdbLoadList(Rio *rdb,int32_t type);
@@ -156,12 +149,12 @@ public:
 	int32_t rdbLoad(char *fileName);
 	bool rdbReplication(char *filename,const TcpConnectionPtr &conn);
 
-	RedisObject *rdbLoadObject(int32_t type,Rio *rdb);
-	RedisObject *rdbLoadStringObject(Rio *rdb);
-	RedisObject *rdbLoadIntegerObject(Rio *rdb,int32_t enctype,int32_t encode);
-	RedisObject *rdbLoadEncodedStringObject(Rio *rdb);
-	RedisObject *rdbLoadLzfStringObject(Rio *rdb);
-	RedisObject *rdbGenericLoadStringObject(Rio *rdb,int32_t encode);
+	RedisObjectPtr rdbLoadObject(int32_t type,Rio *rdb);
+	RedisObjectPtr rdbLoadStringObject(Rio *rdb);
+	RedisObjectPtr rdbLoadIntegerObject(Rio *rdb,int32_t enctype,int32_t encode);
+	RedisObjectPtr rdbLoadEncodedStringObject(Rio *rdb);
+	RedisObjectPtr rdbLoadLzfStringObject(Rio *rdb);
+	RedisObjectPtr rdbGenericLoadStringObject(Rio *rdb,int32_t encode);
 
 	void rioGenericUpdateChecksum(Rio *r,const void *buf,size_t len);
 	int32_t rdbWriteRaw(Rio *rdb, void *p,size_t len);
@@ -171,8 +164,8 @@ public:
 	int32_t rdbSyncWrite(const char *buf,FILE *fp,size_t len);
 	int32_t rdbSyncClose(char *fileName,FILE *fp);
 	void setBlockEnable(bool enabled) { blockEnabled = enabled; }
-	int32_t createDumpPayload(Rio *rdb,RedisObject *obj);
-	int32_t verifyDumpPayload(Rio *rdb,RedisObject *obj);
+	int32_t createDumpPayload(Rio *rdb,const RedisObjectPtr &obj);
+	int32_t verifyDumpPayload(Rio *rdb,const RedisObjectPtr &obj);
 	
 private:
 	Rdb(const Rdb&);

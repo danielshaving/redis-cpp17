@@ -16,7 +16,7 @@ public:
 	~Replication();
 	
 	void connectMaster();
-	void replicationSetMaster(RedisObject *obj,int16_t port);
+	void replicationSetMaster(const RedisObjectPtr &obj,int16_t port);
 
 	void slaveCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
 	void readCallBack(const TcpConnectionPtr &conn,Buffer *buffer);

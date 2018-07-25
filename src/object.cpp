@@ -7,45 +7,81 @@ void RedisObject::calHash()
 	hash = dictGenHashFunction(ptr,sdslen(ptr));
 }
 
-bool RedisObject::operator < (const RedisObject &r) const
+bool RedisObject::operator <(const RedisObjectPtr &r) const
 {
-	auto cmp = memcmp(ptr,r.ptr,sdslen(ptr));
-	if (cmp < 0) { return true; }
-	else if (cmp == 0) { return memcmp(ptr,r.ptr,sdslen(ptr)) < 0; }
-	else { return false; }
+	auto cmp = memcmp(ptr,r->ptr,sdslen(ptr));
+	if (cmp < 0)
+	{
+		return true;
+	}
+	else if (cmp == 0)
+	{
+		return memcmp(ptr,r->ptr,sdslen(ptr)) < 0;
+	}
+	else
+	{
+		return false;
+	}
 }
 
-RedisObject *createObject(int32_t type,char *ptr)
+RedisObjectPtr createObject(int32_t type,char *ptr)
 {
-	RedisObject *o = (RedisObject*)zmalloc(sizeof(RedisObject));
+	RedisObjectPtr o(new RedisObject());
 	o->encoding = REDIS_ENCODING_RAW;
 	o->type = type;
 	o->ptr = ptr;
 	return o;
 }
 
-int32_t getLongLongFromObject(RedisObject *o,int64_t *target)
+int32_t getLongLongFromObject(const RedisObjectPtr &o,int64_t *target)
 {
 	int64_t value;
-	if (o == nullptr) { value = 0; }
+	if (o == nullptr)
+	{
+		value = 0;
+	}
 	else
 	{
-		if (sdsEncodedObject(o)) { if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0) { return REDIS_ERR; } }
-		else if (o->encoding == OBJ_ENCODING_INT) { if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0) return REDIS_ERR; }
-		else { assert(false); }
+		if (sdsEncodedObject(o))
+		{
+			if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0)
+			{
+				return REDIS_ERR;
+			}
+		}
+		else if (o->encoding == OBJ_ENCODING_INT)
+		{
+			if (string2ll(o->ptr,sdslen(o->ptr),&value) == 0)
+			{
+				return REDIS_ERR;
+			}
+		}
+		else
+		{
+			assert(false);
+		}
 	}
 
-	if (target) *target = value;
+	if (target)
+	{
+		*target = value;
+	}
 	return REDIS_OK;
 }
 
-int32_t getLongLongFromObjectOrReply(Buffer &buffer,RedisObject *o,int64_t *target,const char *msg)
+int32_t getLongLongFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,int64_t *target,const char *msg)
 {
     int64_t value;
     if (getLongLongFromObject(o,&value) != REDIS_OK)
     {
-        if (msg != nullptr) { addReplyError(buffer,(char*)msg); }
-        else { addReplyError(buffer,"value is no an integer or out of range"); }
+        if (msg != nullptr)
+        {
+        	addReplyError(buffer,(char*)msg);
+        }
+        else
+        {
+        	addReplyError(buffer,"value is no an integer or out of range");
+        }
         return REDIS_ERR;
     }
 
@@ -53,14 +89,19 @@ int32_t getLongLongFromObjectOrReply(Buffer &buffer,RedisObject *o,int64_t *targ
     return REDIS_OK;
 }
 
-
-int32_t getLongFromObjectOrReply(Buffer &buffer,RedisObject *o,int32_t *target,const char *msg)
+int32_t getLongFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,int32_t *target,const char *msg)
 {
 	int64_t value;
 	if (getLongLongFromObject(o,&value) != REDIS_OK)
 	{
-		if (msg != nullptr) { addReplyError(buffer,(char*)msg); }
-		else { addReplyError(buffer, "value is no an integer or out of range"); }
+		if (msg != nullptr)
+		{
+			addReplyError(buffer,(char*)msg);
+		}
+		else
+		{
+			addReplyError(buffer,"value is no an integer or out of range");
+		}
 		return REDIS_ERR;
 	}
 	
@@ -68,21 +109,33 @@ int32_t getLongFromObjectOrReply(Buffer &buffer,RedisObject *o,int32_t *target,c
 	return REDIS_OK;
 }
 
-RedisObject *createStringObjectFromLongLong(int64_t value)
+RedisObjectPtr createStringObjectFromLongLong(int64_t value)
 {
-	RedisObject *o;
-	if (value >= 0 && value < REDIS_SHARED_INTEGERS) { o = shared.integers[value - 1]; }
-	else { o = createObject(REDIS_STRING,sdsfromlonglong(value)); }
+	RedisObjectPtr o;
+	if (value >= 0 && value < REDIS_SHARED_INTEGERS)
+	{
+		o = shared.integers[value - 1];
+	}
+	else
+	{
+		o = createObject(REDIS_STRING,sdsfromlonglong(value));
+	}
 	return o;
 }
 
-int32_t getDoubleFromObjectOrReply(Buffer &buffer,RedisObject *o,double *target,const char *msg)
+int32_t getDoubleFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,double *target,const char *msg)
 {
     double value;
     if (getDoubleFromObject(o,&value) != REDIS_OK)
     {
-        if (msg != nullptr) { addReplyError(buffer,(char*)msg); }
-        else { addReplyError(buffer,"value is no a valid float"); }
+        if (msg != nullptr)
+        {
+        	addReplyError(buffer,(char*)msg);
+        }
+        else
+        {
+        	addReplyError(buffer,"value is no a valid float");
+        }
         return REDIS_ERR;
     }
 
@@ -90,13 +143,15 @@ int32_t getDoubleFromObjectOrReply(Buffer &buffer,RedisObject *o,double *target,
     return REDIS_OK;
 }
 
-
-int32_t getDoubleFromObject(const RedisObject *o,double *target)
+int32_t getDoubleFromObject(const RedisObjectPtr &o,double *target)
 {
     double value;
     char *eptr;
 
-    if (o == nullptr) { value = 0; }
+    if (o == nullptr)
+    {
+    	value = 0;
+    }
     else
     {
         if (sdsEncodedObject(o))
@@ -108,206 +163,18 @@ int32_t getDoubleFromObject(const RedisObject *o,double *target)
                 (errno == ERANGE && value == 0) || errno == EINVAL)
                 return REDIS_ERR;
         }
-        else if (o->encoding == OBJ_ENCODING_INT) { value = (long)o->ptr; }
-        else { LOG_WARN<<"Unknown string encoding"; }
+        else if (o->encoding == OBJ_ENCODING_INT)
+        {
+        	value = (long)o->ptr;
+        }
+        else
+        {
+        	assert(false);
+        }
     }
 
     *target = value;
     return REDIS_OK;
-}
-
-void freeStringObject(RedisObject *o)
-{
-    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
-}
-
-void freeListObject(RedisObject *o)
-{
-    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
-}
-
-void freeHashObject(RedisObject *o)
-{
-    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
-}
-
-void freeSetObject(RedisObject *o)
-{
-    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
-}
-
-void freeZsetObject(RedisObject *o)
-{
-    if (o->encoding == OBJ_ENCODING_RAW) { sdsfree((sds)o->ptr); }
-}
-
-void decrRefCount(RedisObject *o)
-{
-	switch(o->type)
-	{
-		case OBJ_STRING: freeStringObject(o); break;
-		case OBJ_LIST: freeListObject(o); break;
-		case OBJ_SET: freeSetObject(o); break;
-		case OBJ_ZSET: freeZsetObject(o); break;
-		case OBJ_HASH: freeHashObject(o); break;
-		default: assert(false); break;
-	}
-
-	if(o->encoding != OBJ_ENCODING_INT) { zfree(o); }
-}
-
-void destorySharedObjects()
-{
-	decrRefCount(shared.decr);
-	decrRefCount(shared.incr);
-	decrRefCount(shared.crlf);
-	decrRefCount(shared.ok);
-	decrRefCount(shared.err);
-	decrRefCount(shared.emptybulk);
-	decrRefCount(shared.czero);
-	decrRefCount(shared.cone);
-	decrRefCount(shared.cnegone);
-	decrRefCount(shared.nullbulk);
-	decrRefCount(shared.nullmultibulk);
-	decrRefCount(shared.emptymultibulk);
-	decrRefCount(shared.pping);
-	decrRefCount(shared.ping);
-	decrRefCount(shared.pong);
-	decrRefCount(shared.ppong);
-	decrRefCount(shared.queued);
-	decrRefCount(shared.emptyscan);
-	decrRefCount(shared.wrongtypeerr);
-	decrRefCount(shared.nokeyerr);
-	decrRefCount(shared.syntaxerr);
-	decrRefCount(shared.sameobjecterr);
-	decrRefCount(shared.outofrangeerr);
-	decrRefCount(shared.noscripterr);
-	decrRefCount(shared.loadingerr);
-	decrRefCount(shared.slowscripterr);
-	decrRefCount(shared.masterdownerr);
-	decrRefCount(shared.bgsaveerr);
-	decrRefCount(shared.roslaveerr);
-	decrRefCount(shared.noautherr);
-	decrRefCount(shared.oomerr);
-	decrRefCount(shared.execaborterr);
-	decrRefCount(shared.noreplicaserr);
-	decrRefCount(shared.busykeyerr);
-	decrRefCount(shared.space);
-	decrRefCount(shared.colon);
-	decrRefCount(shared.plus);
-	decrRefCount(shared.messagebulk);
-	decrRefCount(shared.pmessagebulk);
-	decrRefCount(shared.subscribebulk);
-	decrRefCount(shared.unsubscribebulk);
-	decrRefCount(shared.psubscribebulk);
-	decrRefCount(shared.punsubscribebulk);
-	decrRefCount(shared.del);
-	decrRefCount(shared.rpop);
-	decrRefCount(shared.lpop);
-	decrRefCount(shared.lpush);
-	decrRefCount(shared.rpush);
-	decrRefCount(shared.set);
-	decrRefCount(shared.get);
-	decrRefCount(shared.flushdb);
-	decrRefCount(shared.dbsize);
-	decrRefCount(shared.hset);
-	decrRefCount(shared.hget);
-	decrRefCount(shared.hgetall);
-	decrRefCount(shared.save);
-	decrRefCount(shared.slaveof);
-	decrRefCount(shared.command);
-	decrRefCount(shared.config);
-	decrRefCount(shared.auth);
-	decrRefCount(shared.info);
-	decrRefCount(shared.echo);
-	decrRefCount(shared.client);
-	decrRefCount(shared.hkeys);
-	decrRefCount(shared.hlen);
-	decrRefCount(shared.keys);
-	decrRefCount(shared.bgsave);
-	decrRefCount(shared.memory);
-	decrRefCount(shared.cluster);
-	decrRefCount(shared.migrate);
-	decrRefCount(shared.debug);
-	decrRefCount(shared.ttl);
-	decrRefCount(shared.lrange);
-	decrRefCount(shared.llen);
-	decrRefCount(shared.sadd);
-	decrRefCount(shared.scard);
-	decrRefCount(shared.addsync);
-	decrRefCount(shared.setslot);
-	decrRefCount(shared.node);
-	decrRefCount(shared.clusterconnect);
-	decrRefCount(shared.delsync);
-	decrRefCount(shared.psync);
-	decrRefCount(shared.sync);
-	decrRefCount(shared.zadd);
-	decrRefCount(shared.zrevrange);
-	decrRefCount(shared.zcard);
-	decrRefCount(shared.dump);
-	decrRefCount(shared.restore);
-	
-	decrRefCount(shared.PING);
-	decrRefCount(shared.DEL);
-	decrRefCount(shared.RPOP);
-	decrRefCount(shared.LPOP);
-	decrRefCount(shared.LPUSH);
-	decrRefCount(shared.RPUSH);
-	decrRefCount(shared.SET);
-	decrRefCount(shared.GET);
-	decrRefCount(shared.FLUSHDB);
-	decrRefCount(shared.DBSIZE);
-	decrRefCount(shared.HSET);
-	decrRefCount(shared.HGET);
-	decrRefCount(shared.HGETALL);
-	decrRefCount(shared.SAVE);
-	decrRefCount(shared.SLAVEOF);
-	decrRefCount(shared.COMMAND);
-	decrRefCount(shared.CONFIG);
-	decrRefCount(shared.AUTH);
-	decrRefCount(shared.INFO);
-	decrRefCount(shared.ECHO);
-	decrRefCount(shared.CLIENT);
-	decrRefCount(shared.HKEYS);
-	decrRefCount(shared.HLEN);
-	decrRefCount(shared.KEYS);
-	decrRefCount(shared.BGSAVE);
-	decrRefCount(shared.MEMORY);
-	decrRefCount(shared.CLUSTER);
-	decrRefCount(shared.MIGRATE);
-	decrRefCount(shared.DEBUG);
-	decrRefCount(shared.TTL);
-	decrRefCount(shared.LRANGE);
-	decrRefCount(shared.LLEN);
-	decrRefCount(shared.SADD);
-	decrRefCount(shared.SCARD);
-	decrRefCount(shared.ADDSYNC);
-	decrRefCount(shared.SETSLOT);
-	decrRefCount(shared.NODE);
-	decrRefCount(shared.CONNECT);
-	decrRefCount(shared.DELSYNC);
-	decrRefCount(shared.PSYNC);
-	decrRefCount(shared.SYNC);
-	decrRefCount(shared.ZADD);
-	decrRefCount(shared.ZREVRANGE);
-	decrRefCount(shared.ZCARD);
-	decrRefCount(shared.DUMP);
-	decrRefCount(shared.RESTORE);
-	decrRefCount(shared.INCR);
-	decrRefCount(shared.DECR);
-	
-	for (int32_t j = 0; j < REDIS_SHARED_INTEGERS; j++)
-	{
-		decrRefCount(shared.integers[j]);
-	}
-
-	for (int32_t j = 0; j < REDIS_SHARED_INTEGERS; j++)
-	{
-		decrRefCount(shared.mbulkhdr[j]);
-	}
-
-	decrRefCount(shared.rIp);
-	decrRefCount(shared.rPort);
 }
 
 void createSharedObjects()
@@ -487,41 +354,29 @@ void createSharedObjects()
 	}
 }
 
-RedisObject *createStringObject(char *ptr,size_t len)
+RedisObjectPtr createStringObject(char *ptr,size_t len)
 {
-	return createEmbeddedStringObject(ptr,len);
+	return createRawStringObject(ptr,len);
 }
 
-RedisObject *createRawStringObject(char *ptr,size_t len)
+RedisObjectPtr createRawStringObject(int32_t type,char *ptr,size_t len)
+{
+	return createObject(type,sdsnewlen(ptr,len));
+}
+
+RedisObjectPtr createRawStringObject(char *ptr,size_t len)
 {
 	return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
 
-RedisObject *createEmbeddedStringObject(char *ptr,size_t len)
-{
-	RedisObject *o = (RedisObject*)zmalloc(sizeof(RedisObject)+sizeof(struct sdshdr)+len+1);
-	struct sdshdr *sh = (sdshdr*)(o+1);
-
-	o->type = REDIS_NULL;
-	o->encoding = REDIS_ENCODING_EMBSTR;
-	o->ptr = (char*)(sh+1);
-	o->hash = 0;
-	sh->len = len;
-	sh->free = 0;
-	if (ptr)
-	{
-	    memcpy(sh->buf,ptr,len);
-	    sh->buf[len] = '\0';
-	}
-	else { memset(sh->buf,0,len+1); }
-   	return o;
-}
-
-void addReplyBulkLen(Buffer &buffer,RedisObject *obj)
+void addReplyBulkLen(Buffer &buffer,const RedisObjectPtr &obj)
 {
 	size_t len;
 
-	if (sdsEncodedObject(obj)) { len = sdslen((const sds)obj->ptr); }
+	if (sdsEncodedObject(obj))
+	{
+		len = sdslen((const sds)obj->ptr);
+	}
 	else
 	{
 	    long n = (long)obj->ptr;
@@ -539,11 +394,17 @@ void addReplyBulkLen(Buffer &buffer,RedisObject *obj)
 	    }
 	}
 
-	if (len < REDIS_SHARED_BULKHDR_LEN) { addReply(buffer,shared.bulkhdr[len]); }
-	else { addReplyLongLongWithPrefix(buffer,len,'$'); }
+	if (len < REDIS_SHARED_BULKHDR_LEN)
+	{
+		addReply(buffer,shared.bulkhdr[len]);
+	}
+	else
+	{
+		addReplyLongLongWithPrefix(buffer,len,'$');
+	}
 }
 
-void addReplyBulk(Buffer &buffer,RedisObject *obj)
+void addReplyBulk(Buffer &buffer,const RedisObjectPtr &obj)
 {
 	addReplyBulkLen(buffer,obj);
 	addReply(buffer,obj);
@@ -554,8 +415,16 @@ void addReplyLongLongWithPrefix(Buffer &buffer,int64_t ll,char prefix)
 {
 	char buf[128];
 	int32_t len;
-	if (prefix == '*' && ll < REDIS_SHARED_BULKHDR_LEN) { addReply(buffer,shared.mbulkhdr[ll]); return; }
-	else if (prefix == '$' && ll < REDIS_SHARED_BULKHDR_LEN) { addReply(buffer,shared.bulkhdr[ll]); return; }
+	if (prefix == '*' && ll < REDIS_SHARED_BULKHDR_LEN)
+	{
+		addReply(buffer,shared.mbulkhdr[ll]);
+		return;
+	}
+	else if (prefix == '$' && ll < REDIS_SHARED_BULKHDR_LEN)
+	{
+		addReply(buffer,shared.bulkhdr[ll]);
+		return;
+	}
 
 	buf[0] = prefix;
 	len = ll2string(buf+1,sizeof(buf)-1,ll);
@@ -566,9 +435,18 @@ void addReplyLongLongWithPrefix(Buffer &buffer,int64_t ll,char prefix)
 
 void addReplyLongLong(Buffer &buffer,size_t len)
 {
-	if (len == 0) { addReply(buffer,shared.czero); }
-	else if (len == 1) { addReply(buffer,shared.cone); }
-	else { addReplyLongLongWithPrefix(buffer,len,':'); }
+	if (len == 0)
+	{
+		addReply(buffer,shared.czero);
+	}
+	else if (len == 1)
+	{
+		addReply(buffer,shared.cone);
+	}
+	else
+	{
+		addReplyLongLongWithPrefix(buffer,len,':');
+	}
 }
 
 void addReplyStatusLength(Buffer &buffer,char *s,size_t len)
@@ -588,7 +466,7 @@ void addReplyError(Buffer &buffer,const char *str)
 	addReplyErrorLength(buffer,str,strlen(str));
 }
 
-void addReply(Buffer &buffer,RedisObject *obj)
+void addReply(Buffer &buffer,const RedisObjectPtr &obj)
 {
 	buffer.append(obj->ptr,sdslen((const sds)obj->ptr));
 }
@@ -603,8 +481,14 @@ void addReplyBulkSds(Buffer &buffer,sds s)
 
 void addReplyMultiBulkLen(Buffer &buffer,int32_t length)
 {
-	if (length < REDIS_SHARED_BULKHDR_LEN) { addReply(buffer,shared.mbulkhdr[length]); }
-    else { addReplyLongLongWithPrefix(buffer,length,'*'); }
+	if (length < REDIS_SHARED_BULKHDR_LEN)
+	{
+		addReply(buffer,shared.mbulkhdr[length]);
+	}
+    else
+    {
+    	addReplyLongLongWithPrefix(buffer,length,'*');
+    }
 }
 
 void prePendReplyLongLongWithPrefix(Buffer &buffer,int32_t length)
@@ -614,14 +498,26 @@ void prePendReplyLongLongWithPrefix(Buffer &buffer,int32_t length)
 	int32_t len = ll2string(buf+1,sizeof(buf)-1,length);
 	buf[len+1] = '\r';
 	buf[len+2] = '\n';
-	if(length == 0) { buffer.append(buf,len + 3); }
-	else { buffer.prepend(buf,len + 3); }
+	if(length == 0)
+	{
+		buffer.append(buf,len + 3);
+	}
+	else
+	{
+		buffer.prepend(buf,len + 3);
+	}
 }
 
 void addReplyBulkCString(Buffer &buffer,const char *s)
 {
-	if (s == nullptr) { addReply(buffer,shared.nullbulk); }
-	else { addReplyBulkCBuffer(buffer,s,strlen(s)); }
+	if (s == nullptr)
+	{
+		addReply(buffer,shared.nullbulk);
+	}
+	else
+	{
+		addReplyBulkCBuffer(buffer,s,strlen(s));
+	}
 }
 
 void addReplyDouble(Buffer &buffer,double d)
@@ -648,7 +544,12 @@ void addReplyErrorFormat(Buffer &buffer,const char *fmt, ...)
 	sds s = sdscatvprintf(sdsempty(),fmt,ap);
 	va_end(ap);
 	l = sdslen(s);
-	for (j = 0; j < l; j++) { if (s[j] == '\r' || s[j] == '\n') s[j] = ' '; }
+
+	for (j = 0; j < l; j++)
+	{
+		if (s[j] == '\r' || s[j] == '\n') s[j] = ' ';
+	}
+
 	addReplyErrorLength(buffer,s,sdslen(s));
 	sdsfree(s);
 }

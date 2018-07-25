@@ -38,7 +38,6 @@ void Cluster::readCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 		if (!memcmp(buffer->peek(),shared.ok->ptr,sdslen(shared.ok->ptr)))
 		{
 			LOG_INFO<<"reply to cluster ok";
-
 			std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 			auto &clusterConn = redis->getClusterConn();
 			if (++replyCount == clusterConn.size())
@@ -54,7 +53,6 @@ void Cluster::readCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 					Buffer buffer;
 					buffer.swap(redis->clusterMigratCached);
 				}
-
 
 				replyCount = 0;
 
@@ -118,11 +116,13 @@ void Cluster::clusterRedirectClient(const SessionPtr &session,ClusterNode *n,int
 {
 	if (errCode == CLUSTER_REDIR_CROSS_SLOT)
 	{
-		addReplySds(session->getClientBuffer(), sdsnew("-CROSSSLOT Keys in request don't hash to the same slot\r\n"));
+		addReplySds(session->getClientBuffer(),
+				sdsnew("-CROSSSLOT Keys in request don't hash to the same slot\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_UNSTABLE)
 	{
-		addReplySds(session->getClientBuffer(),sdsnew("-TRYAGAIN Multiple keys request during rehashing of slot\r\n"));
+		addReplySds(session->getClientBuffer(),
+				sdsnew("-TRYAGAIN Multiple keys request during rehashing of slot\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_DOWN_STATE)
 	{
@@ -152,11 +152,11 @@ void Cluster::syncClusterSlot()
 	auto clusterConn = redis->getClusterConn();
     for (auto &it : clusterConn)
     {
-        redis->structureRedisProtocol(buffer, commands);
+        redis->structureRedisProtocol(buffer, redisCommands);
         it.second->send(&buffer);
     }
 
-    redis->clearCommand(commands);
+    redis->clearCommand(redisCommands);
     clear();
 }
 
@@ -182,7 +182,7 @@ uint32_t Cluster::keyHashSlot(char *key,int32_t keylen)
 	return crc16(key + s + 1, e - s - 1) & 0x3FFF;
 }
 
-int32_t Cluster::getSlotOrReply(const SessionPtr &session,RedisObject *o)
+int32_t Cluster::getSlotOrReply(const SessionPtr &session,const RedisObjectPtr &o)
 {
 	int64_t slot;
 
@@ -198,20 +198,20 @@ int32_t Cluster::getSlotOrReply(const SessionPtr &session,RedisObject *o)
 void Cluster::structureProtocolSetCluster(std::string ip,int16_t port,
 		Buffer &buffer,const TcpConnectionPtr &conn)
 {
-    commands.push_back(shared.cluster);
-	commands.push_back(shared.clusterconnect);
+    redisCommands.push_back(shared.cluster);
+	redisCommands.push_back(shared.clusterconnect);
 
 	char buf[32];
 	int32_t len = ll2string(buf,sizeof(buf),port);
-	commands.push_back(createStringObject(ip.data(),ip.length()));
-	commands.push_back(createStringObject(buf,len));
-	redis->structureRedisProtocol(buffer,commands);
+	redisCommands.push_back(createStringObject(ip.data(),ip.length()));
+	redisCommands.push_back(createStringObject(buf,len));
+	redis->structureRedisProtocol(buffer,redisCommands);
 	conn->send(&buffer);
-	redis->clearCommand(commands);
+	redis->clearCommand(redisCommands);
 	clear();
 }
 
-void Cluster::delClusterImport(std::deque<RedisObject*> &robj)
+void Cluster::delClusterImport(std::deque<RedisObjectPtr> &robj)
 {
 	auto &clusterConn = redis->getClusterConn();
 	for (auto &it : clusterConn)
@@ -221,10 +221,7 @@ void Cluster::delClusterImport(std::deque<RedisObject*> &robj)
 		clear();
 	}
 
-	for (auto &it : robj)
-	{
-		decrRefCount(it);
-	}
+	robj.clear();
 }
 
 bool Cluster::getKeySlot(const std::string &name)
@@ -242,11 +239,11 @@ void Cluster::clear()
 	clusterDelCopys.clear();
 	clusterDelKeys.clear();
 	slotSets.clear();
-	commands.clear();
+	redisCommands.clear();
 	buffer.retrieveAll();
 }
 
-bool Cluster::replicationToNode(const std::deque<RedisObject*> &obj,const SessionPtr &session,
+bool Cluster::replicationToNode(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,
 	const std::string &ip,int16_t port,int8_t copy,int8_t replace,int32_t numKeys,int32_t firstKey)
 {
 	clear();
@@ -291,7 +288,9 @@ bool Cluster::replicationToNode(const std::deque<RedisObject*> &obj,const Sessio
 		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 		for (int j = 0; j < numKeys; j++)
 		{
-			clusterDelKeys.push_back(createStringObject(obj[firstKey + j]->ptr,sdslen(obj[firstKey + j]->ptr)));
+			clusterDelKeys.push_back(
+					createRawStringObject(obj[firstKey + j]->type,
+							obj[firstKey + j]->ptr,sdslen(obj[firstKey + j]->ptr)));
 		}
 	}
 
@@ -308,7 +307,7 @@ bool Cluster::replicationToNode(const std::deque<RedisObject*> &obj,const Sessio
 				return false;
 			}
 
-			RedisObject * dump = redis->createDumpPayload(it);
+			const RedisObjectPtr & dump = redis->createDumpPayload(it);
 			if (dump == nullptr)
 			{
 				return false;
@@ -328,14 +327,14 @@ bool Cluster::replicationToNode(const std::deque<RedisObject*> &obj,const Sessio
 			return false;
 		}
 
-		RedisObject *dump = redis->createDumpPayload(obj[2]);
+		const RedisObjectPtr &dump = redis->createDumpPayload(obj[2]);
 		if (dump == nullptr)
 		{
 			return false;
 		}
 		conn->sendPipe(dump->ptr);
 	}
-	LOG_INFO<<"cluster send  success";
+	LOG_INFO<<"cluster send success";
 }
 
 void Cluster::connCallBack(const TcpConnectionPtr &conn)
@@ -362,7 +361,8 @@ void Cluster::connCallBack(const TcpConnectionPtr &conn)
 			auto &clusterConn = redis->getClusterConn();
 			for (auto &it : clusterConn)
 			{
-				structureProtocolSetCluster(it.second->getip(),it.second->getport(),buffer,conn);
+				structureProtocolSetCluster(it.second->getip(),
+						it.second->getport(),buffer,conn);
 			}
 
 			structureProtocolSetCluster(redis->getIp(),redis->getPort(),buffer,conn);
@@ -386,7 +386,8 @@ void Cluster::connCallBack(const TcpConnectionPtr &conn)
 			redis->getClusterConn().erase(conn->getSockfd());
 			for (auto it = clusterConns.begin(); it != clusterConns.end(); ++it)
 			{
-				if ((*it)->getConnection()->getip() == conn->getip() && (*it)->getConnection()->getport() == conn->getport())
+				if ((*it)->getConnection()->getip() ==
+						conn->getip() && (*it)->getConnection()->getport() == conn->getport())
 				{
 					it = clusterConns.erase(it);
 					break;
@@ -421,21 +422,21 @@ void Cluster::eraseImportingSlot(const std::string &name)
 	importingSlotsFroms.erase(name);
 }
 
-void Cluster::addSlotDeques(RedisObject *slot,std::string name)
+void Cluster::addSlotDeques(const RedisObjectPtr &slot,std::string name)
 {
-	commands.push_back(shared.cluster);
-	commands.push_back(shared.addsync);
-	commands.push_back(createStringObject(slot->ptr,sdslen(slot->ptr)));
-	commands.push_back(shared.rIp);
-	commands.push_back(shared.rPort);
-	commands.push_back(createStringObject(name.data(),name.length()));
+	redisCommands.push_back(shared.cluster);
+	redisCommands.push_back(shared.addsync);
+	redisCommands.push_back(createStringObject(slot->ptr,sdslen(slot->ptr)));
+	redisCommands.push_back(shared.rIp);
+	redisCommands.push_back(shared.rPort);
+	redisCommands.push_back(createStringObject(name.data(),name.length()));
 }
 
-void Cluster::delSlotDeques(RedisObject *obj,int32_t slot)
+void Cluster::delSlotDeques(const RedisObjectPtr &obj,int32_t slot)
 {
-	commands.push_back(shared.cluster);
-	commands.push_back(shared.delsync);
-	commands.push_back(createStringObject(obj->ptr,sdslen(obj->ptr)));
+	redisCommands.push_back(shared.cluster);
+	redisCommands.push_back(shared.delsync);
+	redisCommands.push_back(createStringObject(obj->ptr,sdslen(obj->ptr)));
 	clusterSlotNodes.erase(slot);
 }
 
@@ -446,7 +447,8 @@ sds Cluster::showClusterNodes()
 		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 		for (auto &it : clusterSlotNodes)
 		{
-			ni = sdscatprintf(sdsempty(),"%s %s:%d slot:",it.second.name.c_str(),it.second.ip.c_str(),it.second.port);
+			ni = sdscatprintf(sdsempty(),"%s %s:%d slot:",
+					it.second.name.c_str(),it.second.ip.c_str(),it.second.port);
 			ci = sdscatsds(ci,ni);
 			sdsfree(ni);
 			ni = sdscatprintf(sdsempty(),"%d ",it.first);
@@ -460,7 +462,7 @@ sds Cluster::showClusterNodes()
 	return ci;
 }
 
-void Cluster::getKeyInSlot(int32_t hashslot,std::vector<RedisObject*> &keys,int32_t count)
+void Cluster::getKeyInSlot(int32_t hashslot,std::vector<RedisObjectPtr> &keys,int32_t count)
 {
 	int32_t j = 0;
 	auto &redisShards = redis->getRedisShards();
@@ -485,7 +487,7 @@ void Cluster::getKeyInSlot(int32_t hashslot,std::vector<RedisObject*> &keys,int3
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(createRawStringObject(OBJ_STRING,iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -500,7 +502,7 @@ void Cluster::getKeyInSlot(int32_t hashslot,std::vector<RedisObject*> &keys,int3
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(createRawStringObject(OBJ_HASH,iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -515,7 +517,7 @@ void Cluster::getKeyInSlot(int32_t hashslot,std::vector<RedisObject*> &keys,int3
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(createRawStringObject(OBJ_LIST,iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -530,7 +532,7 @@ void Cluster::getKeyInSlot(int32_t hashslot,std::vector<RedisObject*> &keys,int3
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(createRawStringObject(OBJ_ZSET,iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -545,7 +547,7 @@ void Cluster::getKeyInSlot(int32_t hashslot,std::vector<RedisObject*> &keys,int3
 				uint32_t slot = keyHashSlot(iter->ptr,sdslen(iter->ptr));
 				if(slot == hashslot)
 				{
-					keys.push_back(createRawStringObject(iter->ptr,sdslen(iter->ptr)));
+					keys.push_back(createRawStringObject(OBJ_SET,iter->ptr,sdslen(iter->ptr)));
 					if(--count == 0)
 					{
 						return ;
@@ -585,8 +587,10 @@ void Cluster::eraseClusterNode(const std::string &ip,int16_t port)
 bool Cluster::connSetCluster(const char *ip,int16_t port)
 {
 	TcpClientPtr client(new TcpClient(loop,ip,port,this));
-	client->setConnectionCallback(std::bind(&Cluster::connCallBack,this,std::placeholders::_1));
-	client->setMessageCallback(std::bind(&Cluster::readCallBack,this,std::placeholders::_1, std::placeholders::_2));
+	client->setConnectionCallback(std::bind(&Cluster::connCallBack,
+			this,std::placeholders::_1));
+	client->setMessageCallback(std::bind(&Cluster::readCallBack,
+			this,std::placeholders::_1, std::placeholders::_2));
 	client->asyncConnect();
 	if(state)
 	{

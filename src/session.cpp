@@ -20,7 +20,7 @@ Session::Session(Redis *redis,const TcpConnectionPtr &conn)
 
 Session::~Session()
 {
-	zfree(cmd);
+
 }
 
 void Session::readCallBack(const TcpConnectionPtr &clientConn,Buffer *buffer)
@@ -88,14 +88,13 @@ void Session::readCallBack(const TcpConnectionPtr &clientConn,Buffer *buffer)
 	}
 }
 
-
 int32_t Session::processCommand()
 {
 	if (redis->authEnabled)
 	{
 		if (!authEnabled)
 		{
-			if (strcasecmp(commands[0]->ptr,"auth") != 0)
+			if (strcasecmp(redisCommands[0]->ptr,"auth") != 0)
 			{
 				clearObj();
 				addReplyErrorFormat(clientBuffer,"NOAUTH Authentication required");
@@ -111,8 +110,8 @@ int32_t Session::processCommand()
 			goto jump;
 		}
 			
-		assert(!commands.empty());
-		char *key = commands[0]->ptr;
+		assert(!redisCommands.empty());
+		char *key = redisCommands[0]->ptr;
 		int32_t hashslot = redis->getCluster()->keyHashSlot(key,sdslen(key));
 		
 		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
@@ -124,7 +123,7 @@ int32_t Session::processCommand()
 				auto iter = it.second.find(hashslot);
 				if (iter != it.second.end())
 				{
-					redis->structureRedisProtocol(redis->clusterMigratCached,commands);
+					redis->structureRedisProtocol(redis->clusterMigratCached,redisCommands);
 					goto jump;
 				}
 			}
@@ -179,7 +178,6 @@ jump:
 			if (!redis->checkCommand(cmd))
 			{
 				clearObj();
-				LOG_WARN<<"master sync cmd unknow " << cmd->ptr;
 				return REDIS_ERR;
 			}
 		}
@@ -196,19 +194,19 @@ jump:
 		{
 			if (redis->checkCommand(cmd))
 			{
-				commands.push_front(cmd);
+				redisCommands.push_front(cmd);
 				{
 					std::unique_lock <std::mutex> lck(redis->getSlaveMutex());
 					if (redis->salveCount < redis->getSlaveConn().size())
 					{
-						redis->structureRedisProtocol(redis->slaveCached,commands);
+						redis->structureRedisProtocol(redis->slaveCached,redisCommands);
 					}
 					else
 					{
-						redis->structureRedisProtocol(slaveBuffer,commands);
+						redis->structureRedisProtocol(slaveBuffer,redisCommands);
 					}
 				}
-				commands.pop_front();
+				redisCommands.pop_front();
 			}
 		}
 	}
@@ -223,7 +221,7 @@ jump:
 		return REDIS_ERR;
 	}
 
-	if (!it->second(commands,shared_from_this()))
+	if (!it->second(redisCommands,shared_from_this()))
 	{
 		clearObj();
 		return REDIS_ERR;
@@ -238,10 +236,7 @@ void Session::resetVlaue()
 
 void Session::clearObj()
 {
-	for(auto &it : commands)
-	{
-		zfree(it);
-	}	
+	redisCommands.clear();
 }
 
 void Session::reset()
@@ -249,7 +244,7 @@ void Session::reset()
 	argc = 0;
 	multibulklen = 0;
 	bulklen = -1;
-	commands.clear();
+	redisCommands.clear();
 
 	if (replyBuffer)
 	{
@@ -298,7 +293,6 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 	  
 	if (argv == nullptr) 
 	{
-		LOG_WARN << "Protocol error";
 		addReplyError(clientBuffer,"Protocol error: unbalanced quotes in request");
 		buffer->retrieveAll();
 		return REDIS_ERR;
@@ -313,9 +307,8 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 		}
 		else
 		{
-			RedisObject *obj = (RedisObject*)createStringObject(argv[j],sdslen(argv[j]));
-			obj->calHash();
-			commands.push_back(obj);
+			RedisObjectPtr obj = createStringObject(argv[j],sdslen(argv[j]));
+			redisCommands.push_back(obj);
 		}
 		sdsfree(argv[j]);
 	}
@@ -329,7 +322,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 	const char *newline = nullptr;
 	int32_t pos = 0,ok;
 	int64_t ll = 0 ;
-	const char * queryBuf = buffer->peek();
+	const char *queryBuf = buffer->peek();
 	if (multibulklen == 0)
 	{
 		newline = strchr(queryBuf,'\r');
@@ -338,7 +331,6 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			if (buffer->readableBytes() > REDIS_INLINE_MAX_SIZE)
 			{
 				addReplyError(clientBuffer,"Protocol error: too big mbulk count string");
-				LOG_INFO<<"Protocol error: too big mbulk count string";
 				buffer->retrieveAll();
 			}
 			return REDIS_ERR;
@@ -361,7 +353,6 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 		if (!ok || ll > 1024 * 1024)
 		{
 			addReplyError(clientBuffer,"Protocol error: invalid multibulk length");
-			LOG_WARN<<"Protocol error: invalid multibulk length";
 			buffer->retrieveAll();
 			return REDIS_ERR;
 		}
@@ -385,7 +376,6 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 				if (buffer->readableBytes() > REDIS_INLINE_MAX_SIZE)
 				{
 					addReplyError(clientBuffer,"Protocol error: too big bulk count string");
-					LOG_WARN<<"Protocol error: too big bulk count string";
 					buffer->retrieveAll();
 					return REDIS_ERR;
 				}
@@ -401,7 +391,6 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			if (queryBuf[pos] != '$')
 			{
 				addReplyErrorFormat(clientBuffer,"Protocol error: expected '$', got '%c'",queryBuf[pos]);
-				LOG_WARN<<"Protocol error: expected '$'";
 				buffer->retrieveAll();
 				return REDIS_ERR;
 			}
@@ -410,7 +399,6 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			if (!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
 				addReplyError(clientBuffer,"Protocol error: invalid bulk length");
-				LOG_WARN<<"Protocol error: invalid bulk length";
 				buffer->retrieveAll();
 				return REDIS_ERR;
 			}
@@ -436,9 +424,8 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			}
 			else
 			{
-				RedisObject *obj = (RedisObject*)createStringObject((char*)(queryBuf + pos),bulklen);
-				obj->calHash();
-				commands.push_back(obj);
+				RedisObjectPtr obj = createStringObject((char*)(queryBuf + pos),bulklen);
+				redisCommands.push_back(obj);
 			}
 
 			pos += bulklen+2;
