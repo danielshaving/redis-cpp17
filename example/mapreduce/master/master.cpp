@@ -19,21 +19,22 @@ typedef __gnu_cxx::__sso_string string;
 
 const size_t kMaxSize = 10 * 1000 * 1000;
 
-class xSegment  // copyable
+class Segment  // copyable
 {
  public:
   string word;
   int64_t count = 0;
 
-  explicit xSegment(std::istream* in)
-    : in_(in)
+  explicit Segment(std::istream *in)
+    : in(in)
   {
+
   }
 
   bool next()
   {
     string line;
-    if (getline(*in_, line))
+    if (getline(*in,line))
     {
       size_t tab = line.find('\t');
       if (tab != string::npos)
@@ -46,16 +47,16 @@ class xSegment  // copyable
     return false;
   }
 
-  bool operator<(const xSegment& rhs) const
+  bool operator<(const Segment& rhs) const
   {
     return word > rhs.word;
   }
 
  private:
-  std::istream* in_;
+  std::istream *in;
 };
 
-void output(int i, const std::unordered_map<string, int64_t>& counts)
+void output(int i,const std::unordered_map<string,int64_t> &counts)
 {
   std::vector<std::pair<int64_t, string>> freq;
   for (const auto& entry : counts)
@@ -74,17 +75,17 @@ void output(int i, const std::unordered_map<string, int64_t>& counts)
   }
 }
 
-int combine(int argc, char* argv[])
+int combine(int argc,char* argv[])
 {
   std::vector<std::unique_ptr<std::ifstream>> inputs;
-  std::vector<xSegment> keys;
+  std::vector<Segment> keys;
 
   for (int i = 1; i < argc; ++i)
   {
     char buf[256];
     snprintf(buf, sizeof buf, "segment-%05d", i);
     inputs.emplace_back(new std::ifstream(argv[i]));
-    xSegment rec(inputs.back().get());
+    Segment rec(inputs.back().get());
     if (rec.next())
     {
       keys.push_back(rec);
@@ -134,18 +135,19 @@ int combine(int argc, char* argv[])
 
 // ======= merge  =======
 
-class xSource  // copyable
+class Source  // copyable
 {
  public:
-  explicit xSource(std::istream* in)
+  explicit Source(std::istream *in)
     : in(in)
   {
+
   }
 
   bool next()
   {
     string line;
-    if (getline(*in, line))
+    if (getline(*in,line))
     {
       size_t tab = line.find('\t');
       if (tab != string::npos)
@@ -161,12 +163,12 @@ class xSource  // copyable
     return false;
   }
 
-  bool operator<(const xSource& rhs) const
+  bool operator<(const Source &rhs) const
   {
     return count < rhs.count;
   }
 
-  void outputTo(std::ostream& out) const
+  void outputTo(std::ostream &out) const
   {
     out << count << '\t' << word << '\n';
   }
@@ -180,14 +182,14 @@ class xSource  // copyable
 void merge(int m)
 {
   std::vector<std::unique_ptr<std::ifstream>> inputs;
-  std::vector<xSource> keys;
+  std::vector<Source> keys;
 
   for (int i = 0; i < m; ++i)
   {
     char buf[256];
     snprintf(buf, sizeof buf, "count-%05d", i);
     inputs.emplace_back(new std::ifstream(buf));
-    xSource rec(inputs.back().get());
+    Source rec(inputs.back().get());
     if (rec.next())
     {
       keys.push_back(rec);

@@ -70,7 +70,8 @@ int32_t getLongLongFromObject(const RedisObjectPtr &o,int64_t *target)
 	return REDIS_OK;
 }
 
-int32_t getLongLongFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,int64_t *target,const char *msg)
+int32_t getLongLongFromObjectOrReply(Buffer &buffer,
+			const RedisObjectPtr &o,int64_t *target,const char *msg)
 {
     int64_t value;
     if (getLongLongFromObject(o,&value) != REDIS_OK)
@@ -90,7 +91,8 @@ int32_t getLongLongFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,int6
     return REDIS_OK;
 }
 
-int32_t getLongFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,int32_t *target,const char *msg)
+int32_t getLongFromObjectOrReply(Buffer &buffer,
+			const RedisObjectPtr &o,int32_t *target,const char *msg)
 {
 	int64_t value;
 	if (getLongLongFromObject(o,&value) != REDIS_OK)
@@ -124,7 +126,8 @@ RedisObjectPtr createStringObjectFromLongLong(int64_t value)
 	return o;
 }
 
-int32_t getDoubleFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,double *target,const char *msg)
+int32_t getDoubleFromObjectOrReply(Buffer &buffer,
+		 const RedisObjectPtr &o,double *target,const char *msg)
 {
     double value;
     if (getDoubleFromObject(o,&value) != REDIS_OK)

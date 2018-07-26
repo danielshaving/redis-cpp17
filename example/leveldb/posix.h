@@ -67,6 +67,35 @@ private:
 	Status writeRaw(const char *p,size_t n);
 };
 
+// pread() based random-access
+class PosixRandomAccessFile
+{
+private:
+	std::string filename;
+	int fd;
+public:
+	PosixRandomAccessFile(const std::string &fname,int fd);
+	~PosixRandomAccessFile();
+	Status read(uint64_t offset,size_t n,std::string_view *result,
+					char *scratch) const ;
+};
+
+// mmap() based random-access
+class PosixMmapReadableFile
+{
+private:
+	std::string filename;
+	void *mmappedRegion;
+	size_t length;
+
+public:
+	// base[0,length-1] contains the mmapped contents of the file.
+	PosixMmapReadableFile(const std::string &fname,void *base,size_t length);
+	~PosixMmapReadableFile();
+	Status read(uint64_t offset,size_t n,std::string_view *result,
+						char *scratch) const ;
+};
+
 class PosixSequentialFile
 {
 private:
@@ -139,6 +168,8 @@ public:
 	// useful for computing deltas of time.
 	uint64_t nowMicros();
 };
+
+
 
 
 

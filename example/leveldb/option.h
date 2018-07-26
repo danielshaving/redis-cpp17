@@ -1,5 +1,6 @@
 #pragma once
 #include "posix.h"
+#include "dbformat.h"
 
 // DB contents are stored in a set of blocks, each of which holds a
 // sequence of key,value pairs.  Each block may be compressed before
@@ -13,10 +14,20 @@ enum CompressionType
 	kSnappyCompression = 0x1
 };
 
-
 // Options to control the behavior of a database (passed to DB::Open)
 struct Options 
 {
+	// -------------------
+	// Parameters that affect behavior
+
+	// Comparator used to define the order of keys in the table.
+	// Default: a comparator that uses lexicographic byte-wise ordering
+	//
+	// REQUIRES: The client must ensure that the comparator supplied
+	// here has the same name and orders keys *exactly* the same as the
+	// comparator provided to previous open calls on the same DB.
+	const InternalKeyComparator *comparator;
+
 	// If true, the database will be created if it is missing.
 	// Default: false
 	bool createIfMissing;

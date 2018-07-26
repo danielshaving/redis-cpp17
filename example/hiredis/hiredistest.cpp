@@ -23,7 +23,7 @@ HiredisTest::HiredisTest(EventLoop *loop,int8_t threadCount,
 		client->setConnectionCallback(std::bind(&HiredisTest::redisConnCallBack,this,std::placeholders::_1));
 		client->setMessageCallback(std::bind(&Hiredis::redisReadCallBack,
 				&hiredis,std::placeholders::_1,std::placeholders::_2));
-		client->asyncConnect();
+		client->syncConnect();
 		hiredis.pushTcpClient(client);
 	}
 
@@ -59,7 +59,7 @@ void HiredisTest::redisConnCallBack(const TcpConnectionPtr &conn)
 }
 
 
-void HiredisTest::setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisTest::setCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STATUS);
@@ -67,7 +67,7 @@ void HiredisTest::setCallback(const RedisAsyncContextPtr &c,redisReply *reply,co
 	assert(reply->element == nullptr);
 }
 
-void HiredisTest::getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisTest::getCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STRING);
@@ -77,7 +77,7 @@ void HiredisTest::getCallback(const RedisAsyncContextPtr &c,redisReply *reply,co
 	//assert(count++ == replyCount);
 }
 
-void HiredisTest::hsetCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisTest::hsetCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_INTEGER);
@@ -87,7 +87,7 @@ void HiredisTest::hsetCallback(const RedisAsyncContextPtr &c,redisReply *reply,c
 	assert(reply->integer == 1);
 }
 
-void HiredisTest::hgetCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisTest::hgetCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_ARRAY);
@@ -97,7 +97,7 @@ void HiredisTest::hgetCallback(const RedisAsyncContextPtr &c,redisReply *reply,c
 	assert(count == replyCount);
 }
 
-void HiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_ARRAY);
@@ -125,22 +125,22 @@ void HiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,redisReply *repl
 	}
 }
 
-void HiredisTest::lpushCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisTest::lpushCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
 {
 
 }
 
-void HiredisTest::rpushCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisTest::rpushCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
 {
 
 }
 
-void HiredisTest::rpopCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisTest::rpopCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
 {
 
 }
 
-void HiredisTest::lpopCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata)
+void HiredisTest::lpopCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
 {
 
 }

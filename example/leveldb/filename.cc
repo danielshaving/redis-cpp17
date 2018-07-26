@@ -18,7 +18,7 @@ std::string logFileName(const std::string &dbname,uint64_t number)
 	return makeFileName(dbname,number,"log");
 }
 
-std::string TableFileName(const std::string &dbname,uint64_t number)
+std::string tableFileName(const std::string &dbname,uint64_t number)
 {
 	assert(number > 0);
 	return makeFileName(dbname,number,"ldb");

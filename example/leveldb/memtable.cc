@@ -19,10 +19,7 @@ MemTable::MemTable()
 
 MemTable::~MemTable()
 {
-	for (auto &it : table)
-	{
-		zfree((void*)it);
-	}
+	clearTable();
 }
 
 bool MemTable::get(const LookupKey &key,std::string *value,Status *s)
@@ -67,7 +64,8 @@ bool MemTable::get(const LookupKey &key,std::string *value,Status *s)
 	return false;
 }
 
-void MemTable::add(uint64_t seq,ValueType type,const std::string_view &key,const std::string_view &value)
+void MemTable::add(uint64_t seq,ValueType type,const std::string_view &key,
+				   const std::string_view &value)
 {
 	// Format of an entry is concatenation of:
 	//  key_size     : varint32 of internal_key.size()
@@ -103,13 +101,14 @@ int MemTable::KeyComparator::operator()(const char *aptr,const char *bptr) const
 	return comparator.compare(a,b);
 }
 
-void MemTable::clear()
+void MemTable::clearTable()
 {
 	for(auto &iter : table)
 	{
 		zfree((void*)iter);
 	}
 
+	memoryUsage = 0;
 	table.clear();
 }
 

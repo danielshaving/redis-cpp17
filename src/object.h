@@ -106,10 +106,13 @@ void addReplyDouble(Buffer &buffer,double d);
 void prePendReplyLongLongWithPrefix(Buffer &buffer,int32_t length);
 
 int32_t getLongLongFromObject(const RedisObjectPtr &o,int64_t *target);
-int32_t getLongFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,int32_t *target,const char *msg);
-int32_t getLongLongFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,int64_t *target,const char *msg);
+int32_t getLongFromObjectOrReply(Buffer &buffer,
+			const RedisObjectPtr &o,int32_t *target,const char *msg);
+int32_t getLongLongFromObjectOrReply(Buffer &buffer,
+			const RedisObjectPtr &o,int64_t *target,const char *msg);
 int32_t getDoubleFromObject(const RedisObjectPtr &o,double *target);
-int32_t getDoubleFromObjectOrReply(Buffer &buffer,const RedisObjectPtr &o,double *target,const char *msg);
+int32_t getDoubleFromObjectOrReply(Buffer &buffer,
+			const RedisObjectPtr &o,double *target,const char *msg);
 
 
 

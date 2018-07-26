@@ -1,5 +1,5 @@
 #pragma once
-
+#include "all.h"
 #include "callback.h"
 
 namespace google
@@ -27,7 +27,7 @@ public:
 		kParseError,
 	};
 
-	typedef std::function<bool(const TcpConnectionPtr &,StringPiece)>  RawMessageCallback;
+	typedef std::function<bool(const TcpConnectionPtr &,std::string_view)>  RawMessageCallback;
 	typedef std::function<void(const TcpConnectionPtr &,const MessagePtr &)> ProtobufMessageCallback;
 	typedef std::function<void(const TcpConnectionPtr &,Buffer*,ErrorCode)> ErrorCallback;
 
@@ -54,7 +54,7 @@ public:
 
 	void send(const TcpConnectionPtr &conn,const ::google::protobuf::Message &message);
 	void onMessage(const TcpConnectionPtr &conn,Buffer *buf);
-	virtual bool parseFromBuffer(StringPiece buf,::google::protobuf::Message *message);
+	virtual bool parseFromBuffer(std::string_view buf,::google::protobuf::Message *message);
 	virtual int serializeToBuffer(const ::google::protobuf::Message &message,Buffer *buf);
 
 	static const std::string & errorCodeToString(ErrorCode errorCode);
@@ -114,7 +114,7 @@ public:
 		messageCallback(conn,std::static_pointer_cast<MSG>(message));
 	}
 
-	void fillEmptyBuffer(Buffer *buf, const MSG &message)
+	void fillEmptyBuffer(Buffer *buf,const MSG &message)
 	{
 		codec.fillEmptyBuffer(buf,message);
 	}

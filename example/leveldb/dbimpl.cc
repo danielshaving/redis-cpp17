@@ -456,3 +456,18 @@ Status DBImpl::writeLevel0Table(VersionEdit *edit,Version *base)
 
 	}
 }
+
+Status DBImpl::buildTable(FileMetaData *meta)
+{
+	assert(mem->getMemoryUsage() > 0);
+    Status s;
+    meta->fileSize = 0;
+	std::string fname = tableFileName(dbname,meta->number);
+	std::shared_ptr<PosixWritableFile> file;
+	s = options.env->newWritableFile(fname,file);
+	if (!s.ok())
+	{
+		return s;
+	}
+
+}

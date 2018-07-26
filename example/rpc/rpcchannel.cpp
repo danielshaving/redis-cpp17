@@ -11,8 +11,8 @@ RpcChannel::RpcChannel()
 	LOG_INFO << "RpcChannel::ctor - " << this;
 }
 
-RpcChannel::RpcChannel(const TcpConnectionPtr& conn)
-: codec(std::bind(&RpcChannel::onRpcMessage, this, std::placeholders::_1,std::placeholders::_2)),
+RpcChannel::RpcChannel(const TcpConnectionPtr &conn)
+: codec(std::bind(&RpcChannel::onRpcMessage,this,std::placeholders::_1,std::placeholders::_2)),
   conn(conn),
   services(nullptr)
 {

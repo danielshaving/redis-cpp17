@@ -4,7 +4,7 @@
 #include "eventloop.h"
 #include "rpcserver.h"
 
-class xSudokuServiceImpl : public SudokuService
+class SudokuServiceImpl : public SudokuService
 {
 public:
 	virtual void Solve(::google::protobuf::RpcController *controller,
@@ -31,7 +31,7 @@ int main(int argc,char *argv[])
 	uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 	EventLoop loop;
 	RpcServer server(&loop,ip,port);
-	xSudokuServiceImpl impl;
+	SudokuServiceImpl impl;
 	server.registerService(&impl);
 	server.start();
 	loop.run();

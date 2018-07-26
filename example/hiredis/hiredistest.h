@@ -9,23 +9,23 @@ public:
 			int16_t sessionCount,int32_t messageCount,const char *ip,int16_t port);
 	~HiredisTest();
 
-	void redisConnCallBack(const TcpConnectionPtr& conn);
+	void redisConnCallBack(const TcpConnectionPtr &conn);
 	Hiredis *getHiredis() { return &hiredis; }
 
 	void string();
 	void hash();
 	void list();
 
-	void setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
-	void getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
-	void hgetCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
-	void hsetCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
-	void hgetallCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
+	void setCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
+	void getCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
+	void hgetCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
+	void hsetCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
+	void hgetallCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
 
-	void lpushCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
-	void rpushCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
-	void rpopCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
-	void lpopCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
+	void lpushCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
+	void rpushCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
+	void rpopCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
+	void lpopCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
 
 private:
 	Hiredis hiredis;

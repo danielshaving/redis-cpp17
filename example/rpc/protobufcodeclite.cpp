@@ -38,7 +38,7 @@ void ProtobufCodecLite::fillEmptyBuffer(Buffer* buf,const ::google::protobuf::Me
 	buf->prepend(&len, sizeof len);
 }
 
-void ProtobufCodecLite::onMessage(const TcpConnectionPtr& conn, Buffer* buf)
+void ProtobufCodecLite::onMessage(const TcpConnectionPtr& conn,Buffer *buf)
 {
 	while (buf->readableBytes() >= static_cast<uint32_t>(kMinMessageLen+kHeaderLen))
 	{
@@ -50,7 +50,7 @@ void ProtobufCodecLite::onMessage(const TcpConnectionPtr& conn, Buffer* buf)
 		}
 		else if (buf->readableBytes() >= kHeaderLen+len)
 		{
-			if (rawCb && !rawCb(conn, StringPiece(buf->peek(), kHeaderLen+len)))
+			if (rawCb && !rawCb(conn,std::string_view(buf->peek(),kHeaderLen+len)))
 			{
 				buf->retrieve(kHeaderLen+len);
 				continue;
@@ -76,12 +76,12 @@ void ProtobufCodecLite::onMessage(const TcpConnectionPtr& conn, Buffer* buf)
 	}
 }
 
-bool ProtobufCodecLite::parseFromBuffer(StringPiece buf,::google::protobuf::Message* message)
+bool ProtobufCodecLite::parseFromBuffer(std::string_view buf,::google::protobuf::Message *message)
 {
 	return message->ParseFromArray(buf.data(),buf.size());
 }
 
-int ProtobufCodecLite::serializeToBuffer(const ::google::protobuf::Message& message,Buffer* buf)
+int ProtobufCodecLite::serializeToBuffer(const ::google::protobuf::Message &message,Buffer *buf)
 {
 	GOOGLE_DCHECK(message.IsInitialized()) << InitializationErrorMessage("serialize", message);
 
@@ -160,7 +160,7 @@ bool ProtobufCodecLite::validateCheckSum(const char *buf,int len)
 	return checksum == expectedCheckSum;
 }
 
-ProtobufCodecLite::ErrorCode ProtobufCodecLite::parse(const char* buf,int len,::google::protobuf::Message *message)
+ProtobufCodecLite::ErrorCode ProtobufCodecLite::parse(const char *buf,int len,::google::protobuf::Message *message)
 {
 	ErrorCode error = kNoError;
 

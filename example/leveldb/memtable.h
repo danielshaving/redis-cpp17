@@ -16,10 +16,11 @@ public:
 	// Add an entry into memtable that maps key to value at the
 	// specified sequence number and with the specified type.
 	// Typically value will be empty if type==kTypeDeletion.
-	void add(uint64_t seq,ValueType type,const std::string_view &key,const std::string_view &value);
+	void add(uint64_t seq,ValueType type,const std::string_view &key,
+			 const std::string_view &value);
 	bool get(const LookupKey &key,std::string *value,Status *s);
 	size_t getTableSize() { return table.size(); }
-	void clear();
+	void clearTable();
 
 private:
 	struct KeyComparator

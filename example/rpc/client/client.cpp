@@ -5,19 +5,21 @@
 #include "log.h"
 
 
-class RpcClient : noncopyable
+class RpcClient
 {
 public:
-	RpcClient(EventLoop* loop, const char *ip,uint16_t port)
+	RpcClient(EventLoop* loop,const char *ip,uint16_t port)
 	:loop(loop),
 	ip(ip),
 	port(port),
 	client(loop,nullptr),
-	channel(new xRpcChannel),
+	channel(new RpcChannel),
 	stub(channel.get())
 	{
-		client.setConnectionCallback(std::bind(&RpcClient::onConnection,this,std::placeholders::_1));
-		client.setMessageCallback(std::bind(&xRpcChannel::onMessage,channel.get(),std::placeholders::_1,std::placeholders::_2));
+		client.setConnectionCallback(std::bind(&RpcClient::onConnection,
+											   this,std::placeholders::_1));
+		client.setMessageCallback(std::bind(&xRpcChannel::onMessage,
+											channel.get(),std::placeholders::_1,std::placeholders::_2));
 	}
 
 	void connect()
@@ -26,7 +28,7 @@ public:
 	}
 
 	private:
-	void onConnection(const TcpConnectionPtr& conn)
+	void onConnection(const TcpConnectionPtr &conn)
 	{
 		if (conn->connected())
 		{
@@ -60,7 +62,7 @@ int main(int argc, char* argv[])
 {
 	if (argc > 2)
 	{
-		const char *ip =  argv[1];
+		const char *ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		EventLoop loop;
 		RpcClient rpcClient(&loop,ip,port);

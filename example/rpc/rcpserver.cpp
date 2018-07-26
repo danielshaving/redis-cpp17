@@ -20,7 +20,7 @@ void RpcServer::start()
 	server.start();
 }
 
-void RpcServer::connectCallback(const TcpConnectionPtr& conn)
+void RpcServer::connectCallback(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{

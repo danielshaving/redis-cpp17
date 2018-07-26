@@ -29,6 +29,7 @@ public:
 			bool *saveManifest, VersionEdit *edit,uint64_t *maxSequence);
 	Status newDB();
     Status writeLevel0Table(VersionEdit *edit,Version *base);
+	Status buildTable(FileMetaData *meta);
 
 private:
 	struct Writer;

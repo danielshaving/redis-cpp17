@@ -9,8 +9,10 @@ HttpServer::HttpServer(EventLoop *loop,const char *ip,uint16_t port)
 :loop(loop),
  server(loop,ip,port,nullptr)
 {
-	server.setConnectionCallback(std::bind(&HttpServer::onConnection,this,std::placeholders::_1));
-	server.setMessageCallback(std::bind(&HttpServer::onMessage,this,std::placeholders::_1,std::placeholders::_2));
+	server.setConnectionCallback(std::bind(&HttpServer::onConnection,
+										   this,std::placeholders::_1));
+	server.setMessageCallback(std::bind(&HttpServer::onMessage,
+										this,std::placeholders::_1,std::placeholders::_2));
 }
 
 
@@ -62,14 +64,15 @@ void HttpServer::onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
 	{
 		if(context->getRequest().getMethod() == HttpRequest::kPost)
 		{
-			context->getRequest().setQuery(buffer->peek(),buffer->peek() + buffer->readableBytes());
+			context->getRequest().setQuery(buffer->peek(),
+										   buffer->peek() + buffer->readableBytes());
 		}
 		onRequest(conn,context->getRequest());
 		context->reset();
 	}
 }
 
-void HttpServer::onRequest(const TcpConnectionPtr & conn,const HttpRequest &req)
+void HttpServer::onRequest(const TcpConnectionPtr &conn,const HttpRequest &req)
 {
 	const std::string &connection = req.getHeader("Connection");
 	bool close = connection == "close" ||

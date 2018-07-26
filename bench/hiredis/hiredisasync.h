@@ -14,8 +14,8 @@ public:
 	void redisConnCallBack(const TcpConnectionPtr& conn);
 	Hiredis *getHiredis() { return &hiredis; }
 	void serverCron();
-	void getCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
-	void setCallback(const RedisAsyncContextPtr &c,redisReply *reply,const std::any &privdata);
+	void getCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
+	void setCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
 
 private:
 	Hiredis hiredis;

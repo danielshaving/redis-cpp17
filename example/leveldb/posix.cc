@@ -68,6 +68,7 @@ Status PosixWritableFile::close()
 	{
 		result = posixError(filename,errno);
 	}
+
 	fd = -1;
 	return result;
 }
@@ -340,5 +341,66 @@ uint64_t PosixEnv::nowMicros()
 	gettimeofday(&tv,nullptr);
 	return static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
 }
+
+PosixRandomAccessFile::PosixRandomAccessFile(const std::string &fname,int fd)
+		:filename(fname),fd(fd)
+{
+
+}
+
+PosixRandomAccessFile::~PosixRandomAccessFile()
+{
+	close(fd);
+}
+
+Status PosixRandomAccessFile::read(uint64_t offset,size_t n,std::string_view *result,
+			char *scratch) const
+{
+
+	int fd = open(filename.c_str(),O_RDONLY);
+	if (fd < 0)
+	{
+		return posixError(filename,errno);
+	}
+
+	Status s;
+	ssize_t r = pread(fd,scratch,n,static_cast<off_t>(offset));
+	*result = std::string_view(scratch,(r < 0) ? 0 : r);
+	if (r < 0)
+	{
+		// An error: return a non-ok status
+		s = posixError(filename,errno);
+	}
+	return s;
+}
+
+// base[0,length-1] contains the mmapped contents of the file.
+PosixMmapReadableFile::PosixMmapReadableFile(const std::string &fname,void *base,size_t length)
+		: filename(fname),mmappedRegion(base),length(length)
+{
+
+}
+
+PosixMmapReadableFile::~PosixMmapReadableFile()
+{
+	munmap(mmappedRegion,length);
+}
+
+Status PosixMmapReadableFile::read(uint64_t offset,size_t n,std::string_view *result,
+			char *scratch) const
+{
+	Status s;
+	if (offset + n > length)
+	{
+		*result = std::string_view();
+		s = posixError(filename,EINVAL);
+	}
+	else
+	{
+		*result = std::string_view(reinterpret_cast<char*>(mmappedRegion) + offset,n);
+	}
+	return s;
+}
+
 
 

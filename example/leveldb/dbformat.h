@@ -90,7 +90,7 @@ public:
 	BytewiseComparatorImpl() { }
 	const char *name() const { return "leveldb.BytewiseComparator"; }
 	int compare(const std::string_view &a,const std::string_view &b) const { return a.compare(b); }
-	void findShortestSeparator(std::string *start,const std::string_view &limit)const;
+	void findShortestSeparator(std::string *start,const std::string_view &limit) const;
 	void findShortSuccessor(std::string *key) const;
 };
 // A comparator for internal keys that uses a specified comparator for

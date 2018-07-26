@@ -22,10 +22,17 @@ public:
 	void enableRetry() { retry = true; }
 	void closeRetry() { retry = false; }
 
-	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb) { connectionErrorCallBack = std::move(cb); }
-	void setConnectionCallback(const ConnectionCallback &&cb) { connectionCallback = std::move(cb); }
-	void setMessageCallback(const MessageCallback &&cb) { messageCallback = std::move(cb); }
-	void setWriteCompleteCallback(const WriteCompleteCallback &&cb) { writeCompleteCallback = std::move(cb); }
+	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb)
+	{ connectionErrorCallBack = std::move(cb); }
+
+	void setConnectionCallback(const ConnectionCallback &&cb)
+	{ connectionCallback = std::move(cb); }
+
+	void setMessageCallback(const MessageCallback &&cb)
+	{ messageCallback = std::move(cb); }
+
+	void setWriteCompleteCallback(const WriteCompleteCallback &&cb)
+	{ writeCompleteCallback = std::move(cb); }
 
 	EventLoop *getLoop() { return loop; }
 	std::any *getContext() { return &context; }

@@ -24,7 +24,7 @@ public:
 	void start();
 
 private:
-	void connectCallback(const TcpConnectionPtr & conn);
+	void connectCallback(const TcpConnectionPtr &conn);
 	std::unordered_map<int32_t,RpcChannelPtr> rpcMaps;
 	std::unordered_map<std::string,::google::protobuf::Service*> services;
 	TcpServer server;
