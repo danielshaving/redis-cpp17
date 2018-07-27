@@ -17,8 +17,11 @@ public:
 	Connector(EventLoop *loop,const char *ip,int16_t port);
 	~Connector();
 
-	void setNewConnectionCallback(const NewConnectionCallback &&cb) { newConnectionCallback = std::move(cb); }
-	void setConnectionErrorCallBack(const ErrorConnectionCallback &&cb) { errorConnectionCallback = std::move(cb); }
+	void setNewConnectionCallback(const NewConnectionCallback &&cb) 
+	{ newConnectionCallback = std::move(cb); }
+
+	void setConnectionErrorCallBack(const ErrorConnectionCallback &&cb) 
+	{ errorConnectionCallback = std::move(cb); }
 
 	void asyncStart();
 	bool syncStart();

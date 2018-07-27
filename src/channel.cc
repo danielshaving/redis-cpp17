@@ -23,7 +23,10 @@ Channel::~Channel()
 	assert(!eventHandling);
 	assert(!addedToLoop);
 
-	if (loop->isInLoopThread()) { assert(!loop->hasChannel(this)); }
+	if (loop->isInLoopThread())
+	{
+		assert(!loop->hasChannel(this)); 
+	}
 }
 
 void Channel::remove()

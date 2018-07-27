@@ -1,12 +1,12 @@
 #pragma once
 #include "hiredis.h"
-#include <boost/noncopyable.hpp>
 
-class HiredisTest : boost::noncopyable
+class HiredisTest
 {
 public:
 	HiredisTest(EventLoop *loop,int8_t threadCount,
-			int16_t sessionCount,int32_t messageCount,const char *ip,int16_t port);
+			int16_t sessionCount,int32_t messageCount,
+			const char *ip,int16_t port);
 	~HiredisTest();
 
 	void redisConnCallBack(const TcpConnectionPtr &conn);
@@ -16,16 +16,24 @@ public:
 	void hash();
 	void list();
 
-	void setCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
-	void getCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
-	void hgetCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
-	void hsetCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
-	void hgetallCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
-
-	void lpushCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
-	void rpushCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
-	void rpopCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
-	void lpopCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata);
+	void setCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void getCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void hgetCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void hsetCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void hgetallCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void lpushCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void rpushCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void rpopCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void lpopCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
 
 private:
 	Hiredis hiredis;

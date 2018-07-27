@@ -5,6 +5,7 @@ int main(int argc,char *argv[])
 {
 	Options options;
 	options.createIfMissing = true;
+
 	DBImpl db(options,"db");
 	Status s = db.open();
 	if(!s.ok())

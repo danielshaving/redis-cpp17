@@ -23,7 +23,7 @@ HiredisTest::HiredisTest(EventLoop *loop,int8_t threadCount,
 		client->setConnectionCallback(std::bind(&HiredisTest::redisConnCallBack,this,std::placeholders::_1));
 		client->setMessageCallback(std::bind(&Hiredis::redisReadCallBack,
 				&hiredis,std::placeholders::_1,std::placeholders::_2));
-		client->syncConnect();
+		client->asyncConnect();
 		hiredis.pushTcpClient(client);
 	}
 
@@ -58,36 +58,33 @@ void HiredisTest::redisConnCallBack(const TcpConnectionPtr &conn)
 	}
 }
 
-
-void HiredisTest::setCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisTest::setCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STATUS);
 	assert(strcmp(reply->str,"OK") == 0);
-	assert(reply->element == nullptr);
 }
 
-void HiredisTest::getCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisTest::getCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STRING);
-//	int64_t replyCount = 0;
-//	string2ll(reply->str,reply->len,&replyCount);
-//	printf("%ld\n",replyCount);
-	//assert(count++ == replyCount);
 }
 
-void HiredisTest::hsetCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisTest::hsetCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_INTEGER);
 	assert(reply->len == 0);
 	assert(reply->str == nullptr);
-	assert(reply->element == nullptr);
 	assert(reply->integer == 1);
 }
 
-void HiredisTest::hgetCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisTest::hgetCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_ARRAY);
@@ -97,7 +94,8 @@ void HiredisTest::hgetCallback(const RedisAsyncContextPtr &c,RedisReply *reply,c
 	assert(count == replyCount);
 }
 
-void HiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_ARRAY);
@@ -125,22 +123,26 @@ void HiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,RedisReply *repl
 	}
 }
 
-void HiredisTest::lpushCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisTest::lpushCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
 
 }
 
-void HiredisTest::rpushCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisTest::rpushCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
 
 }
 
-void HiredisTest::rpopCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisTest::rpopCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
 
 }
 
-void HiredisTest::lpopCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisTest::lpopCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
 
 }
@@ -150,7 +152,6 @@ void HiredisTest::string()
 	int32_t k = 0;
 	for(; k < messageCount; k++)
 	{
-		printf("%d\n",k);
 		auto redis = hiredis.getIteratorNode();
 		assert(redis != nullptr);
 		redis->redisAsyncCommand(std::bind(&HiredisTest::setCallback,
@@ -215,7 +216,8 @@ int main(int argc,char* argv[])
 {
  	if (argc != 6)
  	{
- 		fprintf(stderr, "Usage: client <host_ip> <port> <sessionCount> <threadCount> <messageCount> \n ");
+ 		fprintf(stderr, "Usage: client <host_ip> <port> <sessionCount> \
+ 				<threadCount> <messageCount> \n ");
  	}
  	else
  	{

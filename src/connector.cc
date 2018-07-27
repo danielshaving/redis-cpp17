@@ -63,7 +63,7 @@ void Connector::asyncStartInLoop()
 void Connector::stop()
 {
 	connect= false;
-	loop->queueInLoop(std::bind(&Connector::stopInLoop, this));
+	loop->queueInLoop(std::bind(&Connector::stopInLoop,this));
 }
 
 void Connector::stopInLoop()
@@ -203,12 +203,12 @@ void Connector::asyncConnect()
 		case EBADF:
 		case EFAULT:
 		case ENOTSOCK:
-			LOG_ERROR << "connect error in Connector::startInLoop " << savedErrno;
+			LOG_ERROR<<"connect error in Connector::startInLoop "<<savedErrno;
 			::close(sockfd);
 			break;
 
 		default:
-			LOG_ERROR << "Unexpected error in Connector::startInLoop " << savedErrno;
+			LOG_ERROR<<"Unexpected error in Connector::startInLoop "<<savedErrno;
 			::close(sockfd);
 			// connectErrorCallback();
 			break;
@@ -239,7 +239,7 @@ bool Connector::syncConnect()
 	{
 		if(!socket.connectWaitReady(sockfd,kInitRetryDelayMs))
 		{
-			LOG_ERROR << "Unexpected error" << savedErrno <<" " << strerror(errno);
+			LOG_ERROR<< "Unexpected error"<<savedErrno<<" "<<strerror(errno);
 			return false;
 		}
 	}

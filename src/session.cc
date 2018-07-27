@@ -23,10 +23,18 @@ Session::~Session()
 
 }
 
+
+/* This function is called every time, in the client structure 'c', there is
+ * more query buffer to process, because we read more data from the socket
+ * or because a client was blocked and later reactivated, so there could be
+ * pending query buffer, already representing a full command, to process. */
+
 void Session::readCallBack(const TcpConnectionPtr &clientConn,Buffer *buffer)
 {
+	/* Keep processing while there is something in the input buffer */
 	while(buffer->readableBytes() > 0 )
 	{
+	     /* Determine request type when unknown. */
 		if (!reqtype)
 		{
 			if ((buffer->peek()[0])== '*')
@@ -62,6 +70,8 @@ void Session::readCallBack(const TcpConnectionPtr &clientConn,Buffer *buffer)
 		reset();
 	}
 
+	/* If there already are entries in the reply list, we cannot
+     * add anything more to the static buffer. */
 	if (clientBuffer.readableBytes() > 0 )
 	{
 		clientConn->send(&clientBuffer);
@@ -88,6 +98,7 @@ void Session::readCallBack(const TcpConnectionPtr &clientConn,Buffer *buffer)
 	}
 }
 
+/* Only reset the client when the command was executed. */
 int32_t Session::processCommand()
 {
 	if (redis->authEnabled)
@@ -211,13 +222,12 @@ jump:
 		}
 	}
 
-
-	auto &map = redis->getHandlerCommandMap();
-	auto it = map.find(cmd);
-	if (it == map.end())
+	auto &handlerCommands = redis->getHandlerCommandMap();
+	auto it = handlerCommands.find(cmd);
+	if (it == handlerCommands.end())
 	{
 		clearObj();
-		addReplyErrorFormat(clientBuffer,"cmd unknown");
+		addReplyErrorFormat(clientBuffer,"unknown command `%s`,with args beginning",cmd->ptr);
 		return REDIS_ERR;
 	}
 
@@ -258,6 +268,14 @@ void Session::reset()
 	}
 }
 
+/* Like processMultibulkBuffer(), but for the inline protocol instead of RESP,
+ * this function consumes the client query buffer and creates a command ready
+ * to be executed inside the client structure. Returns C_OK if the command
+ * is ready to be executed, or C_ERR if there is still protocol to read to
+ * have a well formed command. The function also returns C_ERR when there is
+ * a protocol error: in such a case the client structure is setup to reply
+ * with the error and close the connection. */
+
 int32_t Session::processInlineBuffer(Buffer *buffer)
 {
     const char *newline;
@@ -265,8 +283,11 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 	int32_t j;
 	size_t queryLen;
 	sds *argv, aux;
-	  
+	 
+	/* Search for end of line */
 	newline = strchr(queryBuf,'\n');
+
+	 /* Nothing to do without a \r\n */
 	if (newline == nullptr)
 	{
 		 if (buffer->readableBytes() > PROTO_INLINE_MAX_SIZE)
@@ -278,14 +299,17 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 		 return REDIS_ERR;
 	}
 
+	/* Handle the \r\n case. */
 	if (newline && newline != queryBuf && *(newline-1) == '\r')
 	newline--;
-	  
+	
+	/* Split the input buffer up to the \r\n */
 	queryLen = newline-(queryBuf);
 	aux = sdsnewlen(queryBuf,queryLen);
 	argv = sdssplitargs(aux,&argc);
 	sdsfree(aux);
 
+	/* retrieve cuurent buffer index */
 	buffer->retrieve(queryLen + 2);
 	  
 	if (argv == nullptr) 
@@ -295,6 +319,7 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 		return REDIS_ERR;
     }
 
+	/* Create redis objects for all arguments. */
 	for (j = 0; j < argc; j++)
 	{
 		if (j == 0)
@@ -314,6 +339,18 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 	return REDIS_OK;
 }
 
+/* Process the query buffer for client 'c', setting up the client argument
+ * vector for command execution. Returns C_OK if after running the function
+ * the client has a well-formed ready to be processed command, otherwise
+ * C_ERR if there is still to read more buffer to get the full command.
+ * The function also returns C_ERR when there is a protocol error: in such a
+ * case the client structure is setup to reply with the error and close
+ * the connection.
+ *
+ * This function is called if processInputBuffer() detects that the next
+ * command is in RESP format, so the first byte in the command is found
+ * to be '*'. Otherwise for inline commands processInlineBuffer() is called. */
+
 int32_t Session::processMultibulkBuffer(Buffer *buffer)
 {
 	const char *newline = nullptr;
@@ -322,6 +359,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 	const char *queryBuf = buffer->peek();
 	if (multibulklen == 0)
 	{
+		/* Multi bulk length cannot be read without a \r\n */
 		newline = strchr(queryBuf,'\r');
 		if (newline == nullptr)
 		{
@@ -333,7 +371,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			return REDIS_ERR;
 		}
 
-
+		/* Buffer should also contain \n */
 		if (newline-(queryBuf) > ((signed)buffer->readableBytes()-2))
 		{
 			return REDIS_ERR;
@@ -346,6 +384,8 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			return REDIS_ERR;
 		}
 
+		/* We know for sure there is a whole line since newline != NULL,
+         * so go ahead and find out the multi bulk length. */
 		ok = string2ll(queryBuf + 1,newline - ( queryBuf + 1),&ll);
 		if (!ok || ll > 1024 * 1024)
 		{
@@ -365,6 +405,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 	
 	while(multibulklen)
 	{
+		/* Read bulk length if unknown */
 		if (bulklen == -1)
 		{
 			newline = strchr(queryBuf + pos, '\r');
@@ -380,6 +421,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 				break;
 			}
 
+			/* Buffer should also contain \n */
 			if ( (newline - queryBuf) > ((signed)buffer->readableBytes() - 2))
 			{
 				break;
@@ -392,7 +434,7 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 				return REDIS_ERR;
 			}
 
-			ok = string2ll(queryBuf + pos +  1,newline - (queryBuf + pos + 1),&ll);
+			ok = string2ll(queryBuf + pos + 1,newline - (queryBuf + pos + 1),&ll);
 			if (!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
 				addReplyError(clientBuffer,"Protocol error: invalid bulk length");
@@ -408,12 +450,16 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			bulklen = ll;
 		}
 
+		/* Read bulk argument */
 		if (buffer->readableBytes() - pos < (bulklen + 2))
 		{
 			break;
 		}
 		else
 		{
+			/* Optimization: if the buffer contains JUST our bulk element
+			* instead of creating a new object by *copying* the sds we
+			* just use the current sds string. */
 			if (++argc == 1)
 			{
 				sdscpylen(cmd->ptr,queryBuf + pos,bulklen);
@@ -431,15 +477,19 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 		}
 	}
 	
+	/* Trim to pos */
 	if (pos)
 	{
 		buffer->retrieve(pos);
 	}	
 	
+	/* We're done when c->multibulk == 0 */
 	if (multibulklen == 0)
 	{
 		return REDIS_OK;
 	}
+
+	 /* Still not ready to process the command */
 	return REDIS_ERR;
 }
 

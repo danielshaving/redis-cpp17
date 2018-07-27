@@ -21,6 +21,10 @@ class Poll;
 class Epoll;
 class Thread;
 class RedisObject;
+class RedisReply;
+
+typedef std::weak_ptr<RedisReply> RedisReplyWeakPtr;
+typedef std::shared_ptr<RedisReply> RedisReplyPtr;
 typedef std::shared_ptr<RedisObject> RedisObjectPtr;
 typedef std::shared_ptr<HiredisAsync> HiredisAsyncPtr;
 typedef std::shared_ptr<Buffer> BufferPtr;

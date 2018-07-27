@@ -1,0 +1,1 @@
+merger.o: merger.cc

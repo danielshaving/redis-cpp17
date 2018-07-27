@@ -540,7 +540,8 @@ bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 	{
 		if (obj.size() != 3)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),"Wrong number of arguments for CONFIG %s",(char*)obj[0]->ptr);
+			addReplyErrorFormat(session->getClientBuffer(),
+				"Wrong number of arguments for CONFIG %s",(char*)obj[0]->ptr);
 			return false;
 		}
 
@@ -1156,6 +1157,11 @@ bool Redis::bgsave(const SessionPtr &session,bool enabled)
 
 bool Redis::save(const SessionPtr &session)
 {
+	if (getDbsize() == 0)
+	{
+		return true;
+	}
+
 	int64_t now = mstime();
 	{
 		if (rdb.rdbSave("dump.rdb") == REDIS_OK)

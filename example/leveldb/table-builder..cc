@@ -57,5 +57,53 @@ TableBuilder::~TableBuilder()
 
 void TableBuilder::add(const std::string_view &key,const std::string_view &value)
 {
+	auto r = rep;
+	assert(r->closed);
+	if (r->numEntries > 0) 
+	{
+		assert(r->options.comparator->compare(key,std::string_view(r->lastKey)) > 0);
+	}
+	
+	if (r->pendingIndexEntry)
+	{
+		assert(r->dataBlock.empty());
+		r->options.comparator->findShortestSeparator(&r->lastKey,key);
+		std::string handleEncoding;
+		r->pendingHandle.encodeTo(&handleEncoding);
+		r->indexBlock.add(r->lastKey,std::string_view(handleEncoding));
+		r->pendingIndexEntry = false;
+	}
+
+	r->lastKey.assign(key.data(),key.size());
+	r->numEntries++;
+	r->dataBlock.add(key,value);
+
+	const size_t estimatedBlockSize = r->dataBlock.currentSizeEstimate();
+	if (estimatedBlockSize >= r->options.blockSize) 
+	{
+		flush();
+	}
+}
+
+Status TableBuilder::finish()
+{
+	
+}
+
+void TableBuilder::flush()
+{
+	auto r = rep;
+	assert(!r->closed);
+	
+	if (r->data_block.empty()) return;
+	assert(!r->pendingIndexEntry);
+	writeBlock(&r->dataBlock,&r->pendingHandle);
+	
+	r->pendingIndexEntry = true;
+	r->status = r->file->flush();
+}
+
+void TableBuilder::writeBlock(BlockBuilder *block,BlockHandle *handle) 
+{
 
 }

@@ -29,12 +29,30 @@ public:
 		std::swap(writerIndex,rhs.writerIndex);
 	}
 
-	size_t readableBytes() const { return writerIndex - readerIndex; }
-	size_t writableBytes() const { return buffer.size() - writerIndex; }
-	size_t prependableBytes() const { return readerIndex; }
+	size_t readableBytes() const
+	{
+		return writerIndex - readerIndex; 
+	}
 
-	const char *peek() const { return begin() + readerIndex; }
-	char *data() { return begin() + readerIndex; }
+	size_t writableBytes() const 
+	{
+		return buffer.size() - writerIndex; 
+	}
+
+	size_t prependableBytes() const 
+	{ 
+		return readerIndex; 
+	}
+
+	const char *peek() const 
+	{
+		return begin() + readerIndex;
+	}
+
+	char *data() 
+	{
+		return begin() + readerIndex;
+	}
 
 	const char *findCRLF() const
 	{
@@ -73,8 +91,14 @@ public:
 	void retrieve(size_t len)
 	{
 		assert(len <= readableBytes());
-		if (len < readableBytes()) { readerIndex += len; }
-		else { retrieveAll(); }
+		if (len < readableBytes()) 
+		{ 
+			readerIndex += len; 
+		}
+		else 
+		{
+			retrieveAll(); 
+		}
 	}
 
 	void retrieveUntil(const char *end)
@@ -84,10 +108,25 @@ public:
 		retrieve(end - peek());
 	}
 
-	void retrieveInt64() { retrieve(sizeof(int64_t)); }
-	void retrieveInt32() { retrieve(sizeof(int32_t)); }
-	void retrieveInt16() { retrieve(sizeof(int16_t)); }
-	void retrieveInt8() { retrieve(sizeof(int8_t)); }
+	void retrieveInt64() 
+	{ 
+		retrieve(sizeof(int64_t));
+	}
+
+	void retrieveInt32() 
+	{
+		retrieve(sizeof(int32_t));
+	}
+
+	void retrieveInt16()
+	{
+		retrieve(sizeof(int16_t)); 
+	}
+
+	void retrieveInt8() 
+	{ 
+		retrieve(sizeof(int8_t)); 
+	}
 
 	void retrieveAll()
 	{
@@ -95,7 +134,11 @@ public:
 		writerIndex = kCheapPrepend;
 	}
 
-	std::string retrieveAllAsString() { return retrieveAsString(readableBytes());; }
+	std::string retrieveAllAsString() 
+	{
+		return retrieveAsString(readableBytes());
+	}
+
 	std::string retrieveAsString(size_t len)
 	{
 		assert(len <= readableBytes());
@@ -111,8 +154,15 @@ public:
 		hasWritten(len);
 	}
 
-	void append(const std::string_view &str) { append(str.data(),str.size()); }
-	void append(const void *data,size_t len) { append(static_cast<const char*>(data),len); }
+	void append(const std::string_view &str) 
+	{
+		append(str.data(),str.size());
+	}
+
+	void append(const void *data,size_t len)
+	{
+		append(static_cast<const char*>(data),len);
+	}
 
 	void appendInt32(int32_t x)
 	{
@@ -174,7 +224,10 @@ public:
 		std::copy(d,d + len,begin() + readerIndex);
 	}
 
-	void preapend(const void *data,size_t len) { prepend(static_cast<const char*>(data),len); }
+	void preapend(const void *data,size_t len) 
+	{
+		prepend(static_cast<const char*>(data),len); 
+	}
 
 	void preapend(const char *data,size_t len)
 	{
@@ -186,12 +239,22 @@ public:
 
 	void ensureWritableBytes(size_t len)
 	{
-		if (writableBytes() < len) { makeSpace(len); }
+		if (writableBytes() < len) 
+		{
+			makeSpace(len); 
+		}
 		assert(writableBytes() >= len);
 	}
 
-	char *beginWrite() { return begin() + writerIndex; }
-	const char *beginWrite() const { return begin() + writerIndex; }
+	char *beginWrite() 
+	{ 
+		return begin() + writerIndex; 
+	}
+
+	const char *beginWrite() const 
+	{ 
+		return begin() + writerIndex;
+	}
 
 	void hasWritten(size_t len)
 	{
@@ -289,9 +352,20 @@ private:
 	Buffer(const Buffer&);
 	void operator=(const Buffer&);
 
-	char *begin() { return &*buffer.begin(); }
-	char *prepeek() { return begin() + readerIndex; }
-	const char *begin() const { return &*buffer.begin(); }
+	char *begin() 
+	{ 
+		return &*buffer.begin(); 
+	}
+
+	char *prepeek() 
+	{
+		return begin() + readerIndex; 
+	}
+
+	const char *begin() const 
+	{
+		return &*buffer.begin(); 
+	}
 
 	void makeSpace(size_t len)
 	{

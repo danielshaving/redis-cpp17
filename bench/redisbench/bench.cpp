@@ -8,7 +8,7 @@ std::mutex mtx;
 std::condition_variable condition;
 std::atomic<int> connShutDown;
 std::atomic<int> connectCount;
-class Client : noncopyable
+class Client
 {
 public:
 	enum Operation
@@ -142,8 +142,7 @@ public:
 };
 
 std::vector<std::shared_ptr<Client>> clientPtr;
-
-int main(int argc, char* argv[])
+int main(int argc,char* argv[])
 {
 	if (argc < 3)
 	{
@@ -171,7 +170,6 @@ int main(int argc, char* argv[])
 		{
 			opertion = Client::kGet;
 		}
-
 
 		for(int i = 0; i< clients; i++)
 		{

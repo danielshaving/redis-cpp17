@@ -189,12 +189,11 @@ int RedisCli::cliConnect(int force)
 
 int RedisCli::cliAuth()
 {
-	RedisReply *reply;
+	RedisReplyPtr reply;
 	if(config.auth == nullptr) { return REDIS_ERR; }
 	reply = context->redisCommand("AUTH %s",config.auth);
 	if(reply != nullptr)
 	{
-		freeReply(reply);
 		return REDIS_OK;
 	}
 	return REDIS_ERR;
@@ -202,15 +201,17 @@ int RedisCli::cliAuth()
 
 int RedisCli::cliSelect()
 {
-	RedisReply *reply;
+	RedisReplyPtr reply;
 	if (config.dbnum == 0) { return REDIS_OK; }
 
 	reply = context->redisCommand("SELECT %d",config.dbnum);
 	if (reply != nullptr)
 	{
 		int result = REDIS_OK;
-		if (reply->type == REDIS_REPLY_ERROR) { result = REDIS_ERR; }
-		freeReply(reply);
+		if (reply->type == REDIS_REPLY_ERROR)
+		{
+			result = REDIS_ERR;
+		}
 		return result;
 	}
 	return REDIS_ERR;
@@ -322,7 +323,7 @@ sds RedisCli::sdsCatColorizedLdbReply(sds o,char *s,size_t len)
 	return sdscatcolor(o,s,len,color);
 }
 
-sds RedisCli::cliFormatReplyRaw(RedisReply *r)
+sds RedisCli::cliFormatReplyRaw(RedisReplyPtr &r)
 {
 	sds out = sdsempty(), tmp;
 	size_t i;
@@ -382,7 +383,7 @@ sds RedisCli::cliFormatReplyRaw(RedisReply *r)
 	return out;
 }
 
-sds RedisCli::cliFormatReplyCSV(RedisReply *r)
+sds RedisCli::cliFormatReplyCSV(RedisReplyPtr &r)
 {
 	unsigned int i;
 	sds out = sdsempty();
@@ -428,7 +429,7 @@ char **RedisCli::convertToSds(int count,char** args)
 	return sds;
 }
 
-sds RedisCli::cliFormatReplyTTY(RedisReply *r,char *prefix)
+sds RedisCli::cliFormatReplyTTY(RedisReplyPtr &r,char *prefix)
 {
 	sds out = sdsempty();
 	switch (r->type)
@@ -504,10 +505,10 @@ sds RedisCli::cliFormatReplyTTY(RedisReply *r,char *prefix)
 
 int RedisCli::cliReadReply(int outputRawString)
 {
-    RedisReply *reply;
+    RedisReplyPtr reply;
     sds out = nullptr;
     int output = 1;
-    if (context->redisGetReply(&reply) != REDIS_OK)
+    if (context->redisGetReply(reply) != REDIS_OK)
     {
         if (config.shutdown)
         {
@@ -596,7 +597,6 @@ int RedisCli::cliReadReply(int outputRawString)
 		sdsfree(out);
 	}
 
-	freeReply(reply);
 	return REDIS_OK;
 }
 

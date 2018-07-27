@@ -1143,7 +1143,10 @@ public:
     int cliSelect();
     int noninteractive(int argc,char **argv);
     sds readArgFromStdin(void);
-    int issueCommand(int argc,char **argv) { return issuseCommandRepeat(argc,argv,config.repeat); }
+
+    int issueCommand(int argc,char **argv)
+    { return issuseCommandRepeat(argc,argv,config.repeat); }
+
     int issuseCommandRepeat(int argc,char **argv,int repeat);
     int pollWait(int fd,int mask,int64_t milliseconds);
     int cliSendCommand(int argc,char **argv,int repeat);
@@ -1155,10 +1158,10 @@ public:
     int cliReadReply(int outputRawString);
     void cliPrintContextError();
     void cliRefreshPrompt();
-    sds cliFormatReplyRaw(RedisReply *r);
+    sds cliFormatReplyRaw(RedisReplyPtr &r);
     sds sdsCatColorizedLdbReply(sds o,char *s,size_t len);
-    sds cliFormatReplyTTY(RedisReply *r,char *prefix);
-    sds cliFormatReplyCSV(RedisReply *r);
+    sds cliFormatReplyTTY(RedisReplyPtr &r,char *prefix);
+    sds cliFormatReplyCSV(RedisReplyPtr &r);
 
     sds sdscatcolor(sds o,char *s,size_t len,char *color);
     int isColorTerm();

@@ -14,8 +14,12 @@ public:
 	Acceptor(EventLoop *loop,const char *ip,int16_t port);
 	~Acceptor();
 
-	void setNewConnectionCallback(const NewConnectionCallback &&cb) { newConnectionCallback = std::move(cb); }
-	bool getlistenning() const { return listenning; }
+	void setNewConnectionCallback(const NewConnectionCallback &&cb) 
+	{ newConnectionCallback = std::move(cb); }
+
+	bool getlistenning() const 
+	{ return listenning; }
+
 	void listen();
 	void handleRead();
 

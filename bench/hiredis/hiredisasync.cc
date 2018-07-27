@@ -1,5 +1,12 @@
 #include "hiredisasync.h"
 
+int64_t startTime = 0;
+int64_t endTime = 0;
+
+std::atomic<int32_t> sessionCount = 0;
+std::atomic<int32_t> sconnetCount = 0;
+std::atomic<int32_t> gconnetCount = 0;
+
 HiredisAsync::HiredisAsync(EventLoop *loop,int8_t threadCount,const char *ip,int16_t port)
 :hiredis(loop),
  connectCount(0),
@@ -42,7 +49,7 @@ void HiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
-		RedisAsyncContextPtr ac(new xRedisAsyncContext(conn->intputBuffer(),conn));
+		RedisAsyncContextPtr ac(new RedisAsyncContext(conn->intputBuffer(),conn));
 		hiredis.insertRedisMap(conn->getSockfd(),ac);
 		connectCount++;
 		condition.notify_one();
@@ -51,7 +58,6 @@ void HiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 	{
 		if(--connectCount == 0)
 		{
-			test_cond(true);
 			hiredis.clearTcpClient();
 			endTime = mstime();
 			printf("becnch seconds %02d\n",(endTime - startTime) / 1000);
@@ -60,9 +66,9 @@ void HiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 	}
 }
 
-void HiredisAsync::setCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisAsync::setCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
-	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STATUS);
 	assert(reply->len == 2);
 	assert(strcmp(reply->str,"ok") == 0);
@@ -72,15 +78,15 @@ void HiredisAsync::setCallback(const RedisAsyncContextPtr &c,RedisReply *reply,c
 	sconnetCount++;
 }
 
-void HiredisAsync::getCallback(const RedisAsyncContextPtr &c,RedisReply *reply,const std::any &privdata)
+void HiredisAsync::getCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
 {
-	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STRING);
 	std::thread::id threadId = std::any_cast< std::thread::id>(privdata);
 	assert(threadId == std::this_thread::get_id());
 	if(++gconnetCount == sessionCount && sconnetCount == sessionCount)
 	{
-		test_cond(true);
+
 	}
 }
 

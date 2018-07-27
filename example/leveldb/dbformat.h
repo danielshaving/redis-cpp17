@@ -107,10 +107,10 @@ public:
 	void findShortSuccessor(std::string *key) const;
 	int compare(const std::string_view &a,const std::string_view &b) const;
 	int compare(const InternalKey &a,const InternalKey &b) const;
-	const BytewiseComparatorImpl *getComparator() const { return &userComparator; }
+	const BytewiseComparatorImpl *getComparator() const { return &byteComparator; }
 
 private:
-	BytewiseComparatorImpl userComparator;
+	BytewiseComparatorImpl byteComparator;
 };
 
 // Modules in this directory should keep internal keys wrapped inside

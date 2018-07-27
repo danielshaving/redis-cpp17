@@ -34,7 +34,6 @@ public:
 		client.connect(ip,port);
 	}
 
-
 	void countDown()
 	{
 		connShutDown++;
@@ -84,7 +83,7 @@ public:
 		{
 			while(buffer->readableBytes() > 0)
 			{
-				const char* end = static_cast<const char*>(memmem(buffer->peek(),
+				const char *end = static_cast<const char*>(memmem(buffer->peek(),
 												  buffer->readableBytes(),
 												  "END\r\n", 5));
 				if (end)
@@ -133,15 +132,12 @@ public:
 	TcpClient client;
 	TcpConnectionPtr conn;
 	Operation operation;
-
 	int ack;
 	int sent;
-
 };
 
 std::vector<std::shared_ptr<Client>> ClientPtr;
-
-int main(int argc, char* argv[])
+int main(int argc,char* argv[])
 {
 	if (argc < 3)
 	{
@@ -152,9 +148,9 @@ int main(int argc, char* argv[])
 		LOG_INFO<<"Connecting";
 		connectCount = 0;
 		connShutDown = 0;
-		const char* ip = argv[1];
+		const char *ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
-		std::string op  = argv[3];
+		std::string op = argv[3];
 		EventLoop loop;
 		ThreadPool pool(&loop);
 		pool.setThreadNum(threadCount);
@@ -170,13 +166,11 @@ int main(int argc, char* argv[])
 			opertion = Client::kGet;
 		}
 
-
 		for(int i = 0; i< clients; i++)
 		{
 			std::shared_ptr<Client> client(new Client(pool.getNextLoop(),ip,port,opertion));
 			ClientPtr.push_back(client);
 		}
-
 
 		{
 			std::unique_lock <std::mutex> lck(mtx);

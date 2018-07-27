@@ -76,8 +76,8 @@ sds RedLock::getUniqueLockId()
 int32_t RedLock::lockInstance(const RedisContextPtr &c,
 		const char *resource,const char *val,const int32_t ttl)
 {
-	RedisReply *reply;
-	reply = (RedisReply *)c->redisCommand("set %s %s px %d nx",resource,val,ttl);
+	RedisReplyPtr reply;
+	reply = c->redisCommand("set %s %s px %d nx",resource,val,ttl);
 
 	if (reply)
 	{
@@ -86,13 +86,11 @@ int32_t RedLock::lockInstance(const RedisContextPtr &c,
 
 	if (reply && reply->str && strcmp(reply->str,"OK") == 0)
 	{
-		freeReply(reply);
 		return 1;
 	}
 
 	if (reply)
 	{
-		freeReply(reply);
 		return 0;
 	}
 
@@ -100,7 +98,7 @@ int32_t RedLock::lockInstance(const RedisContextPtr &c,
 	return -1;
 }
 
-RedisReply *RedLock::commandArgv(const RedisContextPtr &c,int32_t argc,char **inargv)
+RedisReplyPtr RedLock::commandArgv(const RedisContextPtr &c,int32_t argc,char **inargv)
 {
 	char **argv = convertToSds(argc, inargv);
 	size_t *argvlen;
@@ -110,8 +108,8 @@ RedisReply *RedLock::commandArgv(const RedisContextPtr &c,int32_t argc,char **in
 		argvlen[j] = sdslen(argv[j]);
 	}
 
-	RedisReply *reply = nullptr;
-	reply = (RedisReply *)c->redisCommandArgv(argc,(const char **)argv,argvlen);
+	RedisReplyPtr reply;
+	reply = c->redisCommandArgv(argc,(const char **)argv,argvlen);
 	if (reply)
 	{
 		LOG_INFO<<"redisCommandArgv return "<< reply->integer;
@@ -130,10 +128,10 @@ void RedLock::unlockInstance(const RedisContextPtr &c,const char *resource,const
 								(char*)"1",
 								(char*)resource,
 								(char*)val};
-	RedisReply *reply = commandArgv(c,argc,unlockScriptArgv);
+	RedisReplyPtr reply = commandArgv(c,argc,unlockScriptArgv);
 	if (reply)
 	{
-		freeReply(reply);
+
 	}
 }
 

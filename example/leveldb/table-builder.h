@@ -27,9 +27,19 @@ public:
     // REQUIRES: Finish(), Abandon() have not been called
     void add(const std::string_view &key,const std::string_view &value);
 
-
+	// Finish building the table.  Stops using the file passed to the
+	// constructor after this function returns.
+	// REQUIRES: Finish(), Abandon() have not been called
+	Status finish();
+		
+	// Advanced operation: flush any buffered key/value pairs to file.
+	// Can be used to ensure that two adjacent entries never live in
+	// the same data block.  Most clients should not need to use this method.
+	// REQUIRES: Finish(), Abandon() have not been called
+	void flush();
 
 private:
+	void writeBlock(BlockBuilder *block,BlockHandle *handle) 
     struct Rep;
     std::shared_ptr<Rep> rep;
 };

@@ -86,6 +86,11 @@ RedisObjectPtr createObject(int32_t type,char *ptr);
 RedisObjectPtr createStringObject(char *ptr,size_t len);
 RedisObjectPtr createStringObjectFromLongLong(int64_t value);
 
+
+/* -----------------------------------------------------------------------------
+ * Low level functions to add more data to output buffers.
+ * -------------------------------------------------------------------------- */
+
 void addReplyBulkSds(Buffer &buffer,sds s);
 void addReplyMultiBulkLen(Buffer &buffer,int32_t length);
 void addReply(Buffer &buffer,const RedisObjectPtr &obj);
