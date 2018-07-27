@@ -1,1 +1,0 @@
-dbiter.o: dbiter.cc

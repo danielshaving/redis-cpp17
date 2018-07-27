@@ -1,1 +1,0 @@
-table.o: table.cc
