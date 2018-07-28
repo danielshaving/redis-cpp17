@@ -309,8 +309,6 @@
 #define RDB_64BITLEN 0x81
 #define RDB_ENCVAL 3
 #define RDB_LENERR UINT64_MAX
-
-
 #define RDB_OPCODE_EOF 110
 
 /* Protocol and I/O related defines */
@@ -322,6 +320,7 @@
 #define LONG_STR_SIZE      21          /* Bytes needed for long -> str + '\0' */
 #define AOF_AUTOSYNC_BYTES (1024*1024*32) /* fdatasync every 32MB */
 
+#define OBJ_SHARED_REFCOUNT INT_MAX
 #define REDIS_REPLY_STRING 1
 #define REDIS_REPLY_ARRAY 2
 #define REDIS_REPLY_INTEGER 3

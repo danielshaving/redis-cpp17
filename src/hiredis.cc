@@ -892,6 +892,21 @@ int32_t RedisContext::redisAppendCommand(const char *format, ...)
     return ret;
 }
 
+TcpConnectionPtr RedisAsyncContext::getServerConn()
+{
+	return serverConn;
+}
+
+std::mutex &RedisAsyncContext::getMutex()
+{
+	return mtx;
+}
+
+RedisContextPtr RedisAsyncContext::getRedisContext()
+{
+	return contextPtr;
+}
+
 void RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata,char *cmd,size_t len)
 {
@@ -899,13 +914,13 @@ void RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,
 	cb.fn = std::move(fn);
 	cb.privdata = privdata;
 
-	RedisAsyncCallback call;
-	call.data = cmd;
-	call.len = len;
-	call.cb = std::move(cb);
+	RedisAsyncCallbackPtr asyncCallback(new RedisAsyncCallback());
+	asyncCallback->data = cmd;
+	asyncCallback->len = len;
+	asyncCallback->cb = std::move(cb);
 	{
 		std::unique_lock<std::mutex> lk(mtx);
-		asyncCb.push_back(std::move(call));
+		asyncCb.push_back(asyncCallback);
 	}
 	serverConn->sendPipe(cmd,len);
 }
@@ -917,7 +932,8 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 	int32_t pos;							/* position in final command */
 	sds curarg, newarg; 				/* current argument */
 	int32_t touched = 0;					/* was the current argument touched? */
-	char **curargv = nullptr,**newargv = nullptr;
+	char **curargv = nullptr;
+	char **newargv = nullptr;
 	int32_t argc = 0;
 	int32_t totlen = 0;
 	int32_t j;
@@ -925,12 +941,16 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 	/* Abort if there is not target to set */
 	if (target == nullptr)
 	{
-		return - 1;
+		return -1;
 	}
 
 	/* Build the command string accordingly to protocol */
 	curarg = sdsempty();
-	if (curarg == nullptr) { return - 1; }
+	if (curarg == nullptr)
+	{
+		return -1;
+	}
+
 	while (*c != '\0')
 	{
 		if (*c != '%' || c[1] == '\0')
@@ -939,21 +959,33 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 			{
 				if (touched)
 				{
-					newargv = (char**) zrealloc(curargv,sizeof(char *) * (argc + 1));
-					if (newargv == nullptr) { goto err; }
-					curargv  = newargv;
+					newargv = (char**)zrealloc(curargv,sizeof(char *) * (argc + 1));
+					if (newargv == nullptr)
+					{
+						goto err;
+					}
+
+					curargv = newargv;
 					curargv[argc++] = curarg;
 					totlen += bulklen(sdslen(curarg));
 					/* curarg is put in argv so it can be overwritten. */
 					curarg = sdsempty();
-					if (curarg == nullptr) { goto err; }
+					if (curarg == nullptr)
+					{
+						goto err;
+					}
+
 					touched  = 0;
 				}
 			}
 			else
 			{
 				newarg = sdscatlen(curarg,c,1);
-				if (newarg == nullptr) { goto err; }
+				if (newarg == nullptr)
+				{
+					goto err;
+				}
+
 				curarg = newarg;
 				touched = 1;
 			}
@@ -969,12 +1001,18 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 				case 's':
 					arg = va_arg(ap,char *);
 					size = strlen(arg);
-					if (size > 0) { newarg = sdscatlen(curarg, arg, size); }
+					if (size > 0)
+					{
+						newarg = sdscatlen(curarg,arg,size);
+					}
 					break;
 				case 'b':
 					arg = va_arg(ap,char *);
 					size = va_arg(ap,size_t);
-					if (size > 0) { newarg = sdscatlen(curarg, arg, size); }
+					if (size > 0)
+					{
+						newarg = sdscatlen(curarg,arg,size);
+					}
 					break;
 				case '%':
 					newarg = sdscat(curarg,"%");
@@ -1055,9 +1093,9 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 					if (_p[0] == 'l' && _p[1] == 'l')
 					{
 						_p	+= 2;
-						if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+						if (*_p != '\0' && strchr(intfmts,*_p) != nullptr)
 						{
-							va_arg(ap, long long);
+							va_arg(ap,long long);
 							goto fmt_valid;
 						}
 
@@ -1067,7 +1105,7 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 					if (_p[0] == 'l')
 					{
 						_p += 1;
-						if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+						if (*_p != '\0' && strchr(intfmts,*_p) != nullptr)
 						{
 							va_arg(ap, long);
 							goto fmt_valid;
@@ -1082,7 +1120,7 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 					if (_l < sizeof(_format) - 2)
 					{
 						memcpy(_format, c, _l);
-						_format[_l] 	 = '\0';
+						_format[_l] = '\0';
 						newarg = sdscatvprintf(curarg, _format, _cpy);
 
 						/* Update current position (note: outer blocks
@@ -1095,7 +1133,11 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 				}
 			}
 			
-			if (newarg == nullptr) { goto err; }
+			if (newarg == nullptr)
+			{
+				goto err;
+			}
+
 			curarg = newarg;
 			touched = 1;
 			c++;
@@ -1106,7 +1148,10 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 	if (touched)
 	{
 		newargv = (char **)zrealloc(curargv, sizeof(char *) * (argc + 1));
-		if (newargv == nullptr) { goto err; }
+		if (newargv == nullptr)
+		{
+			goto err;
+		}
 
 		curargv = newargv;
 		curargv[argc++] = curarg;
@@ -1144,7 +1189,6 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 	zfree(curargv);
 	*target = cmd;
 	return totlen;
-
 err:
 	while (argc--)
 	{
@@ -1203,13 +1247,7 @@ RedisAsyncContext::RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn
 
 RedisAsyncContext::~RedisAsyncContext()
 {
-	for(auto &it : asyncCb)
-	{
-		if (it.data)
-		{
-			zfree(it.data);
-		}
-	}
+
 }
 
 int RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
@@ -1218,7 +1256,11 @@ int RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
 	char *cmd;
 	int32_t len;
 	len = redisvFormatCommand(&cmd,format,ap);
-	if (len < 0) { return REDIS_ERR; }
+	if (len < 0)
+	{
+		return REDIS_ERR;
+	}
+
 	__redisAsyncCommand(fn,privdata,cmd,len);
 	return REDIS_OK;
 }
@@ -1670,16 +1712,17 @@ Hiredis::~Hiredis()
 
 void Hiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 {
-	auto callback = std::any_cast<RedisAsyncCallback>(conn->getMutableContext());
+	RedisAsyncCallbackPtr asyncCallback = std::any_cast<RedisAsyncCallbackPtr>(conn->getContext());
+	conn->resetContext();
 	if (conn->connected())
 	{
 		RedisAsyncContextPtr ac(new RedisAsyncContext(conn->intputBuffer(),conn));
 		insertRedisMap(conn->getSockfd(),ac);
 		{
 			std::unique_lock<std::mutex> lk(ac->getMutex());
-			ac->getCb().push_back(*callback);
+			ac->getAsyncCallback().push_back(asyncCallback);
 		}
-		conn->sendPipe(callback->data,callback->len);
+		conn->sendPipe(asyncCallback->data,asyncCallback->len);
 	}
 	else
 	{
@@ -1689,7 +1732,8 @@ void Hiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 
 void Hiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 {
-	auto callback = std::any_cast<RedisAsyncCallback>(conn->getMutableContext());
+	RedisAsyncCallbackPtr asyncCallback = std::any_cast<RedisAsyncCallbackPtr>(conn->getContext());
+	conn->resetContext();
 	if (conn->connected())
 	{
 		RedisAsyncContextPtr ac (new RedisAsyncContext(conn->intputBuffer(),conn));
@@ -1697,9 +1741,9 @@ void Hiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 		conn->sendPipe("*1\r\n$6\r\nASKING\r\n");
 		{
 			std::unique_lock<std::mutex> lk(ac->getMutex());
-			ac->getCb().push_back(*callback);
+			ac->getAsyncCallback().push_back(asyncCallback);
 		}
-		conn->sendPipe(callback->data,callback->len);
+		conn->sendPipe(asyncCallback->data,asyncCallback->len);
 	}
 	else
 	{
@@ -1807,15 +1851,15 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 			int32_t port = atoi(s+1);
 			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<ip<<" "<<port;
 
-			RedisAsyncCallback call;
+			RedisAsyncCallbackPtr asyncCb;
 			{
 				std::unique_lock<std::mutex> lk(redisAsyncContextPtr->getMutex());
-				assert(!redisAsyncContextPtr->getCb().empty());
-				call = std::move(redisAsyncContextPtr->getCb().front());
-				redisAsyncContextPtr->getCb().pop_front();
+				assert(!redisAsyncContextPtr->getAsyncCallback().empty());
+				asyncCb = redisAsyncContextPtr->getAsyncCallback().front();
+				redisAsyncContextPtr->getAsyncCallback().pop_front();
 			}
 
-			TcpClientPtr client(new TcpClient(pool.getNextLoop(),ip.c_str(),port,call));
+			TcpClientPtr client(new TcpClient(pool.getNextLoop(),ip.c_str(),port,asyncCb));
 			pushTcpClient(client);
 
 			client->setMessageCallback(std::bind(&Hiredis::redisReadCallBack,
@@ -1830,23 +1874,21 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 				client->setConnectionCallback(std::bind(&Hiredis::clusterAskConnCallBack,
 						this,std::placeholders::_1));
 			}
-
-			client->asyncConnect();
+			client->syncConnect();
 		 }
 		 else
 		 {
-			 RedisAsyncCallback asyncCb;
+			 RedisAsyncCallbackPtr asyncCb;
 			 {
 				 std::unique_lock<std::mutex> lk(redisAsyncContextPtr->getMutex());
-				 assert(!redisAsyncContextPtr->getCb().empty());
-				 asyncCb = std::move(redisAsyncContextPtr->getCb().front());
-				 redisAsyncContextPtr->getCb().pop_front();
-				 zfree(asyncCb.data);
+				 assert(!redisAsyncContextPtr->getAsyncCallback().empty());
+				 asyncCb = redisAsyncContextPtr->getAsyncCallback().front();
+				 redisAsyncContextPtr->getAsyncCallback().pop_front();
 			 }
 
-			 if (asyncCb.cb.fn)
+			 if (asyncCb->cb.fn)
 			 {
-				 asyncCb.cb.fn(redisAsyncContextPtr,reply,asyncCb.cb.privdata);
+				 asyncCb->cb.fn(redisAsyncContextPtr,reply,asyncCb->cb.privdata);
 			 }
 		 }
 	}

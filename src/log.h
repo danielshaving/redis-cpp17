@@ -1,6 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
 #pragma once
 #include "all.h"
 const int32_t kSmallBuffer = 4000;

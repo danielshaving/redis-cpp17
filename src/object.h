@@ -1,7 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
-
 #pragma once
 #include "all.h"
 #include "zmalloc.h"
@@ -11,7 +7,6 @@
 #include "util.h"
 #include "callback.h"
 
-#define OBJ_SHARED_REFCOUNT INT_MAX
 class RedisObject
 {
 public:
@@ -35,12 +30,15 @@ public:
 	unsigned type :4;
 	unsigned encoding :4;
 	size_t hash;
-	char *ptr;
+	sds ptr;
 };
 
 struct Hash
 {
-	size_t operator()(const RedisObjectPtr &x) const { return x->hash; }
+	size_t operator()(const RedisObjectPtr &x) const
+	{
+		return x->hash;
+	}
 };
 
 struct Equal
@@ -85,7 +83,6 @@ RedisObjectPtr createRawStringObject(int32_t type,char *ptr,size_t len);
 RedisObjectPtr createObject(int32_t type,char *ptr);
 RedisObjectPtr createStringObject(char *ptr,size_t len);
 RedisObjectPtr createStringObjectFromLongLong(int64_t value);
-
 
 /* -----------------------------------------------------------------------------
  * Low level functions to add more data to output buffers.

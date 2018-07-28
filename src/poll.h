@@ -1,7 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
-
 #pragma once
 #ifdef __APPLE__
 #include "all.h"

@@ -187,6 +187,7 @@ void Socket::fromIpPort(const char *ip,uint16_t port,struct sockaddr_in6 *addr)
 
 int32_t Socket::createSocket()
 {
+	return ::socket(AF_INET,SOCK_STREAM,0);
 #ifdef __linux__
 	return ::socket(AF_INET,SOCK_STREAM | SOCK_CLOEXEC,0);
 #endif

@@ -1,6 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
 #pragma once
 #include "all.h"
 
@@ -17,10 +14,18 @@ public:
 	void setRevents(int32_t revt) { revents = revt; }
 	void setEvents(int32_t revt) { events = revt; }
 	void setIndex(int32_t idx) { index = idx; }
-	void setReadCallback(const EventCallback &&cb) { readCallback  = std::move(cb); }
-	void setWriteCallback(const EventCallback &&cb) { writeCallback = std::move(cb); }
-	void setCloseCallback(const EventCallback &&cb) { closeCallback = std::move(cb); }
-	void setErrorCallback(const EventCallback &&cb) { errorCallback = std::move(cb); }
+
+	void setReadCallback(const EventCallback &&cb)
+	{ readCallback  = std::move(cb); }
+
+	void setWriteCallback(const EventCallback &&cb)
+	{ writeCallback = std::move(cb); }
+
+	void setCloseCallback(const EventCallback &&cb)
+	{ closeCallback = std::move(cb); }
+
+	void setErrorCallback(const EventCallback &&cb)
+	{ errorCallback = std::move(cb); }
 
 	bool readEnabled() { return events & kReadEvent; }
 	bool writeEnabled() { return events & kWriteEvent; }

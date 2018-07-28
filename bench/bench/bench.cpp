@@ -25,6 +25,7 @@ void readCallback(int32_t fd,int32_t idx)
 		{
 			widx -= numPipes;
 		}
+
 		::send(pipes[2 * widx + 1],"m",1,0);
 		writes--;
 		fired++;
@@ -37,7 +38,7 @@ void readCallback(int32_t fd,int32_t idx)
 }
 
 
-std::pair<int32_t, int32_t> runOnce()
+std::pair<int32_t,int32_t> runOnce()
 {
 	TimeStamp beforeInit(TimeStamp::now());
 	for(int32_t i = 0; i < numPipes ; i++)

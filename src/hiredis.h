@@ -1,6 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
 #pragma once
 #include "sds.h"
 #include "tcpconnection.h"
@@ -12,7 +9,6 @@
 
 /* This is the reply object returned by redisCommand() */
 
-class RedisAsyncContext;
 struct RedisReply
 {
 	RedisReply()
@@ -78,11 +74,12 @@ public:
 	RedisReader();
 	RedisReader(Buffer *buffer);
 
-	int32_t redisReaderGetReply(RedisReplyPtr &reply);
 	void redisReaderSetError(int32_t type,const char *str);
 	void redisReaderSetErrorProtocolByte(char byte);
 	void redisReaderSetErrorOOM();
 	void moveToNextTask();
+
+	int32_t redisReaderGetReply(RedisReplyPtr &reply);
 	int32_t processLineItem();
 	int32_t processBulkItem();
 	int32_t processMultiBulkItem();
@@ -108,23 +105,6 @@ public:
 	std::any privdata;
 };
 
-typedef std::function<void(const RedisAsyncContextPtr &context,
-		const RedisReplyPtr &,const std::any &)> RedisCallbackFn;
-struct RedisCallback
-{
-	RedisCallbackFn fn;
-    std::any privdata;
-};
-
-struct RedisAsyncCallback
-{
-	RedisAsyncCallback()
-	:data(nullptr),len(0) { }
-	RedisCallback cb;
-	int32_t len;
-	char *data;
-};
-
 class RedisContext
 {
 public:
@@ -132,15 +112,21 @@ public:
 	RedisContext(Buffer *buffer,int32_t sockfd);
 	~RedisContext();
 
-	int32_t redisvAppendCommand(const char *format,va_list ap);
-	void redisAppendCommand(const char *cmd,size_t len);
 	RedisReplyPtr redisCommand(const char *format,...);
 	RedisReplyPtr redisvCommand(const char *format,va_list ap);
 	RedisReplyPtr redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
-	void redisAppendFormattedCommand(const char *cmd,size_t len);
-	int32_t redisAppendCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
-	void redisSetError(int32_t type,const char *str);
 	RedisReplyPtr redisBlockForReply();
+
+	void redisAppendFormattedCommand(const char *cmd,size_t len);
+	void redisAppendCommand(const char *cmd,size_t len);
+	void redisSetError(int32_t type,const char *str);
+	void clear();
+	void setBlock();
+	void setConnected();
+	void setDisConnected();
+
+	int32_t redisvAppendCommand(const char *format,va_list ap);
+	int32_t redisAppendCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
 	int32_t redisContextWaitReady(int32_t msec);
 	int32_t redisCheckSocketError();
 	int32_t redisBufferRead();
@@ -156,11 +142,6 @@ private:
 	void operator=(const RedisContext&);
 
 public:
-	void clear();
-	void setBlock();
-	void setConnected();
-	void setDisConnected();
-
 	char errstr[128];	/* String representation of error when applicable */
 	const char *ip;
 	int16_t port;
@@ -168,15 +149,70 @@ public:
 	int32_t err;	/* Error flags, 0 when there is no error */
 	int32_t fd;
 	int8_t flags;
-
 	Buffer sender;  /* Write buffer */
 	RedisReaderPtr reader;	/* Protocol reader */
+};
+
+typedef std::function<void(const RedisAsyncContextPtr &context,
+			const RedisReplyPtr &,const std::any &)> RedisCallbackFn;
+struct RedisCallback
+{
+	RedisCallbackFn fn;
+	std::any privdata;
+};
+
+struct RedisAsyncCallback
+{
+	RedisAsyncCallback()
+	:data(nullptr),
+	 len(0)
+	{
+
+	}
+
+	~RedisAsyncCallback()
+	{
+		if(data != nullptr)
+		{
+			zfree(data);
+		}
+	}
+
+	RedisCallback cb;
+	int32_t len;
+	char *data;
+};
+
+typedef std::shared_ptr<RedisAsyncCallback> RedisAsyncCallbackPtr;
+typedef std::list<RedisAsyncCallbackPtr> RedisAsyncCallbackList;
+
+/* Subscription callbacks */
+struct SubCallback
+{
+	struct Hash
+	{
+		size_t operator()(const sds x) const
+		{
+			return dictGenHashFunction(x,sdslen(x));
+		}
+	};
+
+	struct Equal
+	{
+		bool operator()(const sds x,const sds y) const
+		{
+			return std::strcmp(x,y) == 0;
+		}
+	};
+
+	RedisCallback invalid;
+	std::unordered_map<sds,RedisCallback,Hash,Equal> channels;
+	std::unordered_map<sds,RedisCallback,Hash,Equal> patterns;
 };
 
 class RedisAsyncContext
 {
 public:
-	typedef std::list<RedisAsyncCallback> RedisAsyncCallbackList;
 	RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn);
 	~RedisAsyncContext();
 
@@ -188,10 +224,10 @@ public:
 			const std::any &privdata,const char *format, ...);
 
 	int32_t redisGetReply(RedisReplyPtr reply);
-	RedisContextPtr getRedisContext() { return contextPtr; }
-	TcpConnectionPtr getServerConn() { return serverConn; }
-	std::mutex &getMutex() { return mtx;}
-	RedisAsyncCallbackList &getCb() { return asyncCb; }
+	TcpConnectionPtr getServerConn();
+	RedisAsyncCallbackList &getAsyncCallback() { return asyncCb; }
+	std::mutex &getMutex();
+	RedisContextPtr getRedisContext();
 
 private:
 	RedisAsyncContext(const RedisAsyncContext&);
@@ -203,6 +239,7 @@ private:
 	RedisContextPtr contextPtr;
 	TcpConnectionPtr serverConn;
 	RedisAsyncCallbackList asyncCb;
+	SubCallback	subCb;
 	std::mutex mtx;
 };
 
@@ -245,7 +282,6 @@ private:
 	std::mutex rtx;
 	RedisAsyncContextMap::iterator node;
 };
-
 
 int redisFormatSdsCommandArgv(sds *target,int argc,const char **argv,const size_t *argvlen);
 int32_t redisFormatCommand(char **target,const char *format,...);

@@ -1,7 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
-
 #pragma once
 #include "all.h"
 #include "eventloop.h"
@@ -143,9 +139,7 @@ public:
 
 	std::string &getIp() { return ip; }
 	int16_t getPort() { return port; }
-
 	bool checkCommand(const RedisObjectPtr &cmd);
-
 public:
 	typedef std::function<bool(const std::deque<RedisObjectPtr> &,const SessionPtr &)> CommandFunc;
 	typedef std::unordered_map<RedisObjectPtr,RedisObjectPtr,Hash,Equal> StringMap;

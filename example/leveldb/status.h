@@ -101,7 +101,7 @@ inline Status::Status(const Status &rhs)
 	state = (rhs.state == nullptr) ? nullptr : copyState(rhs.state);
 }
 
-inline Status& Status::operator=(const Status& rhs)
+inline Status& Status::operator=(const Status &rhs)
 {
 	// The following condition catches both aliasing (when this == &rhs),
 	// and the common case where both rhs and *this are ok.

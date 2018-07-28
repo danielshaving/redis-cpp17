@@ -1,7 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
-
 #pragma once
 #include "all.h"
 #include "buffer.h"
@@ -76,6 +72,7 @@ public:
 
 	std::any *getMutableContext() { return &context; }
 	const std::any &getContext() const { return context; }
+	void resetContext() { context.reset(); }
 	void setContext(const std::any &context) { this->context = context; }
 
 	Buffer *outputBuffer() { return &sendBuff; }

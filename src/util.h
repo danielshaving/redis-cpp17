@@ -1,6 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
 #pragma once
 #include "all.h"
 #define STANDALONE 1 /* at the moment, this is ok. */
