@@ -9,13 +9,14 @@ std::atomic<int32_t> gconnetCount = 0;
 std::atomic<int32_t> messageCount = 1000000;
 int32_t message = 1000000;
 
-HiredisAsync::HiredisAsync(EventLoop *loop,int8_t threadCount,const char *ip,int16_t port)
+HiredisAsync::HiredisAsync(EventLoop *loop,
+			int8_t threadCount,const char *ip,int16_t port)
 :hiredis(loop),
  connectCount(0),
  loop(loop),
  cron(true)
 {
-	if(threadCount == 0)
+	if(threadCount <= 0)
 	{
 		threadCount = 1;
 	}
@@ -58,14 +59,18 @@ void HiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
 	}
 	else
 	{
+		hiredis.eraseRedisMap(conn->getSockfd());
 		if(--connectCount == 0)
 		{
-			printf("all diconnect success\n");
 			hiredis.clearTcpClient();
-			endTime = mstime();
-			printf("becnch seconds %02d\n",(endTime - startTime) / 1000);
+			endTime = ustime();
+			double dff = endTime - startTime;
+			double elapsed = dff / (1000 * 1000);
+
+			printf("all client diconnect success\n");
+			printf("all client command benchmark seconds %.5f\n",elapsed);
+			loop->quit();
 		}
-		hiredis.eraseRedisMap(conn->getSockfd());
 	}
 }
 
@@ -74,14 +79,14 @@ void HiredisAsync::setCallback(const RedisAsyncContextPtr &c,
 {
 	assert(reply->type == REDIS_REPLY_STATUS);
 	assert(reply->len == 2);
-	assert(strcmp(reply->str,"ok") == 0);
+	assert(strcmp(reply->str,"OK") == 0);
 
 	std::thread::id threadId = std::any_cast< std::thread::id>(privdata);
 	assert(threadId == std::this_thread::get_id());
 	assert(sconnetCount <= messageCount);
 	if (++sconnetCount == messageCount)
 	{
-		printf("all setcallback success\n");
+		printf("all client setcallback success\n");
 	}
 }
 
@@ -94,13 +99,13 @@ void HiredisAsync::getCallback(const RedisAsyncContextPtr &c,
 	assert(gconnetCount <= messageCount);
 	if(++gconnetCount == messageCount)
 	{
-		printf("all getcallback success\n");
+		printf("all client getcallback success\n");
 	}
 }
 
 void HiredisAsync::serverCron()
 {
-	if(cron && gconnetCount == sessionCount && sconnetCount == sessionCount)
+	if(cron && gconnetCount == messageCount && sconnetCount == messageCount)
 	{
 		{
 			std::unique_lock<std::mutex> lk(hiredis.getMutex());
@@ -126,12 +131,12 @@ int main(int argc,char *argv[])
 		sessionCount = atoi(argv[3]);
 		int8_t threadCount = atoi(argv[4]);
 
-		startTime = mstime();
+		startTime = ustime();
 		EventLoop loop;
 		HiredisAsync async(&loop,threadCount,ip,port);
-		printf("all connect success\n");
+		printf("all client connect success\n");
 
-		for(int32_t count = 0; count <= message; count++)
+		for(int32_t count = 1; count <= message; count++)
 		{
 			auto redis = async.getHiredis()->getIteratorNode();
 			std::thread::id threadId = redis->getServerConn()->getLoop()->getThreadId();

@@ -10,11 +10,11 @@ RedisReader::RedisReader(Buffer *buffer)
 }
 
 RedisReader::RedisReader()
-:buffer(new Buffer),
- pos(0),
+:pos(0),
  err(0),
  ridx(-1)
 {
+	buffer = &buf;
 	errstr[0] = '\0';
 }
 
@@ -32,7 +32,7 @@ void RedisReader::redisReaderSetError(int32_t type,const char *str)
 	/* Set error. */
 	err = type;
 	len = strlen(str);
-	len = len < (sizeof(errstr)-1) ? len : (sizeof(errstr)-1);
+	len = len < (sizeof(errstr) - 1) ? len : (sizeof(errstr) - 1);
 	memcpy(errstr,str,len);
 	errstr[len] = '\0';
 }
@@ -67,7 +67,7 @@ void RedisReader::redisReaderSetErrorProtocolByte(char byte)
 {
     char cbuf[8], sbuf[128];
     chrtos(cbuf,sizeof(cbuf),byte);
-    snprintf(sbuf,sizeof(sbuf),"Protocol error, got %s as reply type byte", cbuf);
+    snprintf(sbuf,sizeof(sbuf),"Protocol error, got %s as reply type byte",cbuf);
     redisReaderSetError(REDIS_ERR_PROTOCOL,sbuf);
 }
 
@@ -1265,7 +1265,7 @@ int RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
 	return REDIS_OK;
 }
 
-int32_t RedisAsyncContext::redisGetReply(RedisReplyPtr reply)
+int32_t RedisAsyncContext::redisGetReply(RedisReplyPtr &reply)
 {
 	return contextPtr->redisGetReply(reply);
 }

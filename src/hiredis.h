@@ -100,7 +100,8 @@ public:
 	int32_t err;
 	size_t pos;
 	RedisFunc fn;
-	BufferPtr buffer;
+	Buffer *buffer;
+	Buffer buf;
 	RedisReplyPtr reply;
 	std::any privdata;
 };
@@ -223,7 +224,7 @@ public:
 	int redisAsyncCommand(const RedisCallbackFn &fn,
 			const std::any &privdata,const char *format, ...);
 
-	int32_t redisGetReply(RedisReplyPtr reply);
+	int32_t redisGetReply(RedisReplyPtr &reply);
 	TcpConnectionPtr getServerConn();
 	RedisAsyncCallbackList &getAsyncCallback() { return asyncCb; }
 	std::mutex &getMutex();
