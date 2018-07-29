@@ -788,7 +788,10 @@ int32_t RedisContext::redisGetReplyFromReader(RedisReplyPtr &reply)
 int32_t RedisContext::redisBufferWrite(int32_t *done)
 {
 	int32_t nwritten;
-	if (err) { return REDIS_ERR; }
+	if (err)
+	{
+		return REDIS_ERR;
+	}
 
 	if (sender.readableBytes() > 0)
 	{
@@ -807,14 +810,7 @@ int32_t RedisContext::redisBufferWrite(int32_t *done)
 		}
 		else if (nwritten > 0)
 		{
-			if (nwritten == sender.readableBytes())
-			{
-			    sender.retrieveAll();
-			}
-			else
-			{
-			    sender.retrieve(nwritten);
-			}
+			sender.retrieve(nwritten);
 		}
 	}
 
@@ -958,7 +954,7 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 	const char *c = format;
 	char *cmd = nullptr; 					/* final command */
 	int32_t pos;							/* position in final command */
-	sds curarg, newarg; 				/* current argument */
+	sds curarg,newarg; 				/* current argument */
 	int32_t touched = 0;					/* was the current argument touched? */
 	char **curargv = nullptr;
 	char **newargv = nullptr;
@@ -1277,8 +1273,8 @@ RedisAsyncContext::~RedisAsyncContext()
 
 }
 
-int RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
-		const std::any &privdata,const char *format, va_list ap)
+int32_t RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
+		const std::any &privdata,const char *format,va_list ap)
 {
 	char *cmd;
 	int32_t len;
@@ -1297,7 +1293,7 @@ int32_t RedisAsyncContext::redisGetReply(RedisReplyPtr &reply)
 	return contextPtr->redisGetReply(reply);
 }
 
-int RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
+int32_t RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata,const char *format, ...)
 {
 	va_list ap;

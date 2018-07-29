@@ -197,9 +197,9 @@ public:
 
 	void  __redisAsyncCommand(const RedisCallbackFn &fn,
 			const std::any &privdata,char *cmd,size_t len);
-	int redisvAsyncCommand(const RedisCallbackFn &fn,
+	int32_t redisvAsyncCommand(const RedisCallbackFn &fn,
 			const std::any &privdata,const char *format,va_list ap);
-	int redisAsyncCommand(const RedisCallbackFn &fn,
+	int32_t redisAsyncCommand(const RedisCallbackFn &fn,
 			const std::any &privdata,const char *format, ...);
 
 	int32_t redisGetReply(RedisReplyPtr &reply);
