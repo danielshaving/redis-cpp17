@@ -71,7 +71,7 @@ static void _dictReset(dict *ht) {
 
 /* Create a new hash table */
 static dict *dictCreate(dictType *type, void *privDataPtr) {
-    dict *ht = malloc(sizeof(*ht));
+    dict *ht = zmalloc(sizeof(*ht));
     _dictInit(ht,type,privDataPtr);
     return ht;
 }
@@ -124,7 +124,7 @@ static int dictExpand(dict *ht, unsigned long size) {
         }
     }
     assert(ht->used == 0);
-    free(ht->table);
+    zfree(ht->table);
 
     /* Remap the new hashtable in the old */
     *ht = n;
@@ -142,7 +142,7 @@ static int dictAdd(dict *ht, void *key, void *val) {
         return DICT_ERR;
 
     /* Allocates the memory and stores key */
-    entry = malloc(sizeof(*entry));
+    entry = zmalloc(sizeof(*entry));
     entry->next = ht->table[index];
     ht->table[index] = entry;
 
@@ -167,10 +167,10 @@ static int dictReplace(dict *ht, void *key, void *val) {
     /* It already exists, get the entry */
     entry = dictFind(ht, key);
     /* Free the old value and set the new one */
-    /* Set the new value and free the old one. Note that it is important
+    /* Set the new value and zfree the old one. Note that it is important
      * to do that in this order, as the value may just be exactly the same
      * as the previous one. In this context, think to reference counting,
-     * you want to increment (set), and then decrement (free), and not the
+     * you want to increment (set), and then decrement (zfree), and not the
      * reverse. */
     auxentry = *entry;
     dictSetHashVal(ht, entry, val);
@@ -199,7 +199,7 @@ static int dictDelete(dict *ht, const void *key) {
 
             dictFreeEntryKey(ht,de);
             dictFreeEntryVal(ht,de);
-            free(de);
+            zfree(de);
             ht->used--;
             return DICT_OK;
         }
@@ -222,13 +222,13 @@ static int _dictClear(dict *ht) {
             nextHe = he->next;
             dictFreeEntryKey(ht, he);
             dictFreeEntryVal(ht, he);
-            free(he);
+            zfree(he);
             ht->used--;
             he = nextHe;
         }
     }
     /* Free the table and the allocated cache structure */
-    free(ht->table);
+    zfree(ht->table);
     /* Re-initialize the table */
     _dictReset(ht);
     return DICT_OK; /* never fails */
@@ -237,7 +237,7 @@ static int _dictClear(dict *ht) {
 /* Clear & Release the hash table */
 static void dictRelease(dict *ht) {
     _dictClear(ht);
-    free(ht);
+    zfree(ht);
 }
 
 static dictEntry *dictFind(dict *ht, const void *key) {
@@ -256,7 +256,7 @@ static dictEntry *dictFind(dict *ht, const void *key) {
 }
 
 static dictIterator *dictGetIterator(dict *ht) {
-    dictIterator *iter = malloc(sizeof(*iter));
+    dictIterator *iter = zmalloc(sizeof(*iter));
 
     iter->ht = ht;
     iter->index = -1;
@@ -286,7 +286,7 @@ static dictEntry *dictNext(dictIterator *iter) {
 }
 
 static void dictReleaseIterator(dictIterator *iter) {
-    free(iter);
+    zfree(iter);
 }
 
 /* ------------------------- private functions ------------------------------ */
@@ -314,7 +314,7 @@ static unsigned long _dictNextPower(unsigned long size) {
     }
 }
 
-/* Returns the index of a free slot that can be populated with
+/* Returns the index of a zfree slot that can be populated with
  * an hash entry for the given 'key'.
  * If the key already exists, -1 is returned. */
 static int _dictKeyIndex(dict *ht, const void *key) {

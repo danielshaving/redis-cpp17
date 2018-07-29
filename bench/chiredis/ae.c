@@ -44,11 +44,11 @@
 #include "zmalloc.h"
 #include "config.h"
 #ifdef __linux__
-#include "ae_epoll.c"
+#include "aeepoll.c"
 #endif
 
 #ifdef __APPLE__
-#include "ae_kqueue.c"
+#include "aekqueue.c"
 #endif
 
 aeEventLoop *aeCreateEventLoop(int setsize) {

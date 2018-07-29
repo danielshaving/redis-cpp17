@@ -80,23 +80,23 @@ void freeReplyObject(void *reply) {
 
     switch(r->type) {
     case REDIS_REPLY_INTEGER:
-        break; /* Nothing to free */
+        break; /* Nothing to zfree */
     case REDIS_REPLY_ARRAY:
         if (r->element != NULL) {
             for (j = 0; j < r->elements; j++)
                 if (r->element[j] != NULL)
                     freeReplyObject(r->element[j]);
-            free(r->element);
+            zfree(r->element);
         }
         break;
     case REDIS_REPLY_ERROR:
     case REDIS_REPLY_STATUS:
     case REDIS_REPLY_STRING:
         if (r->str != NULL)
-            free(r->str);
+            zfree(r->str);
         break;
     }
-    free(r);
+    zfree(r);
 }
 
 static void *createStringObject(const redisReadTask *task, char *str, size_t len) {
@@ -107,7 +107,7 @@ static void *createStringObject(const redisReadTask *task, char *str, size_t len
     if (r == NULL)
         return NULL;
 
-    buf = malloc(len+1);
+    buf = zmalloc(len+1);
     if (buf == NULL) {
         freeReplyObject(r);
         return NULL;
@@ -390,14 +390,14 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
         sdsfree(curarg);
     }
 
-    /* Clear curarg because it was put in curargv or was free'd. */
+    /* Clear curarg because it was put in curargv or was zfree'd. */
     curarg = NULL;
 
     /* Add bytes needed to hold multi bulk count */
     totlen += 1+countDigits(argc)+2;
 
     /* Build the command at protocol level */
-    cmd = malloc(totlen+1);
+    cmd = zmalloc(totlen+1);
     if (cmd == NULL) goto memory_err;
 
     pos = sprintf(cmd,"*%d\r\n",argc);
@@ -412,7 +412,7 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
     assert(pos == totlen);
     cmd[pos] = '\0';
 
-    free(curargv);
+    zfree(curargv);
     *target = cmd;
     return totlen;
 
@@ -428,7 +428,7 @@ cleanup:
     if (curargv) {
         while(argc--)
             sdsfree(curargv[argc]);
-        free(curargv);
+        zfree(curargv);
     }
 
     sdsfree(curarg);
@@ -436,7 +436,7 @@ cleanup:
     /* No need to check cmd since it is the last statement that can fail,
      * but do it anyway to be as defensive as possible. */
     if (cmd != NULL)
-        free(cmd);
+        zfree(cmd);
 
     return error_type;
 }
@@ -545,7 +545,7 @@ int redisFormatCommandArgv(char **target, int argc, const char **argv, const siz
     }
 
     /* Build the command at protocol level */
-    cmd = malloc(totlen+1);
+    cmd = zmalloc(totlen+1);
     if (cmd == NULL)
         return -1;
 
@@ -566,7 +566,7 @@ int redisFormatCommandArgv(char **target, int argc, const char **argv, const siz
 }
 
 void redisFreeCommand(char *cmd) {
-    free(cmd);
+    zfree(cmd);
 }
 
 void __redisSetError(redisContext *c, int type, const char *str) {
@@ -623,14 +623,14 @@ void redisFree(redisContext *c) {
     if (c->reader != NULL)
         redisReaderFree(c->reader);
     if (c->tcp.host)
-        free(c->tcp.host);
+        zfree(c->tcp.host);
     if (c->tcp.source_addr)
-        free(c->tcp.source_addr);
+        zfree(c->tcp.source_addr);
     if (c->unix_sock.path)
-        free(c->unix_sock.path);
+        zfree(c->unix_sock.path);
     if (c->timeout)
-        free(c->timeout);
-    free(c);
+        zfree(c->timeout);
+    zfree(c);
 }
 
 int redisFreeKeepFd(redisContext *c) {
@@ -940,11 +940,11 @@ int redisvAppendCommand(redisContext *c, const char *format, va_list ap) {
     }
 
     if (__redisAppendCommand(c,cmd,len) != REDIS_OK) {
-        free(cmd);
+        zfree(cmd);
         return REDIS_ERR;
     }
 
-    free(cmd);
+    zfree(cmd);
     return REDIS_OK;
 }
 

@@ -68,7 +68,7 @@ static unsigned int callbackHash(const void *key) {
 
 static void *callbackValDup(void *privdata, const void *src) {
     ((void) privdata);
-    redisCallback *dup = malloc(sizeof(*dup));
+    redisCallback *dup = zmalloc(sizeof(*dup));
     memcpy(dup,src,sizeof(*dup));
     return dup;
 }
@@ -90,7 +90,7 @@ static void callbackKeyDestructor(void *privdata, void *key) {
 
 static void callbackValDestructor(void *privdata, void *val) {
     ((void) privdata);
-    free(val);
+    zfree(val);
 }
 
 static dictType callbackDict = {
@@ -105,7 +105,7 @@ static dictType callbackDict = {
 static redisAsyncContext *redisAsyncInitialize(redisContext *c) {
     redisAsyncContext *ac;
 
-    ac = realloc(c,sizeof(redisAsyncContext));
+    ac = zrealloc(c,sizeof(redisAsyncContext));
     if (ac == NULL)
         return NULL;
 
@@ -228,7 +228,7 @@ static int __redisPushCallback(redisCallbackList *list, redisCallback *source) {
     redisCallback *cb;
 
     /* Copy callback from stack to heap */
-    cb = malloc(sizeof(*cb));
+    cb = zmalloc(sizeof(*cb));
     if (cb == NULL)
         return REDIS_ERR_OOM;
 
@@ -256,7 +256,7 @@ static int __redisShiftCallback(redisCallbackList *list, redisCallback *target) 
         /* Copy callback from heap to stack */
         if (target != NULL)
             memcpy(target,cb,sizeof(*cb));
-        free(cb);
+        zfree(cb);
         return REDIS_OK;
     }
     return REDIS_ERR;
@@ -271,7 +271,7 @@ static void __redisRunCallback(redisAsyncContext *ac, redisCallback *cb, redisRe
     }
 }
 
-/* Helper function to free the context. */
+/* Helper function to zfree the context. */
 static void __redisAsyncFree(redisAsyncContext *ac) {
     redisContext *c = &(ac->c);
     redisCallback cb;
@@ -318,8 +318,8 @@ static void __redisAsyncFree(redisAsyncContext *ac) {
 
 /* Free the async context. When this function is called from a callback,
  * control needs to be returned to redisProcessCallbacks() before actual
- * free'ing. To do so, a flag is set on the context which is picked up by
- * redisProcessCallbacks(). Otherwise, the context is immediately free'd. */
+ * zfree'ing. To do so, a flag is set on the context which is picked up by
+ * redisProcessCallbacks(). Otherwise, the context is immediately zfree'd. */
 void redisAsyncFree(redisAsyncContext *ac) {
     redisContext *c = &(ac->c);
     c->flags |= REDIS_FREEING;
@@ -469,7 +469,7 @@ void redisProcessCallbacks(redisAsyncContext *ac) {
             __redisRunCallback(ac,&cb,reply);
             c->reader->fn->freeObject(reply);
 
-            /* Proceed with free'ing when redisAsyncFree() was called. */
+            /* Proceed with zfree'ing when redisAsyncFree() was called. */
             if (c->flags & REDIS_FREEING) {
                 __redisAsyncFree(ac);
                 return;
@@ -490,7 +490,7 @@ void redisProcessCallbacks(redisAsyncContext *ac) {
 
 /* Internal helper function to detect socket status the first time a read or
  * write event fires. When connecting was not successful, the connect callback
- * is called with a REDIS_ERR status and the context is free'd. */
+ * is called with a REDIS_ERR status and the context is zfree'd. */
 static int __redisAsyncHandleConnect(redisAsyncContext *ac) {
     redisContext *c = &(ac->c);
 
@@ -658,7 +658,7 @@ int redisvAsyncCommand(redisAsyncContext *ac, redisCallbackFn *fn, void *privdat
         return REDIS_ERR;
 
     status = __redisAsyncCommand(ac,fn,privdata,cmd,len);
-    free(cmd);
+    zfree(cmd);
     return status;
 }
 

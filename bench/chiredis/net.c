@@ -279,14 +279,14 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port,
 
     /* We need to take possession of the passed parameters
      * to make them reusable for a reconnect.
-     * We also carefully check we don't free data we already own,
+     * We also carefully check we don't zfree data we already own,
      * as in the case of the reconnect method.
      *
      * This is a bit ugly, but atleast it works and doesn't leak memory.
      **/
     if (c->tcp.host != addr) {
         if (c->tcp.host)
-            free(c->tcp.host);
+            zfree(c->tcp.host);
 
         c->tcp.host = strdup(addr);
     }
@@ -294,13 +294,13 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port,
     if (timeout) {
         if (c->timeout != timeout) {
             if (c->timeout == NULL)
-                c->timeout = malloc(sizeof(struct timeval));
+                c->timeout = zmalloc(sizeof(struct timeval));
 
             memcpy(c->timeout, timeout, sizeof(struct timeval));
         }
     } else {
         if (c->timeout)
-            free(c->timeout);
+            zfree(c->timeout);
         c->timeout = NULL;
     }
 
@@ -310,10 +310,10 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port,
     }
 
     if (source_addr == NULL) {
-        free(c->tcp.source_addr);
+        zfree(c->tcp.source_addr);
         c->tcp.source_addr = NULL;
     } else if (c->tcp.source_addr != source_addr) {
-        free(c->tcp.source_addr);
+        zfree(c->tcp.source_addr);
         c->tcp.source_addr = strdup(source_addr);
     }
 
@@ -443,13 +443,13 @@ int redisContextConnectUnix(redisContext *c, const char *path, const struct time
     if (timeout) {
         if (c->timeout != timeout) {
             if (c->timeout == NULL)
-                c->timeout = malloc(sizeof(struct timeval));
+                c->timeout = zmalloc(sizeof(struct timeval));
 
             memcpy(c->timeout, timeout, sizeof(struct timeval));
         }
     } else {
         if (c->timeout)
-            free(c->timeout);
+            zfree(c->timeout);
         c->timeout = NULL;
     }
 

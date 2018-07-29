@@ -426,7 +426,7 @@ redisReader *redisReaderCreateWithFunctions(redisReplyObjectFunctions *fn) {
     r->buf = sdsempty();
     r->maxbuf = REDIS_READER_MAX_BUF;
     if (r->buf == NULL) {
-        free(r);
+        zfree(r);
         return NULL;
     }
 
@@ -439,7 +439,7 @@ void redisReaderFree(redisReader *r) {
         r->fn->freeObject(r->reply);
     if (r->buf != NULL)
         sdsfree(r->buf);
-    free(r);
+    zfree(r);
 }
 
 int redisReaderFeed(redisReader *r, const char *buf, size_t len) {
@@ -457,7 +457,7 @@ int redisReaderFeed(redisReader *r, const char *buf, size_t len) {
             r->buf = sdsempty();
             r->pos = 0;
 
-            /* r->buf should not be NULL since we just free'd a larger one. */
+            /* r->buf should not be NULL since we just zfree'd a larger one. */
             assert(r->buf != NULL);
         }
 
