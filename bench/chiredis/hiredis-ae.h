@@ -34,6 +34,7 @@
 #include "ae.h"
 #include "hiredis.h"
 #include "async.h"
+#include "zmalloc.h"
 
 typedef struct redisAeEvents {
     redisAsyncContext *context;

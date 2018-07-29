@@ -1,6 +1,6 @@
-/* Kqueue(2)-based ae.c module
+/* Linux epoll(2) based ae.c module
  *
- * Copyright (C) 2009 Harish Mallipeddi - harish.mallipeddi@gmail.com
+ * Copyright (c) 2009-2012, Salvatore Sanfilippo <antirez at gmail dot com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -15,7 +15,7 @@
  *     to endorse or promote products derived from this software without
  *     specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * THIS SOFTWARE IS PRclose Í·ÎªÄîOVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
@@ -29,27 +29,30 @@
  */
 
 
+#include <sys/epoll.h>
 #include <sys/types.h>
-#include <sys/event.h>
-#include <sys/time.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "ae.h"
+#include "zmalloc.h"
 
 typedef struct aeApiState {
-    int kqfd;
-    struct kevent *events;
+    int epfd;
+    struct epoll_event *events;
 } aeApiState;
 
 static int aeApiCreate(aeEventLoop *eventLoop) {
     aeApiState *state = zmalloc(sizeof(aeApiState));
 
     if (!state) return -1;
-    state->events = zmalloc(sizeof(struct kevent)*eventLoop->setsize);
+    state->events = zmalloc(sizeof(struct epoll_event)*eventLoop->setsize);
     if (!state->events) {
         zfree(state);
         return -1;
     }
-    state->kqfd = kqueue();
-    if (state->kqfd == -1) {
+    state->epfd = epoll_create(1024); /* 1024 is just a hint for the kernel */
+    if (state->epfd == -1) {
         zfree(state->events);
         zfree(state);
         return -1;
@@ -61,44 +64,50 @@ static int aeApiCreate(aeEventLoop *eventLoop) {
 static int aeApiResize(aeEventLoop *eventLoop, int setsize) {
     aeApiState *state = eventLoop->apidata;
 
-    state->events = zrealloc(state->events, sizeof(struct kevent)*setsize);
+    state->events = zrealloc(state->events, sizeof(struct epoll_event)*setsize);
     return 0;
 }
 
 static void aeApiFree(aeEventLoop *eventLoop) {
     aeApiState *state = eventLoop->apidata;
 
-    close(state->kqfd);
+    close(state->epfd);
     zfree(state->events);
     zfree(state);
 }
 
 static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
     aeApiState *state = eventLoop->apidata;
-    struct kevent ke;
+    struct epoll_event ee = {0}; /* avoid valgrind warning */
+    /* If the fd was already monitored for some event, we need a MOD
+     * operation. Otherwise we need an ADD operation. */
+    int op = eventLoop->events[fd].mask == AE_NONE ?
+            EPOLL_CTL_ADD : EPOLL_CTL_MOD;
 
-    if (mask & AE_READABLE) {
-        EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-        if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1) return -1;
-    }
-    if (mask & AE_WRITABLE) {
-        EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
-        if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1) return -1;
-    }
+    ee.events = 0;
+    mask |= eventLoop->events[fd].mask; /* Merge old events */
+    if (mask & AE_READABLE) ee.events |= EPOLLIN;
+    if (mask & AE_WRITABLE) ee.events |= EPOLLOUT;
+    ee.data.fd = fd;
+    if (epoll_ctl(state->epfd,op,fd,&ee) == -1) return -1;
     return 0;
 }
 
-static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
+static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
     aeApiState *state = eventLoop->apidata;
-    struct kevent ke;
+    struct epoll_event ee = {0}; /* avoid valgrind warning */
+    int mask = eventLoop->events[fd].mask & (~delmask);
 
-    if (mask & AE_READABLE) {
-        EV_SET(&ke, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-        kevent(state->kqfd, &ke, 1, NULL, 0, NULL);
-    }
-    if (mask & AE_WRITABLE) {
-        EV_SET(&ke, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-        kevent(state->kqfd, &ke, 1, NULL, 0, NULL);
+    ee.events = 0;
+    if (mask & AE_READABLE) ee.events |= EPOLLIN;
+    if (mask & AE_WRITABLE) ee.events |= EPOLLOUT;
+    ee.data.fd = fd;
+    if (mask != AE_NONE) {
+        epoll_ctl(state->epfd,EPOLL_CTL_MOD,fd,&ee);
+    } else {
+        /* Note, Kernel < 2.6.9 requires a non null event pointer even for
+         * EPOLL_CTL_DEL. */
+        epoll_ctl(state->epfd,EPOLL_CTL_DEL,fd,&ee);
     }
 }
 
@@ -106,28 +115,21 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
     aeApiState *state = eventLoop->apidata;
     int retval, numevents = 0;
 
-    if (tvp != NULL) {
-        struct timespec timeout;
-        timeout.tv_sec = tvp->tv_sec;
-        timeout.tv_nsec = tvp->tv_usec * 1000;
-        retval = kevent(state->kqfd, NULL, 0, state->events, eventLoop->setsize,
-                        &timeout);
-    } else {
-        retval = kevent(state->kqfd, NULL, 0, state->events, eventLoop->setsize,
-                        NULL);
-    }
-
+    retval = epoll_wait(state->epfd,state->events,eventLoop->setsize,
+            tvp ? (tvp->tv_sec*1000 + tvp->tv_usec/1000) : -1);
     if (retval > 0) {
         int j;
 
         numevents = retval;
-        for(j = 0; j < numevents; j++) {
+        for (j = 0; j < numevents; j++) {
             int mask = 0;
-            struct kevent *e = state->events+j;
+            struct epoll_event *e = state->events+j;
 
-            if (e->filter == EVFILT_READ) mask |= AE_READABLE;
-            if (e->filter == EVFILT_WRITE) mask |= AE_WRITABLE;
-            eventLoop->fired[j].fd = e->ident;
+            if (e->events & EPOLLIN) mask |= AE_READABLE;
+            if (e->events & EPOLLOUT) mask |= AE_WRITABLE;
+            if (e->events & EPOLLERR) mask |= AE_WRITABLE;
+            if (e->events & EPOLLHUP) mask |= AE_WRITABLE;
+            eventLoop->fired[j].fd = e->data.fd;
             eventLoop->fired[j].mask = mask;
         }
     }
@@ -135,5 +137,5 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
 }
 
 static char *aeApiName(void) {
-    return "kqueue";
+    return "epoll";
 }
