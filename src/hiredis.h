@@ -262,7 +262,8 @@ private:
 	RedisAsyncContextMap::iterator node;
 };
 
-int redisFormatSdsCommandArgv(sds *target,int argc,const char **argv,const size_t *argvlen);
+int redisFormatSdsCommandArgv(sds *target,int argc,
+		const char **argv,const size_t *argvlen);
 int32_t redisFormatCommand(char **target,const char *format,...);
 int32_t redisFormatCommandArgv(char **target,int32_t argc,
 			const char **argv,const size_t *argvlen);

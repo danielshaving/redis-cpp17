@@ -8,7 +8,7 @@ public:
 	HiredisAsync(EventLoop *loop,int8_t threadCount,const char *ip,int16_t port);
 	~HiredisAsync();
 
-	void redisConnCallBack(const TcpConnectionPtr& conn);
+	void redisConnCallBack(const TcpConnectionPtr &conn);
 	Hiredis *getHiredis() { return &hiredis; }
 	void serverCron();
 	void getCallback(const RedisAsyncContextPtr &c,

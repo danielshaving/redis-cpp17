@@ -1,7 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
-
 #pragma once
 #include "all.h"
 #include "object.h"
@@ -60,7 +56,7 @@ struct Rio
 struct RdbState
 {
     Rio *rio;
-    RedisObjectPtr key;           /* Current key we are reading. */
+    RedisObjectPtr key;        /* Current key we are reading. */
     int32_t keyType;           /* Current key type if != -1. */
     uint32_t keys;             /* Number of keys processed. */
     uint32_t expires;          /* Number of keys with an expire. */
@@ -74,10 +70,8 @@ class Redis;
 class Rdb
 {
 public:
-	Rdb(Redis *redis)
-	:redis(redis),
-	 blockEnabled(true) { }
-	~Rdb() { }
+	Rdb(Redis *redis);
+	~Rdb();
 
 	void checkRdb(int32_t argc,char **argv,FILE *fp);
     void rdbCheckInfo(const char *fmt, ...);
@@ -92,7 +86,7 @@ public:
 	ssize_t rdbSaveRawString(Rio *rdb,uint8_t *s,size_t len);
 	ssize_t rdbSaveLongLongAsStringObject(Rio *rdb,int64_t value);
 
-	off_t  rioTell(Rio *r);
+	off_t rioTell(Rio *r);
 	size_t rioWrite(Rio *r,const void *buf,size_t len);
 	size_t rioRead(Rio *r,void *buf,size_t len);
 	size_t rioRepliRead(Rio *r,void *buf,size_t len);

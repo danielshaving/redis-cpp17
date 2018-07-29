@@ -58,6 +58,67 @@ void HiredisTest::redisConnCallBack(const TcpConnectionPtr &conn)
 	}
 }
 
+void HiredisTest::sync()
+{
+    unsigned int j;
+    RedisContextPtr c;
+    RedisReplyPtr reply;
+    const char *hostname = (argc > 1) ? argv[1] : "127.0.0.1";
+    int port = (argc > 2) ? atoi(argv[2]) : 6379;
+
+    struct timeval timeout = { 1, 500000 }; // 1.5 seconds
+    c = redisConnectWithTimeout(hostname,port,timeout);
+    if (c == NULL || c->err) {
+        if (c) {
+            printf("Connection error: %s\n",c->errstr);
+        } else {
+            printf("Connection error: can't allocate redis context\n");
+        }
+        exit(1);
+    }
+
+    /* PING server */
+    reply = c->redisCommand("PING");
+    printf("PING: %s\n",reply->str);
+
+    /* Set a key */
+    reply = c->redisCommand("SET %s %s","foo","hello world");
+    printf("SET: %s\n",reply->str);
+
+    /* Set a key using binary safe API */
+    reply = c->redisCommand("SET %b %b","bar",(size_t) 3,"hello",(size_t) 5);
+    printf("SET (binary API): %s\n",reply->str);
+
+    /* Try a GET and two INCR */
+    reply = c->redisCommand("GET foo");
+    printf("GET foo: %s\n", reply->str);
+
+    reply = c->redisCommand("INCR counter");
+    printf("INCR counter: %lld\n", reply->integer);
+    /* again ... */
+    reply = c->redisCommand("INCR counter");
+    printf("INCR counter: %lld\n", reply->integer);
+
+    /* Create a list of numbers, from 0 to 9 */
+    reply = redisCommand(c,"DEL mylist");
+    for (j = 0; j < 10; j++)
+    {
+        char buf[64];
+        snprintf(buf,64,"%u",j);
+        reply = c->redisCommand("LPUSH mylist element-%s",buf);
+    }
+
+    /* Let's check what we have inside the list */
+    reply = c->redisCommand("LRANGE mylist 0 -1");
+    if (reply->type == REDIS_REPLY_ARRAY)
+    {
+        for (j = 0; j < reply->elements; j++)
+        {
+            printf("%u) %s\n",j,reply->element[j]->str);
+        }
+    }
+}
+
 void HiredisTest::setCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply,const std::any &privdata)
 {

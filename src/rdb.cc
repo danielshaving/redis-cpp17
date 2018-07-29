@@ -1,6 +1,18 @@
 #include "rdb.h"
 #include "redis.h"
 
+Rdb::Rdb(Redis *redis)
+:redis(redis),
+blockEnabled(true)
+{
+
+}
+
+Rdb::~Rdb()
+{
+
+}
+
 /* Returns REDIS_OK or 0 for success/failure. */
 size_t Rdb::rioBufferWrite(Rio *r,const void *buf,size_t len)
 {

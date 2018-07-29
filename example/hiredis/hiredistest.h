@@ -15,6 +15,7 @@ public:
 	void string();
 	void hash();
 	void list();
+	void sync();
 
 	void setCallback(const RedisAsyncContextPtr &c,
 			const RedisReplyPtr &reply,const std::any &privdata);

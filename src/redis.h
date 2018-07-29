@@ -122,7 +122,6 @@ public:
 	Rdb *getRdb() { return &rdb; }
 	Cluster *getCluster() { return &clus; }
 	Replication *getReplication() { return &repli; }
-
 	auto &getRedisShards() { return redisShards; }
 	auto &getSession() { return sessions; }
 	auto &getClusterConn() { return clusterConns; }

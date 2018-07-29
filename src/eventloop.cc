@@ -56,6 +56,14 @@ EventLoop::~EventLoop()
 #endif
 }
 
+void EventLoop::assertInLoopThread()
+{
+	if (!isInLoopThread())
+	{
+		abortNotInLoopThread();
+	}
+}
+
 void EventLoop::updateChannel(Channel *channel)
 {
 	assert(channel->ownerLoop() == this);

@@ -30,17 +30,11 @@ public:
 	void removeChannel(Channel *channel);
 	bool hasChannel(Channel *channel);
 	void cancelAfter(Timer *timer);
-	void assertInLoopThread()
-	{
-		if (!isInLoopThread())
-		{
-			abortNotInLoopThread();
-		}
-	}
+	void assertInLoopThread();
 
     Timer *runAfter(double when,bool repeat,TimerCallback &&cb);
-    void handlerTimerQueue() { timerQueue->handleRead(); }
     TimerQueuePtr getTimerQueue() {  return timerQueue; }
+	void handlerTimerQueue() { timerQueue->handleRead(); }
     bool isInLoopThread() const { return threadId == std::this_thread::get_id(); }
     bool geteventHandling() const { return eventHandling; }
     std::thread::id getThreadId() const { return threadId; }
