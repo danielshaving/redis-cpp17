@@ -1,4 +1,17 @@
 #include "hiredis.h"
+RedisReply::RedisReply()
+:str(nullptr)
+{
+
+}
+
+RedisReply::~RedisReply()
+{
+	if (str != nullptr)
+	{
+		zfree(str);
+	}
+}
 
 RedisReader::RedisReader(Buffer *buffer)
 :buffer(buffer),
@@ -693,6 +706,21 @@ int32_t RedisReader::redisReaderGetReply(RedisReplyPtr &reply)
 	return REDIS_OK;
 }
 
+RedisAsyncCallback::RedisAsyncCallback()
+:data(nullptr),
+ len(0)
+{
+
+}
+
+RedisAsyncCallback::~RedisAsyncCallback()
+{
+	if(data != nullptr)
+	{
+		zfree(data);
+	}
+}
+
 RedisContext::RedisContext()
 :reader(new RedisReader())
 {
@@ -974,7 +1002,6 @@ int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
 					{
 						goto err;
 					}
-
 					touched  = 0;
 				}
 			}

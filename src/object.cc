@@ -2,6 +2,21 @@
 
 struct SharedObjectsStruct shared;
 
+RedisObject::RedisObject()
+:hash(0),
+ ptr(nullptr)
+{
+
+}
+
+RedisObject::~RedisObject()
+{
+	if (ptr != nullptr)
+	{
+		sdsfree(ptr);
+	}
+}
+
 void RedisObject::calHash()
 {
 	hash = dictGenHashFunction(ptr,sdslen(ptr));

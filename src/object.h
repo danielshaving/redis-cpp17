@@ -10,20 +10,8 @@
 class RedisObject
 {
 public:
-	RedisObject()
-	:hash(0),
-	 ptr(nullptr)
-	{
-
-	}
-
-	~RedisObject()
-	{
-		if (ptr != nullptr)
-		{
-			sdsfree(ptr);
-		}
-	}
+	RedisObject();
+	~RedisObject();
 
 	void calHash();
 	bool operator <(const RedisObjectPtr &r) const;

@@ -30,7 +30,6 @@ dbnum(1)
 	if (threadCount > 1)
 	{
 		this->threadCount = threadCount;
-		zmalloc_enable_thread_safeness();
 	}
 
 	server.start();
@@ -420,8 +419,7 @@ bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	"used_memory_peak_human:%s\r\n"
 	"total_system_memory:%lu\r\n"
 	"total_system_memory_human:%s\r\n"
-	"maxmemory_human:%s\r\n"
-	"mem_fragmentation_ratio:%.2f\r\n"
+	"maxmemory_human:%s\r\n",
 	"mem_allocator:%s\r\n",
 	zmalloc_used,
 	hmem,
@@ -432,7 +430,6 @@ bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	(unsigned int32_t)total_system_mem,
 	total_system_hmem,
 	maxmemory_hmem,
-	zmalloc_get_fragmentation_ratio(zmalloc_get_rss()),
 	ZMALLOC_LIB
 	);
 
@@ -1216,7 +1213,7 @@ int32_t Redis::rdbSaveBackground(bool enabled)
 		 retval = rdb.rdbSave("dump.rdb");
 		 if (retval == REDIS_OK)
 		 {
-			 size_t privateDirty = zmalloc_get_private_dirty();
+			 size_t privateDirty = zmalloc_get_private_dirty(getpid());
 			 if (privateDirty)
 			 {
 				  LOG_INFO <<"RDB: "<< privateDirty/(1024*1024)<<"MB of memory used by copy-on-write";

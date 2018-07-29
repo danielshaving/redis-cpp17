@@ -29,13 +29,14 @@ public:
 
 	bool readEnabled() { return events & kReadEvent; }
 	bool writeEnabled() { return events & kWriteEvent; }
-
 	bool isNoneEvent() const { return events == kNoneEvent; }
+
 	void enableReading() { events |= kReadEvent; update(); }
 	void disableReading() { events &= ~kReadEvent; update(); }
 	void enableWriting() { events |= kWriteEvent; update(); }
 	void disableWriting() { events &= ~kWriteEvent; update(); }
 	void disableAll() { events = kNoneEvent; update(); }
+
 	bool isWriting() const { return events & kWriteEvent; }
 	bool isReading() const { return events & kReadEvent; }
 

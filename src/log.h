@@ -1,7 +1,7 @@
 #pragma once
 #include "all.h"
 const int32_t kSmallBuffer = 4000;
-const int32_t kLargeBuffer = 4000*10;
+const int32_t kLargeBuffer = 4000 * 10;
 
 template<int32_t SIZE>
 class FixedBuffer

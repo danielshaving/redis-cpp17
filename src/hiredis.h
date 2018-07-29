@@ -1,29 +1,19 @@
 #pragma once
-#include "sds.h"
+#include "all.h"
 #include "tcpconnection.h"
 #include "object.h"
 #include "tcpclient.h"
 #include "socket.h"
 #include "log.h"
 #include "threadpool.h"
+#include "sds.h"
 
 /* This is the reply object returned by redisCommand() */
 
 struct RedisReply
 {
-	RedisReply()
-	:str(nullptr)
-	{
-	
-	}
-
-	~RedisReply()
-	{
-		if (str != nullptr)
-		{
-			zfree(str);
-		}
-	}
+	RedisReply();
+	~RedisReply();
 
     int32_t type;	/* REDIS_REPLY_* */
     int64_t integer;	/* The integer when type is REDIS_REPLY_INTEGER */
@@ -164,20 +154,8 @@ struct RedisCallback
 
 struct RedisAsyncCallback
 {
-	RedisAsyncCallback()
-	:data(nullptr),
-	 len(0)
-	{
-
-	}
-
-	~RedisAsyncCallback()
-	{
-		if(data != nullptr)
-		{
-			zfree(data);
-		}
-	}
+	RedisAsyncCallback();
+	~RedisAsyncCallback();
 
 	RedisCallback cb;
 	int32_t len;

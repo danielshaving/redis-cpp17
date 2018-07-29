@@ -1,6 +1,6 @@
 #include "redlock.h"
 
-static char **convertToSds(int32_t count, char **args)
+static char **convertToSds(int32_t count,char **args)
 {
 	int32_t j;
 	char **sds = (char**)zmalloc(sizeof(char*)*count);
@@ -116,7 +116,7 @@ RedisReplyPtr RedLock::commandArgv(const RedisContextPtr &c,int32_t argc,char **
 	}
 
 	zfree(argvlen);
-	sdsfreesplitres(argv, argc);
+	sdsfreesplitres(argv,argc);
 	return reply;
 }
 
@@ -210,6 +210,7 @@ bool RedLock::lock(const char *resource,const int32_t ttl,Lock &lock)
 			{
 				syncServers.insert(std::make_pair(it->fd,it));
 			}
+
 			disconnectServers.clear();
 			return true;
 		}
@@ -247,7 +248,6 @@ void RedLock::syncAddServerUrl(const char *ip,const int16_t port)
 	syncServers.insert(std::make_pair(c->fd,c));
 	quoRum = syncServers.size()/ 2 + 1;
 }
-
 
 void RedLock::asyncAddServerUrl(const char *ip,const int16_t port)
 {
