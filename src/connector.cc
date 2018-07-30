@@ -43,7 +43,7 @@ bool Connector::syncStartInLoop()
 	}
 	else
 	{
-		LOG_WARN<<"do not async connect";
+		LOG_WARN<<"do not sync connect";
 	}
 }
 
@@ -56,7 +56,7 @@ void Connector::asyncStartInLoop()
 	}
 	else
 	{
-		LOG_WARN<<"do not sync connect";
+		LOG_WARN<<"do not async connect";
 	}
 }
 

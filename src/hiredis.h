@@ -96,7 +96,7 @@ public:
 	std::any privdata;
 };
 
-class RedisContext
+class RedisContext : public std::enable_shared_from_this<RedisContext>
 {
 public:
 	RedisContext();
@@ -172,13 +172,11 @@ struct SubCallback
 	SubCallback();
 	~SubCallback();
 	RedisAsyncCallbackList invalidCb;
-	std::unordered_map<RedisObjectPtr,
-		RedisAsyncCallbackPtr,Hash,Equal> channelCb;
-	std::unordered_map<RedisObjectPtr,
-		RedisAsyncCallbackPtr,Hash,Equal> patternCb;
+	std::unordered_map<RedisObjectPtr,RedisAsyncCallbackPtr,Hash,Equal> channelCb;
+	std::unordered_map<RedisObjectPtr,RedisAsyncCallbackPtr,Hash,Equal> patternCb;
 };
 
-class RedisAsyncContext
+class RedisAsyncContext : public std::enable_shared_from_this<RedisAsyncContext>
 {
 public:
 	RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn);
@@ -240,8 +238,7 @@ private:
 	Hiredis(const Hiredis&);
 	void operator=(const Hiredis&);
 
-	typedef std::unordered_map<int32_t,
-			RedisAsyncContextPtr> RedisAsyncContextMap;
+	typedef std::unordered_map<int32_t,RedisAsyncContextPtr> RedisAsyncContextMap;
 	ThreadPool pool;
 	std::vector<TcpClientPtr> tcpClients;
 	RedisAsyncContextMap redisAsyncContexts;

@@ -31,7 +31,6 @@ public:
 	bool hasChannel(Channel *channel);
 	void cancelAfter(Timer *timer);
 	void assertInLoopThread();
-	void resetFunctor();
 
     Timer *runAfter(double when,bool repeat,TimerCallback &&cb);
     TimerQueuePtr getTimerQueue() {  return timerQueue; }

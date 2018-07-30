@@ -903,6 +903,11 @@ int32_t RedisContext::redisAppendCommand(const char *format, ...)
 
 int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback)
 {
+	if (redisContext->flags == REDIS_DISCONNECTING)
+	{
+		return REDIS_ERR;
+	}
+
 	int32_t pvariant,hasnext;
 	const char *cstr,*astr;
 	size_t clen,alen;
@@ -1703,9 +1708,9 @@ SubCallback::SubCallback()
 
 SubCallback::~SubCallback()
 {
-	invalidCb.clear();
-	channelCb.clear();
-	patternCb.clear();
+	//invalidCb.clear();
+	//channelCb.clear();
+	//patternCb.clear();
 }
 
 RedisAsyncContext::RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn)
@@ -1720,7 +1725,7 @@ RedisAsyncContext::RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn
 
 RedisAsyncContext::~RedisAsyncContext()
 {
-	repliesCb.clear();
+	//repliesCb.clear();
 }
 
 int32_t RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
@@ -1751,7 +1756,7 @@ int32_t RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
 
 	redisConn->getLoop()->runInLoop(
 			std::bind(std::bind(&RedisAsyncContext::__redisAsyncCommand,
-					this,asyncCallback)));
+					shared_from_this(),asyncCallback)));
 	return REDIS_OK;
 }
 
@@ -1867,8 +1872,8 @@ void Hiredis::eraseRedisMap(int32_t sockfd)
 	{
 		node++;
 	}
-
-	it->second->redisConn->getLoop()->resetFunctor();
+	
+	it->second->redisContext->flags = REDIS_DISCONNECTING;
 	redisAsyncContexts.erase(it);
 }
 
