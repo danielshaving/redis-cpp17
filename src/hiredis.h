@@ -105,28 +105,29 @@ public:
 
 	RedisReplyPtr redisCommand(const char *format,...);
 	RedisReplyPtr redisvCommand(const char *format,va_list ap);
-	RedisReplyPtr redisCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
+	RedisReplyPtr redisCommandArgv(int32_t argc,
+			const char **argv,const size_t *argvlen);
 	RedisReplyPtr redisBlockForReply();
 
 	void redisAppendFormattedCommand(const char *cmd,size_t len);
 	void redisAppendCommand(const char *cmd,size_t len);
 	void redisSetError(int32_t type,const char *str);
 	void clear();
-	void setBlock();
-	void setConnected();
-	void setDisConnected();
 
 	int32_t redisvAppendCommand(const char *format,va_list ap);
-	int32_t redisAppendCommandArgv(int32_t argc,const char **argv,const size_t *argvlen);
+	int32_t redisAppendCommandArgv(int32_t argc,
+			const char **argv,const size_t *argvlen);
 	int32_t redisContextWaitReady(int32_t msec);
 	int32_t redisCheckSocketError();
 	int32_t redisBufferRead();
 	int32_t redisBufferWrite(int32_t *done);
 	int32_t redisGetReply(RedisReplyPtr &reply);
 	int32_t redisGetReplyFromReader(RedisReplyPtr &reply);
-	int32_t redisContextConnectTcp(const char *ip,int16_t port,const struct timeval *timeout);
+	int32_t redisContextConnectTcp(const char *ip,
+			int16_t port,const struct timeval *timeout);
 	int32_t redisAppendCommand(const char *format, ...);
-	int32_t redisContextConnectUnix(const char *path,const struct timeval *timeout);
+	int32_t redisContextConnectUnix(const char *path,
+			const struct timeval *timeout);
 
 private:
 	RedisContext(const RedisContext&);
@@ -168,25 +169,13 @@ typedef std::list<RedisAsyncCallbackPtr> RedisAsyncCallbackList;
 /* Subscription callbacks */
 struct SubCallback
 {
-	struct Hash
-	{
-		size_t operator()(const sds x) const
-		{
-			return dictGenHashFunction(x,sdslen(x));
-		}
-	};
-
-	struct Equal
-	{
-		bool operator()(const sds x,const sds y) const
-		{
-			return std::strcmp(x,y) == 0;
-		}
-	};
-
-	RedisCallback invalid;
-	std::unordered_map<sds,RedisCallback,Hash,Equal> channels;
-	std::unordered_map<sds,RedisCallback,Hash,Equal> patterns;
+	SubCallback();
+	~SubCallback();
+	RedisAsyncCallbackList invalidCb;
+	std::unordered_map<RedisObjectPtr,
+		RedisAsyncCallbackPtr,Hash,Equal> channelCb;
+	std::unordered_map<RedisObjectPtr,
+		RedisAsyncCallbackPtr,Hash,Equal> patternCb;
 };
 
 class RedisAsyncContext
@@ -195,7 +184,7 @@ public:
 	RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn);
 	~RedisAsyncContext();
 
-	void  __redisAsyncCommand(const RedisCallbackFn &fn,
+	int32_t  __redisAsyncCommand(const RedisCallbackFn &fn,
 			const std::any &privdata,char *cmd,size_t len);
 	int32_t redisvAsyncCommand(const RedisCallbackFn &fn,
 			const std::any &privdata,const char *format,va_list ap);
@@ -203,23 +192,17 @@ public:
 			const std::any &privdata,const char *format, ...);
 
 	int32_t redisGetReply(RedisReplyPtr &reply);
-	TcpConnectionPtr getServerConn();
-	RedisAsyncCallbackList &getAsyncCallback() { return asyncCb; }
-	std::mutex &getMutex();
-	RedisContextPtr getRedisContext();
-
-private:
-	RedisAsyncContext(const RedisAsyncContext&);
-	void operator=(const RedisAsyncContext&);
 
 	int32_t err;
 	char *errstr;
 	std::any data;
-	RedisContextPtr contextPtr;
+	RedisContextPtr redisContext;
 	TcpConnectionPtr serverConn;
-	RedisAsyncCallbackList asyncCb;
+	RedisAsyncCallbackList repliesCb;
 	SubCallback	subCb;
-	std::mutex mtx;
+private:
+	RedisAsyncContext(const RedisAsyncContext&);
+	void operator=(const RedisAsyncContext&);
 };
 
 class Hiredis
@@ -228,6 +211,9 @@ public:
 	Hiredis(EventLoop *loop,bool clusterMode = false);
 	~Hiredis();
 
+	void redisAsyncDisconnect(const RedisAsyncContextPtr &ac);
+	void redisGetSubscribeCallBack(const RedisAsyncContextPtr &ac,
+		const RedisReplyPtr &reply,RedisAsyncCallbackPtr &callback);
 	void clusterAskConnCallBack(const TcpConnectionPtr &conn);
 	void clusterMoveConnCallBack(const TcpConnectionPtr &conn);
 	void redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
@@ -240,7 +226,9 @@ public:
 	void clearTcpClient();
 
 	void start() { pool.start(); }
-	void setThreadNum(int16_t threadNum) { pool.setThreadNum(threadNum); }
+
+	void setThreadNum(int16_t threadNum)
+	{ pool.setThreadNum(threadNum); }
 
 	auto &getPool() { return pool; }
 	auto &getMutex() { return rtx; }
@@ -253,7 +241,8 @@ private:
 	Hiredis(const Hiredis&);
 	void operator=(const Hiredis&);
 
-	typedef std::unordered_map<int32_t,RedisAsyncContextPtr> RedisAsyncContextMap;
+	typedef std::unordered_map<int32_t,
+			RedisAsyncContextPtr> RedisAsyncContextMap;
 	ThreadPool pool;
 	std::vector<TcpClientPtr> tcpClients;
 	RedisAsyncContextMap redisAsyncContexts;

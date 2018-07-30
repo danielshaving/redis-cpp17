@@ -329,30 +329,30 @@
 
 /* Connection type can be blocking or non-blocking and is set in the
  * least significant bit of the flags field in redisContext. */
-#define REDIS_BLOCK 0x1
+#define REDIS_BLOCK 1
 
 /* Connection may be disconnected before being free'd. The second bit
  * in the flags field is set when the context is connected. */
-#define REDIS_CONNECTED 0x2
+#define REDIS_CONNECTED 2
 
 /* The async API might try to disconnect cleanly and flush the output
  * buffer and read all subsequent replies before disconnecting.
  * This flag means no new commands can come in and the connection
  * should be terminated once all replies have been read. */
-#define REDIS_DISCONNECTING 0x4
+#define REDIS_DISCONNECTING 4
 
 /* Flag specific to the async API which means that the context should be clean
  * up as soon as possible. */
-#define REDIS_FREEING 0x8
+#define REDIS_FREEING 8
 
 /* Flag that is set when an async callback is executed. */
-#define REDIS_IN_CALLBACK 0x10
+#define REDIS_IN_CALLBACK 10
 
 /* Flag that is set when the async context has one or more subscriptions. */
-#define REDIS_SUBSCRIBED 0x20
+#define REDIS_SUBSCRIBED 20
 
 /* Flag that is set when monitor mode is active */
-#define REDIS_MONITORING 0x40
+#define REDIS_MONITORING 40
 
 
 /* When an error occurs, the err flag in a context is set to hold the type of

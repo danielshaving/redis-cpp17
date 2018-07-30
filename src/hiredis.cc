@@ -10,6 +10,7 @@ RedisReply::~RedisReply()
 	if (str != nullptr)
 	{
 		zfree(str);
+		str = nullptr;
 	}
 }
 
@@ -321,9 +322,9 @@ static size_t bulklen(size_t len)
 	return 1 + intlen(len) + 2 + len + 2;
 }
 
-static char *nextArgument(char *start,char **str,size_t *len)
+static const char *nextArgument(const char *start,const char **str,size_t *len)
 {
-    char *p = start;
+    const char *p = start;
     if (p[0] != '$')
     {
         p = strchr(p,'$');
@@ -718,6 +719,7 @@ RedisAsyncCallback::~RedisAsyncCallback()
 	if(data != nullptr)
 	{
 		zfree(data);
+		data = nullptr;
 	}
 }
 
@@ -728,15 +730,13 @@ RedisContext::RedisContext()
 }
 
 RedisContext::RedisContext(Buffer *buffer,int32_t sockfd)
-:reader(new RedisReader(buffer)),
- fd(sockfd)
+:reader(new RedisReader(buffer))
 {
 	clear();
 }
 
 void RedisContext::clear()
 {
-	flags &= ~REDIS_BLOCK;
 	err = 0;
 	errstr[0] = '\0';
 	fd = 0;
@@ -747,23 +747,8 @@ RedisContext::~RedisContext()
 
 }
 
-void RedisContext::setBlock()
-{
-	flags |= REDIS_BLOCK;
-}
-
-void RedisContext::setDisConnected()
-{
-	flags &= REDIS_CONNECTED;
-}
-
-void RedisContext::setConnected()
-{
-	flags != REDIS_CONNECTED;
-}
-
 /* Internal helper function to try and get a reply from the reader,
- * or set an error in the contextPtr otherwise. */
+ * or set an error in the redisContext otherwise. */
 
 int32_t RedisContext::redisGetReplyFromReader(RedisReplyPtr &reply)
 {
@@ -798,7 +783,7 @@ int32_t RedisContext::redisBufferWrite(int32_t *done)
 		nwritten = ::write(fd,sender.peek(),sender.readableBytes());
 		if (nwritten < 0 )
 		{
-			if ((errno == EAGAIN && ! (flags & REDIS_BLOCK)) || (errno == EINTR))
+			if ((errno == EAGAIN && ! (flags == REDIS_BLOCK)) || (errno == EINTR))
 			{
 				/* Try again later */
 			}
@@ -830,7 +815,7 @@ int32_t RedisContext::redisBufferWrite(int32_t *done)
 int32_t RedisContext::redisBufferRead()
 {
 	int32_t savedErrno = 0;
-    /* Return early when the contextPtr has seen an error. */
+    /* Return early when the redisContext has seen an error. */
 	if(err)
 	{
 		return REDIS_ERR;
@@ -848,7 +833,7 @@ int32_t RedisContext::redisBufferRead()
 	}
 	else
 	{
-		if ((errno == EAGAIN && ! (flags & REDIS_BLOCK)) || (errno == EINTR))
+		if ((errno == EAGAIN ) || (errno == EINTR))
 		{
             /* Try again later */
 		}
@@ -872,8 +857,8 @@ int32_t RedisContext::redisGetReply(RedisReplyPtr &reply)
 		return REDIS_ERR;
 	}
 
-    /* For the blocking contextPtr, flush output buffer and read reply */
-	if (aux == nullptr && flags & REDIS_BLOCK)
+    /* For the blocking redisContext, flush output buffer and read reply */
+	if (aux == nullptr && flags == REDIS_BLOCK)
 	{
         /* Write until done */
 		do
@@ -916,24 +901,21 @@ int32_t RedisContext::redisAppendCommand(const char *format, ...)
     return ret;
 }
 
-TcpConnectionPtr RedisAsyncContext::getServerConn()
-{
-	return serverConn;
-}
-
-std::mutex &RedisAsyncContext::getMutex()
-{
-	return mtx;
-}
-
-RedisContextPtr RedisAsyncContext::getRedisContext()
-{
-	return contextPtr;
-}
-
-void RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,
+int32_t RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata,char *cmd,size_t len)
-{
+{	
+	int pvariant,hasnext;
+	const char *cstr,*astr;
+	size_t clen,alen;
+	const char *p;
+	sds sname;
+	int ret;
+
+	if (redisContext->flags == REDIS_DISCONNECTING)
+	{
+		return REDIS_ERR;
+	}
+
 	RedisCallback cb;
 	cb.fn = std::move(fn);
 	cb.privdata = privdata;
@@ -942,11 +924,63 @@ void RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,
 	asyncCallback->data = cmd;
 	asyncCallback->len = len;
 	asyncCallback->cb = std::move(cb);
+
+	/* Find out which command will be appended. */
+    p = nextArgument(cmd,&cstr,&clen);
+    assert(p != nullptr);
+    hasnext = (p[0] == '$');
+    pvariant = (tolower(cstr[0]) == 'p') ? 1 : 0;
+    cstr += pvariant;
+    clen -= pvariant;
+	if (hasnext && strncasecmp(cstr,"subscribe\r\n",11) == 0) 
 	{
-		std::unique_lock<std::mutex> lk(mtx);
-		asyncCb.push_back(asyncCallback);
+		redisContext->flags = REDIS_SUBSCRIBED;
+		 /* Add every channel/pattern to the list of subscription callbacks. */
+        while ((p = nextArgument(p,&astr,&alen)) != nullptr) 
+		{
+			sname = sdsnewlen(astr,alen);
+			if (pvariant)
+			{
+				subCb.patternCb.insert(std::make_pair(createObject(REDIS_STRING,sname),asyncCallback));
+			}
+			else
+			{
+				subCb.channelCb.insert(std::make_pair(createObject(REDIS_STRING,sname),asyncCallback));
+			}
+        }
 	}
+	else if (strncasecmp(cstr,"unsubscribe\r\n",13) == 0) 
+	{
+		/* It is only useful to call (P)UNSUBSCRIBE when the context is
+		* subscribed to one or more channels or patterns. */
+		if (!(redisContext->flags == REDIS_SUBSCRIBED)) return REDIS_ERR;
+
+		/* (P)UNSUBSCRIBE does not have its own response: every channel or
+		* pattern that is unsubscribed will receive a message. This means we
+		* should not append a callback function for this command. */
+	}
+	else if(strncasecmp(cstr,"monitor\r\n",9) == 0) 
+	{
+		/* Set monitor flag and push callback */
+		redisContext->flags = REDIS_MONITORING;
+		repliesCb.push_back(asyncCallback);
+	}
+	else 
+	{
+        if (redisContext->flags == REDIS_SUBSCRIBED)
+		{
+            /* This will likely result in an error reply, but it needs to be
+			* received and passed to the callback. */
+			subCb.invalidCb.push_back(asyncCallback);
+		}
+        else
+		{
+			repliesCb.push_back(asyncCallback);
+		}
+    }
+
 	serverConn->sendPipe(cmd,len);
+	return REDIS_OK;
 }
 
 int32_t redisvFormatCommand(char **target,const char *format,va_list ap)
@@ -1258,55 +1292,10 @@ int32_t redisFormatCommand(char **target,const char *format, ...)
     return len;
 }
 
-RedisAsyncContext::RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn)
-:contextPtr(new RedisContext(buffer,conn->getSockfd())),
- serverConn(conn),
- err(0),
- errstr(nullptr),
- data(nullptr)
-{
-	contextPtr->setConnected();
-}
-
-RedisAsyncContext::~RedisAsyncContext()
-{
-
-}
-
-int32_t RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
-		const std::any &privdata,const char *format,va_list ap)
-{
-	char *cmd;
-	int32_t len;
-	len = redisvFormatCommand(&cmd,format,ap);
-	if (len < 0)
-	{
-		return REDIS_ERR;
-	}
-
-	__redisAsyncCommand(fn,privdata,cmd,len);
-	return REDIS_OK;
-}
-
-int32_t RedisAsyncContext::redisGetReply(RedisReplyPtr &reply)
-{
-	return contextPtr->redisGetReply(reply);
-}
-
-int32_t RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
-		const std::any &privdata,const char *format, ...)
-{
-	va_list ap;
-	va_start(ap,format);
-	int status = redisvAsyncCommand(fn,privdata,format,ap);
-	va_end(ap);
-	return status;
-}
-
 RedisReplyPtr RedisContext::redisBlockForReply()
 {
 	RedisReplyPtr reply;
-	if (flags & REDIS_BLOCK)
+	if (flags == REDIS_BLOCK)
 	{
 		if (redisGetReply(reply) != REDIS_OK)
 		{
@@ -1532,7 +1521,6 @@ int32_t RedisContext::redisCheckSocketError()
 }
 
 #define __MAX_MSEC (((LONG_MAX) - 999) / 1000)
-
 int32_t RedisContext::redisContextWaitReady(int32_t msec)
 {
 	struct pollfd wfd[1];
@@ -1543,9 +1531,9 @@ int32_t RedisContext::redisContextWaitReady(int32_t msec)
 	if (errno == EINPROGRESS) 
 	{
 		int32_t res;
-		if ((res = ::poll(wfd,1,msec) )== -1)
+		if ((res = ::poll(wfd,1,msec))== -1)
 		{
-			redisSetError(REDIS_ERR_IO, "poll(2)");
+			redisSetError(REDIS_ERR_IO,"poll(2)");
 			return REDIS_ERR;
 		}
 		else if (res == 0)
@@ -1593,7 +1581,7 @@ static int32_t redisContextTimeoutMsec(const struct timeval *timeout,int32_t *re
 int32_t RedisContext::redisContextConnectUnix(const char *path,
 		const struct timeval *timeout)
 {
-	int32_t blocking = (flags & REDIS_BLOCK);
+	int32_t blocking = (flags == REDIS_BLOCK);
 	struct sockaddr_un sa;
 	int32_t timeoutMsec = -1;
 
@@ -1642,8 +1630,6 @@ int32_t RedisContext::redisContextConnectUnix(const char *path,
 	{
 		return REDIS_ERR;
 	}
-
-    flags |= REDIS_CONNECTED;
     return REDIS_OK;
 }
 
@@ -1663,8 +1649,8 @@ int32_t RedisContext::redisContextConnectTcp(const char *ip,
 		 }
 	}
 
-	int32_t blocking = (flags & REDIS_BLOCK);
-	int32_t reuseaddr = (flags & REDIS_REUSEADDR);
+	int32_t blocking = (flags == REDIS_BLOCK);
+	int32_t reuseaddr = (flags == REDIS_REUSEADDR);
 	int32_t reuses = 0;
 
 	Socket socket;
@@ -1721,11 +1707,90 @@ int32_t RedisContext::redisContextConnectTcp(const char *ip,
 	return REDIS_OK;
 }
 
+
+SubCallback::SubCallback()
+{
+
+}
+
+SubCallback::~SubCallback()
+{
+	invalidCb.clear();
+	channelCb.clear();
+	patternCb.clear();
+}
+
+RedisAsyncContext::RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn)
+:redisContext(new RedisContext(buffer,conn->getSockfd())),
+ serverConn(conn),
+ err(0),
+ errstr(nullptr),
+ data(nullptr)
+{
+
+}
+
+RedisAsyncContext::~RedisAsyncContext()
+{
+	repliesCb.clear();
+}
+
+int32_t RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
+		const std::any &privdata,const char *format,va_list ap)
+{
+	char *cmd;
+	int32_t len;
+	len = redisvFormatCommand(&cmd,format,ap);
+	if (len < 0)
+	{
+		return REDIS_ERR;
+	}
+
+	serverConn->getLoop()->runInLoop(
+			std::bind(std::bind(&RedisAsyncContext::__redisAsyncCommand,
+					this,fn,privdata,cmd,len)));
+	return REDIS_OK;
+}
+
+int32_t RedisAsyncContext::redisGetReply(RedisReplyPtr &reply)
+{
+	return redisContext->redisGetReply(reply);
+}
+
+int32_t RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
+		const std::any &privdata,const char *format, ...)
+{
+	va_list ap;
+	va_start(ap,format);
+	int status = redisvAsyncCommand(fn,privdata,format,ap);
+	va_end(ap);
+	return status;
+}
+
+RedisAsyncContextPtr Hiredis::getIteratorNode()
+{
+	std::unique_lock<std::mutex> lk(rtx);
+	if (redisAsyncContexts.empty())
+	{
+		return nullptr;
+	}
+
+	if (node == redisAsyncContexts.end())
+	{
+		node = redisAsyncContexts.begin();
+	}
+
+	auto it = node;
+	node ++;
+	return it->second;
+}
+
+
 Hiredis::Hiredis(EventLoop *loop,bool clusterMode)
 :pool(loop),
  clusterMode(true)
 {
-	node = redisAsyncContexts.begin();
+
 }
 
 Hiredis::~Hiredis()
@@ -1736,15 +1801,12 @@ Hiredis::~Hiredis()
 void Hiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 {
 	RedisAsyncCallbackPtr asyncCallback = std::any_cast<RedisAsyncCallbackPtr>(conn->getContext());
-	conn->resetContext();
 	if (conn->connected())
 	{
+		conn->resetContext();
 		RedisAsyncContextPtr ac(new RedisAsyncContext(conn->intputBuffer(),conn));
 		insertRedisMap(conn->getSockfd(),ac);
-		{
-			std::unique_lock<std::mutex> lk(ac->getMutex());
-			ac->getAsyncCallback().push_back(asyncCallback);
-		}
+		ac->repliesCb.push_back(asyncCallback);
 		conn->sendPipe(asyncCallback->data,asyncCallback->len);
 	}
 	else
@@ -1756,16 +1818,13 @@ void Hiredis::clusterMoveConnCallBack(const TcpConnectionPtr &conn)
 void Hiredis::clusterAskConnCallBack(const TcpConnectionPtr &conn)
 {
 	RedisAsyncCallbackPtr asyncCallback = std::any_cast<RedisAsyncCallbackPtr>(conn->getContext());
-	conn->resetContext();
 	if (conn->connected())
 	{
+		conn->resetContext();
 		RedisAsyncContextPtr ac (new RedisAsyncContext(conn->intputBuffer(),conn));
 		insertRedisMap(conn->getSockfd(),ac);
+		ac->repliesCb.push_back(asyncCallback);
 		conn->sendPipe("*1\r\n$6\r\nASKING\r\n");
-		{
-			std::unique_lock<std::mutex> lk(ac->getMutex());
-			ac->getAsyncCallback().push_back(asyncCallback);
-		}
 		conn->sendPipe(asyncCallback->data,asyncCallback->len);
 	}
 	else
@@ -1778,14 +1837,14 @@ void Hiredis::redisConnCallBack(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{
-		RedisAsyncContextPtr contextPtr(new RedisAsyncContext(conn->intputBuffer(),conn));
-		insertRedisMap(conn->getSockfd(),contextPtr);
-		LOG_INFO<<"redis connect "<<conn->getSockfd();
+		RedisAsyncContextPtr ac(new RedisAsyncContext(conn->intputBuffer(),conn));
+		ac->redisContext->flags = REDIS_CONNECTED;
+		insertRedisMap(conn->getSockfd(),ac);
+		node = redisAsyncContexts.begin();
 	}
 	else
 	{
 		eraseRedisMap(conn->getSockfd());
-		LOG_INFO<<"redis disconnect "<<conn->getSockfd();
 	}
 }
 
@@ -1820,45 +1879,222 @@ void Hiredis::pushTcpClient(const TcpClientPtr &client)
 	tcpClients.push_back(client);
 }
 
-RedisAsyncContextPtr Hiredis::getIteratorNode()
+void Hiredis::redisGetSubscribeCallBack(const RedisAsyncContextPtr &ac,
+		const RedisReplyPtr &reply,RedisAsyncCallbackPtr &callback)
 {
-	std::unique_lock<std::mutex> lk(rtx);
+	int pvariant;
+	char *stype;
+	sds sname;
 
-	if (redisAsyncContexts.empty())
+	/* Custom reply functions are not supported for pub/sub. This will fail
+	* very hard when they are used... */
+	if (reply->type == REDIS_REPLY_ARRAY) 
 	{
-		return nullptr;
+		assert(reply->elements >= 2);
+		assert(reply->element[0]->type == REDIS_REPLY_STRING);
+		stype = reply->element[0]->str;
+		pvariant = (tolower(stype[0]) == 'p') ? 1 : 0;
+
+		/* Locate the right callback */
+		assert(reply->element[1]->type == REDIS_REPLY_STRING);
+		sname = sdsnewlen(reply->element[1]->str,reply->element[1]->len);
+		RedisObjectPtr redisObj = createObject(REDIS_STRING,sname);
+		if (pvariant)
+		{
+			auto iter = ac->subCb.patternCb.find(redisObj);
+			if (iter != ac->subCb.patternCb.end()) 
+			{
+				callback = iter->second;
+				/* If this is an unsubscribe message, remove it. */
+				if (strcasecmp(stype + pvariant,"unsubscribe") == 0) 
+				{
+					 ac->subCb.patternCb.erase(iter);
+
+					/* If this was the last unsubscribe message, revert to
+						* non-subscribe mode. */
+					assert(reply->element[2]->type == REDIS_REPLY_INTEGER);
+					if (reply->element[2]->integer == 0)
+						ac->redisContext->flags = REDIS_SUBSCRIBED;
+				}
+			}
+		}
+		else
+		{
+			auto iter = ac->subCb.channelCb.find(redisObj);
+			if (iter != ac->subCb.channelCb.end()) 
+			{
+				callback = iter->second;
+				/* If this is an unsubscribe message, remove it. */
+				if (strcasecmp(stype + pvariant,"unsubscribe") == 0) 
+				{
+					 ac->subCb.channelCb.erase(iter);
+
+					/* If this was the last unsubscribe message, revert to
+						* non-subscribe mode. */
+					assert(reply->element[2]->type == REDIS_REPLY_INTEGER);
+					if (reply->element[2]->integer == 0)
+						ac->redisContext->flags = REDIS_SUBSCRIBED;
+				}
+			}
+		}
+	} 
+	else 
+	{
+		/* Shift callback for invalid commands. */
+		assert(!ac->subCb.invalidCb.empty());
+		callback = ac->subCb.invalidCb.front();
+		ac->subCb.invalidCb.pop_front();
+	}
+}
+
+void Hiredis::redisAsyncDisconnect(const RedisAsyncContextPtr &ac)
+{
+	ac->err = ac->redisContext->err;
+	ac->errstr = ac->redisContext->errstr;
+
+	if (ac->err == 0) 
+	{
+		/* For clean disconnects, there should be no pending callbacks. */
+        assert(!ac->repliesCb.empty());
+		ac->repliesCb.pop_front();
+	} 
+	else 
+	{
+		/* Disconnection is caused by an error, make sure that pending
+		* callbacks cannot call new commands. */
+		ac->redisContext->flags = REDIS_DISCONNECTING;
 	}
 
-	if (node == redisAsyncContexts.end())
 	{
-		node = redisAsyncContexts.begin();
+		for(auto &iter : ac->repliesCb)
+		{
+			if (iter->cb.fn)
+			{
+				iter->cb.fn(ac,nullptr,iter->cb.privdata);
+			}
+		}
+		ac->repliesCb.clear();
 	}
 
-	auto it = node;
-	node ++;
-	return it->second;
+	{
+		for(auto &iter : ac->subCb.invalidCb)
+		{
+			if (iter->cb.fn)
+			{
+				iter->cb.fn(ac,nullptr,iter->cb.privdata);
+			}
+		}
+		ac->subCb.invalidCb.clear();
+	}
+
+	{
+		for(auto &iter : ac->subCb.patternCb)
+		{
+			if (iter.second->cb.fn)
+			{
+				iter.second->cb.fn(ac,nullptr,iter.second->cb.privdata);
+			}
+		}
+		ac->subCb.patternCb.clear();
+	}
+
+	{
+		for(auto &iter : ac->subCb.channelCb)
+		{
+			if (iter.second->cb.fn)
+			{
+				iter.second->cb.fn(ac,nullptr,iter.second->cb.privdata);
+			}
+		}
+		ac->subCb.channelCb.clear();
+	}
+
+	if (ac->redisContext->flags == REDIS_CONNECTED)
+	{
+		ac->serverConn->forceCloseInLoop();
+    }
 }
 
 void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 {
-	RedisAsyncContextPtr redisAsyncContextPtr;
+	RedisAsyncContextPtr ac;
 	{
 		std::unique_lock <std::mutex> lck(rtx);
 		auto it = redisAsyncContexts.find(conn->getSockfd());
 		assert(it != redisAsyncContexts.end());
-		redisAsyncContextPtr = it->second;
+		ac = it->second;
 	}
 
 	RedisReplyPtr reply;
 	int32_t status;
-	while((status = redisAsyncContextPtr->redisGetReply(reply)) == REDIS_OK)
+	while((status = ac->redisGetReply(reply)) == REDIS_OK)
 	{
 		if (reply == nullptr)
 		{
+			/* When the connection is being disconnected and there are
+             * no more replies, this is the cue to really disconnect. */
+            if (ac->redisContext->flags == REDIS_DISCONNECTING)
+			{
+				redisAsyncDisconnect(ac);
+				return ;
+            }
+
+            /* If monitor mode, repush callback */
+            if(ac->redisContext->flags == REDIS_MONITORING)
+			{
+            	ac->repliesCb.emplace_back(new RedisAsyncCallback());
+            }
+
+            /* When the connection is not being disconnected, simply stop
+             * trying to get replies and wait for the next loop tick. */
 			break;
 		}
 
-		 if (clusterMode && reply->type == REDIS_REPLY_ERROR &&
+        /* Even if the context is subscribed, pending regular callbacks will
+         * get a reply before pub/sub messages arrive. */
+		RedisAsyncCallbackPtr repliesCb;
+		if (ac->repliesCb.empty())
+		{
+			/*
+			* A spontaneous reply in a not-subscribed context can be the error
+			* reply that is sent when a new connection exceeds the maximum
+			* number of allowed connections on the server side.
+			*
+			* This is seen as an error instead of a regular reply because the
+			* server closes the connection after sending it.
+			*
+			* To prevent the error from being overwritten by an EOF error the
+			* connection is closed here. See issue #43.
+			*
+			* Another possibility is that the server is loading its dataset.
+			* In this case we also want to close the connection, and have the
+			* user wait until the server is ready to take our request.
+			*/
+
+			if (reply->type == REDIS_REPLY_ERROR) 
+			{
+				ac->err = REDIS_ERR_OTHER;
+				snprintf(ac->errstr,sizeof(ac->errstr),"%s",reply->str);
+				ac->redisContext->flags = REDIS_DISCONNECTING;
+				redisAsyncDisconnect(ac);
+				return ;
+			}
+
+			/* No more regular callbacks and no errors, the context *must* be subscribed or monitoring. */
+            assert((ac->redisContext->flags == REDIS_SUBSCRIBED ||
+            		ac->redisContext->flags == REDIS_MONITORING));
+            if (ac->redisContext->flags == REDIS_SUBSCRIBED)
+			{
+				redisGetSubscribeCallBack(ac,reply,repliesCb);
+			}
+		}
+		else
+		{
+			repliesCb = ac->repliesCb.front();
+			ac->repliesCb.pop_front();
+		}
+	
+		if (clusterMode && reply->type == REDIS_REPLY_ERROR &&
 				 (!strncmp(reply->str,"MOVED",5) || (!strncmp(reply->str,"ASK",3))))
 		 {
 			char *p = reply->str,*s;
@@ -1873,16 +2109,7 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 			std::string ip = p + 1;
 			int32_t port = atoi(s+1);
 			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<ip<<" "<<port;
-
-			RedisAsyncCallbackPtr asyncCb;
-			{
-				std::unique_lock<std::mutex> lk(redisAsyncContextPtr->getMutex());
-				assert(!redisAsyncContextPtr->getAsyncCallback().empty());
-				asyncCb = redisAsyncContextPtr->getAsyncCallback().front();
-				redisAsyncContextPtr->getAsyncCallback().pop_front();
-			}
-
-			TcpClientPtr client(new TcpClient(pool.getNextLoop(),ip.c_str(),port,asyncCb));
+			TcpClientPtr client(new TcpClient(pool.getNextLoop(),ip.c_str(),port,repliesCb));
 			pushTcpClient(client);
 
 			client->setMessageCallback(std::bind(&Hiredis::redisReadCallBack,
@@ -1897,30 +2124,27 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 				client->setConnectionCallback(std::bind(&Hiredis::clusterAskConnCallBack,
 						this,std::placeholders::_1));
 			}
-			client->syncConnect();
+			client->asyncConnect();
 		 }
 		 else
 		 {
-			 RedisAsyncCallbackPtr asyncCb;
-			 {
-				 std::unique_lock<std::mutex> lk(redisAsyncContextPtr->getMutex());
-				 assert(!redisAsyncContextPtr->getAsyncCallback().empty());
-				 asyncCb = redisAsyncContextPtr->getAsyncCallback().front();
-				 redisAsyncContextPtr->getAsyncCallback().pop_front();
-			 }
-
-			 if (asyncCb->cb.fn)
-			 {
-				 asyncCb->cb.fn(redisAsyncContextPtr,reply,asyncCb->cb.privdata);
-			 }
+			if (repliesCb->cb.fn)
+			{
+				repliesCb->cb.fn(ac,reply,repliesCb->cb.privdata);
+			}
 		 }
+	}
+
+	/* Disconnect when there was an error reading the reply */
+    if (status != REDIS_OK)
+	{
+		redisAsyncDisconnect(ac);
 	}
 }
 
 RedisContextPtr redisConnectUnix(const char *path)
 {
 	RedisContextPtr c(new RedisContext());
-	c->setBlock();
 	c->redisContextConnectUnix(path,nullptr);
 	return c;
 }
@@ -1931,7 +2155,6 @@ RedisContextPtr redisConnectUnix(const char *path)
 RedisContextPtr redisConnect(const char *ip,int16_t port)
 {
 	RedisContextPtr c(new RedisContext());
-	c->setBlock();
 	if (c->redisContextConnectTcp(ip,port,nullptr) == REDIS_ERR)
 	{
 		if (!c->err)
@@ -1939,20 +2162,26 @@ RedisContextPtr redisConnect(const char *ip,int16_t port)
 			c->redisSetError(REDIS_ERR_IO,nullptr);
 		}
 	}
+	else
+	{
+		c->flags = REDIS_BLOCK;
+	}
 	return c;
 }
 
 RedisContextPtr redisConnectWithTimeout(const char *ip,int16_t port,const struct timeval tv)
 {
 	RedisContextPtr c(new RedisContext());
-	c->setBlock();
-
 	if (c->redisContextConnectTcp(ip,port,&tv) == REDIS_ERR)
 	{
 		if (!c->err)
 		{
 			c->redisSetError(REDIS_ERR_IO,nullptr);
 		}
+	}
+	else
+	{
+		c->flags = REDIS_BLOCK;
 	}
 	return c;
 }

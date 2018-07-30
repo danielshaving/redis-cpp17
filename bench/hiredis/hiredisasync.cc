@@ -28,6 +28,7 @@ HiredisAsync::HiredisAsync(EventLoop *loop,
 	{
 		TcpClientPtr client(new TcpClient(hiredis.getPool().getNextLoop(),
 										   ip,port,nullptr));
+		client->closeRetry();
 		client->setConnectionCallback(std::bind(&HiredisAsync::redisConnCallBack,
 												this,std::placeholders::_1));
 		client->setMessageCallback(std::bind(&Hiredis::redisReadCallBack,
@@ -81,7 +82,7 @@ void HiredisAsync::setCallback(const RedisAsyncContextPtr &c,
 	assert(reply->len == 2);
 	assert(strcmp(reply->str,"OK") == 0);
 
-	std::thread::id threadId = std::any_cast< std::thread::id>(privdata);
+	std::thread::id threadId = std::any_cast<std::thread::id>(privdata);
 	assert(threadId == std::this_thread::get_id());
 	assert(sconnetCount <= messageCount);
 	if (++sconnetCount == messageCount)
@@ -94,7 +95,7 @@ void HiredisAsync::getCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply,const std::any &privdata)
 {
 	assert(reply->type == REDIS_REPLY_STRING);
-	std::thread::id threadId = std::any_cast< std::thread::id>(privdata);
+	std::thread::id threadId = std::any_cast<std::thread::id>(privdata);
 	assert(threadId == std::this_thread::get_id());
 	assert(gconnetCount <= messageCount);
 	if(++gconnetCount == messageCount)
@@ -126,6 +127,11 @@ int main(int argc,char *argv[])
 	}
 	else
 	{
+		sigset_t set;
+		sigemptyset(&set);
+		sigaddset(&set,SIGPIPE);
+		sigprocmask(SIG_BLOCK,&set,nullptr);
+
 		const char *ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		sessionCount = atoi(argv[3]);
@@ -139,7 +145,12 @@ int main(int argc,char *argv[])
 		for(int32_t count = 1; count <= message; count++)
 		{
 			auto redis = async.getHiredis()->getIteratorNode();
-			std::thread::id threadId = redis->getServerConn()->getLoop()->getThreadId();
+			if (redis == nullptr)
+			{
+				break;
+			}
+
+			std::thread::id threadId = redis->serverConn->getLoop()->getThreadId();
 
 			redis->redisAsyncCommand(std::bind(&HiredisAsync::setCallback,
 					&async,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),

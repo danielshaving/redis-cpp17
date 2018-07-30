@@ -18,7 +18,7 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	gcc -Wunused-function -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread #-lz -lcurl
+	gcc -Wunused-function -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}
 ${CXXOBJS}:./%.o:./%.c
 	gcc -MMD -c -o $@ $< ${CFLAGS} 
 
