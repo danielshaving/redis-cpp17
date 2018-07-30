@@ -901,29 +901,17 @@ int32_t RedisContext::redisAppendCommand(const char *format, ...)
     return ret;
 }
 
-int32_t RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,
-		const std::any &privdata,char *cmd,size_t len)
-{	
-	int pvariant,hasnext;
+int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback)
+{
+	int32_t pvariant,hasnext;
 	const char *cstr,*astr;
 	size_t clen,alen;
 	const char *p;
 	sds sname;
 	int ret;
 
-	if (redisContext->flags == REDIS_DISCONNECTING)
-	{
-		return REDIS_ERR;
-	}
-
-	RedisCallback cb;
-	cb.fn = std::move(fn);
-	cb.privdata = privdata;
-
-	RedisAsyncCallbackPtr asyncCallback(new RedisAsyncCallback());
-	asyncCallback->data = cmd;
-	asyncCallback->len = len;
-	asyncCallback->cb = std::move(cb);
+	size_t len = asyncCallback->len;
+	char *cmd = asyncCallback->data;
 
 	/* Find out which command will be appended. */
     p = nextArgument(cmd,&cstr,&clen);
@@ -979,7 +967,7 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisCallbackFn &fn,
 		}
     }
 
-	serverConn->sendPipe(cmd,len);
+	redisConn->sendPipe(cmd,len);
 	return REDIS_OK;
 }
 
@@ -1722,7 +1710,7 @@ SubCallback::~SubCallback()
 
 RedisAsyncContext::RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn)
 :redisContext(new RedisContext(buffer,conn->getSockfd())),
- serverConn(conn),
+ redisConn(conn),
  err(0),
  errstr(nullptr),
  data(nullptr)
@@ -1746,9 +1734,24 @@ int32_t RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
 		return REDIS_ERR;
 	}
 
-	serverConn->getLoop()->runInLoop(
+	if (redisContext->flags == REDIS_DISCONNECTING)
+	{
+		zfree(cmd);
+		return REDIS_ERR;
+	}
+
+	RedisCallback cb;
+	cb.fn = std::move(fn);
+	cb.privdata = privdata;
+
+	RedisAsyncCallbackPtr asyncCallback(new RedisAsyncCallback());
+	asyncCallback->data = cmd;
+	asyncCallback->len = len;
+	asyncCallback->cb = std::move(cb);
+
+	redisConn->getLoop()->runInLoop(
 			std::bind(std::bind(&RedisAsyncContext::__redisAsyncCommand,
-					this,fn,privdata,cmd,len)));
+					this,asyncCallback)));
 	return REDIS_OK;
 }
 
@@ -1864,6 +1867,8 @@ void Hiredis::eraseRedisMap(int32_t sockfd)
 	{
 		node++;
 	}
+
+	it->second->redisConn->getLoop()->resetFunctor();
 	redisAsyncContexts.erase(it);
 }
 
@@ -2011,7 +2016,7 @@ void Hiredis::redisAsyncDisconnect(const RedisAsyncContextPtr &ac)
 
 	if (ac->redisContext->flags == REDIS_CONNECTED)
 	{
-		ac->serverConn->forceCloseInLoop();
+		ac->redisConn->forceCloseInLoop();
     }
 }
 

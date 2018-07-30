@@ -167,6 +167,13 @@ void EventLoop::queueInLoop(Functor &&cb)
 	}
 }
 
+void EventLoop::resetFunctor()
+{
+	std::unique_lock<std::mutex> lk(mutex);
+	functors.clear();
+	pendingFunctors.clear();
+}
+
 void EventLoop::doPendingFunctors()
 {
 	callingPendingFunctors = true;

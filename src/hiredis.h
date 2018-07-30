@@ -159,7 +159,7 @@ struct RedisAsyncCallback
 	~RedisAsyncCallback();
 
 	RedisCallback cb;
-	int32_t len;
+	size_t len;
 	char *data;
 };
 
@@ -184,8 +184,7 @@ public:
 	RedisAsyncContext(Buffer *buffer,const TcpConnectionPtr &conn);
 	~RedisAsyncContext();
 
-	int32_t  __redisAsyncCommand(const RedisCallbackFn &fn,
-			const std::any &privdata,char *cmd,size_t len);
+	int32_t __redisAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback);
 	int32_t redisvAsyncCommand(const RedisCallbackFn &fn,
 			const std::any &privdata,const char *format,va_list ap);
 	int32_t redisAsyncCommand(const RedisCallbackFn &fn,
@@ -197,7 +196,7 @@ public:
 	char *errstr;
 	std::any data;
 	RedisContextPtr redisContext;
-	TcpConnectionPtr serverConn;
+	TcpConnectionPtr redisConn;
 	RedisAsyncCallbackList repliesCb;
 	SubCallback	subCb;
 private:
