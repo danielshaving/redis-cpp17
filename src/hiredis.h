@@ -15,11 +15,11 @@ struct RedisReply
 	RedisReply();
 	~RedisReply();
 
-    int32_t type;	/* REDIS_REPLY_* */
+    char type;			/* REDIS_REPLY_* */
     int64_t integer;	/* The integer when type is REDIS_REPLY_INTEGER */
-    int32_t len;	 /* Length of string */
+    int32_t len;	 	/* Length of string */
     size_t elements;	/* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
-    char *str;	 /* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
+    char *str;	 		/* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
     std::vector<RedisReplyPtr> element;	/* elements vector for REDIS_REPLY_ARRAY */
 };
 

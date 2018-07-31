@@ -1,6 +1,10 @@
 #include "hiredis.h"
 RedisReply::RedisReply()
-:str(nullptr)
+:str(nullptr),
+ elements(0),
+ len(0),
+ integer(0),
+ type(-1)
 {
 
 }
@@ -2018,11 +2022,7 @@ void Hiredis::redisAsyncDisconnect(const RedisAsyncContextPtr &ac)
 		}
 		ac->subCb.channelCb.clear();
 	}
-
-	if (ac->redisContext->flags == REDIS_CONNECTED)
-	{
-		ac->redisConn->forceCloseInLoop();
-    }
+	ac->redisConn->forceCloseInLoop();
 }
 
 void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
@@ -2138,6 +2138,11 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 		 }
 		 else
 		 {
+			if (ac->redisContext->flags == REDIS_MONITORING)
+			{
+				LOG_INFO<<reply->str;
+			}
+
 			if (repliesCb->cb.fn)
 			{
 				repliesCb->cb.fn(ac,reply,repliesCb->cb.privdata);

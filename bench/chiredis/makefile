@@ -1,5 +1,5 @@
 TARGET=./redis-server
-CFLAGS := -Wall -g -w -O3 -Wunused-function # -I /usr/local/include/  #-DUSE_JEMALLOC
+CFLAGS := -Wall -g -w -O0 -Wunused-function # -I /usr/local/include/  #-DUSE_JEMALLOC
 cppfiles := $(shell ls *.c)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.c,./%.o, $(cppfiles) $(cfiles))

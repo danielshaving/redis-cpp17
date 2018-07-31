@@ -20,6 +20,7 @@ HiredisTest::HiredisTest(EventLoop *loop,int8_t threadCount,
 	for(int i = 0; i < sessionCount; i++)
 	{
 		TcpClientPtr client(new TcpClient(hiredis.getPool().getNextLoop(),ip,port,nullptr));
+		client->closeRetry();
 		client->setConnectionCallback(std::bind(&HiredisTest::redisConnCallBack,this,std::placeholders::_1));
 		client->setMessageCallback(std::bind(&Hiredis::redisReadCallBack,
 				&hiredis,std::placeholders::_1,std::placeholders::_2));
@@ -50,73 +51,13 @@ void HiredisTest::redisConnCallBack(const TcpConnectionPtr &conn)
 	}
 	else
 	{
+		hiredis.eraseRedisMap(conn->getSockfd());
 		if(--connectCount == 0)
 		{
 			hiredis.clearTcpClient();
+			loop->quit();
 		}
-		hiredis.eraseRedisMap(conn->getSockfd());
 	}
-}
-
-void HiredisTest::sync()
-{
-    unsigned int j;
-    RedisContextPtr c;
-    RedisReplyPtr reply;
-    const char *hostname = (argc > 1) ? argv[1] : "127.0.0.1";
-    int port = (argc > 2) ? atoi(argv[2]) : 6379;
-
-    struct timeval timeout = { 1, 500000 }; // 1.5 seconds
-    c = redisConnectWithTimeout(hostname,port,timeout);
-    if (c == NULL || c->err) {
-        if (c) {
-            printf("Connection error: %s\n",c->errstr);
-        } else {
-            printf("Connection error: can't allocate redis context\n");
-        }
-        exit(1);
-    }
-
-    /* PING server */
-    reply = c->redisCommand("PING");
-    printf("PING: %s\n",reply->str);
-
-    /* Set a key */
-    reply = c->redisCommand("SET %s %s","foo","hello world");
-    printf("SET: %s\n",reply->str);
-
-    /* Set a key using binary safe API */
-    reply = c->redisCommand("SET %b %b","bar",(size_t) 3,"hello",(size_t) 5);
-    printf("SET (binary API): %s\n",reply->str);
-
-    /* Try a GET and two INCR */
-    reply = c->redisCommand("GET foo");
-    printf("GET foo: %s\n", reply->str);
-
-    reply = c->redisCommand("INCR counter");
-    printf("INCR counter: %lld\n", reply->integer);
-    /* again ... */
-    reply = c->redisCommand("INCR counter");
-    printf("INCR counter: %lld\n", reply->integer);
-
-    /* Create a list of numbers, from 0 to 9 */
-    reply = redisCommand(c,"DEL mylist");
-    for (j = 0; j < 10; j++)
-    {
-        char buf[64];
-        snprintf(buf,64,"%u",j);
-        reply = c->redisCommand("LPUSH mylist element-%s",buf);
-    }
-
-    /* Let's check what we have inside the list */
-    reply = c->redisCommand("LRANGE mylist 0 -1");
-    if (reply->type == REDIS_REPLY_ARRAY)
-    {
-        for (j = 0; j < reply->elements; j++)
-        {
-            printf("%u) %s\n",j,reply->element[j]->str);
-        }
-    }
 }
 
 void HiredisTest::setCallback(const RedisAsyncContextPtr &c,
@@ -208,6 +149,55 @@ void HiredisTest::lpopCallback(const RedisAsyncContextPtr &c,
 
 }
 
+void HiredisTest::subscribeCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
+{
+	assert(reply->type == REDIS_REPLY_ARRAY);
+	assert(!reply->element.empty());
+	assert(reply->element.size() == reply->elements);
+}
+
+void HiredisTest::monitorCallback(const RedisAsyncContextPtr &c,
+				const RedisReplyPtr &reply,const std::any &privdata)
+{
+	assert(reply != nullptr);
+	assert(reply->type == REDIS_REPLY_STATUS);
+	assert(strcmp(reply->str,"OK") == 0);
+}
+
+void HiredisTest::publishCallback(const RedisAsyncContextPtr &c,
+				const RedisReplyPtr &reply,const std::any &privdata)
+{
+	assert(reply->type == REDIS_REPLY_STATUS);
+}
+
+void HiredisTest::publish()
+{
+	auto redis = hiredis.getIteratorNode();
+	assert(redis != nullptr);
+	redis->redisAsyncCommand(std::bind(&HiredisTest::publishCallback,
+			this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+			nullptr,"publish test test");
+}
+
+void HiredisTest::subscribe()
+{
+	auto redis = hiredis.getIteratorNode();
+	assert(redis != nullptr);
+	redis->redisAsyncCommand(std::bind(&HiredisTest::subscribeCallback,
+			this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+			nullptr,"subscribe test");
+}
+
+void HiredisTest::monitor()
+{
+	auto redis = hiredis.getIteratorNode();
+	assert(redis != nullptr);
+	redis->redisAsyncCommand(std::bind(&HiredisTest::monitorCallback,
+			this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+			nullptr,"monitor");
+}
+
 void HiredisTest::string()
 {
 	int32_t k = 0;
@@ -220,8 +210,8 @@ void HiredisTest::string()
 				nullptr,"set string%d %d",k,k);
 
 		redis->redisAsyncCommand(std::bind(&HiredisTest::getCallback,
-							this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-							nullptr,"get string%d",k);
+				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+				nullptr,"get string%d",k);
 	}
 }
 
@@ -237,8 +227,8 @@ void HiredisTest::hash()
 				nullptr,"hset %d hash %d",count,count);
 
 		redis->redisAsyncCommand(std::bind(&HiredisTest::hsetCallback,
-					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-					nullptr,"hset hash %d %d",count,count);
+				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+				nullptr,"hset hash %d %d",count,count);
 
 		redis->redisAsyncCommand(std::bind(&HiredisTest::hgetCallback,
 				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
@@ -249,8 +239,8 @@ void HiredisTest::hash()
 	assert(redis != nullptr);
 
 	redis->redisAsyncCommand(std::bind(&HiredisTest::hgetallCallback,
-					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-					count,"hgetall hash");
+			this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+			count,"hgetall hash");
 
 	printf("hash done\n");
 }
@@ -267,18 +257,16 @@ void HiredisTest::list()
 				nullptr,"lpush list%d %d",count,count);
 
 		redis->redisAsyncCommand(std::bind(&HiredisTest::hsetCallback,
-					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-					nullptr,"lpop list%d %d",count,count);
+				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+				nullptr,"lpop list%d %d",count,count);
 	}
-
 }
 
-int main(int argc,char* argv[])
+int main(int argc,char *argv[])
 {
  	if (argc != 6)
  	{
- 		fprintf(stderr, "Usage: client <host_ip> <port> <sessionCount> \
- 				<threadCount> <messageCount> \n ");
+ 		fprintf(stderr,"Usage: client <host_ip> <port> <sessionCount> <threadCount> <messageCount> \n ");
  	}
  	else
  	{
@@ -289,11 +277,12 @@ int main(int argc,char* argv[])
  		int32_t messageCount = atoi(argv[5]);
 
  		EventLoop loop;
-		HiredisTest hiredis(&loop,threadCount,sessionCount,messageCount,ip,port);
+ 		HiredisTest hiredis(&loop,
+				threadCount,sessionCount,messageCount,ip,port);
 
-		hiredis.string();
-
-
+ 		hiredis.monitor();
+		//hiredis.subscribe();
+		//hiredis.string();
 		//hiredis.hash();
 		//hiredis.list();
  		loop.run();

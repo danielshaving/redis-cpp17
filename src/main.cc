@@ -1,6 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
 #include "redis.h"
 char *logo =
 	"                _._                                                  \n"

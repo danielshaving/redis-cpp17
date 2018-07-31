@@ -15,7 +15,9 @@ public:
 	void string();
 	void hash();
 	void list();
-	void sync();
+	void subscribe();
+	void publish();
+	void monitor();
 
 	void setCallback(const RedisAsyncContextPtr &c,
 			const RedisReplyPtr &reply,const std::any &privdata);
@@ -35,6 +37,12 @@ public:
 			const RedisReplyPtr &reply,const std::any &privdata);
 	void lpopCallback(const RedisAsyncContextPtr &c,
 			const RedisReplyPtr &reply,const std::any &privdata);
+	void subscribeCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void monitorCallback(const RedisAsyncContextPtr &c,
+				const RedisReplyPtr &reply,const std::any &privdata);
+	void publishCallback(const RedisAsyncContextPtr &c,
+					const RedisReplyPtr &reply,const std::any &privdata);
 
 private:
 	Hiredis hiredis;
