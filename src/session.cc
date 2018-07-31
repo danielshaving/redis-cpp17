@@ -13,7 +13,7 @@ Session::Session(Redis *redis,const TcpConnectionPtr &conn)
  fromMaster(false),
  fromSlave(false)
 {
-	cmd = createStringObject(nullptr,REDIS_COMMAND_LENGTH);
+	cmd = createStringObject(nullptr,0);
 	clientConn->setMessageCallback(std::bind(&Session::readCallBack,
 			this,std::placeholders::_1,std::placeholders::_2));
 }
@@ -226,13 +226,20 @@ jump:
 	auto it = handlerCommands.find(cmd);
 	if (it == handlerCommands.end())
 	{
-		clearObj();
-		addReplyErrorFormat(clientBuffer,"unknown command `%s`,with args beginning",cmd->ptr);
+		addReplyErrorFormat(clientBuffer,"unknown command `%s`, with args beginning",cmd->ptr);
 		return REDIS_ERR;
 	}
-
-	it->second(redisCommands,shared_from_this());
-	clearObj();
+	else
+	{
+		if (!it->second(redisCommands,shared_from_this()))
+		{
+			addReplyErrorFormat(clientBuffer,"wrong number of arguments`%s`, for command",cmd->ptr);
+		}
+		else
+		{
+			redis->feedMonitor(redisCommands,clientConn->getSockfd());
+		}
+	}
 	return REDIS_OK;
 }
 
@@ -248,6 +255,7 @@ void Session::clearObj()
 
 void Session::reset()
 {
+	clearObj();
 	argc = 0;
 	multibulklen = 0;
 	bulklen = -1;
@@ -325,6 +333,13 @@ int32_t Session::processInlineBuffer(Buffer *buffer)
 		if (j == 0)
 		{
 			sdscpylen((sds)(cmd->ptr),argv[j],sdslen(argv[j]));
+			if (cmd->ptr[0] >='A' && cmd->ptr[0] <= 'Z')
+			{
+				for (int i = 0 ; i < sdslen(cmd->ptr); i++)
+				{
+					cmd->ptr[i] += 32;
+				}
+			}
 			cmd->calHash();
 		}
 		else
@@ -463,6 +478,13 @@ int32_t Session::processMultibulkBuffer(Buffer *buffer)
 			if (++argc == 1)
 			{
 				sdscpylen(cmd->ptr,queryBuf + pos,bulklen);
+				if (cmd->ptr[0] >='A' && cmd->ptr[0] <= 'Z')
+				{
+					for (int i = 0 ; i < sdslen(cmd->ptr); i++)
+					{
+						cmd->ptr[i] += 32;
+					}
+				}
 				cmd->calHash();
 			}
 			else

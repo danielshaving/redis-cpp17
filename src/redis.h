@@ -96,32 +96,43 @@ public:
 	bool incrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session);
 	bool decrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session);
 	bool incrDecrCommand(const RedisObjectPtr &obj,const SessionPtr &session,int64_t incr);
+	bool monitorCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session);
 
+public:
 	int32_t rdbSaveBackground(bool enabled = false);
 	bool bgsave(const SessionPtr &session,bool enabled = false);
 	bool save(const SessionPtr &session);
 	bool removeCommand(const RedisObjectPtr &obj);
+
 	bool clearClusterMigradeCommand();
 	void clearFork();
 	void clearCommand();
 	void clearRepliState(int32_t sockfd);
 	void clearClusterState(int32_t sockfd);
 	void clearPubSubState(int32_t sockfd);
+	void clearMonitorState(int32_t sockfd);
 	void clearCommand(std::deque<RedisObjectPtr> &commands);
+
+	RedisObjectPtr createDumpPayload(const RedisObjectPtr &dump);
+	void feedMonitor(const std::deque<RedisObjectPtr> &obj,int32_t sockfd);
+
 	size_t getDbsize();
 	size_t getExpireSize();
 	int64_t getExpire(const RedisObjectPtr &obj);
 	void structureRedisProtocol(Buffer &buffer,std::deque<RedisObjectPtr> &robjs);
 	bool getClusterMap(const RedisObjectPtr &command);
 	auto &getHandlerCommandMap() { return handlerCommands; }
-	RedisObjectPtr createDumpPayload(const RedisObjectPtr &dump);
 	void setExpire(const RedisObjectPtr &key,double when);
+	bool checkCommand(const RedisObjectPtr &cmd);
 
-public:
 	EventLoop *getEventLoop() { return &loop; }
 	Rdb *getRdb() { return &rdb; }
 	Cluster *getCluster() { return &clus; }
 	Replication *getReplication() { return &repli; }
+
+	std::string &getIp() { return ip; }
+	int16_t getPort() { return port; }
+
 	auto &getRedisShards() { return redisShards; }
 	auto &getSession() { return sessions; }
 	auto &getClusterConn() { return clusterConns; }
@@ -136,9 +147,6 @@ public:
 	auto &getForkMutex() { return forkMutex; }
 	auto &pubSubMutex() { return pubsubMutex; }
 
-	std::string &getIp() { return ip; }
-	int16_t getPort() { return port; }
-	bool checkCommand(const RedisObjectPtr &cmd);
 public:
 	typedef std::function<bool(const std::deque<RedisObjectPtr> &,const SessionPtr &)> CommandFunc;
 	typedef std::unordered_map<RedisObjectPtr,RedisObjectPtr,Hash,Equal> StringMap;
@@ -176,8 +184,8 @@ private:
 	std::unordered_map<RedisObjectPtr,
 		std::unordered_map<int32_t,TcpConnectionPtr>,Hash,Equal> pubsubs;
 	/* Pubsub commnand maintenace*/
-
-    /* Whenever a message is received in a hash index，Reduce lock granularity*/
+	std::unordered_map<int32_t,TcpConnectionPtr> monitorConns;
+    /* Whenever a message is received in a hash index lock granularity*/
 	struct RedisMapLock
 	{		
 		RedisMap redisMap;
@@ -203,7 +211,7 @@ private:
 	std::mutex clusterMutex;
 	std::mutex forkMutex;
 	std::mutex pubsubMutex;
-
+	std::mutex monitorMutex;
 public:
 	std::atomic<bool> clusterEnabled;
 	std::atomic<bool> slaveEnabled;

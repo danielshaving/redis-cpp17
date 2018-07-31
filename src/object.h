@@ -52,12 +52,7 @@ struct SharedObjectsStruct
 	dbsize,asking,hset,hget,hgetall,save,slaveof,command,config,auth,
 	info,echo,client,hkeys,hlen,keys,bgsave,memory,cluster,migrate,debug,
 	ttl,lrange,llen,sadd,scard,addsync,setslot,node,clusterconnect,delsync,
-	zadd,zrange,zrevrange,zcard,dump,restore,incr,decr,
-	PING,DEL,RPOP,LPOP,LPUSH,RPUSH,SYNC,SET,GET,FLUSHDB,DBSIZE,ASKING,
-	HSET,HGET,HGETALL,SAVE,SLAVEOF,COMMAND,CONFIG,AUTH,
-	INFO,ECHO,CLIENT,HKEYS,HLEN,KEYS,BGSAVE,MEMORY,CLUSTER,MIGRATE,DEBUG,
-	TTL,LRANGE,LLEN,SADD,SCARD,PSYNC,ADDSYNC,SETSLOT,NODE,CONNECT,DELSYNC,
-	ZADD,ZRANGE,ZREVRANGE,ZCARD,DUMP,RESTORE,INCR,DECR,
+	zadd,zrange,zrevrange,zcard,dump,restore,incr,decr,monitor,
 	integers[REDIS_SHARED_INTEGERS],
 	mbulkhdr[REDIS_SHARED_BULKHDR_LEN],
 	bulkhdr[REDIS_SHARED_BULKHDR_LEN];
@@ -75,7 +70,7 @@ RedisObjectPtr createStringObjectFromLongLong(int64_t value);
 /* -----------------------------------------------------------------------------
  * Low level functions to add more data to output buffers.
  * -------------------------------------------------------------------------- */
-
+void addReply(Buffer &buffer,const RedisObjectPtr &obj);
 void addReplyBulkSds(Buffer &buffer,sds s);
 void addReplyMultiBulkLen(Buffer &buffer,int32_t length);
 void addReply(Buffer &buffer,const RedisObjectPtr &obj);
