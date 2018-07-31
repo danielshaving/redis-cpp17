@@ -12,16 +12,14 @@ public:
 	Session(Redis *redis,const TcpConnectionPtr &conn);
 	~Session();
 
+	void clearCommand();
 	void resetVlaue();
-	void clearObj();
 	void reset();
+
 	void readCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
-	int32_t processMultibulkBuffer(Buffer *buffer);
-	int32_t processInlineBuffer(Buffer *buffer);
-	int32_t processCommand();
-	void onMessage(const TcpConnectionPtr &conn,Buffer *buffer);
-	Buffer &getClientBuffer() { return clientBuffer; }
-	TcpConnectionPtr getClientConn() { return clientConn; }
+	int32_t processMultibulkBuffer(const TcpConnectionPtr &conn,Buffer *buffer);
+	int32_t processInlineBuffer(const TcpConnectionPtr &conn,Buffer *buffer);
+	int32_t processCommand(const TcpConnectionPtr &conn);
 	void setAuth(bool enbaled) { authEnabled = enbaled; }
 
 private:
@@ -36,10 +34,9 @@ private:
 	int32_t multibulklen;
 	int64_t bulklen;
 	int32_t argc;
-	Buffer clientBuffer;
+
 	Buffer slaveBuffer;
 	Buffer pubsubBuffer;
-	TcpConnectionPtr clientConn;
 
 	bool authEnabled;
 	bool replyBuffer;

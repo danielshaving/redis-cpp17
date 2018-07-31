@@ -85,7 +85,7 @@ int32_t getLongLongFromObject(const RedisObjectPtr &o,int64_t *target)
 	return REDIS_OK;
 }
 
-int32_t getLongLongFromObjectOrReply(Buffer &buffer,
+int32_t getLongLongFromObjectOrReply(Buffer *buffer,
 			const RedisObjectPtr &o,int64_t *target,const char *msg)
 {
     int64_t value;
@@ -106,7 +106,7 @@ int32_t getLongLongFromObjectOrReply(Buffer &buffer,
     return REDIS_OK;
 }
 
-int32_t getLongFromObjectOrReply(Buffer &buffer,
+int32_t getLongFromObjectOrReply(Buffer *buffer,
 			const RedisObjectPtr &o,int32_t *target,const char *msg)
 {
 	int64_t value;
@@ -141,7 +141,7 @@ RedisObjectPtr createStringObjectFromLongLong(int64_t value)
 	return o;
 }
 
-int32_t getDoubleFromObjectOrReply(Buffer &buffer,
+int32_t getDoubleFromObjectOrReply(Buffer *buffer,
 		 const RedisObjectPtr &o,double *target,const char *msg)
 {
     double value;
@@ -339,7 +339,7 @@ RedisObjectPtr createRawStringObject(char *ptr,size_t len)
 	return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
 
-void addReplyBulkLen(Buffer &buffer,const RedisObjectPtr &obj)
+void addReplyBulkLen(Buffer *buffer,const RedisObjectPtr &obj)
 {
 	size_t len;
 
@@ -374,14 +374,14 @@ void addReplyBulkLen(Buffer &buffer,const RedisObjectPtr &obj)
 	}
 }
 
-void addReplyBulk(Buffer &buffer,const RedisObjectPtr &obj)
+void addReplyBulk(Buffer *buffer,const RedisObjectPtr &obj)
 {
 	addReplyBulkLen(buffer,obj);
 	addReply(buffer,obj);
 	addReply(buffer,shared.crlf);
 }
 
-void addReplyLongLongWithPrefix(Buffer &buffer,int64_t ll,char prefix)
+void addReplyLongLongWithPrefix(Buffer *buffer,int64_t ll,char prefix)
 {
 	char buf[128];
 	int32_t len;
@@ -400,10 +400,10 @@ void addReplyLongLongWithPrefix(Buffer &buffer,int64_t ll,char prefix)
 	len = ll2string(buf+1,sizeof(buf)-1,ll);
 	buf[len+1] = '\r';
 	buf[len+2] = '\n';
-	buffer.append(buf,len +3);
+	buffer->append(buf,len +3);
 }
 
-void addReplyLongLong(Buffer &buffer,size_t len)
+void addReplyLongLong(Buffer *buffer,size_t len)
 {
 	if (len == 0)
 	{
@@ -419,37 +419,37 @@ void addReplyLongLong(Buffer &buffer,size_t len)
 	}
 }
 
-void addReplyStatusLength(Buffer &buffer,char *s,size_t len)
+void addReplyStatusLength(Buffer *buffer,char *s,size_t len)
 {
 	addReplyString(buffer,"+",1);
 	addReplyString(buffer,s,len);
 	addReplyString(buffer,"\r\n",2);
 }
 
-void addReplyStatus(Buffer &buffer,char *status)
+void addReplyStatus(Buffer *buffer,char *status)
 {
     addReplyStatusLength(buffer,status,strlen(status));
 }
 
-void addReplyError(Buffer &buffer,const char *str)
+void addReplyError(Buffer *buffer,const char *str)
 {
 	addReplyErrorLength(buffer,str,strlen(str));
 }
 
-void addReply(Buffer &buffer,const RedisObjectPtr &obj)
+void addReply(Buffer *buffer,const RedisObjectPtr &obj)
 {
-	buffer.append(obj->ptr,sdslen((const sds)obj->ptr));
+	buffer->append(obj->ptr,sdslen((const sds)obj->ptr));
 }
 
 /* Add sds to reply (takes ownership of sds and frees it) */
-void addReplyBulkSds(Buffer &buffer,sds s)
+void addReplyBulkSds(Buffer *buffer,sds s)
 {
 	addReplySds(buffer,sdscatfmt(sdsempty(),"$%u\r\n",(unsigned long)sdslen(s)));
 	addReplySds(buffer,s);
 	addReply(buffer,shared.crlf);
 }
 
-void addReplyMultiBulkLen(Buffer &buffer,int32_t length)
+void addReplyMultiBulkLen(Buffer *buffer,int32_t length)
 {
 	if (length < REDIS_SHARED_BULKHDR_LEN)
 	{
@@ -461,7 +461,7 @@ void addReplyMultiBulkLen(Buffer &buffer,int32_t length)
     }
 }
 
-void prePendReplyLongLongWithPrefix(Buffer &buffer,int32_t length)
+void prePendReplyLongLongWithPrefix(Buffer *buffer,int32_t length)
 {
 	char buf[128];
 	buf[0] = '*';
@@ -470,15 +470,15 @@ void prePendReplyLongLongWithPrefix(Buffer &buffer,int32_t length)
 	buf[len+2] = '\n';
 	if(length == 0)
 	{
-		buffer.append(buf,len + 3);
+		buffer->append(buf,len + 3);
 	}
 	else
 	{
-		buffer.prepend(buf,len + 3);
+		buffer->prepend(buf,len + 3);
 	}
 }
 
-void addReplyBulkCString(Buffer &buffer,const char *s)
+void addReplyBulkCString(Buffer *buffer,const char *s)
 {
 	if (s == nullptr)
 	{
@@ -490,7 +490,7 @@ void addReplyBulkCString(Buffer &buffer,const char *s)
 	}
 }
 
-void addReplyDouble(Buffer &buffer,double d)
+void addReplyDouble(Buffer *buffer,double d)
 {
 	char dbuf[128],sbuf[128];
 	int32_t dlen,slen;
@@ -499,14 +499,14 @@ void addReplyDouble(Buffer &buffer,double d)
 	addReplyString(buffer,sbuf,slen);
 }
 
-void addReplyBulkCBuffer(Buffer &buffer,const char *p,size_t len)
+void addReplyBulkCBuffer(Buffer *buffer,const char *p,size_t len)
 {
 	addReplyLongLongWithPrefix(buffer,len,'$');
 	addReplyString(buffer,p,len);
 	addReply(buffer,shared.crlf);
 }
 
-void addReplyErrorFormat(Buffer &buffer,const char *fmt, ...)
+void addReplyErrorFormat(Buffer *buffer,const char *fmt, ...)
 {
 	size_t l, j;
 	va_list ap;
@@ -524,18 +524,18 @@ void addReplyErrorFormat(Buffer &buffer,const char *fmt, ...)
 	sdsfree(s);
 }
 
-void addReplyString(Buffer &buffer,const char *s,size_t len)
+void addReplyString(Buffer *buffer,const char *s,size_t len)
 {
-	buffer.append(s,len);
+	buffer->append(s,len);
 }
 
-void addReplySds(Buffer &buffer,sds s)
+void addReplySds(Buffer *buffer,sds s)
 {
-	buffer.append(s,sdslen(s));
+	buffer->append(s,sdslen(s));
 	sdsfree(s);
 }
 
-void addReplyErrorLength(Buffer &buffer,const char *s,size_t len)
+void addReplyErrorLength(Buffer *buffer,const char *s,size_t len)
 {
 	addReplyString(buffer,"-ERR ",5);
 	addReplyString(buffer,s,len);

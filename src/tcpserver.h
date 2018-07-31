@@ -42,7 +42,7 @@ private:
 	WriteCompleteCallback writeCompleteCallback;
 	ThreadInitCallback threadInitCallback;
 
-	typedef std::unordered_map<int32_t, TcpConnectionPtr> ConnectionMap;
+	typedef std::unordered_map<int32_t,TcpConnectionPtr> ConnectionMap;
 	ConnectionMap connections;
 	std::any context;
 

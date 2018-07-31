@@ -111,6 +111,8 @@ void Replication::readCallBack(const TcpConnectionPtr &conn, Buffer *buffer)
 					std::unique_lock <std::mutex> lck(redis->getMutex());
 					auto &sessions = redis->getSession();
 					sessions[conn->getSockfd()] = session;
+					auto &sessionConns = redis->getSessionConn();
+					sessionConns[conn->getSockfd()] = conn;
 				}
 
 				conn->send(shared.ok->ptr,sdslen(shared.ok->ptr));
@@ -129,7 +131,7 @@ void Replication::readCallBack(const TcpConnectionPtr &conn, Buffer *buffer)
 
 void Replication::slaveCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 {
-	while(buffer->readableBytes() >= sdslen(shared.ok->ptr))
+	while (buffer->readableBytes() >= sdslen(shared.ok->ptr))
 	{
 		std::unique_lock <std::mutex> lck(redis->getSlaveMutex());
 		auto &salveConn = redis->getSlaveConn();
@@ -158,8 +160,10 @@ void Replication::slaveCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 					{
 						std::shared_ptr<Session> session(new Session(redis,conn));
 						auto &sessions = redis->getSession();
-						std::unique_lock <std::mutex> lck(redis->getMutex());
+						std::unique_lock<std::mutex> lck(redis->getMutex());
 						sessions[conn->getSockfd()] = session;
+						auto &sessionConns = redis->getSessionConn();
+						sessionConns[conn->getSockfd()] = conn;
 					}
 
 					LOG_INFO << "Slaveof sync success";
@@ -199,10 +203,7 @@ void Replication::connCallBack(const TcpConnectionPtr &conn)
 		redis->masterfd = 0;
 		redis->slaveEnabled = false;
 		redis->repliEnabled = false;
-		std::unique_lock <std::mutex> lck(redis->getMutex());
-		auto &sessions = redis->getSession();
-		sessions.erase(conn->getSockfd());
-		client.reset();
+		redis->clearSessionState(conn->getSockfd());
 		LOG_INFO<<"connect master disconnect";
 	}
 }
@@ -228,8 +229,10 @@ void Replication::replicationSetMaster(const RedisObjectPtr &obj,int16_t port)
 	}
 
 	TcpClientPtr client(new TcpClient(loop,ip.c_str(),port,this));
-	client->setConnectionCallback(std::bind(&Replication::connCallBack,this,std::placeholders::_1));
-	client->setMessageCallback(std::bind(&Replication::readCallBack,this,std::placeholders::_1,std::placeholders::_2));
+	client->setConnectionCallback(std::bind(&Replication::connCallBack,
+			this,std::placeholders::_1));
+	client->setMessageCallback(std::bind(&Replication::readCallBack,
+			this,std::placeholders::_1,std::placeholders::_2));
 	client->asyncConnect();
 	this->client = client;
 }

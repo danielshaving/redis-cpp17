@@ -69,10 +69,10 @@ void TcpConnection::handleRead()
 {
 	loop->assertInLoopThread();
 	int savedErrno = 0;
-	ssize_t n = recvBuff.readFd(channel->getfd(),&savedErrno);
+	ssize_t n = readBuffer.readFd(channel->getfd(),&savedErrno);
 	if (n > 0)
 	{
-		messageCallback(shared_from_this(),&recvBuff);
+		messageCallback(shared_from_this(),&readBuffer);
 	}
 	else if (n == 0)
 	{
@@ -93,11 +93,11 @@ void TcpConnection::handleWrite()
 	loop->assertInLoopThread();
 	if (channel->isWriting())
 	{
-		ssize_t n = ::write(channel->getfd(),sendBuff.peek(),sendBuff.readableBytes());
+		ssize_t n = ::write(channel->getfd(),writeBuffer.peek(),writeBuffer.readableBytes());
 		if (n > 0)
 		{
-			sendBuff.retrieve(n);
-			if (sendBuff.readableBytes() == 0)
+			writeBuffer.retrieve(n);
+			if (writeBuffer.readableBytes() == 0)
 			{
 				channel->disableWriting();
 				if (writeCompleteCallback)
@@ -183,6 +183,14 @@ void TcpConnection::handleError()
 
 }
 
+void TcpConnection::sendPipe()
+{
+	if (!channel->isWriting())
+	{
+		channel->enableWriting();
+	}
+}
+
 void TcpConnection::sendPipe(Buffer *buf)
 {
 	if (state == kConnected)
@@ -193,7 +201,9 @@ void TcpConnection::sendPipe(Buffer *buf)
 		}
 		else
 		{
-			loop->runInLoop(std::bind(&bindSendPipeInLoop,this,buf->retrieveAllAsString()));
+			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendPipeInLoop;
+						loop->runInLoop(std::bind(fp,this,buf->retrieveAllAsString()));
+			//loop->runInLoop(std::bind(&bindSendPipeInLoop,this,buf->retrieveAllAsString()));
 		}
 	}
 }
@@ -249,7 +259,7 @@ void TcpConnection::sendPipeInLoop(const std::string_view &message)
 
 void TcpConnection::sendPipeInLoop(const void *message,size_t len)
 {
-	sendBuff.append(message,len);
+	writeBuffer.append(message,len);
 	if (!channel->isWriting())
 	{
 		channel->enableWriting();
@@ -294,7 +304,7 @@ void TcpConnection::sendInLoop(const void *data,size_t len)
 	bool faultError = false;
 	assert(state != kDisconnected);
 
-	if (!channel->isWriting() && sendBuff.readableBytes() == 0)
+	if (!channel->isWriting() && writeBuffer.readableBytes() == 0)
 	{
 		nwrote = ::write(channel->getfd(),data,len);
 		if (nwrote >= 0)
@@ -321,7 +331,7 @@ void TcpConnection::sendInLoop(const void *data,size_t len)
 	assert(remaining <= len);
 	if (!faultError && remaining > 0)
 	{
-		size_t oldLen = sendBuff.readableBytes();
+		size_t oldLen = writeBuffer.readableBytes();
 		if (oldLen + remaining >= highWaterMark
 		    && oldLen < highWaterMark
 		    && highWaterMarkCallback)
@@ -329,7 +339,7 @@ void TcpConnection::sendInLoop(const void *data,size_t len)
 		  	loop->queueInLoop(std::bind(highWaterMarkCallback,shared_from_this(),oldLen + remaining));
 		}
 		
-		sendBuff.append(static_cast<const char*>(data) + nwrote,remaining);
+		writeBuffer.append(static_cast<const char*>(data) + nwrote,remaining);
 		if (!channel->isWriting())
 		{
 		  	channel->enableWriting();

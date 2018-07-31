@@ -39,6 +39,7 @@ public:
 	static void bindSendInLoop(TcpConnection *conn,const std::string_view &message);
 	static void bindSendPipeInLoop(TcpConnection *conn,const std::string_view &message);
 	
+	void sendPipe();
 	void sendPipe(const std::string_view &message);
 	void sendPipe(Buffer *message);
 	void sendPipe(const void *message,int32_t len);
@@ -75,8 +76,8 @@ public:
 	void resetContext() { context.reset(); }
 	void setContext(const std::any &context) { this->context = context; }
 
-	Buffer *outputBuffer() { return &sendBuff; }
-	Buffer *intputBuffer() { return &recvBuff; }
+	Buffer *outputBuffer() { return &writeBuffer; }
+	Buffer *intputBuffer() { return &readBuffer; }
 
 	const char *getip() { return ip; }
 	uint16_t getport() { return port; }
@@ -92,8 +93,8 @@ private:
 	int32_t sockfd;
 	bool reading;
 
-	Buffer recvBuff;
-	Buffer sendBuff;
+	Buffer readBuffer;
+	Buffer writeBuffer;
 	ConnectionCallback connectionCallback;
 	MessageCallback messageCallback;
 	WriteCompleteCallback writeCompleteCallback;

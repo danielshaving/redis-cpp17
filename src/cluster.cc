@@ -62,6 +62,8 @@ void Cluster::readCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 					std::unique_lock <std::mutex> lck(redis->getMutex());
 					auto &sessions = redis->getSession();
 					sessions[conn->getSockfd()] = session;
+					auto &sessionConns = redis->getSessionConn();
+					sessionConns[conn->getSockfd()] = conn;
 				}
 
 				std::string ip = conn->getip();
@@ -112,30 +114,31 @@ void Cluster::readCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 	}
 }
 
-void Cluster::clusterRedirectClient(const SessionPtr &session,ClusterNode *n,int32_t hashSlot,int32_t errCode)
+void Cluster::clusterRedirectClient(const TcpConnectionPtr &conn,const SessionPtr &session,
+		ClusterNode *n,int32_t hashSlot,int32_t errCode)
 {
 	if (errCode == CLUSTER_REDIR_CROSS_SLOT)
 	{
-		addReplySds(session->getClientBuffer(),
+		addReplySds(conn->outputBuffer(),
 				sdsnew("-CROSSSLOT Keys in request don't hash to the same slot\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_UNSTABLE)
 	{
-		addReplySds(session->getClientBuffer(),
+		addReplySds(conn->outputBuffer(),
 				sdsnew("-TRYAGAIN Multiple keys request during rehashing of slot\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_DOWN_STATE)
 	{
-		addReplySds(session->getClientBuffer(),sdsnew("-CLUSTERDOWN The cluster is down\r\n"));
+		addReplySds(conn->outputBuffer(),sdsnew("-CLUSTERDOWN The cluster is down\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_DOWN_UNBOUND)
 	{
-		addReplySds(session->getClientBuffer(),sdsnew("-CLUSTERDOWN Hash slot not served\r\n"));
+		addReplySds(conn->outputBuffer(),sdsnew("-CLUSTERDOWN Hash slot not served\r\n"));
 	}
 	else if (errCode == CLUSTER_REDIR_MOVED ||
 		errCode == CLUSTER_REDIR_ASK)
 	{
-		addReplySds(session->getClientBuffer(),sdscatprintf(sdsempty(),
+		addReplySds(conn->outputBuffer(),sdscatprintf(sdsempty(),
 			"-%s %d %s:%d\r\n",
 			(errCode == CLUSTER_REDIR_ASK) ? "ASK" : "MOVED",
 			hashSlot,n->ip.c_str(),n->port));
@@ -152,7 +155,7 @@ void Cluster::syncClusterSlot()
 	auto clusterConn = redis->getClusterConn();
     for (auto &it : clusterConn)
     {
-        redis->structureRedisProtocol(buffer, redisCommands);
+        redis->structureRedisProtocol(buffer,redisCommands);
         it.second->send(&buffer);
     }
 
@@ -182,14 +185,14 @@ uint32_t Cluster::keyHashSlot(char *key,int32_t keylen)
 	return crc16(key + s + 1, e - s - 1) & 0x3FFF;
 }
 
-int32_t Cluster::getSlotOrReply(const SessionPtr &session,const RedisObjectPtr &o)
+int32_t Cluster::getSlotOrReply(const SessionPtr &session,const RedisObjectPtr &o,const TcpConnectionPtr &conn)
 {
 	int64_t slot;
 
 	if (getLongLongFromObject(o,&slot) != REDIS_OK ||
 		slot < 0 || slot >= CLUSTER_SLOTS)
 	{
-		addReplyError(session->getClientBuffer(), "Invalid or out of range slot");
+		addReplyError(conn->outputBuffer(),"Invalid or out of range slot");
 		return  REDIS_ERR;
 	}
 	return (int32_t)slot;
@@ -373,14 +376,22 @@ void Cluster::connCallBack(const TcpConnectionPtr &conn)
 			std::unique_lock <std::mutex> lck(redis->getMutex());
 			auto &sessions = redis->getSession();
 			sessions[conn->getSockfd()] = session;
+
+			auto &sessionConns = redis->getSessionConn();
+			sessionConns[conn->getSockfd()] = conn;
 		}
 		LOG_INFO <<"connect cluster success "<<"ip:"<<conn->getip()<<" port:"<<conn->getport();
 	}
 	else
 	{
+		redis->clearSessionState(conn->getSockfd());
 		{
 			std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 			redis->getClusterConn().erase(conn->getSockfd());
+			eraseClusterNode(conn->getip(),conn->getport());
+			migratingSlosTos.erase(conn->getip() + std::to_string(conn->getport()));
+			importingSlotsFroms.erase(conn->getip() + std::to_string(conn->getport()));
+
 			for (auto it = clusterConns.begin(); it != clusterConns.end(); ++it)
 			{
 				if ((*it)->getConnection()->getip() ==
@@ -389,10 +400,7 @@ void Cluster::connCallBack(const TcpConnectionPtr &conn)
 					it = clusterConns.erase(it);
 					break;
 				}
-			} 
-			eraseClusterNode(conn->getip(),conn->getport());
-			migratingSlosTos.erase(conn->getip() + std::to_string(conn->getport()));
-			importingSlotsFroms.erase(conn->getip() + std::to_string(conn->getport()));
+			}
 		}
 
 		LOG_INFO << "disconnect cluster "<<"ip:"<<conn->getip()<<" port:"<<conn->getport();

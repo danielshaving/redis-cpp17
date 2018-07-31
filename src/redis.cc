@@ -189,13 +189,25 @@ void Redis::setExpire(const RedisObjectPtr &key,double when)
 
 void Redis::clearClusterState(int32_t sockfd)
 {
-	
+
 }
 
 void Redis::clearMonitorState(int32_t sockfd)
 {
 	std::unique_lock <std::mutex> lck(monitorMutex);
 	monitorConns.erase(sockfd);
+}
+
+void Redis::clearSessionState(int32_t sockfd)
+{
+	std::unique_lock <std::mutex> lck(mtx);
+	auto it = sessions.find(sockfd);
+	assert(it != sessions.end());
+	sessions.erase(it);
+
+	auto iter = sessionConns.find(sockfd);
+	assert(iter != sessionConns.end());
+	sessionConns.erase(iter);
 }
 
 void Redis::clearRepliState(int32_t sockfd)
@@ -250,6 +262,7 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 		auto it = sessions.find(conn->getSockfd());
 		assert(it == sessions.end());
 		sessions[conn->getSockfd()] = session;
+		sessionConns[conn->getSockfd()] = conn;
 		// LOG_INFO <<"Client connect success";
 	}
 	else
@@ -257,13 +270,7 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 		clearRepliState(conn->getSockfd());
 		clearClusterState(conn->getSockfd());
 		clearMonitorState(conn->getSockfd());
-	
-		{
-			std::unique_lock <std::mutex> lck(mtx);
-			auto it = sessions.find(conn->getSockfd());
-			assert(it != sessions.end());
-			sessions.erase(conn->getSockfd());
-		}
+		clearSessionState(conn->getSockfd());
 
 		// LOG_INFO <<"Client disconnect";
 	}
@@ -330,7 +337,7 @@ void Redis::loadDataFromDisk()
  	}
 }
 
-bool Redis::subscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::subscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 1)
 	{
@@ -347,7 +354,7 @@ bool Redis::subscribeCommand(const std::deque<RedisObjectPtr> &obj,const Session
 			if (it == pubsubs.end())
 			{
 				std::unordered_map<int32_t,TcpConnectionPtr> maps;
-				maps[session->getClientConn()->getSockfd()] = session->getClientConn();
+				maps[conn->getSockfd()] = conn;
 				pubsubs[obj[i]] = std::move(maps);
 				retval = true;
 				sub++;
@@ -355,54 +362,54 @@ bool Redis::subscribeCommand(const std::deque<RedisObjectPtr> &obj,const Session
 			else
 			{
 				retval = false;
-				auto iter = it->second.find(session->getClientConn()->getSockfd());
+				auto iter = it->second.find(conn->getSockfd());
 				if (iter == it->second.end())
 				{
 					sub++;
 				}
-				it->second[session->getClientConn()->getSockfd()] = session->getClientConn();
+				it->second[conn->getSockfd()] = conn;
 			}
 		}
 
-		addReply(session->getClientBuffer(),shared.mbulkhdr[3]);
-		addReply(session->getClientBuffer(),shared.subscribebulk);
-		addReplyBulk(session->getClientBuffer(),obj[i]);
-		addReplyLongLong(session->getClientBuffer(),sub);
+		addReply(conn->outputBuffer(),shared.mbulkhdr[3]);
+		addReply(conn->outputBuffer(),shared.subscribebulk);
+		addReplyBulk(conn->outputBuffer(),obj[i]);
+		addReplyLongLong(conn->outputBuffer(),sub);
 	}
 	return true;
 }
 
-bool Redis::unsubscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::unsubscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::psubscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::psubscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::punsubscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::punsubscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::publishCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::publishCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::pubsubCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::pubsubCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::sentinelCommand(const std::deque<RedisObjectPtr> &obj, const SessionPtr &session)
+bool Redis::sentinelCommand(const std::deque<RedisObjectPtr> &obj, const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::memoryCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::memoryCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size()  > 2)
 	{
@@ -418,18 +425,18 @@ bool Redis::memoryCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 		sprintf(tmp, "arena.%d.purge", narenas);
 		if (!je_mallctl(tmp, nullptr, 0, nullptr, 0))
 		{
-			addReply(session->getClientBuffer(), ok);
+			addReply(conn->outputBuffer(), ok);
 			return  true;
 		}
 	}
 
 #endif
 
-	addReply(session->getClientBuffer(),shared.ok);
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
-bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size()  < 0)
 	{
@@ -516,33 +523,33 @@ bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		}
 	}
 	
-	addReplyBulkSds(session->getClientBuffer(),info);
+	addReplyBulkSds(conn->outputBuffer(),info);
 	return true ;
 }
 
-bool Redis::clientCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::clientCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 1)
 	{
 		return false;
 	}
 
-	addReply(session->getClientBuffer(),shared.ok);
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
-bool Redis::echoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::echoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 1)
 	{
 		return false;
 	}
 
-	addReplyBulk(session->getClientBuffer(),obj[0]);
+	addReplyBulk(conn->outputBuffer(),obj[0]);
 	return true;
 }
 
-bool Redis::authCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::authCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 1)
 	{
@@ -551,23 +558,23 @@ bool Redis::authCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 
 	if (password.c_str() == nullptr)
 	{
-		addReplyError(session->getClientBuffer(),"client sent auth, but no password is set");
+		addReplyError(conn->outputBuffer(),"client sent auth, but no password is set");
 		return true;
 	}
 
 	if (!strcasecmp(obj[0]->ptr,password.c_str()))
 	{
 		session->setAuth(true);
-		addReply(session->getClientBuffer(),shared.ok);
+		addReply(conn->outputBuffer(),shared.ok);
 	}
 	else
 	{
-		addReplyError(session->getClientBuffer(),"invalid password");
+		addReplyError(conn->outputBuffer(),"invalid password");
 	}
 	return true;
 }
 
-bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 3 || obj.size() == 0)
 	{
@@ -578,7 +585,7 @@ bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 	{
 		if (obj.size() != 3)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),
+			addReplyErrorFormat(conn->outputBuffer(),
 				"Wrong number of arguments for CONFIG %s",(char*)obj[0]->ptr);
 			return true;
 		}
@@ -588,11 +595,11 @@ bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 			password = obj[2]->ptr;
 			authEnabled = true;
 			session->setAuth(false);
-			addReply(session->getClientBuffer(),shared.ok);
+			addReply(conn->outputBuffer(),shared.ok);
 		}
 		else
 		{
-			addReplyErrorFormat(session->getClientBuffer(),
+			addReplyErrorFormat(conn->outputBuffer(),
 					"Invalid argument for CONFIG SET '%s'",
 				(char*)obj[1]->ptr);
 		}
@@ -600,13 +607,13 @@ bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 	}
 	else
 	{
-		addReplyError(session->getClientBuffer(),
+		addReplyError(conn->outputBuffer(),
 				"config subcommand must be one of GET, SET, RESETSTAT, REWRITE");
 	}
 	return true;
 }
 
-bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 5)
 	{
@@ -615,7 +622,7 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 
 	if (!clusterEnabled)
 	{
-		addReplyError(session->getClientBuffer(),"this instance has cluster support disabled");
+		addReplyError(conn->outputBuffer(),"this instance has cluster support disabled");
 		return true;
 	}
 
@@ -640,7 +647,7 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		{
 			if (!moreargs) 
 			{
-				addReply(session->getClientBuffer(),shared.syntaxerr);
+				addReply(conn->outputBuffer(),shared.syntaxerr);
 				return true;
 			}
 			i++;
@@ -650,7 +657,7 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		{
 			if (sdslen(obj[2]->ptr) != 0)
 			{
-				addReplyError(session->getClientBuffer(),
+				addReplyError(conn->outputBuffer(),
 					"When using MIGRATE KEYS option, the key argument"
 					" must be set to the empty string");
 				return true;
@@ -661,7 +668,7 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		}
 		else
 		{
-			addReply(session->getClientBuffer(),shared.syntaxerr);
+			addReply(conn->outputBuffer(),shared.syntaxerr);
 			return true;
 		}
 	}
@@ -670,8 +677,8 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	int32_t timeout;
 	int32_t dbid;
 	/* Sanity check */
-	if (getLongFromObjectOrReply(session->getClientBuffer(),obj[4],&timeout,nullptr) != REDIS_OK ||
-		getLongFromObjectOrReply(session->getClientBuffer(),obj[3],&dbid,nullptr) != REDIS_OK)
+	if (getLongFromObjectOrReply(conn->outputBuffer(),obj[4],&timeout,nullptr) != REDIS_OK ||
+		getLongFromObjectOrReply(conn->outputBuffer(),obj[3],&dbid,nullptr) != REDIS_OK)
 	{
 		return true;
 	}
@@ -680,7 +687,7 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 
 	if (getLongLongFromObject(obj[1], &port) != REDIS_OK)
 	{
-		addReplyErrorFormat(session->getClientBuffer(),"Invalid TCP port specified: %s",
+		addReplyErrorFormat(conn->outputBuffer(),"Invalid TCP port specified: %s",
 			(char*)obj[2]->ptr);
 		return true;
 	}
@@ -688,16 +695,16 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	std::string ip = obj[0]->ptr;
 	if (this->ip == ip && this->port == port)
 	{
-		addReplyErrorFormat(session->getClientBuffer(),"migrate  self server error ");
+		addReplyErrorFormat(conn->outputBuffer(),"migrate  self server error ");
 		return true;
 	}
 	
 	clus.replicationToNode(obj,session,ip,port,copy,replace,numKeys,firstKey);
-	addReply(session->getClientBuffer(),shared.ok);
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
-bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (!clusterEnabled)
 	{
@@ -708,7 +715,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	{
 		if (obj.size() != 3)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),"unknown cluster error");
+			addReplyErrorFormat(conn->outputBuffer(),"unknown cluster error");
 			return true;
 		}
 
@@ -716,7 +723,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 
 		if (getLongLongFromObject(obj[2],&port) != REDIS_OK)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),
+			addReplyErrorFormat(conn->outputBuffer(),
 					"Invalid TCP port specified: %s",(char*)obj[2]->ptr);
 			return true;
 		}
@@ -724,7 +731,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		if (ip.c_str() && !memcmp(ip.c_str(),obj[1]->ptr,sdslen(obj[1]->ptr)) && this->port == port)
 		{
 			LOG_WARN << "cluster meet connect self error .";
-			addReplyErrorFormat(session->getClientBuffer(),"Don't connect self ");
+			addReplyErrorFormat(conn->outputBuffer(),"Don't connect self ");
 			return true;
 		}
 
@@ -735,7 +742,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 				if (port == it.second->getport() && !memcmp(it.second->getip(),obj[1]->ptr,sdslen(obj[1]->ptr)))
 				{
 					LOG_WARN << "cluster meet already exists .";
-					addReplyErrorFormat(session->getClientBuffer(),"cluster meet already exists ");
+					addReplyErrorFormat(conn->outputBuffer(),"cluster meet already exists ");
 					return true;
 				}
 			}
@@ -743,7 +750,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		
 		if (!clus.connSetCluster(obj[1]->ptr,port))
 		{
-			addReplyErrorFormat(session->getClientBuffer(),
+			addReplyErrorFormat(conn->outputBuffer(),
 					"Invaild node address specified: %s:%s",(char*)obj[1]->ptr,(char*)obj[2]->ptr);
 			return true;
 		}
@@ -755,7 +762,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	
 		if (getLongLongFromObject(obj[2],&port) != REDIS_OK)
 		{
-			addReplyError(session->getClientBuffer(),"Invalid or out of range port");
+			addReplyError(conn->outputBuffer(),"Invalid or out of range port");
 			return true;
 		}
 
@@ -800,7 +807,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	else if (!strcasecmp(obj[0]->ptr,"nodes") && obj.size() == 1)
 	{
 		RedisObjectPtr o = createObject(OBJ_STRING,clus.showClusterNodes());
-		addReplyBulk(session->getClientBuffer(),o);
+		addReplyBulk(conn->outputBuffer(),o);
 		return true;
 	}
 	else if (!strcasecmp(obj[0]->ptr,"getkeysinslot") && obj.size() == 3)
@@ -808,25 +815,25 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		int64_t maxkeys, slot;
 		uint32_t numkeys, j;
 
-		if (getLongLongFromObjectOrReply(session->getClientBuffer(),obj[1],&slot,nullptr) != REDIS_OK)
+		if (getLongLongFromObjectOrReply(conn->outputBuffer(),obj[1],&slot,nullptr) != REDIS_OK)
 			return true;
 			
-		if (getLongLongFromObjectOrReply(session->getClientBuffer(),obj[2],&maxkeys,nullptr) != REDIS_OK)
+		if (getLongLongFromObjectOrReply(conn->outputBuffer(),obj[2],&maxkeys,nullptr) != REDIS_OK)
 			return true;
 	
 		if (slot < 0 || slot >= 16384 || maxkeys < 0) 
 		{
-			addReplyError(session->getClientBuffer(),"Invalid slot or number of keys");
+			addReplyError(conn->outputBuffer(),"Invalid slot or number of keys");
 			return true;
 		}
 		
 		std::vector<RedisObjectPtr> keys;
 		clus.getKeyInSlot(slot,keys,maxkeys);
-		addReplyMultiBulkLen(session->getClientBuffer(),numkeys);
+		addReplyMultiBulkLen(conn->outputBuffer(),numkeys);
 		
 		for (auto &it : keys)
 		{
-			addReplyBulk(session->getClientBuffer(),it);
+			addReplyBulk(conn->outputBuffer(),it);
 		}
 		return true;
 	}
@@ -837,7 +844,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	else if (!strcasecmp(obj[0]->ptr,"keyslot") && obj.size() == 2)
 	{
 		char *key = obj[1]->ptr;
-		addReplyLongLong(session->getClientBuffer(),clus.keyHashSlot((char*)key,sdslen(key)));
+		addReplyLongLong(conn->outputBuffer(),clus.keyHashSlot((char*)key,sdslen(key)));
 		return true;
 	}
 	else if (!strcasecmp(obj[0]->ptr,"setslot") && obj.size() >= 3)
@@ -874,16 +881,16 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 			}
 			else
 			{
-				addReply(session->getClientBuffer(),shared.err);
+				addReply(conn->outputBuffer(),shared.err);
 				return true;
 			}
 				
 			for (int32_t i  = 4; i < obj.size(); i++)
 			{
 				int32_t slot;
-				if ((slot = clus.getSlotOrReply(session,obj[i])) == -1)
+				if ((slot = clus.getSlotOrReply(session,obj[i],conn)) == -1)
 				{
-					addReplyErrorFormat(session->getClientBuffer(),"Invalid slot %s",obj[i]->ptr);
+					addReplyErrorFormat(conn->outputBuffer(),"Invalid slot %s",obj[i]->ptr);
 					return true;
 				}
 				
@@ -900,15 +907,15 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 				}
 			}
 		
-			addReply(session->getClientBuffer(),shared.ok);
+			addReply(conn->outputBuffer(),shared.ok);
 			LOG_INFO <<"cluster async replication success "<<imipPort;
 			return true;
 		}
 
 		int32_t slot;
-		if ((slot = clus.getSlotOrReply(session, obj[1])) == -1)
+		if ((slot = clus.getSlotOrReply(session,obj[1],conn)) == -1)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),"Invalid slot %d",(char*)obj[1]->ptr);
+			addReplyErrorFormat(conn->outputBuffer(),"Invalid slot %d",(char*)obj[1]->ptr);
 			return true;
 		}
 
@@ -923,9 +930,10 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 				{
 					if (ip == it.second.ip && port == it.second.port)
 					{
-						addReplyErrorFormat(session->getClientBuffer(),"setslot migrate slot error %d",slot);
+						addReplyErrorFormat(conn->outputBuffer(),"setslot migrate slot error %d",slot);
 						return true;
 					}
+
 					mark = true;
 					break;
 				}
@@ -934,7 +942,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 
 		if (!mark)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),"setslot slot node no found error ");
+			addReplyErrorFormat(conn->outputBuffer(),"setslot slot node no found error ");
 			return true;
 		}
 		
@@ -958,7 +966,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 				}
 				else
 				{
-					addReplyErrorFormat(session->getClientBuffer(),"repeat importing slot :%d",slot);
+					addReplyErrorFormat(conn->outputBuffer(),"repeat importing slot :%d",slot);
 					return true;
 				}
 			}
@@ -984,21 +992,21 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 				}
 				else
 				{
-					addReplyErrorFormat(session->getClientBuffer(),"repeat migrating slot :%d",slot);
+					addReplyErrorFormat(conn->outputBuffer(),"repeat migrating slot :%d",slot);
 					return true;
 				}
 			}
 		}
 		else
 		{
-			addReplyErrorFormat(session->getClientBuffer(),"Invalid param ");
+			addReplyErrorFormat(conn->outputBuffer(),"Invalid param ");
 			return true;
 		}
 	}
 	else if (!strcasecmp(obj[0]->ptr,"delsync"))
 	{
 		int32_t slot;
-		if ((slot = clus.getSlotOrReply(session,obj[1])) == 0)
+		if ((slot = clus.getSlotOrReply(session,obj[1],conn)) == 0)
 		{
 			LOG_INFO <<"getSlotOrReply error ";
 			return true;
@@ -1017,7 +1025,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	{
 		int32_t slot;
 		int64_t  port;
-		if ((slot = clus.getSlotOrReply(session,obj[1])) == 0)
+		if ((slot = clus.getSlotOrReply(session,obj[1],conn)) == 0)
 		{
 			LOG_INFO <<"getSlotOrReply error ";
 			return true;
@@ -1025,7 +1033,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 
 		if (getLongLongFromObject(obj[3],&port) != REDIS_OK)
 		{
-			addReplyError(session->getClientBuffer(),"Invalid or out of range port");
+			addReplyError(conn->outputBuffer(),"Invalid or out of range port");
 			return  REDIS_ERR;
 		}
 
@@ -1037,7 +1045,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		}
 		else
 		{
-			addReplyErrorFormat(session->getClientBuffer(),"cluster insert error:%d",slot);
+			addReplyErrorFormat(conn->outputBuffer(),"cluster insert error:%d",slot);
 			LOG_INFO << "cluster insert error "<<slot;
 		}
 		return true;
@@ -1047,7 +1055,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		std::unique_lock <std::mutex> lck(clusterMutex);
 		if (clusterConns.size() == 0)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),"execute cluster meet ip:port");
+			addReplyErrorFormat(conn->outputBuffer(),"execute cluster meet ip:port");
 			return true;
 		}
 
@@ -1055,14 +1063,14 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		int32_t j;
 		for (j = 1; j < obj.size(); j++)
 		{
-			if ((slot = clus.getSlotOrReply(session,obj[j])) == 0)
+			if ((slot = clus.getSlotOrReply(session,obj[j],conn)) == 0)
 			{
 				return true;
 			}
 
 			if (slot < 0 || slot > 16384 )
 			{
-				addReplyErrorFormat(session->getClientBuffer(),"cluster delslots range error %d:",slot);
+				addReplyErrorFormat(conn->outputBuffer(),"cluster delslots range error %d:",slot);
 				return true;
 			}
 
@@ -1074,7 +1082,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 			}
 			else
 			{
-				addReplyErrorFormat(session->getClientBuffer(),"not found deslots error %d:",slot);
+				addReplyErrorFormat(conn->outputBuffer(),"not found deslots error %d:",slot);
 				LOG_INFO << "not found deslots " << slot;
 			}
 		}
@@ -1087,11 +1095,11 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		{
 			if (slot < 0 || slot > 16384 )
 			{
-				addReplyErrorFormat(session->getClientBuffer(),"cluster delslots range error %d:",slot);
+				addReplyErrorFormat(conn->outputBuffer(),"cluster delslots range error %d:",slot);
 				return false;
 			}
 
-			if ((slot = clus.getSlotOrReply(session, obj[j])) == 0)
+			if ((slot = clus.getSlotOrReply(session,obj[j],conn)) == 0)
 			{
 				return false;
 			}
@@ -1099,7 +1107,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			if (clusterConns.empty())
 			{
-				addReplyErrorFormat(session->getClientBuffer(),"execute cluster meet ip:port");
+				addReplyErrorFormat(conn->outputBuffer(),"execute cluster meet ip:port");
 				return true;
 			}
 
@@ -1114,39 +1122,39 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 			}
 			else
 			{
-				addReplyErrorFormat(session->getClientBuffer(),"Slot %d specified multiple times",slot);
+				addReplyErrorFormat(conn->outputBuffer(),"Slot %d specified multiple times",slot);
 				return true;
 			}
 		}
 	}
 	else
 	{
-		addReplyErrorFormat(session->getClientBuffer(),"unknown param error");
+		addReplyErrorFormat(conn->outputBuffer(),"unknown param error");
 		return true;
 	}
 	
-	addReply(session->getClientBuffer(),shared.ok);
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
 void Redis::structureRedisProtocol(Buffer &buffer,std::deque<RedisObjectPtr> &robjs)
 {
-	int32_t len, j;
+	int32_t len,j;
 	char buf[32];
 	buf[0] = '*';
-	len = 1 + ll2string(buf + 1, sizeof(buf) - 1, robjs.size());
+	len = 1 + ll2string(buf + 1, sizeof(buf) - 1,robjs.size());
 	buf[len++] = '\r';
 	buf[len++] = '\n';
-	buffer.append(buf, len);
+	buffer.append(buf,len);
 
 	for (int32_t i = 0; i < robjs.size(); i++)
 	{
 		buf[0] = '$';
-		len = 1 + ll2string(buf + 1, sizeof(buf) - 1, sdslen(robjs[i]->ptr));
+		len = 1 + ll2string(buf + 1, sizeof(buf) - 1,sdslen(robjs[i]->ptr));
 		buf[len++] = '\r';
 		buf[len++] = '\n';
 		buffer.append(buf, len);
-		buffer.append(robjs[i]->ptr, sdslen(robjs[i]->ptr));
+		buffer.append(robjs[i]->ptr,sdslen(robjs[i]->ptr));
 		buffer.append("\r\n", 2);
 	}
 }
@@ -1161,13 +1169,13 @@ bool Redis::getClusterMap(const RedisObjectPtr &command)
 	return true;
 }
 
-bool Redis::bgsave(const SessionPtr &session,bool enabled)
+bool Redis::bgsave(const SessionPtr &session,const TcpConnectionPtr &conn,bool enabled)
 {
 	if (rdbChildPid != -1)
 	{
 		if (!enabled)
 		{
-			addReplyError(session->getClientBuffer(),"Background save already in progress");
+			addReplyError(conn->outputBuffer(),"Background save already in progress");
 		}
 		return false;
 	}
@@ -1176,21 +1184,21 @@ bool Redis::bgsave(const SessionPtr &session,bool enabled)
 	{
 		if (!enabled)
 		{
-			addReplyStatus(session->getClientBuffer(),"Background saving started");
+			addReplyStatus(conn->outputBuffer(),"Background saving started");
 		}
 	}
 	else
 	{
 		if (!enabled)
 		{
-			addReply(session->getClientBuffer(),shared.err);
+			addReply(conn->outputBuffer(),shared.err);
 		}
 		return false;
 	}
 	return true;
 }
 
-bool Redis::save(const SessionPtr &session)
+bool Redis::save(const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (getDbsize() == 0)
 	{
@@ -1215,11 +1223,12 @@ bool Redis::save(const SessionPtr &session)
 
 void Redis::clearFork()
 {
-	for (auto &it : sessions)
+	for (auto &it : sessionConns)
 	{
-		it.second->getClientConn()->forceClose();
+		it.second->forceClose();
 	}
 
+	sessionConns.clear();
 	sessions.clear();
 
 	for (auto &it : slaveConns)
@@ -1276,18 +1285,20 @@ int32_t Redis::rdbSaveBackground(bool enabled)
 	return REDIS_OK; /* unreached */
 }
 
-bool Redis::bgsaveCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::bgsaveCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
 		return false;
 	}
 	
-	bgsave(session);
+	bgsave(session,conn);
 	return true;
 }
 
-bool Redis::saveCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::saveCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
@@ -1296,22 +1307,23 @@ bool Redis::saveCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 
 	if (rdbChildPid != -1)
 	{
-		addReplyError(session->getClientBuffer(),"Background save already in progress");
+		addReplyError(conn->outputBuffer(),"Background save already in progress");
 		return true;
 	}
 
-	if (save(session))
+	if (save(session,conn))
 	{
-		addReply(session->getClientBuffer(),shared.ok);
+		addReply(conn->outputBuffer(),shared.ok);
 	}
 	else
 	{
-		addReply(session->getClientBuffer(),shared.err);
+		addReply(conn->outputBuffer(),shared.err);
 	}
 	return true;
 }
 
-bool Redis::slaveofCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::slaveofCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() !=  2)
 	{
@@ -1330,14 +1342,14 @@ bool Redis::slaveofCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	else
 	{
 		int32_t port;
-		if ((getLongFromObjectOrReply(session->getClientBuffer(),obj[1],&port,nullptr) != REDIS_OK))
+		if ((getLongFromObjectOrReply(conn->outputBuffer(),obj[1],&port,nullptr) != REDIS_OK))
 			return false;
 
 		if (ip.c_str() && !memcmp(ip.c_str(),obj[0]->ptr,sdslen(obj[0]->ptr))
 		&& this->port == port)
 		{
 			LOG_WARN<<"slave of connect self error .";
-			addReplySds(session->getClientBuffer(),sdsnew("don't connect master self \r\n"));
+			addReplySds(conn->outputBuffer(),sdsnew("don't connect master self \r\n"));
 			return true;
 		}
 
@@ -1345,7 +1357,7 @@ bool Redis::slaveofCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		{
 			LOG_WARN<<"slave of would result into synchronization with "
 					"<<the master we are already connected with. no operation performed.";
-			addReplySds(session->getClientBuffer(),sdsnew("+ok already connected to specified master\r\n"));
+			addReplySds(conn->outputBuffer(),sdsnew("+ok already connected to specified master\r\n"));
 			return true;
 		}	
 
@@ -1353,13 +1365,13 @@ bool Redis::slaveofCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		LOG_INFO <<"slave of "<<obj[0]->ptr<<":"<<port<<" enabled (user request from client";
 	}
 	
-	addReply(session->getClientBuffer(),shared.ok);
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
-bool Redis::commandCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::commandCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {	
-	addReply(session->getClientBuffer(),shared.ok);
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
@@ -1374,7 +1386,7 @@ void Redis::forkWait()
 	}
 }
 
-bool Redis::lpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::lpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 2)
 	{
@@ -1409,7 +1421,7 @@ bool Redis::lpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 		{
 			if ((*it)->type != OBJ_LIST)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -1427,11 +1439,11 @@ bool Redis::lpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 		}
 	}
 
-	addReplyLongLong(session->getClientBuffer(),pushed);
+	addReplyLongLong(conn->outputBuffer(),pushed);
 	return true;
 }
 
-bool Redis::lpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::lpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -1450,13 +1462,13 @@ bool Redis::lpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		{
 			auto iter = listMap.find(obj[0]);
 			assert(iter == listMap.end());
-			addReply(session->getClientBuffer(),shared.nullbulk);
+			addReply(conn->outputBuffer(),shared.nullbulk);
 		}
 		else
 		{
 			if ((*it)->type != OBJ_LIST)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -1464,7 +1476,7 @@ bool Redis::lpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 			auto iter = listMap.find(obj[0]);
 			assert(iter != listMap.end());
 			assert((*it)->type == iter->first->type);
-			addReplyBulk(session->getClientBuffer(),iter->second.back());
+			addReplyBulk(conn->outputBuffer(),iter->second.back());
 			iter->second.pop_back();
 			if (iter->second.empty())
 			{
@@ -1476,7 +1488,7 @@ bool Redis::lpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPtr &session)
+bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 3)
 	{
@@ -1485,8 +1497,8 @@ bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPt
 
 	int32_t  start;
 	int32_t end;
-	if ((getLongFromObjectOrReply(session->getClientBuffer(), obj[1], &start, nullptr) != REDIS_OK) ||
-		(getLongFromObjectOrReply(session->getClientBuffer(), obj[2], &end,nullptr) != REDIS_OK))
+	if ((getLongFromObjectOrReply(conn->outputBuffer(), obj[1], &start, nullptr) != REDIS_OK) ||
+		(getLongFromObjectOrReply(conn->outputBuffer(), obj[2], &end,nullptr) != REDIS_OK))
 	{
 		return true;
 	}
@@ -1504,13 +1516,13 @@ bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPt
 			auto iter = listMap.find(obj[0]);
 			assert(iter == listMap.end());
 
-			addReply(session->getClientBuffer(),shared.nullbulk);
+			addReply(conn->outputBuffer(),shared.nullbulk);
 			return true;
 		}
 
 		if ((*it)->type != OBJ_LIST)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),
+			addReplyErrorFormat(conn->outputBuffer(),
 					"WRONGTYPE Operation against a key holding the wrong kind of value");
 			return true;
 		}
@@ -1536,7 +1548,7 @@ bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPt
 
 		if (start > end || start >= size)
 		{
-			addReply(session->getClientBuffer(),shared.emptymultibulk);
+			addReply(conn->outputBuffer(),shared.emptymultibulk);
 			return true;
 		}
 
@@ -1546,11 +1558,11 @@ bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPt
 		}
 
 		size_t rangelen =  (end - start) + 1;
-		addReplyMultiBulkLen(session->getClientBuffer(),rangelen);
+		addReplyMultiBulkLen(conn->outputBuffer(),rangelen);
 
 		while(rangelen--)
 		{
-			addReplyBulkCBuffer(session->getClientBuffer(),
+			addReplyBulkCBuffer(conn->outputBuffer(),
 					iter->second[start]->ptr,sdslen(iter->second[start]->ptr));
 			start++;
 		}
@@ -1558,7 +1570,7 @@ bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPt
 	return true;
 }
 
-bool Redis::rpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::rpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size()  <  2)
 	{
@@ -1593,7 +1605,7 @@ bool Redis::rpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 		{
 			if ((*it)->type != OBJ_LIST)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -1611,11 +1623,11 @@ bool Redis::rpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 		}
 	}
 
-	addReplyLongLong(session->getClientBuffer(), pushed);
+	addReplyLongLong(conn->outputBuffer(), pushed);
 	return true;
 }
 
-bool Redis::rpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::rpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size()  !=  1)
 	{
@@ -1634,13 +1646,13 @@ bool Redis::rpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		{
 			auto iter = listMap.find(obj[0]);
 			assert(iter == listMap.end());
-			addReply(session->getClientBuffer(),shared.nullbulk);
+			addReply(conn->outputBuffer(),shared.nullbulk);
 		}
 		else
 		{
 			if ((*it)->type != OBJ_LIST)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -1648,7 +1660,7 @@ bool Redis::rpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 			auto iter = listMap.find(obj[0]);
 			assert(iter != listMap.end());
 			assert((*it)->type == iter->first->type);
-			addReplyBulk(session->getClientBuffer(), iter->second.front());
+			addReplyBulk(conn->outputBuffer(), iter->second.front());
 			iter->second.pop_front();
 			if (iter->second.empty())
 			{
@@ -1660,7 +1672,7 @@ bool Redis::rpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return false;
 }
 
-bool Redis::llenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::llenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -1679,13 +1691,13 @@ bool Redis::llenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		{
 			auto iter = listMap.find(obj[0]);
 			assert(iter == listMap.end());
-			addReplyLongLong(session->getClientBuffer(), 0);
+			addReplyLongLong(conn->outputBuffer(), 0);
 			return true;
 		}
 
 		if ((*it)->type != OBJ_LIST)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),
+			addReplyErrorFormat(conn->outputBuffer(),
 					"WRONGTYPE Operation against a key holding the wrong kind of value");
 			return true;
 		}
@@ -1693,12 +1705,12 @@ bool Redis::llenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		auto iter = listMap.find(obj[0]);
 		assert(iter != listMap.end());
 		assert((*it)->type == iter->first->type);
-		addReplyLongLong(session->getClientBuffer(), iter->second.size());
+		addReplyLongLong(conn->outputBuffer(), iter->second.size());
 	}
 	return true;
 }
 
-bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() >  0)
 	{
@@ -1708,25 +1720,25 @@ bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	Timer *timer = nullptr;
 	{
 		std::unique_lock <std::mutex> lck(slaveMutex);
-		auto it = repliTimers.find(session->getClientConn()->getSockfd());
+		auto it = repliTimers.find(conn->getSockfd());
 		if (it != repliTimers.end())
 		{
 			LOG_WARN<<"client repeat send sync ";
-			session->getClientConn()->forceClose();
+			conn->forceClose();
 			return true;
 		}
 		
-		slavefd = session->getClientConn()->getSockfd();
-		timer = session->getClientConn()->getLoop()->runAfter(REPLI_TIME_OUT,
+		slavefd = conn->getSockfd();
+		timer = conn->getLoop()->runAfter(REPLI_TIME_OUT,
 				false,std::bind(&Redis::slaveRepliTimeOut,this,slavefd));
-		repliTimers.insert(std::make_pair(session->getClientConn()->getSockfd(),timer));
-		slaveConns.insert(std::make_pair(session->getClientConn()->getSockfd(),session->getClientConn()));
+		repliTimers.insert(std::make_pair(conn->getSockfd(),timer));
+		slaveConns.insert(std::make_pair(conn->getSockfd(),conn));
 	}
 	
 	auto threadPoolVec = server.getThreadPool()->getAllLoops();
 	for (auto &it : threadPoolVec)
 	{
-		if (session->getClientConn()->getLoop()->getThreadId() == it->getThreadId())
+		if (conn->getLoop()->getThreadId() == it->getThreadId())
 		{
 		    continue;
 		}
@@ -1745,20 +1757,20 @@ bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 
 	repliEnabled = true;
 	forkCondWaitCount = 0;
-	session->getClientConn()->setMessageCallback(std::bind(&Replication::slaveCallBack,
+	conn->setMessageCallback(std::bind(&Replication::slaveCallBack,
 		&repli,std::placeholders::_1,std::placeholders::_2));
 
-	if (!bgsave(session,true))
+	if (!bgsave(session,conn,true))
 	{
 		LOG_WARN << "bgsave failure";
 		{
 			std::unique_lock <std::mutex> lck(slaveMutex);
-			repliTimers.erase(session->getClientConn()->getSockfd());
-			session->getClientConn()->getLoop()->cancelAfter(timer);
-			slaveConns.erase(session->getClientConn()->getSockfd());
+			repliTimers.erase(conn->getSockfd());
+			conn->getLoop()->cancelAfter(timer);
+			slaveConns.erase(conn->getSockfd());
 		}
 		slavefd = -1;
-		session->getClientConn()->forceClose();
+		conn->forceClose();
 	}
 
 	if (threadCount > 1)
@@ -1768,7 +1780,7 @@ bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::psyncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::psyncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
@@ -1805,14 +1817,14 @@ size_t Redis::getDbsize()
 	return size;
 }
 
-bool Redis::dbsizeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::dbsizeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
 		return false;
 	}
 
-	addReplyLongLong(session->getClientBuffer(),getDbsize());
+	addReplyLongLong(conn->outputBuffer(),getDbsize());
 	return true;
 }
 
@@ -1887,7 +1899,7 @@ bool Redis::removeCommand(const RedisObjectPtr &obj)
 	return false;
 }
 
-bool Redis::delCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::delCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 1)
 	{
@@ -1903,22 +1915,22 @@ bool Redis::delCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 		}
 	}
 
-	addReplyLongLong(session->getClientBuffer(),count);
+	addReplyLongLong(conn->outputBuffer(),count);
 	return true;
 }
 
-bool Redis::pingCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::pingCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
 		return false;
 	}
 
-	addReply(session->getClientBuffer(),shared.pong);
+	addReply(conn->outputBuffer(),shared.pong);
 	return true;
 }
 
-bool Redis::debugCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::debugCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() == 1)
 	{
@@ -1934,11 +1946,11 @@ bool Redis::debugCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 		tv.tv_sec = utime / 1000000;
 		tv.tv_nsec = (utime % 1000000) * 1000;
 		nanosleep(&tv,nullptr);
-		addReply(session->getClientBuffer(),shared.ok);
+		addReply(conn->outputBuffer(),shared.ok);
 		return true;
 	}
 	
-	addReply(session->getClientBuffer(),shared.err);
+	addReply(conn->outputBuffer(),shared.err);
     return true;
 }
 
@@ -2012,7 +2024,7 @@ void Redis::clearCommand()
 	}
 }
 
-bool Redis::keysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::keysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1 )
 	{
@@ -2070,18 +2082,18 @@ bool Redis::keysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 				
 				if (allkeys || stringmatchlen(pattern,plen,iter->ptr,sdslen(iter->ptr),0))
 				{
-					addReplyBulkCBuffer(session->getClientBuffer(),iter->ptr,sdslen(iter->ptr));
+					addReplyBulkCBuffer(conn->outputBuffer(),iter->ptr,sdslen(iter->ptr));
 					numkeys++;
 				}
 			}
 		}
 	}
 
-	prePendReplyLongLongWithPrefix(session->getClientBuffer(),numkeys);
+	prePendReplyLongLongWithPrefix(conn->outputBuffer(),numkeys);
 	return true;
 }
 
-bool Redis::flushdbCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::flushdbCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
@@ -2089,17 +2101,17 @@ bool Redis::flushdbCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	}
 
 	clearCommand();
-	addReply(session->getClientBuffer(),shared.ok);
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
-bool Redis::quitCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::quitCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
-	session->getClientConn()->forceClose();
+	conn->forceClose();
 	return true;
 }
 
-bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 3)
 	{
@@ -2126,7 +2138,7 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 				assert(iter == zsetMap.end());
 			}
 
-			if (getDoubleFromObjectOrReply(session->getClientBuffer(),obj[1],&scores,nullptr) != REDIS_OK)
+			if (getDoubleFromObjectOrReply(conn->outputBuffer(),obj[1],&scores,nullptr) != REDIS_OK)
 			{
 				return false;
 			}
@@ -2144,7 +2156,7 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 			for (int i = 3; i < obj.size(); i += 2)
 			{
 				obj[i + 1]->type = OBJ_ZSET;
-				if (getDoubleFromObjectOrReply(session->getClientBuffer(),obj[1],&scores,nullptr) != REDIS_OK)
+				if (getDoubleFromObjectOrReply(conn->outputBuffer(),obj[1],&scores,nullptr) != REDIS_OK)
 				{
 					return false;
 				}
@@ -2184,14 +2196,14 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 
 			map.insert(obj[0]);
 			zsetMap.insert(std::make_pair(obj[0],std::make_pair(std::move(indexMap),std::move(sortMap))));
-			addReplyLongLong(session->getClientBuffer(),added);
+			addReplyLongLong(conn->outputBuffer(),added);
 			return true;	
 		}
 		else
 		{
 			if ((*it)->type != OBJ_ZSET)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2202,7 +2214,7 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 			for (int i = 1; i < obj.size(); i += 2)
 			{
 				obj[i + 1]->type = OBJ_ZSET;
-				if (getDoubleFromObjectOrReply(session->getClientBuffer(),obj[i],&scores,nullptr) != REDIS_OK)
+				if (getDoubleFromObjectOrReply(conn->outputBuffer(),obj[i],&scores,nullptr) != REDIS_OK)
 				{
 					return false;
 				}
@@ -2240,17 +2252,19 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 				}
 			}
 		}
-		addReplyLongLong(session->getClientBuffer(),added);
+		addReplyLongLong(conn->outputBuffer(),added);
 	}
 	return true;
 }
 
-bool Redis::zrangeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::zrangeCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
-	return zrangeGenericCommand(obj,session,0);
+	return zrangeGenericCommand(obj,session,conn,0);
 }
 
-bool Redis::zcardCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::zcardCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size()  != 1 )
 	{
@@ -2270,7 +2284,7 @@ bool Redis::zcardCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 		{
 			if ((*it)->type != OBJ_ZSET)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2287,16 +2301,18 @@ bool Redis::zcardCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 		}
 	}
 
-	addReplyLongLong(session->getClientBuffer(),len);
+	addReplyLongLong(conn->outputBuffer(),len);
 	return true;
 }
 
-bool Redis::zrevrangeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::zrevrangeCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
-	return zrangeGenericCommand(obj,session,1);
+	return zrangeGenericCommand(obj,session,conn,1);
 }
 
-bool Redis::scardCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::scardCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1 )
 	{
@@ -2316,7 +2332,7 @@ bool Redis::scardCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 		{
 			if ((*it)->type != OBJ_SET)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2326,7 +2342,7 @@ bool Redis::scardCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 			assert(iter->first->type == (*it)->type);
 			len = iter->second.size();
 		}
-		addReplyLongLong(session->getClientBuffer(),len);
+		addReplyLongLong(conn->outputBuffer(),len);
 	}
 	return false;
 }
@@ -2355,7 +2371,7 @@ RedisObjectPtr Redis::createDumpPayload(const RedisObjectPtr &dump)
 	return dumpobj;
 }
 
-bool Redis::dumpCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::dumpCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -2365,15 +2381,15 @@ bool Redis::dumpCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	RedisObjectPtr dumpobj = createDumpPayload(obj[0]);
 	if (dumpobj == nullptr)
 	{
-		addReplyErrorFormat(session->getClientBuffer(),"RDB dump error");
+		addReplyErrorFormat(conn->outputBuffer(),"RDB dump error");
 		return true;
 	}
 
-	addReplyBulk(session->getClientBuffer(),dumpobj);
+	addReplyBulk(conn->outputBuffer(),dumpobj);
 	return true;
 }
 
-bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 3 || obj.size()  > 4 )
 	{
@@ -2391,7 +2407,7 @@ bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		}
 		else
 		{
-			addReply(session->getClientBuffer(),shared.syntaxerr);
+			addReply(conn->outputBuffer(),shared.syntaxerr);
         	return true;
 		}
 	}
@@ -2404,18 +2420,18 @@ bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		auto it = map.find(obj[0]);
 		if (it == map.end() && !replace)
 		{
-			addReply(session->getClientBuffer(),shared.busykeyerr);
+			addReply(conn->outputBuffer(),shared.busykeyerr);
 			return true;
 		}
 	}
 
-	if (getLongLongFromObjectOrReply(session->getClientBuffer(),obj[1],&ttl,nullptr) != REDIS_OK)
+	if (getLongLongFromObjectOrReply(conn->outputBuffer(),obj[1],&ttl,nullptr) != REDIS_OK)
 	{
 		return true;
 	} 
 	else if (ttl < 0) 
 	{
-		addReplyError(session->getClientBuffer(),"Invalid TTL value, must be >= 0");
+		addReplyError(conn->outputBuffer(),"Invalid TTL value, must be >= 0");
 		return true;
 	}
 
@@ -2455,7 +2471,7 @@ bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	RedisObjectPtr key = createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
 	if (rdb.verifyDumpPayload(&payload,key) == REDIS_ERR)
 	{
-		addReplyError(session->getClientBuffer(),"Bad data format");
+		addReplyError(conn->outputBuffer(),"Bad data format");
 		return true;
 	}
 
@@ -2470,11 +2486,11 @@ bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		expireTimers.insert(std::make_pair(ex,timer));	
 	}
 
-	addReply(session->getClientBuffer(),shared.ok);
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
-bool Redis::existsCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::existsCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
@@ -2490,17 +2506,17 @@ bool Redis::existsCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 		auto it = map.find(obj[0]);
 		if (it == map.end())
 		{
-			addReplyLongLong(session->getClientBuffer(),0);
+			addReplyLongLong(conn->outputBuffer(),0);
 		}
 		else
 		{
-			addReplyLongLong(session->getClientBuffer(),1);
+			addReplyLongLong(conn->outputBuffer(),1);
 		}
 	}
 	return true;
 }
 
-bool Redis::saddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::saddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 2)
 	{
@@ -2545,7 +2561,7 @@ bool Redis::saddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		{
 			if ((*it)->type != OBJ_SET)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 					"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2571,11 +2587,11 @@ bool Redis::saddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		}
 	}
 		
-	addReplyLongLong(session->getClientBuffer(),len);
+	addReplyLongLong(conn->outputBuffer(),len);
 	return true;
 }	
 
-bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,int reverse)
+bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn,int reverse)
 {
 	if (obj.size()  != 4)
 	{
@@ -2586,17 +2602,17 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 	int withscores = 0;
 	int64_t start;
 	
-	if (getLongLongFromObjectOrReply(session->getClientBuffer(),obj[1],&start,nullptr) != REDIS_OK)
+	if (getLongLongFromObjectOrReply(conn->outputBuffer(),obj[1],&start,nullptr) != REDIS_OK)
 	{
-		addReplyError(session->getClientBuffer(),"unknown double param error");
+		addReplyError(conn->outputBuffer(),"unknown double param error");
 		return true;
 	}
 
 	int64_t end;
 
-	if (getLongLongFromObjectOrReply(session->getClientBuffer(),obj[2],&end,nullptr) != REDIS_OK)
+	if (getLongLongFromObjectOrReply(conn->outputBuffer(),obj[2],&end,nullptr) != REDIS_OK)
 	{
-		addReplyError(session->getClientBuffer(),"unknown double param error");
+		addReplyError(conn->outputBuffer(),"unknown double param error");
 		return true;
 	}
 
@@ -2606,7 +2622,7 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 	}
 	else if (obj.size() >= 5)
 	{
-		addReply(session->getClientBuffer(),shared.syntaxerr);
+		addReply(conn->outputBuffer(),shared.syntaxerr);
 		return true;
 	}
 
@@ -2622,14 +2638,14 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 		{
 			auto iter = zsetMap.find(obj[0]);
 			assert(iter == zsetMap.end());
-			addReply(session->getClientBuffer(),shared.emptymultibulk);
+			addReply(conn->outputBuffer(),shared.emptymultibulk);
 			return true;
 		}
 		else
 		{
 			if ((*it)->type != OBJ_ZSET)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 					"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2647,7 +2663,7 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 
 			if (start > end || start >= llen) 
 			{
-				addReply(session->getClientBuffer(),shared.emptymultibulk);
+				addReply(conn->outputBuffer(),shared.emptymultibulk);
 				return true;
 			}
 
@@ -2657,7 +2673,7 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 			}
 
 			rangelen = (end-start) + 1;	
-			addReplyMultiBulkLen(session->getClientBuffer(),withscores ? (rangelen*2) : rangelen);
+			addReplyMultiBulkLen(conn->outputBuffer(),withscores ? (rangelen*2) : rangelen);
 
 			if (reverse)
 			{
@@ -2666,11 +2682,11 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 				{
 					if (count++ >= start)
 					{
-						addReplyBulkCBuffer(session->getClientBuffer(),
+						addReplyBulkCBuffer(conn->outputBuffer(),
 							iterr->second->ptr,sdslen(iterr->second->ptr));
 						if (withscores)
 						{
-							addReplyDouble(session->getClientBuffer(),iterr->first);
+							addReplyDouble(conn->outputBuffer(),iterr->first);
 						}
 					}
 					if (count >= end)
@@ -2686,11 +2702,11 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 				{
 					if (count++ >= start)
 					{
-						addReplyBulkCBuffer(session->getClientBuffer(),
+						addReplyBulkCBuffer(conn->outputBuffer(),
 							iterr->second->ptr, sdslen(iterr->second->ptr));
 						if (withscores)
 						{
-							addReplyDouble(session->getClientBuffer(),iterr->first);
+							addReplyDouble(conn->outputBuffer(),iterr->first);
 						}
 					}
 					if (count >= end)
@@ -2705,7 +2721,7 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 }
 
 
-bool Redis::hgetallCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::hgetallCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -2724,13 +2740,13 @@ bool Redis::hgetallCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		{
 			auto iter = hashMap.find(obj[0]);
 			assert(iter == hashMap.end());
-			addReply(session->getClientBuffer(),shared.emptymultibulk);
+			addReply(conn->outputBuffer(),shared.emptymultibulk);
 		}
 		else
 		{
 			if ((*it)->type != OBJ_HASH)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2738,18 +2754,18 @@ bool Redis::hgetallCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 			auto iter = hashMap.find(obj[0]);
 			assert(iter != hashMap.end());
 			assert(iter->first->type == (*it)->type);
-			addReplyMultiBulkLen(session->getClientBuffer(),iter->second.size() * 2);
+			addReplyMultiBulkLen(conn->outputBuffer(),iter->second.size() * 2);
 			for (auto &iterr : iter->second)
 			{
-				addReplyBulkCBuffer(session->getClientBuffer(),iterr.first->ptr,sdslen(iterr.first->ptr));
-				addReplyBulkCBuffer(session->getClientBuffer(),iterr.second->ptr,sdslen(iterr.second->ptr));
+				addReplyBulkCBuffer(conn->outputBuffer(),iterr.first->ptr,sdslen(iterr.first->ptr));
+				addReplyBulkCBuffer(conn->outputBuffer(),iterr.second->ptr,sdslen(iterr.second->ptr));
 			}
 		}
 	}
 	return true;
 }
 
-bool Redis::hgetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::hgetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 2)
 	{
@@ -2768,13 +2784,13 @@ bool Redis::hgetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		{
 			auto iter = hashMap.find(obj[0]);
 			assert(iter == hashMap.end());
-			addReply(session->getClientBuffer(),shared.nullbulk);
+			addReply(conn->outputBuffer(),shared.nullbulk);
 		}
 		else
 		{
 			if ((*it)->type != OBJ_HASH)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2785,18 +2801,18 @@ bool Redis::hgetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 			auto iterr = iter->second.find(obj[1]);
 			if (iterr == iter->second.end())
 			{
-				addReply(session->getClientBuffer(),shared.nullbulk);
+				addReply(conn->outputBuffer(),shared.nullbulk);
 			}
 			else
 			{
-				addReplyBulk(session->getClientBuffer(),iterr->second);
+				addReplyBulk(conn->outputBuffer(),iterr->second);
 			}
 		}
 	}
 	return true;
 }
 
-bool Redis::hkeysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::hkeysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -2815,14 +2831,14 @@ bool Redis::hkeysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 		{
 			auto iter = hashMap.find(obj[0]);
 			assert(iter == hashMap.end());
-			addReply(session->getClientBuffer(),shared.emptymultibulk);
+			addReply(conn->outputBuffer(),shared.emptymultibulk);
 			return true;
 		}
 		else
 		{
 			if ((*it)->type != OBJ_HASH)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 						"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2830,11 +2846,11 @@ bool Redis::hkeysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 			auto iter = hashMap.find(obj[0]);
 			assert(iter != hashMap.end());
 			assert(iter->first->type == (*it)->type);
-			addReplyMultiBulkLen(session->getClientBuffer(),iter->second.size());
+			addReplyMultiBulkLen(conn->outputBuffer(),iter->second.size());
 
 			for (auto &iterr : iter->second)
 			{
-				addReplyBulkCBuffer(session->getClientBuffer(),
+				addReplyBulkCBuffer(conn->outputBuffer(),
 						iterr.first->ptr,sdslen(iterr.first->ptr));
 			}
 		}
@@ -2842,7 +2858,7 @@ bool Redis::hkeysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 	return true;
 }
 
-bool Redis::hlenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::hlenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -2867,7 +2883,7 @@ bool Redis::hlenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		{
 			if ((*it)->type != OBJ_HASH)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 					"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2880,11 +2896,11 @@ bool Redis::hlenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		}
 	}
 
-	addReplyLongLong(session->getClientBuffer(),len);
+	addReplyLongLong(conn->outputBuffer(),len);
 	return true;
 }
 
-bool Redis::hsetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::hsetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 3)
 	{
@@ -2918,7 +2934,7 @@ bool Redis::hsetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		{
 			if ((*it)->type != OBJ_HASH)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 					"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -2939,11 +2955,11 @@ bool Redis::hsetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		}
 	}
 
-	addReply(session->getClientBuffer(),update ? shared.czero : shared.cone);
+	addReply(conn->outputBuffer(),update ? shared.czero : shared.cone);
 	return true;
 }
 
-bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {	
 	if (obj.size() <  2 || obj.size() > 8 )
 	{
@@ -2993,7 +3009,7 @@ bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 		}
 		else
 		{
-			addReply(session->getClientBuffer(),shared.syntaxerr);
+			addReply(conn->outputBuffer(),shared.syntaxerr);
 			return true;
 		}
 	}
@@ -3001,14 +3017,14 @@ bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 	int64_t milliseconds = 0;
 	if (expire)
 	{
-		if (getLongLongFromObjectOrReply(session->getClientBuffer(),
+		if (getLongLongFromObjectOrReply(conn->outputBuffer(),
 				expire,&milliseconds,nullptr) != REDIS_OK)
 		{
 			return true;
 		}
 		if (milliseconds <= 0)
 		{
-		    addReplyErrorFormat(session->getClientBuffer(),"invalid expire time in");
+		    addReplyErrorFormat(conn->outputBuffer(),"invalid expire time in");
 		    return true;
 		}
 		if (unit == UNIT_SECONDS) milliseconds *= 1000;
@@ -3029,7 +3045,7 @@ bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 		{
 			if (flags & OBJ_SET_XX)
 			{
-				addReply(session->getClientBuffer(),shared.nullbulk);
+				addReply(conn->outputBuffer(),shared.nullbulk);
 				return true;
 			}
 
@@ -3048,14 +3064,14 @@ bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 		{
 			if ((*it)->type != OBJ_STRING)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 					"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
 			
 			if (flags & OBJ_SET_NX)
 			{
-				addReply(session->getClientBuffer(),shared.nullbulk);
+				addReply(conn->outputBuffer(),shared.nullbulk);
 				return true;
 			}
 
@@ -3085,11 +3101,11 @@ bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 		}
 	}
 
-	addReply(session->getClientBuffer(),shared.ok);
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
-bool Redis::getCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::getCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {	
 	if (obj.size() != 1)
 	{
@@ -3108,7 +3124,7 @@ bool Redis::getCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 		{
 			auto iter = stringMap.find(obj[0]);
 			assert(iter == stringMap.end());
-			addReply(session->getClientBuffer(),shared.nullbulk);
+			addReply(conn->outputBuffer(),shared.nullbulk);
 			return false;
 		}
 
@@ -3118,35 +3134,35 @@ bool Redis::getCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 
 		if ((*it)->type != OBJ_STRING)
 		{
-			addReplyErrorFormat(session->getClientBuffer(),
+			addReplyErrorFormat(conn->outputBuffer(),
 				"WRONGTYPE Operation against a key holding the wrong kind of value");
 			return true;
 		}
 
-		addReplyBulk(session->getClientBuffer(),iter->second);
+		addReplyBulk(conn->outputBuffer(),iter->second);
 	}
 	return true;
 }
 
-bool Redis::incrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::incrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
 		return false;
 	}
-	return incrDecrCommand(obj[0],session,1);
+	return incrDecrCommand(obj[0],session,conn,1);
 }
 
-bool Redis::decrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::decrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
 		return false;
 	}
-	return incrDecrCommand(obj[0],session,-1);
+	return incrDecrCommand(obj[0],session,conn,-1);
 }
 
-bool Redis::incrDecrCommand(const RedisObjectPtr &obj,const SessionPtr &session,int64_t incr)
+bool Redis::incrDecrCommand(const RedisObjectPtr &obj,const SessionPtr &session,const TcpConnectionPtr &conn,int64_t incr)
 {
 	size_t hash= obj->hash;
 	size_t index = hash % kShards;
@@ -3165,14 +3181,14 @@ bool Redis::incrDecrCommand(const RedisObjectPtr &obj,const SessionPtr &session,
 			map.insert(obj);
 
 			stringMap.insert(std::make_pair(obj,createStringObjectFromLongLong(incr)));
-			addReplyLongLong(session->getClientBuffer(),incr);
+			addReplyLongLong(conn->outputBuffer(),incr);
 			return true;
 		}
 		else
 		{
 			if ((*it)->type != OBJ_STRING)
 			{
-				addReplyErrorFormat(session->getClientBuffer(),
+				addReplyErrorFormat(conn->outputBuffer(),
 					"WRONGTYPE Operation against a key holding the wrong kind of value");
 				return true;
 			}
@@ -3181,7 +3197,7 @@ bool Redis::incrDecrCommand(const RedisObjectPtr &obj,const SessionPtr &session,
 			assert(iter != stringMap.end());
 
 			int64_t value;
-			if (getLongLongFromObjectOrReply(session->getClientBuffer(),
+			if (getLongLongFromObjectOrReply(conn->outputBuffer(),
 					iter->second,&value,nullptr) != REDIS_OK)
 				return false;
 
@@ -3189,20 +3205,20 @@ bool Redis::incrDecrCommand(const RedisObjectPtr &obj,const SessionPtr &session,
 			if ((incr < 0 && value < 0 && incr < (LLONG_MIN-value)) ||
 				(incr > 0 && value > 0 && incr > (LLONG_MAX-value)))
 			{
-				addReplyError(session->getClientBuffer(),"increment or decrement would overflow");
+				addReplyError(conn->outputBuffer(),"increment or decrement would overflow");
 				return true;
 			}
 
 			iter->second = createStringObjectFromLongLong(value);
-			addReply(session->getClientBuffer(),shared.colon);
-			addReply(session->getClientBuffer(),iter->second);
-			addReply(session->getClientBuffer(),shared.crlf);
+			addReply(conn->outputBuffer(),shared.colon);
+			addReply(conn->outputBuffer(),iter->second);
+			addReply(conn->outputBuffer(),shared.crlf);
 			return true;
 		}
 	}
 }
 
-bool Redis::ttlCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::ttlCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -3213,18 +3229,18 @@ bool Redis::ttlCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 	auto it = expireTimers.find(obj[0]);
 	if (it == expireTimers.end())
 	{
-		addReplyLongLong(session->getClientBuffer(),-2);
+		addReplyLongLong(conn->outputBuffer(),-2);
 		return true;
 	}
 	
 	int64_t ttl = it->second->getExpiration().getMicroSecondsSinceEpoch()
 	 - TimeStamp::now().getMicroSecondsSinceEpoch();
 	
-	addReplyLongLong(session->getClientBuffer(),ttl / 1000000);
+	addReplyLongLong(conn->outputBuffer(),ttl / 1000000);
 	return true;
 }
 
-bool Redis::monitorCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session)
+bool Redis::monitorCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
@@ -3232,8 +3248,8 @@ bool Redis::monitorCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	}
 
 	std::unique_lock <std::mutex> lck(monitorMutex);
-	monitorConns[session->getClientConn()->getSockfd()] = session->getClientConn();
-	addReply(session->getClientBuffer(),shared.ok);
+	monitorConns[conn->getSockfd()] = conn;
+	addReply(conn->outputBuffer(),shared.ok);
 	return true;
 }
 
@@ -3262,7 +3278,7 @@ void Redis::initConfig()
 	shared.rIp = createStringObject(getIp().data(),getIp().length());
 
 #define REGISTER_REDIS_COMMAND(msgId,func) \
-	handlerCommands[msgId] = std::bind(&Redis::func,this,std::placeholders::_1,std::placeholders::_2);
+	handlerCommands[msgId] = std::bind(&Redis::func,this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
 	REGISTER_REDIS_COMMAND(shared.set,setCommand);
 	REGISTER_REDIS_COMMAND(shared.get,getCommand);
 	REGISTER_REDIS_COMMAND(shared.hset,hsetCommand);

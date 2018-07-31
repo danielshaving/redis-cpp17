@@ -30,16 +30,21 @@ public:
 	void readCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
 	void connCallBack(const TcpConnectionPtr &conn);
 	void reconnectTimer(const std::any &context);
-	void cretateClusterNode(int32_t slot,const std::string &ip,int16_t port,const std::string &name);
-
+	void cretateClusterNode(int32_t slot,const std::string &ip,
+			int16_t port,const std::string &name);
 	bool getKeySlot(const std::string &name);
-	void structureProtocolSetCluster(std::string host,int16_t port,Buffer &buffer,const TcpConnectionPtr &conn);
-	int32_t getSlotOrReply(const SessionPtr &session,const RedisObjectPtr &o);
+	void structureProtocolSetCluster(std::string host,
+			int16_t port,Buffer &buffer,const TcpConnectionPtr &conn);
+	int32_t getSlotOrReply(const SessionPtr &session,
+			const RedisObjectPtr &o,const TcpConnectionPtr &conn);
 	uint32_t keyHashSlot(char *key,int32_t keylen);
+
 	void syncClusterSlot();
-	void clusterRedirectClient(const SessionPtr &session,ClusterNode *node,int32_t hashSlot,int32_t errCode);
-	bool replicationToNode(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,
-		const std::string &ip,int16_t port,int8_t copy,int8_t replace,int32_t numKeys,int32_t firstKey);
+	void clusterRedirectClient(const TcpConnectionPtr &conn,const SessionPtr &session,
+			ClusterNode *node,int32_t hashSlot,int32_t errCode);
+	bool replicationToNode(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const std::string &ip,
+		int16_t port,int8_t copy,int8_t replace,int32_t numKeys,int32_t firstKey);
 	void delClusterImport(std::deque<RedisObjectPtr> &robj);
 	
 	void eraseClusterNode(const std::string &ip,int16_t port);
