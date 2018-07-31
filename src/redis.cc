@@ -436,7 +436,8 @@ bool Redis::memoryCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 	return true;
 }
 
-bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,
+	const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size()  < 0)
 	{
@@ -449,41 +450,20 @@ bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	sds info = sdsempty();
 
 	char hmem[64];
-	char peak_hmem[64];
-	char total_system_hmem[64];
-	char used_memory_rss_hmem[64];
-	char maxmemory_hmem[64];
-	size_t zmalloc_used = zmalloc_used_memory();
-	size_t total_system_mem = zmalloc_get_memory_size();
-	bytesToHuman(hmem,zmalloc_used);
-	bytesToHuman(peak_hmem,zmalloc_used);
-	bytesToHuman(total_system_hmem,total_system_mem);
-	bytesToHuman(used_memory_rss_hmem,zmalloc_get_rss());
-	bytesToHuman(maxmemory_hmem,8);
+    size_t zmallocUsed = zmalloc_used_memory();
 
-	info = sdscatprintf(info,
-	"# Memory\r\n"
-	"used_memory:%zu\r\n"
-	"used_memory_human:%s\r\n"
-	"used_memory_rss:%zu\r\n"
-	"used_memory_rss_human:%s\r\n"
-	"used_memory_peak:%zu\r\n"
-	"used_memory_peak_human:%s\r\n"
-	"total_system_memory:%lu\r\n"
-	"total_system_memory_human:%s\r\n"
-	"maxmemory_human:%s\r\n",
-	"mem_allocator:%s\r\n",
-	zmalloc_used,
-	hmem,
-	zmalloc_get_rss(),
-	used_memory_rss_hmem,
-	zmalloc_used,
-	peak_hmem,
-	(unsigned int32_t)total_system_mem,
-	total_system_hmem,
-	maxmemory_hmem,
-	ZMALLOC_LIB
-	);
+    bytesToHuman(hmem,zmallocUsed);
+
+    info = sdscat(info,"\r\n");
+    info = sdscatprintf(info,
+        "# Memory\r\n"
+        "used_memory:%zu\r\n"
+        "used_memory_human:%s\r\n"
+        "mem_allocator:%s\r\n",
+        zmallocUsed,
+        hmem,
+        ZMALLOC_LIB);
+
 
 	info = sdscat(info,"\r\n");
 	info = sdscatprintf(info,
@@ -524,10 +504,11 @@ bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	}
 	
 	addReplyBulkSds(conn->outputBuffer(),info);
-	return true ;
+	return true;
 }
 
-bool Redis::clientCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::clientCommand(const std::deque<RedisObjectPtr> &obj,
+	const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 1)
 	{
@@ -538,7 +519,8 @@ bool Redis::clientCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 	return true;
 }
 
-bool Redis::echoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::echoCommand(const std::deque<RedisObjectPtr> &obj,
+	const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 1)
 	{
@@ -549,7 +531,8 @@ bool Redis::echoCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::authCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::authCommand(const std::deque<RedisObjectPtr> &obj,
+	const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 1)
 	{
@@ -574,7 +557,8 @@ bool Redis::authCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,
+	const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 3 || obj.size() == 0)
 	{
@@ -613,7 +597,8 @@ bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 	return true;
 }
 
-bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,
+	const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 5)
 	{
@@ -677,8 +662,10 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	int32_t timeout;
 	int32_t dbid;
 	/* Sanity check */
-	if (getLongFromObjectOrReply(conn->outputBuffer(),obj[4],&timeout,nullptr) != REDIS_OK ||
-		getLongFromObjectOrReply(conn->outputBuffer(),obj[3],&dbid,nullptr) != REDIS_OK)
+	if (getLongFromObjectOrReply(conn->outputBuffer(),
+		obj[4],&timeout,nullptr) != REDIS_OK ||
+		getLongFromObjectOrReply(conn->outputBuffer(),
+			obj[3],&dbid,nullptr) != REDIS_OK)
 	{
 		return true;
 	}
@@ -704,7 +691,8 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	return true;
 }
 
-bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
+	const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (!clusterEnabled)
 	{
@@ -728,7 +716,8 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 			return true;
 		}
 
-		if (ip.c_str() && !memcmp(ip.c_str(),obj[1]->ptr,sdslen(obj[1]->ptr)) && this->port == port)
+		if (ip.c_str() && !memcmp(ip.c_str(),obj[1]->ptr,
+			sdslen(obj[1]->ptr)) && this->port == port)
 		{
 			LOG_WARN << "cluster meet connect self error .";
 			addReplyErrorFormat(conn->outputBuffer(),"Don't connect self ");
@@ -739,7 +728,8 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto &it : clusterConns)
 			{
-				if (port == it.second->getport() && !memcmp(it.second->getip(),obj[1]->ptr,sdslen(obj[1]->ptr)))
+				if (port == it.second->getport() && 
+					!memcmp(it.second->getip(),obj[1]->ptr,sdslen(obj[1]->ptr)))
 				{
 					LOG_WARN << "cluster meet already exists .";
 					addReplyErrorFormat(conn->outputBuffer(),"cluster meet already exists ");
@@ -751,7 +741,8 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		if (!clus.connSetCluster(obj[1]->ptr,port))
 		{
 			addReplyErrorFormat(conn->outputBuffer(),
-					"Invaild node address specified: %s:%s",(char*)obj[1]->ptr,(char*)obj[2]->ptr);
+					"Invaild node address specified: %s:%s",
+					(char*)obj[1]->ptr,(char*)obj[2]->ptr);
 			return true;
 		}
 		
@@ -770,7 +761,8 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto &it : clusterConns)
 			{
-				if (port == it.second->getport() && !memcmp(it.second->getip(),obj[1]->ptr,sdslen(obj[1]->ptr)))
+				if (port == it.second->getport() && 
+					!memcmp(it.second->getip(),obj[1]->ptr,sdslen(obj[1]->ptr)))
 				{
 					return true;
 				}
@@ -815,10 +807,12 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		int64_t maxkeys, slot;
 		uint32_t numkeys, j;
 
-		if (getLongLongFromObjectOrReply(conn->outputBuffer(),obj[1],&slot,nullptr) != REDIS_OK)
+		if (getLongLongFromObjectOrReply(conn->outputBuffer(),
+			obj[1],&slot,nullptr) != REDIS_OK)
 			return true;
 			
-		if (getLongLongFromObjectOrReply(conn->outputBuffer(),obj[2],&maxkeys,nullptr) != REDIS_OK)
+		if (getLongLongFromObjectOrReply(conn->outputBuffer(),
+			obj[2],&maxkeys,nullptr) != REDIS_OK)
 			return true;
 	
 		if (slot < 0 || slot >= 16384 || maxkeys < 0) 
@@ -844,7 +838,8 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	else if (!strcasecmp(obj[0]->ptr,"keyslot") && obj.size() == 2)
 	{
 		char *key = obj[1]->ptr;
-		addReplyLongLong(conn->outputBuffer(),clus.keyHashSlot((char*)key,sdslen(key)));
+		addReplyLongLong(conn->outputBuffer(),
+			clus.keyHashSlot((char*)key,sdslen(key)));
 		return true;
 	}
 	else if (!strcasecmp(obj[0]->ptr,"setslot") && obj.size() >= 3)
