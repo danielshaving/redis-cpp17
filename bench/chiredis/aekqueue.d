@@ -1,1 +1,0 @@
-aekqueue.o: aekqueue.c
