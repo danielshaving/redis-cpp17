@@ -16,7 +16,6 @@ Socket::~Socket()
 	::close(sockfd);
 }
 
-
 uint64_t Socket::hostToNetwork64(uint64_t host64) 
 {
 	return htobe64(host64); 

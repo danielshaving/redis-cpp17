@@ -629,18 +629,18 @@ int32_t RedisReader::processItem()
 					cur->type = REDIS_REPLY_ARRAY;
 					break;
 				default:
-					/* could not consume 1 byte */
 					redisReaderSetErrorProtocolByte(*((char *)p));
 				return REDIS_ERR;
 			}
 		}
 		else
 		{
+			/* could not consume 1 byte */
 			return REDIS_ERR;
 		}
 	}
 
-/* process typed item */
+	/* process typed item */
 	switch (cur->type)
 	{
 		case REDIS_REPLY_ERROR:
@@ -652,6 +652,7 @@ int32_t RedisReader::processItem()
 		case REDIS_REPLY_ARRAY:
 			return processMultiBulkItem();
 		default:
+			assert(false);
 			return REDIS_ERR; /* Avoid warning. */
 	}
 }
@@ -751,19 +752,6 @@ RedisContext::~RedisContext()
 
 }
 
-/* Internal helper function to try and get a reply from the reader,
- * or set an error in the redisContext otherwise. */
-
-int32_t RedisContext::redisGetReplyFromReader(RedisReplyPtr &reply)
-{
-	if (reader->redisReaderGetReply(reply) == REDIS_ERR)
-	{
-		redisSetError(reader->err,reader->errstr);
-		return REDIS_ERR;
-	}
-	return REDIS_OK;
-}
-
 /* Write the output buffer to the socket.
  *
  * Returns REDIS_OK when the buffer is empty, or (a part of) the buffer was
@@ -855,7 +843,7 @@ int32_t RedisContext::redisGetReply(RedisReplyPtr &reply)
 	int32_t wdone = 0;
 	RedisReplyPtr aux;
     /* Try to read pending replies */
-	if (redisGetReplyFromReader(aux) == REDIS_ERR)
+	if (reader->redisReaderGetReply(aux) == REDIS_ERR)
     {
 		redisSetError(reader->err,reader->errstr);
 		return REDIS_ERR;
@@ -883,8 +871,9 @@ int32_t RedisContext::redisGetReply(RedisReplyPtr &reply)
 				return REDIS_ERR;
 			}
 
-			if (redisGetReplyFromReader(aux) == REDIS_ERR)
+			if (reader->redisReaderGetReply(aux) == REDIS_ERR)
 			{
+				redisSetError(reader->err,reader->errstr);
 				return REDIS_ERR;
 			}
 		}while(aux == nullptr);
@@ -1764,11 +1753,6 @@ int32_t RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
 	return REDIS_OK;
 }
 
-int32_t RedisAsyncContext::redisGetReply(RedisReplyPtr &reply)
-{
-	return redisContext->redisGetReply(reply);
-}
-
 int32_t RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata,const char *format, ...)
 {
@@ -2037,7 +2021,7 @@ void Hiredis::redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 
 	RedisReplyPtr reply;
 	int32_t status;
-	while((status = ac->redisGetReply(reply)) == REDIS_OK)
+	while((status = ac->redisContext->redisGetReply(reply)) == REDIS_OK)
 	{
 		if (reply == nullptr)
 		{

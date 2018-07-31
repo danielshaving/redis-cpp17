@@ -122,7 +122,6 @@ public:
 	int32_t redisBufferRead();
 	int32_t redisBufferWrite(int32_t *done);
 	int32_t redisGetReply(RedisReplyPtr &reply);
-	int32_t redisGetReplyFromReader(RedisReplyPtr &reply);
 	int32_t redisContextConnectTcp(const char *ip,
 			int16_t port,const struct timeval *timeout);
 	int32_t redisAppendCommand(const char *format, ...);
@@ -187,8 +186,6 @@ public:
 			const std::any &privdata,const char *format,va_list ap);
 	int32_t redisAsyncCommand(const RedisCallbackFn &fn,
 			const std::any &privdata,const char *format, ...);
-
-	int32_t redisGetReply(RedisReplyPtr &reply);
 
 	int32_t err;
 	char *errstr;
