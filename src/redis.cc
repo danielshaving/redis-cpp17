@@ -1710,7 +1710,7 @@ bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		return false;
 	}
 
-	Timer *timer = nullptr;
+	TimerPtr timer;
 	{
 		std::unique_lock <std::mutex> lck(slaveMutex);
 		auto it = repliTimers.find(conn->getSockfd());
@@ -1958,8 +1958,8 @@ void Redis::clearCommand()
 		{
 			assert(it.first->type == OBJ_EXPIRE);
 			loop.cancelAfter(it.second);
-			zfree(it.second);
 		}
+		expireTimers.clear();
 	}
 
 	for (auto &it : redisShards)
@@ -2487,7 +2487,7 @@ bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,
 		RedisObjectPtr ex = createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
 		ex->type = OBJ_EXPIRE;
 		std::unique_lock <std::mutex> lck(slaveMutex);
-		Timer *timer = loop.runAfter(ttl / 1000,
+		TimerPtr timer = loop.runAfter(ttl / 1000,
 				false,std::bind(&Redis::setExpireTimeOut,this,ex));
 		auto it = expireTimers.find(ex);
 		assert(it == expireTimers.end());

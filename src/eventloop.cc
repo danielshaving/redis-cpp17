@@ -83,12 +83,12 @@ void EventLoop::removeChannel(Channel *channel)
 	epoller->removeChannel(channel);
 }
 
-void EventLoop::cancelAfter(Timer *timer)
+void EventLoop::cancelAfter(const TimerPtr &timer)
 {
 	timerQueue->cancelTimer(timer);
 }
 
-Timer *EventLoop::runAfter(double when,bool repeat,TimerCallback &&cb)
+TimerPtr EventLoop::runAfter(double when,bool repeat,TimerCallback &&cb)
 {
 	return timerQueue->addTimer(when,repeat,std::move(cb));
 }

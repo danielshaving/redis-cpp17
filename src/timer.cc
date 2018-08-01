@@ -1,7 +1,8 @@
 #include "timer.h"
 std::atomic<int64_t> Timer::numCreated = 0;
 
-Timer::Timer(TimerCallback &&cb,TimeStamp &&expiration,bool repeat,double interval)
+Timer::Timer(TimerCallback &&cb,
+		TimeStamp &&expiration,bool repeat,double interval)
 :repeat(repeat),
 interval(interval),
 expiration(std::move(expiration)),
@@ -16,9 +17,39 @@ Timer::~Timer()
 
 }
 
+int64_t Timer::getSequence()
+{
+	return sequence;
+}
+
+TimeStamp &Timer::getExpiration()
+{
+	return expiration;
+}
+
+int64_t Timer::getWhen()
+{
+	return expiration.getMicroSecondsSinceEpoch();
+}
+
+bool Timer::getRepeat()
+{
+	return repeat;
+}
+
+void Timer::setSequence(int64_t seq)
+{
+	sequence = seq;
+}
+
+double Timer::getInterval()
+{
+	return interval;
+}
+
 void Timer::run()
 {
-	assert(callback != nullptr);
+	assert(callback);
 	callback();
 }
 

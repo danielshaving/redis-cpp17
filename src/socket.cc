@@ -285,7 +285,6 @@ void Socket::setkeepAlive(int32_t fd,int32_t idle)
 #endif
 }
 
-
 void Socket::setReuseAddr(bool on)
 {
 	int optval = on ? 1 : 0;

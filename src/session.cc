@@ -12,7 +12,7 @@ Session::Session(Redis *redis,const TcpConnectionPtr &conn)
  fromMaster(false),
  fromSlave(false)
 {
-	cmd = createStringObject(nullptr,0);
+	cmd = createStringObject(nullptr,REDIS_COMMAND_LENGTH);
 	conn->setMessageCallback(std::bind(&Session::readCallBack,
 			this,std::placeholders::_1,std::placeholders::_2));
 }
@@ -327,10 +327,11 @@ int32_t Session::processInlineBuffer(const TcpConnectionPtr &conn,Buffer *buffer
 	{
 		if (j == 0)
 		{
-			sdscpylen((sds)(cmd->ptr),argv[j],sdslen(argv[j]));
+			cmd->ptr = sdscpylen((sds)(cmd->ptr),argv[j],sdslen(argv[j]));
 			if (cmd->ptr[0] >='A' && cmd->ptr[0] <= 'Z')
 			{
-				for (int i = 0 ; i < sdslen(cmd->ptr); i++)
+				int len = sdslen(cmd->ptr);
+				for (int i = 0 ; i < len; i++)
 				{
 					cmd->ptr[i] += 32;
 				}
@@ -472,10 +473,11 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn,Buffer *buf
 			* just use the current sds string. */
 			if (++argc == 1)
 			{
-				sdscpylen(cmd->ptr,queryBuf + pos,bulklen);
+				cmd->ptr = sdscpylen(cmd->ptr,queryBuf + pos,bulklen);
 				if (cmd->ptr[0] >='A' && cmd->ptr[0] <= 'Z')
 				{
-					for (int i = 0 ; i < sdslen(cmd->ptr); i++)
+					int len = sdslen(cmd->ptr);
+					for (int i = 0 ; i < len; i++)
 					{
 						cmd->ptr[i] += 32;
 					}

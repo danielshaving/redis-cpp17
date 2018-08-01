@@ -19,7 +19,9 @@ class Epoll;
 class Thread;
 class RedisObject;
 class RedisReply;
+class Timer;
 
+typedef std::shared_ptr<Timer> TimerPtr;
 typedef std::weak_ptr<RedisReply> RedisReplyWeakPtr;
 typedef std::shared_ptr<RedisReply> RedisReplyPtr;
 typedef std::shared_ptr<RedisObject> RedisObjectPtr;

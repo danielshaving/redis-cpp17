@@ -14,7 +14,6 @@ RedisReply::~RedisReply()
 	if (str != nullptr)
 	{
 		zfree(str);
-		str = nullptr;
 	}
 }
 
@@ -110,10 +109,7 @@ static int32_t intlen(int32_t i)
 RedisReplyPtr createReplyObject(int32_t type)
 {
 	RedisReplyPtr r(new RedisReply());
-	if (r == nullptr)
-	{
-		return nullptr;
-	}
+	assert(r != nullptr);
 
 	r->type = type;
 	return r;
@@ -225,16 +221,10 @@ RedisReplyPtr createString(const RedisReadTask *task,const char *str,size_t len)
 {
 	RedisReplyPtr r,parent;
 	r = createReplyObject(task->type);
-	if (r == nullptr)
-	{
-		return nullptr;
-	}
+	assert(r != nullptr);
 
 	char *buffer = (char*)zmalloc(len + 1);
-	if (buffer == nullptr)
-	{
-		return nullptr;
-	}
+	assert(buffer != nullptr);
 
 	assert(task->type == REDIS_REPLY_ERROR ||
 			task->type == REDIS_REPLY_STATUS ||
@@ -260,10 +250,7 @@ RedisReplyPtr createArray(const RedisReadTask *task,int32_t elements)
 {
 	RedisReplyPtr r,parent;
 	r = createReplyObject(REDIS_REPLY_ARRAY);
-	if (r == nullptr) 
-	{
-		return nullptr; 
-	}
+	assert(r != nullptr);
 
 	if (elements > 0)
 	{
@@ -285,10 +272,7 @@ RedisReplyPtr createInteger(const RedisReadTask *task,int64_t value)
 {
 	RedisReplyPtr r,parent;
 	r = createReplyObject(REDIS_REPLY_INTEGER);
-	if (r == nullptr)
-	{
-		return nullptr;
-	}
+	assert(r != nullptr);
 
 	r->integer = value;
 	if (task->parent)
@@ -305,10 +289,7 @@ RedisReplyPtr createNil(const RedisReadTask *task)
 {
 	RedisReplyPtr r,parent;
 	r = createReplyObject(REDIS_REPLY_NIL);
-	if (r == nullptr)
-	{
-		return nullptr;
-	}
+	assert(r != nullptr);
 
 	if (task->parent)
 	{

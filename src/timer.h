@@ -18,7 +18,11 @@ public:
 
 	}
 
-	int64_t getMicroSecondsSinceEpoch() const { return microSecondsSinceEpoch; }
+	int64_t getMicroSecondsSinceEpoch() const
+	{
+		return microSecondsSinceEpoch;
+	}
+
 	time_t secondsSinceEpoch() const
 	{ 
 		return static_cast<time_t>(microSecondsSinceEpoch / kMicroSecondsPerSecond); 
@@ -73,13 +77,16 @@ public:
 	~Timer();
 
 	void run();
-	int64_t getSequence() { return sequence; }
-	TimeStamp &getExpiration() { return expiration; }
-	int64_t getWhen() { return expiration.getMicroSecondsSinceEpoch(); };
-	bool getRepeat() { return repeat; }
-	void setSequence(int64_t seq) { sequence = seq; }
+
+	int64_t getSequence();
+	int64_t getWhen();
+
+	TimeStamp &getExpiration();
+
+	bool getRepeat();
+	void setSequence(int64_t seq);
 	void restart(const TimeStamp &now);
-	double getInterval() { return interval; }
+	double getInterval();
 
 private:
 	Timer(const Timer&);

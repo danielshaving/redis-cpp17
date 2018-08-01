@@ -13,7 +13,6 @@ RedisCli::RedisCli()
     config.pubsubMode = 0;
     config.slaveMode = 0;
     config.output = OUTPUT_STANDARD;
-
 }
 
 RedisCli::~RedisCli()

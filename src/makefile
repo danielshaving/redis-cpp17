@@ -28,7 +28,7 @@ ${COBJS}:./%.o:../src/%.c
 -include $(DEPS)
 
 clean:
-	rm -f *.rdb *.log *.temp ${OBJS} ${TARGET} ${DEPS}
+	rm -f *.sock *.rdb *.log *.temp ${OBJS} ${TARGET} ${DEPS}
 
 show:
 	@echo GPROF=$(GPROF)

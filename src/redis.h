@@ -228,9 +228,9 @@ private:
 	/* Tcp master-> salve node tconnection maintenance */
 	std::unordered_map<int32_t,TcpConnectionPtr> clusterConns;
 	/* Tcp cluster node tcpconnection maintenance */
-	std::unordered_map<int32_t,Timer*> repliTimers;
+	std::unordered_map<int32_t,TimerPtr> repliTimers;
 	/*Slaveof commonad -> replication timer maintenace  */
-	std::unordered_map<RedisObjectPtr,Timer*,Hash,Equal> expireTimers;
+	std::unordered_map<RedisObjectPtr,TimerPtr,Hash,Equal> expireTimers;
 	/* Setex expire timer maintenace*/
 	std::unordered_map<RedisObjectPtr,
 		std::unordered_map<int32_t,TcpConnectionPtr>,Hash,Equal> pubsubs;

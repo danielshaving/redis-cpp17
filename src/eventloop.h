@@ -29,10 +29,10 @@ public:
 	void updateChannel(Channel *channel);
 	void removeChannel(Channel *channel);
 	bool hasChannel(Channel *channel);
-	void cancelAfter(Timer *timer);
+	void cancelAfter(const TimerPtr &timer);
 	void assertInLoopThread();
 
-    Timer *runAfter(double when,bool repeat,TimerCallback &&cb);
+	TimerPtr runAfter(double when,bool repeat,TimerCallback &&cb);
     TimerQueuePtr getTimerQueue() {  return timerQueue; }
 	void handlerTimerQueue() { timerQueue->handleRead(); }
     bool isInLoopThread() const { return threadId == std::this_thread::get_id(); }

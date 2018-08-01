@@ -10,8 +10,10 @@ context(context),
 retry(false),
 connect(true)
 {
-	connector->setNewConnectionCallback(std::bind(&TcpClient::newConnection,this,std::placeholders::_1));
-	connector->setConnectionErrorCallBack(std::bind(&TcpClient::errorConnection,this));
+	connector->setNewConnectionCallback(
+			std::bind(&TcpClient::newConnection,this,std::placeholders::_1));
+	connector->setConnectionErrorCallBack(
+			std::bind(&TcpClient::errorConnection,this));
 }
 
 namespace detail
@@ -95,6 +97,7 @@ void TcpClient::newConnection(int32_t sockfd)
 	conn->setMessageCallback(std::move(messageCallback));
 	conn->setWriteCompleteCallback(std::move(writeCompleteCallback));
 	conn->setCloseCallback(std::bind(&TcpClient::removeConnection,this,std::placeholders::_1));
+
 	{
 		std::unique_lock<std::mutex> lk(mutex);
 		connection = conn;

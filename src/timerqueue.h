@@ -13,10 +13,10 @@ public:
 	TimerQueue(EventLoop *loop);
 	~TimerQueue();
 
-	void cancelTimer(Timer *timer);
-  	Timer *addTimer(double when,bool repeat,TimerCallback &&cb);
+	void cancelTimer(const TimerPtr &timer);
+	TimerPtr addTimer(double when,bool repeat,TimerCallback &&cb);
   	void handleRead();
-  	Timer *getTimerBegin();
+  	TimerPtr getTimerBegin();
 
 private:
   	TimerQueue(const TimerQueue&);
@@ -29,18 +29,18 @@ private:
 #endif
 	int64_t sequence;
 
-	void cancelInloop(Timer *timer);
-	void addTimerInLoop(Timer *timer);
+	void cancelInloop(const TimerPtr &timer);
+	void addTimerInLoop(const TimerPtr &timer);
 
-	typedef std::pair<TimeStamp,Timer*> Entry;
+	typedef std::pair<TimeStamp,TimerPtr> Entry;
 	typedef std::set<Entry> TimerList;
-	typedef std::pair<Timer*,int64_t> ActiveTimer;
+	typedef std::pair<TimerPtr,int64_t> ActiveTimer;
 	typedef std::set<ActiveTimer> ActiveTimerSet;
 	TimerList timerLists;
 
 	std::vector<Entry> getExpired(TimeStamp now);
 	void reset(const std::vector<Entry> &expired,TimeStamp now);
-	bool insert(Timer *timer);
+	bool insert(const TimerPtr &timer);
 
 	ActiveTimerSet activeTimers;
 	bool callingExpiredTimers;
