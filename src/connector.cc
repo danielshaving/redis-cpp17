@@ -203,12 +203,12 @@ void Connector::asyncConnect()
 		case EBADF:
 		case EFAULT:
 		case ENOTSOCK:
-			LOG_ERROR<<"connect error in Connector::startInLoop "<<savedErrno;
+			LOG_ERROR<<"connect error "<<savedErrno;
 			::close(sockfd);
 			break;
 
 		default:
-			LOG_ERROR<<"Unexpected error in Connector::startInLoop "<<savedErrno;
+			LOG_ERROR<<"Unexpected error "<<savedErrno;
 			::close(sockfd);
 			// connectErrorCallback();
 			break;

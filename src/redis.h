@@ -273,6 +273,7 @@ public:
 	std::atomic<bool> clusterRepliMigratEnabled;
 	std::atomic<bool> clusterRepliImportEnabeld;
 	std::atomic<bool> forkEnabled;
+	std::atomic<bool> monitorEnabled;
 
 	/* master slave replcation ，To make data consistency,
 	 * use cross-thread calls to maintain conditional variable counts*/

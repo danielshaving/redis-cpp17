@@ -223,18 +223,24 @@ jump:
 	auto it = handlerCommands.find(cmd);
 	if (it == handlerCommands.end())
 	{
-		addReplyErrorFormat(conn->outputBuffer(),"unknown command `%s`, with args beginning",cmd->ptr);
+		addReplyErrorFormat(conn->outputBuffer(),
+				"unknown command `%s`, with args beginning",cmd->ptr);
 		return REDIS_ERR;
 	}
 	else
 	{
 		if (!it->second(redisCommands,shared_from_this(),conn))
 		{
-			addReplyErrorFormat(conn->outputBuffer(),"wrong number of arguments`%s`, for command",cmd->ptr);
+			addReplyErrorFormat(conn->outputBuffer(),
+					"wrong number of arguments`%s`, for command",cmd->ptr);
 		}
 		else
 		{
-			redis->feedMonitor(redisCommands,conn->getSockfd());
+			if (redis->monitorEnabled)
+			{
+				redisCommands.push_back(cmd);
+				redis->feedMonitor(redisCommands,conn->getSockfd());
+			}
 		}
 	}
 	return REDIS_OK;

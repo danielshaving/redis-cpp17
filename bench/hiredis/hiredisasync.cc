@@ -28,7 +28,7 @@ HiredisAsync::HiredisAsync(EventLoop *loop,
 	{
 		TcpClientPtr client(new TcpClient(hiredis.getPool().getNextLoop(),
 										   ip,port,nullptr));
-		//client->closeRetry();
+		client->enableRetry();
 		client->setConnectionCallback(std::bind(&HiredisAsync::redisConnCallBack,
 												this,std::placeholders::_1));
 		client->setMessageCallback(std::bind(&Hiredis::redisReadCallBack,
@@ -147,7 +147,8 @@ int main(int argc,char *argv[])
 			auto redis = async.getHiredis()->getIteratorNode();
 			if (redis == nullptr)
 			{
-				break;
+				printf("redis-server disconnct, tcpclient reconnect\n");
+				continue;
 			}
 
 			std::thread::id threadId = redis->redisConn->getLoop()->getThreadId();

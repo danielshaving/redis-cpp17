@@ -4,24 +4,10 @@ Redis::Redis(const char *ip,int16_t port,int16_t threadCount,bool enbaledCluster
 :server(&loop,ip,port,nullptr),
 ip(ip),
 port(port),
-threadCount(1),
-masterPort(0),
 clusterEnabled(enbaledCluster),
-slaveEnabled(false),
-authEnabled(false),
-repliEnabled(false),
-salveCount(0),
-clusterSlotEnabled(false),
-clusterRepliMigratEnabled(false),
-clusterRepliImportEnabeld(false),
 repli(this),
 clus(this),
-rdb(this),
-forkEnabled(false),
-forkCondWaitCount(0),
-rdbChildPid(-1),
-slavefd(-1),
-dbnum(1)
+rdb(this)
 {
 	initConfig();
 	loadDataFromDisk();
@@ -196,6 +182,10 @@ void Redis::clearMonitorState(int32_t sockfd)
 {
 	std::unique_lock <std::mutex> lck(monitorMutex);
 	monitorConns.erase(sockfd);
+	if (monitorConns.empty())
+	{
+		monitorEnabled = false;
+	}
 }
 
 void Redis::clearSessionState(int32_t sockfd)
@@ -278,11 +268,6 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 
 void Redis::feedMonitor(const std::deque<RedisObjectPtr> &obj,int32_t sockfd)
 {
-	if (monitorConns.empty())
-	{
-		return ;
-	}
-
 	char buf[64] = "";
 	auto addr = socket.getPeerAddr(sockfd);
 	socket.toIpPort(buf,sizeof(buf),(const struct sockaddr *)&addr);
@@ -316,9 +301,10 @@ void Redis::feedMonitor(const std::deque<RedisObjectPtr> &obj,int32_t sockfd)
 	cmdrepr = sdscatlen(cmdrepr,"\r\n",2);
 	cmdobj = createObject(OBJ_STRING,cmdrepr);
 
+	std::unique_lock <std::mutex> lck(monitorMutex);
 	for (auto &it : monitorConns)
 	{
-		it.second->send(cmdobj->ptr,sdslen(cmdobj->ptr));
+		it.second->sendPipe(cmdobj->ptr,sdslen(cmdobj->ptr));
 	}
 }
 
@@ -337,7 +323,8 @@ void Redis::loadDataFromDisk()
  	}
 }
 
-bool Redis::subscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::subscribeCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 1)
 	{
@@ -379,37 +366,44 @@ bool Redis::subscribeCommand(const std::deque<RedisObjectPtr> &obj,const Session
 	return true;
 }
 
-bool Redis::unsubscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::unsubscribeCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::psubscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::psubscribeCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::punsubscribeCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::punsubscribeCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::publishCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::publishCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::pubsubCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::pubsubCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::sentinelCommand(const std::deque<RedisObjectPtr> &obj, const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::sentinelCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	return false;
 }
 
-bool Redis::memoryCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::memoryCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size()  > 2)
 	{
@@ -682,7 +676,7 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,
 	std::string ip = obj[0]->ptr;
 	if (this->ip == ip && this->port == port)
 	{
-		addReplyErrorFormat(conn->outputBuffer(),"migrate  self server error ");
+		addReplyErrorFormat(conn->outputBuffer(),"migrate self server error ");
 		return true;
 	}
 	
@@ -703,8 +697,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 	{
 		if (obj.size() != 3)
 		{
-			addReplyErrorFormat(conn->outputBuffer(),"unknown cluster error");
-			return true;
+			return false;
 		}
 
 		int64_t port;
@@ -745,7 +738,6 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 					(char*)obj[1]->ptr,(char*)obj[2]->ptr);
 			return true;
 		}
-		
 	}
 	else if (!strcasecmp(obj[0]->ptr,"connect") && obj.size() == 3)
 	{
@@ -925,7 +917,8 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 				{
 					if (ip == it.second.ip && port == it.second.port)
 					{
-						addReplyErrorFormat(conn->outputBuffer(),"setslot migrate slot error %d",slot);
+						addReplyErrorFormat(conn->outputBuffer(),
+								"setslot migrate slot error %d",slot);
 						return true;
 					}
 
@@ -1364,7 +1357,8 @@ bool Redis::slaveofCommand(const std::deque<RedisObjectPtr> &obj,
 	return true;
 }
 
-bool Redis::commandCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::commandCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {	
 	addReply(conn->outputBuffer(),shared.ok);
 	return true;
@@ -1381,7 +1375,8 @@ void Redis::forkWait()
 	}
 }
 
-bool Redis::lpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::lpushCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 2)
 	{
@@ -1438,7 +1433,8 @@ bool Redis::lpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 	return true;
 }
 
-bool Redis::lpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::lpopCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -1483,7 +1479,8 @@ bool Redis::lpopCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 3)
 	{
@@ -1492,8 +1489,8 @@ bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPt
 
 	int32_t  start;
 	int32_t end;
-	if ((getLongFromObjectOrReply(conn->outputBuffer(), obj[1], &start, nullptr) != REDIS_OK) ||
-		(getLongFromObjectOrReply(conn->outputBuffer(), obj[2], &end,nullptr) != REDIS_OK))
+	if ((getLongFromObjectOrReply(conn->outputBuffer(),obj[1],&start,nullptr) != REDIS_OK) ||
+		(getLongFromObjectOrReply(conn->outputBuffer(),obj[2],&end,nullptr) != REDIS_OK))
 	{
 		return true;
 	}
@@ -1565,7 +1562,8 @@ bool Redis::lrangeCommand(const std::deque<RedisObjectPtr> &obj, const SessionPt
 	return true;
 }
 
-bool Redis::rpushCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::rpushCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size()  <  2)
 	{
@@ -1894,7 +1892,8 @@ bool Redis::removeCommand(const RedisObjectPtr &obj)
 	return false;
 }
 
-bool Redis::delCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::delCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 1)
 	{
@@ -1914,7 +1913,8 @@ bool Redis::delCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 	return true;
 }
 
-bool Redis::pingCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::pingCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
@@ -1925,7 +1925,8 @@ bool Redis::pingCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::debugCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::debugCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() == 1)
 	{
@@ -2019,7 +2020,8 @@ void Redis::clearCommand()
 	}
 }
 
-bool Redis::keysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::keysCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1 )
 	{
@@ -2088,7 +2090,8 @@ bool Redis::keysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::flushdbCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::flushdbCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
@@ -2100,13 +2103,15 @@ bool Redis::flushdbCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	return true;
 }
 
-bool Redis::quitCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::quitCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	conn->forceClose();
 	return true;
 }
 
-bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 3)
 	{
@@ -2133,7 +2138,8 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 				assert(iter == zsetMap.end());
 			}
 
-			if (getDoubleFromObjectOrReply(conn->outputBuffer(),obj[1],&scores,nullptr) != REDIS_OK)
+			if (getDoubleFromObjectOrReply(conn->outputBuffer(),
+					obj[1],&scores,nullptr) != REDIS_OK)
 			{
 				return false;
 			}
@@ -2151,7 +2157,8 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 			for (int i = 3; i < obj.size(); i += 2)
 			{
 				obj[i + 1]->type = OBJ_ZSET;
-				if (getDoubleFromObjectOrReply(conn->outputBuffer(),obj[1],&scores,nullptr) != REDIS_OK)
+				if (getDoubleFromObjectOrReply(conn->outputBuffer(),
+						obj[1],&scores,nullptr) != REDIS_OK)
 				{
 					return false;
 				}
@@ -2171,7 +2178,8 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 						auto iterr = sortMap.find(iter->second);
 						while(iterr != sortMap.end())
 						{
-							if (!memcmp(iterr->second->ptr,obj[i + 1]->ptr,sdslen(obj[i + 1]->ptr)))
+							if (!memcmp(iterr->second->ptr,
+									obj[i + 1]->ptr,sdslen(obj[i + 1]->ptr)))
 							{
 								const RedisObjectPtr &v = iterr->second;
 								sortMap.erase(iterr);
@@ -2190,7 +2198,8 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 			}
 
 			map.insert(obj[0]);
-			zsetMap.insert(std::make_pair(obj[0],std::make_pair(std::move(indexMap),std::move(sortMap))));
+			zsetMap.insert(std::make_pair(obj[0],
+					std::make_pair(std::move(indexMap),std::move(sortMap))));
 			addReplyLongLong(conn->outputBuffer(),added);
 			return true;	
 		}
@@ -2209,7 +2218,8 @@ bool Redis::zaddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 			for (int i = 1; i < obj.size(); i += 2)
 			{
 				obj[i + 1]->type = OBJ_ZSET;
-				if (getDoubleFromObjectOrReply(conn->outputBuffer(),obj[i],&scores,nullptr) != REDIS_OK)
+				if (getDoubleFromObjectOrReply(conn->outputBuffer(),
+						obj[i],&scores,nullptr) != REDIS_OK)
 				{
 					return false;
 				}
@@ -2366,7 +2376,8 @@ RedisObjectPtr Redis::createDumpPayload(const RedisObjectPtr &dump)
 	return dumpobj;
 }
 
-bool Redis::dumpCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::dumpCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -2384,7 +2395,8 @@ bool Redis::dumpCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 3 || obj.size()  > 4 )
 	{
@@ -2475,7 +2487,8 @@ bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 		RedisObjectPtr ex = createStringObject(obj[0]->ptr,sdslen(obj[0]->ptr));
 		ex->type = OBJ_EXPIRE;
 		std::unique_lock <std::mutex> lck(slaveMutex);
-		Timer *timer = loop.runAfter(ttl / 1000,false,std::bind(&Redis::setExpireTimeOut,this,ex));
+		Timer *timer = loop.runAfter(ttl / 1000,
+				false,std::bind(&Redis::setExpireTimeOut,this,ex));
 		auto it = expireTimers.find(ex);
 		assert(it == expireTimers.end());
 		expireTimers.insert(std::make_pair(ex,timer));	
@@ -2485,7 +2498,8 @@ bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 	return true;
 }
 
-bool Redis::existsCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::existsCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
@@ -2511,7 +2525,8 @@ bool Redis::existsCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr
 	return true;
 }
 
-bool Redis::saddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::saddCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() < 2)
 	{
@@ -2586,7 +2601,8 @@ bool Redis::saddCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }	
 
-bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn,int reverse)
+bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn,int reverse)
 {
 	if (obj.size()  != 4)
 	{
@@ -2597,7 +2613,8 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 	int withscores = 0;
 	int64_t start;
 	
-	if (getLongLongFromObjectOrReply(conn->outputBuffer(),obj[1],&start,nullptr) != REDIS_OK)
+	if (getLongLongFromObjectOrReply(conn->outputBuffer(),
+			obj[1],&start,nullptr) != REDIS_OK)
 	{
 		addReplyError(conn->outputBuffer(),"unknown double param error");
 		return true;
@@ -2605,7 +2622,8 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 
 	int64_t end;
 
-	if (getLongLongFromObjectOrReply(conn->outputBuffer(),obj[2],&end,nullptr) != REDIS_OK)
+	if (getLongLongFromObjectOrReply(conn->outputBuffer(),
+			obj[2],&end,nullptr) != REDIS_OK)
 	{
 		addReplyError(conn->outputBuffer(),"unknown double param error");
 		return true;
@@ -2673,7 +2691,8 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 			if (reverse)
 			{
 				int count = 0;
-				for (auto iterr = iter->second.second.rbegin(); iterr != iter->second.second.rend(); ++iterr)
+				for (auto iterr = iter->second.second.rbegin();
+						iterr != iter->second.second.rend(); ++iterr)
 				{
 					if (count++ >= start)
 					{
@@ -2693,7 +2712,8 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 			else
 			{
 				int count = 0;
-				for (auto iterr = iter->second.second.begin(); iterr != iter->second.second.end(); ++iterr)
+				for (auto iterr = iter->second.second.begin();
+						iterr != iter->second.second.end(); ++iterr)
 				{
 					if (count++ >= start)
 					{
@@ -2716,7 +2736,8 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,const Ses
 }
 
 
-bool Redis::hgetallCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::hgetallCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -2752,15 +2773,18 @@ bool Redis::hgetallCommand(const std::deque<RedisObjectPtr> &obj,const SessionPt
 			addReplyMultiBulkLen(conn->outputBuffer(),iter->second.size() * 2);
 			for (auto &iterr : iter->second)
 			{
-				addReplyBulkCBuffer(conn->outputBuffer(),iterr.first->ptr,sdslen(iterr.first->ptr));
-				addReplyBulkCBuffer(conn->outputBuffer(),iterr.second->ptr,sdslen(iterr.second->ptr));
+				addReplyBulkCBuffer(conn->outputBuffer(),
+						iterr.first->ptr,sdslen(iterr.first->ptr));
+				addReplyBulkCBuffer(conn->outputBuffer(),
+						iterr.second->ptr,sdslen(iterr.second->ptr));
 			}
 		}
 	}
 	return true;
 }
 
-bool Redis::hgetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::hgetCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 2)
 	{
@@ -2807,7 +2831,8 @@ bool Redis::hgetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::hkeysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::hkeysCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -2853,7 +2878,8 @@ bool Redis::hkeysCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr 
 	return true;
 }
 
-bool Redis::hlenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::hlenCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -2895,7 +2921,8 @@ bool Redis::hlenCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::hsetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::hsetCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 3)
 	{
@@ -2954,7 +2981,8 @@ bool Redis::hsetCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return true;
 }
 
-bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {	
 	if (obj.size() <  2 || obj.size() > 8 )
 	{
@@ -3100,7 +3128,8 @@ bool Redis::setCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 	return true;
 }
 
-bool Redis::getCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::getCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {	
 	if (obj.size() != 1)
 	{
@@ -3139,7 +3168,8 @@ bool Redis::getCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 	return true;
 }
 
-bool Redis::incrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::incrCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -3148,7 +3178,8 @@ bool Redis::incrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return incrDecrCommand(obj[0],session,conn,1);
 }
 
-bool Redis::decrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::decrCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -3157,7 +3188,8 @@ bool Redis::decrCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	return incrDecrCommand(obj[0],session,conn,-1);
 }
 
-bool Redis::incrDecrCommand(const RedisObjectPtr &obj,const SessionPtr &session,const TcpConnectionPtr &conn,int64_t incr)
+bool Redis::incrDecrCommand(const RedisObjectPtr &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn,int64_t incr)
 {
 	size_t hash= obj->hash;
 	size_t index = hash % kShards;
@@ -3213,7 +3245,8 @@ bool Redis::incrDecrCommand(const RedisObjectPtr &obj,const SessionPtr &session,
 	}
 }
 
-bool Redis::ttlCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::ttlCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() != 1)
 	{
@@ -3235,13 +3268,15 @@ bool Redis::ttlCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &s
 	return true;
 }
 
-bool Redis::monitorCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &session,const TcpConnectionPtr &conn)
+bool Redis::monitorCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
 	if (obj.size() > 0)
 	{
 		return false;
 	}
 
+	monitorEnabled = true;
 	std::unique_lock <std::mutex> lck(monitorMutex);
 	monitorConns[conn->getSockfd()] = conn;
 	addReply(conn->outputBuffer(),shared.ok);
@@ -3266,6 +3301,23 @@ bool Redis::checkCommand(const RedisObjectPtr &cmd)
 void Redis::initConfig()
 {
 	LOG_INFO<<"Server initialized";
+
+	threadCount = 1;
+	masterPort = 0;
+	slaveEnabled = false;
+	authEnabled = false;
+	repliEnabled = false;
+	salveCount = 0;
+	clusterSlotEnabled = false;
+	clusterRepliMigratEnabled = false;
+	clusterRepliImportEnabeld = false;
+	monitorEnabled = false;
+	forkEnabled = false;
+	forkCondWaitCount = 0;
+	rdbChildPid = -1;
+	slavefd = -1;
+	dbnum = 1;
+
 	createSharedObjects();
 	char buf[32];
 	int32_t len = ll2string(buf,sizeof(buf),getPort());

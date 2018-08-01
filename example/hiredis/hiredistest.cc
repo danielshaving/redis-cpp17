@@ -20,7 +20,7 @@ HiredisTest::HiredisTest(EventLoop *loop,int8_t threadCount,
 	for(int i = 0; i < sessionCount; i++)
 	{
 		TcpClientPtr client(new TcpClient(hiredis.getPool().getNextLoop(),ip,port,nullptr));
-		client->closeRetry();
+		client->enableRetry();
 		client->setConnectionCallback(std::bind(&HiredisTest::redisConnCallBack,this,std::placeholders::_1));
 		client->setMessageCallback(std::bind(&Hiredis::redisReadCallBack,
 				&hiredis,std::placeholders::_1,std::placeholders::_2));
@@ -280,9 +280,9 @@ int main(int argc,char *argv[])
  		HiredisTest hiredis(&loop,
 				threadCount,sessionCount,messageCount,ip,port);
 
- 		hiredis.monitor();
+ 		//hiredis.monitor();
 		//hiredis.subscribe();
-		//hiredis.string();
+		hiredis.string();
 		//hiredis.hash();
 		//hiredis.list();
  		loop.run();

@@ -49,7 +49,7 @@ private:
   	enum States { kDisconnected,kConnecting,kConnected };
 	void setState(States s) { state = s; }
 	static const int kMaxRetryDelayMs = 30 * 1000;
-	static const int kInitRetryDelayMs = 500;
+	static const int kInitRetryDelayMs = 1000;
 
 	EventLoop *loop;
 	const char *ip;

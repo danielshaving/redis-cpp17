@@ -10,7 +10,6 @@ context(context),
 retry(false),
 connect(true)
 {
-	enableRetry();
 	connector->setNewConnectionCallback(std::bind(&TcpClient::newConnection,this,std::placeholders::_1));
 	connector->setConnectionErrorCallBack(std::bind(&TcpClient::errorConnection,this));
 }

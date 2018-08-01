@@ -193,11 +193,13 @@ void EventLoop::run()
 		activeChannels.clear();
 		epoller->epollWait(&activeChannels);
 		eventHandling = true;
+
 		for(auto &it : activeChannels)
 		{
 			currentActiveChannel = it;
 			currentActiveChannel->handleEvent();
 		}
+
 		currentActiveChannel = nullptr;
 		eventHandling = false;
 		doPendingFunctors();

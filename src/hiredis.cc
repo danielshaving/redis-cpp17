@@ -83,7 +83,7 @@ static size_t chrtos(char *buffer,size_t size,char byte)
 
 void RedisReader::redisReaderSetErrorProtocolByte(char byte)
 {
-    char cbuf[8], sbuf[128];
+    char cbuf[8],sbuf[128];
     chrtos(cbuf,sizeof(cbuf),byte);
     snprintf(sbuf,sizeof(sbuf),"Protocol error, got %s as reply type byte",cbuf);
     redisReaderSetError(REDIS_ERR_PROTOCOL,sbuf);
@@ -666,7 +666,7 @@ int32_t RedisReader::redisReaderGetReply(RedisReplyPtr &reply)
 {
 	if (err)
 	{
-		return REDIS_ERR;
+		assert(false);
 	}
 
 	if (buffer->readableBytes() == 0)
