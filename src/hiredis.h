@@ -206,42 +206,43 @@ public:
 	~Hiredis();
 
 	void redisAsyncDisconnect(const RedisAsyncContextPtr &ac);
-	void redisGetSubscribeCallBack(const RedisAsyncContextPtr &ac,
+	void redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 		const RedisReplyPtr &reply,RedisAsyncCallbackPtr &callback);
-	void clusterAskConnCallBack(const TcpConnectionPtr &conn);
-	void clusterMoveConnCallBack(const TcpConnectionPtr &conn);
-	void redisReadCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
-	void redisConnCallBack(const TcpConnectionPtr &conn);
+	void clusterAskConnCallback(const TcpConnectionPtr &conn);
+	void clusterMoveConnCallback(const TcpConnectionPtr &conn);
+	void redisReadCallback(const TcpConnectionPtr &conn,Buffer *buffer);
+	void redisConnCallback(const TcpConnectionPtr &conn);
 
-	void eraseRedisMap(int32_t sockfd);
-	void insertRedisMap(int32_t sockfd,const RedisAsyncContextPtr &context);
+	void setDisconnectionCallback(const DisConnectionCallback &&cb)
+	{ disConnectionCallback = std::move(cb); }
+
+	void setConnectionCallback(const ConnectionCallback &&cb)
+	{ connectionCallback = std::move(cb); }
 
 	void pushTcpClient(const TcpClientPtr &client);
 	void clearTcpClient();
-
-	void start() { pool.start(); }
+	void diconnectTcpClient();
+	void start();
 
 	void setThreadNum(int16_t threadNum)
 	{ pool.setThreadNum(threadNum); }
 
 	auto &getPool() { return pool; }
-	auto &getMutex() { return rtx; }
-	auto &getAsyncContext() { return redisAsyncContexts; }
 	auto &getTcpClient() { return tcpClients; }
 
-	RedisAsyncContextPtr getIteratorNode();
+	RedisAsyncContextPtr getRedisAsyncContext();
 
 private:
 	Hiredis(const Hiredis&);
 	void operator=(const Hiredis&);
 
-	typedef std::unordered_map<int32_t,RedisAsyncContextPtr> RedisAsyncContextMap;
 	ThreadPool pool;
-	std::vector<TcpClientPtr> tcpClients;
-	RedisAsyncContextMap redisAsyncContexts;
 	bool clusterMode;
-	std::mutex rtx;
-	RedisAsyncContextMap::iterator node;
+	std::mutex mutex;
+	ConnectionCallback connectionCallback;
+	DisConnectionCallback disConnectionCallback;
+	std::vector<TcpClientPtr> tcpClients;
+	std::vector<TcpClientPtr>::iterator tcpClientNode;
 };
 
 int redisFormatSdsCommandArgv(sds *target,int argc,

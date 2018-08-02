@@ -36,10 +36,12 @@ private:
 	typedef std::set<Entry> TimerList;
 	typedef std::pair<TimerPtr,int64_t> ActiveTimer;
 	typedef std::set<ActiveTimer> ActiveTimerSet;
+
+	std::vector<Entry> expired;
 	TimerList timerLists;
 
-	std::vector<Entry> getExpired(TimeStamp now);
-	void reset(const std::vector<Entry> &expired,TimeStamp now);
+	void getExpired(const TimeStamp &now);
+	void reset(const TimeStamp &now);
 	bool insert(const TimerPtr &timer);
 
 	ActiveTimerSet activeTimers;

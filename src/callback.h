@@ -45,6 +45,7 @@ typedef std::unique_ptr<Epoll> EpollPtr;
 typedef std::shared_ptr<Thread> ThreadPtr;
 typedef std::function<void ()> TimerCallback;
 typedef std::function<void (const TcpConnectionPtr&)> ConnectionCallback;
+typedef std::function<void (const TcpConnectionPtr&)> DisConnectionCallback;
 typedef std::function<void (const std::any &)> ConnectionErrorCallback;
 typedef std::function<void (const TcpConnectionPtr&)> CloseCallback;
 typedef std::function<void (const TcpConnectionPtr&)> WriteCompleteCallback;

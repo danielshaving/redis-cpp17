@@ -24,20 +24,25 @@ HiredisAsync::HiredisAsync(EventLoop *loop,
 	hiredis.setThreadNum(threadCount);
 	hiredis.start();
 
+	hiredis.setConnectionCallback(std::bind(&HiredisAsync::connectionCallback,
+			this,std::placeholders::_1));
+	hiredis.setDisconnectionCallback(std::bind(&HiredisAsync::disConnectionCallback,
+			this,std::placeholders::_1));
+
+	auto &threadPool = hiredis.getPool();
 	for(int i = 0; i < sessionCount; i++)
 	{
-		TcpClientPtr client(new TcpClient(hiredis.getPool().getNextLoop(),
-										   ip,port,nullptr));
+		TcpClientPtr client(new TcpClient(threadPool.getNextLoop(),ip,port,nullptr));
 		client->enableRetry();
-		client->setConnectionCallback(std::bind(&HiredisAsync::redisConnCallBack,
-												this,std::placeholders::_1));
-		client->setMessageCallback(std::bind(&Hiredis::redisReadCallBack,
-											 &hiredis,std::placeholders::_1,std::placeholders::_2));
+		client->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
+				&hiredis,std::placeholders::_1));
+		client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
+				&hiredis,std::placeholders::_1,std::placeholders::_2));
 		client->asyncConnect();
 		hiredis.pushTcpClient(client);
 	}
 
-	std::unique_lock<std::mutex> lk(hiredis.getMutex());
+	std::unique_lock<std::mutex> lk(mutex);
 	while (connectCount < sessionCount)
 	{
 		condition.wait(lk);
@@ -49,29 +54,24 @@ HiredisAsync::~HiredisAsync()
 
 }
 
-void HiredisAsync::redisConnCallBack(const TcpConnectionPtr &conn)
+void HiredisAsync::connectionCallback(const TcpConnectionPtr &conn)
 {
-	if(conn->connected())
-	{
-		RedisAsyncContextPtr ac(new RedisAsyncContext(conn->intputBuffer(),conn));
-		hiredis.insertRedisMap(conn->getSockfd(),ac);
-		connectCount++;
-		condition.notify_one();
-	}
-	else
-	{
-		hiredis.eraseRedisMap(conn->getSockfd());
-		if(--connectCount == 0)
-		{
-			hiredis.clearTcpClient();
-			endTime = ustime();
-			double dff = endTime - startTime;
-			double elapsed = dff / (1000 * 1000);
+	connectCount++;
+	condition.notify_one();
+}
 
-			printf("all client diconnect success\n");
-			printf("all client command benchmark seconds %.5f\n",elapsed);
-			loop->quit();
-		}
+void HiredisAsync::disConnectionCallback(const TcpConnectionPtr &conn)
+{
+	if(--connectCount == 0)
+	{
+		hiredis.clearTcpClient();
+		endTime = ustime();
+		double dff = endTime - startTime;
+		double elapsed = dff / (1000 * 1000);
+
+		printf("all client diconnect success\n");
+		printf("all client command benchmark seconds %.5f\n",elapsed);
+		loop->quit();
 	}
 }
 
@@ -108,13 +108,7 @@ void HiredisAsync::serverCron()
 {
 	if(cron && gconnetCount == messageCount && sconnetCount == messageCount)
 	{
-		{
-			std::unique_lock<std::mutex> lk(hiredis.getMutex());
-			for(auto &it : hiredis.getTcpClient())
-			{
-				it->disConnect();
-			}
-		}
+		hiredis.diconnectTcpClient();
 		cron = false;
 	}
 }
@@ -144,15 +138,14 @@ int main(int argc,char *argv[])
 
 		for(int32_t count = 1; count <= message; count++)
 		{
-			auto redis = async.getHiredis()->getIteratorNode();
+			auto redis = async.getHiredis()->getRedisAsyncContext();
 			if (redis == nullptr)
 			{
-				printf("redis-server disconnct, tcpclient reconnect\n");
+				printf("redis-server disconnct, client reconnect......\n");
 				continue;
 			}
 
 			std::thread::id threadId = redis->redisConn->getLoop()->getThreadId();
-
 			redis->redisAsyncCommand(std::bind(&HiredisAsync::setCallback,
 					&async,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
 					threadId,"set key%d %d",count,count);

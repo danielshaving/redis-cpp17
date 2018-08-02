@@ -8,8 +8,6 @@ public:
 			int16_t sessionCount,int32_t messageCount,
 			const char *ip,int16_t port);
 	~HiredisTest();
-
-	void redisConnCallBack(const TcpConnectionPtr &conn);
 	Hiredis *getHiredis() { return &hiredis; }
 
 	void string();
@@ -18,6 +16,9 @@ public:
 	void subscribe();
 	void publish();
 	void monitor();
+
+	void connectionCallback(const TcpConnectionPtr &conn);
+	void disConnectionCallback(const TcpConnectionPtr &conn);
 
 	void setCallback(const RedisAsyncContextPtr &c,
 			const RedisReplyPtr &reply,const std::any &privdata);
@@ -49,6 +50,7 @@ private:
 	std::atomic<int32_t> connectCount;
 	int32_t count;
 	int16_t sessionCount;
+	std::mutex mutex;
 	std::condition_variable condition;
 	EventLoop *loop;
 	int32_t messageCount;

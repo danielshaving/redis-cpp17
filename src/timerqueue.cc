@@ -97,6 +97,7 @@ void TimerQueue::cancelInloop(const TimerPtr &timer)
 {
 	loop->assertInLoopThread();
 	assert(timerLists.size() == activeTimers.size());
+
 	ActiveTimer atimer(timer,timer->getSequence());
 	auto it = activeTimers.find(atimer);
 	if (it != activeTimers.end())
@@ -139,24 +140,26 @@ void TimerQueue::handleRead()
 #ifdef __linux__
 	readTimerfd(timerfd,now);
 #endif
-	std::vector<Entry> expired = getExpired(now);
+	getExpired(now);
 
 	callingExpiredTimers = true;
 	cancelingTimers.clear();
 	// safe to callback outside critical section
+
 	for (auto &it : expired)
 	{
 		it.second->run();
 	}
 
 	callingExpiredTimers = false;
-	reset(expired,now);
+	reset(now);
 }
 
 bool TimerQueue::insert(const TimerPtr &timer)
 {
 	loop->assertInLoopThread();
 	assert(timerLists.size() == activeTimers.size());
+
 	bool earliestChanged = false;
 	TimeStamp when = timer->getExpiration();
 
@@ -168,7 +171,7 @@ bool TimerQueue::insert(const TimerPtr &timer)
 
 	{
 		std::pair<TimerList::iterator,bool> result =
-				timerLists.insert(Entry(when,timer.get()));
+				timerLists.insert(Entry(when,timer));
 		assert(result.second); (void)result;
 	}
 
@@ -180,7 +183,7 @@ bool TimerQueue::insert(const TimerPtr &timer)
 	return earliestChanged;
 }
 
-void TimerQueue::reset(const std::vector<Entry> &expired,TimeStamp now)
+void TimerQueue::reset(const TimeStamp &now)
 {
 	TimeStamp nextExpire;
 	for (auto &it : expired)
@@ -198,6 +201,8 @@ void TimerQueue::reset(const std::vector<Entry> &expired,TimeStamp now)
 		}
 	}
 
+	expired.clear();
+
 	if (!timerLists.empty())
 	{
 		nextExpire = timerLists.begin()->second->getExpiration();
@@ -209,16 +214,22 @@ void TimerQueue::reset(const std::vector<Entry> &expired,TimeStamp now)
 	}
 }
 
-std::vector<TimerQueue::Entry> TimerQueue::getExpired(TimeStamp now)
+void TimerQueue::getExpired(const TimeStamp &now)
 {
 	assert(timerLists.size() == activeTimers.size());
-	std::vector<Entry> expired;
 
-	Entry sentry(now,std::move(reinterpret_cast<Timer*>(UINTPTR_MAX)));
-	TimerList::iterator end = timerLists.lower_bound(sentry);
-	assert(end == timerLists.end() || now < end->first);
-	std::copy(timerLists.begin(),end,back_inserter(expired));
-	timerLists.erase(timerLists.begin(),end);
+	for (auto it = timerLists.begin(); it != timerLists.end();)
+	{
+		if (it->first.getMicroSecondsSinceEpoch() <= now.getMicroSecondsSinceEpoch())
+		{
+			expired.push_back(*it);
+			timerLists.erase(it++);
+		}
+		else
+		{
+			break;
+		}
+	}
 
 	for (auto &it : expired)
 	{
@@ -228,5 +239,4 @@ std::vector<TimerQueue::Entry> TimerQueue::getExpired(TimeStamp now)
 	}
 
 	assert(timerLists.size() == activeTimers.size());
-	return expired;
 }

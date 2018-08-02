@@ -49,7 +49,7 @@ double Timer::getInterval()
 
 void Timer::run()
 {
-	assert(callback);
+	assert(callback != nullptr);
 	callback();
 }
 
