@@ -815,7 +815,7 @@ int32_t Rdb::rdbLoadString(Rio *rdb,int32_t type,int64_t expiretime,int64_t now)
 		stringMap.insert(std::make_pair(key,val));
 	}
 
-	if(now < expiretime)
+	if (now < expiretime)
 	{
 		RedisObjectPtr k = createStringObject(key->ptr,sdslen(key->ptr));
 		k->type = OBJ_EXPIRE;

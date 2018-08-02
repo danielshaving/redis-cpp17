@@ -20,7 +20,7 @@ rdb(this)
 
 	server.start();
 	loop.runAfter(1.0,true,std::bind(&Redis::serverCron,this));
-	loop.runAfter(120.0,true,std::bind(&Redis::bgsaveCron,this));
+	loop.runAfter(10.0,true,std::bind(&Redis::bgsaveCron,this));
 
 	{
 		std::thread thread(std::bind(&Replication::connectMaster,&repli));
@@ -1750,7 +1750,7 @@ bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 
 	repliEnabled = true;
 	forkCondWaitCount = 0;
-	conn->setMessageCallback(std::bind(&Replication::slaveCallBack,
+	conn->setMessageCallback(std::bind(&Replication::slaveCallback,
 		&repli,std::placeholders::_1,std::placeholders::_2));
 
 	if (!bgsave(session,conn,true))
@@ -1782,7 +1782,7 @@ int64_t Redis::getExpire(const RedisObjectPtr &obj)
 {
 	std::unique_lock <std::mutex> lck(expireMutex);
 	auto it = expireTimers.find(obj);
-	if(it == expireTimers.end())
+	if (it == expireTimers.end())
 	{
 		return -1;
 	}

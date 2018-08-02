@@ -202,7 +202,8 @@ private:
 class Hiredis
 {
 public:
-	Hiredis(EventLoop *loop,bool clusterMode = false);
+	Hiredis(EventLoop *loop,int16_t sessionCount,
+			const char *ip,int16_t port,bool clusterMode = false);
 	~Hiredis();
 
 	void redisAsyncDisconnect(const RedisAsyncContextPtr &ac);

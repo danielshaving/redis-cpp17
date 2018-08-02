@@ -2,7 +2,7 @@
 
 HiredisTest::HiredisTest(EventLoop *loop,int8_t threadCount,
 		int16_t sessionCount,int32_t messageCount,const char *ip,int16_t port)
-:hiredis(loop),
+:hiredis(loop,messageCount,ip,port),
  connectCount(0),
  sessionCount(sessionCount),
  loop(loop),
@@ -21,19 +21,6 @@ HiredisTest::HiredisTest(EventLoop *loop,int8_t threadCount,
 			this,std::placeholders::_1));
 	hiredis.setDisconnectionCallback(std::bind(&HiredisTest::disConnectionCallback,
 			this,std::placeholders::_1));
-
-	auto &threadPool = hiredis.getPool();
-	for(int i = 0; i < sessionCount; i++)
-	{
-		TcpClientPtr client(new TcpClient(threadPool.getNextLoop(),ip,port,nullptr));
-		client->enableRetry();
-		client->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
-				&hiredis,std::placeholders::_1));
-		client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
-				&hiredis,std::placeholders::_1,std::placeholders::_2));
-		client->asyncConnect();
-		hiredis.pushTcpClient(client);
-	}
 
 	std::unique_lock<std::mutex> lk(mutex);
 	while (connectCount < sessionCount)

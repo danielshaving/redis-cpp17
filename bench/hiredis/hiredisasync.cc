@@ -11,7 +11,7 @@ int32_t message = 1000000;
 
 HiredisAsync::HiredisAsync(EventLoop *loop,
 			int8_t threadCount,const char *ip,int16_t port)
-:hiredis(loop),
+:hiredis(loop,sessionCount,ip,port),
  connectCount(0),
  loop(loop),
  cron(true)
@@ -28,19 +28,6 @@ HiredisAsync::HiredisAsync(EventLoop *loop,
 			this,std::placeholders::_1));
 	hiredis.setDisconnectionCallback(std::bind(&HiredisAsync::disConnectionCallback,
 			this,std::placeholders::_1));
-
-	auto &threadPool = hiredis.getPool();
-	for(int i = 0; i < sessionCount; i++)
-	{
-		TcpClientPtr client(new TcpClient(threadPool.getNextLoop(),ip,port,nullptr));
-		client->enableRetry();
-		client->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
-				&hiredis,std::placeholders::_1));
-		client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
-				&hiredis,std::placeholders::_1,std::placeholders::_2));
-		client->asyncConnect();
-		hiredis.pushTcpClient(client);
-	}
 
 	std::unique_lock<std::mutex> lk(mutex);
 	while (connectCount < sessionCount)

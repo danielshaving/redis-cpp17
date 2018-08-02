@@ -31,7 +31,7 @@ void Cluster::cretateClusterNode(int32_t slot,const std::string &ip,
 	clusterSlotNodes.insert(std::make_pair(slot,node));
 }
 
-void Cluster::readCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
+void Cluster::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 {
 	while (buffer->readableBytes() > 0)
 	{
@@ -339,7 +339,7 @@ bool Cluster::replicationToNode(const std::deque<RedisObjectPtr> &obj,const Sess
 	LOG_INFO<<"cluster send success";
 }
 
-void Cluster::connCallBack(const TcpConnectionPtr &conn)
+void Cluster::connCallback(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{
@@ -592,9 +592,9 @@ void Cluster::eraseClusterNode(const std::string &ip,int16_t port)
 bool Cluster::connSetCluster(const char *ip,int16_t port)
 {
 	TcpClientPtr client(new TcpClient(loop,ip,port,this));
-	client->setConnectionCallback(std::bind(&Cluster::connCallBack,
+	client->setConnectionCallback(std::bind(&Cluster::connCallback,
 			this,std::placeholders::_1));
-	client->setMessageCallback(std::bind(&Cluster::readCallBack,
+	client->setMessageCallback(std::bind(&Cluster::readCallback,
 			this,std::placeholders::_1, std::placeholders::_2));
 	client->asyncConnect();
 	if(state)

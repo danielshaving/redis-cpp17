@@ -65,7 +65,6 @@ void Timer::restart(const TimeStamp &now)
 	}
 }
 
-
 std::string TimeStamp::toString() const
 {
 	char buf[32] = { 0 };

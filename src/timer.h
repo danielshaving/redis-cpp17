@@ -80,7 +80,6 @@ public:
 
 	int64_t getSequence();
 	int64_t getWhen();
-
 	TimeStamp &getExpiration();
 
 	bool getRepeat();

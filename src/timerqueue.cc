@@ -96,21 +96,32 @@ void TimerQueue::cancelTimer(const TimerPtr &timer)
 void TimerQueue::cancelInloop(const TimerPtr &timer)
 {
 	loop->assertInLoopThread();
-	assert(timerLists.size() == activeTimers.size());
+	assert(timers.size() == activeTimers.size());
 
-	ActiveTimer atimer(timer,timer->getSequence());
-	auto it = activeTimers.find(atimer);
+	auto it = activeTimers.find(timer->getSequence());
 	if (it != activeTimers.end())
 	{
-		size_t n = timerLists.erase(Entry(it->first->getExpiration(),it->first));
-		assert(n == 1); (void)n;
+
+		auto iter = timers.find(timer->getWhen());
+		while (iter != timers.end())
+		{
+			if (timer->getSequence() == iter->second->getSequence())
+			{
+				timers.erase(iter);
+				break;
+			}
+			else
+			{
+				++iter;
+			}
+		}
 		activeTimers.erase(it);
 	}
 	else if (callingExpiredTimers)
 	{
-		cancelingTimers.insert(atimer);
+		cancelingTimers.insert(std::make_pair(timer->getSequence(),timer));
 	}
-	assert(timerLists.size() == activeTimers.size());
+	assert(timers.size() == activeTimers.size());
 }
 
 void TimerQueue::addTimerInLoop(const TimerPtr &timer)
@@ -125,16 +136,17 @@ void TimerQueue::addTimerInLoop(const TimerPtr &timer)
 
 TimerPtr TimerQueue::getTimerBegin()
 {
-	if (timerLists.empty())
+	if (timers.empty())
 	{
 		return nullptr;
 	}
-	return timerLists.begin()->second;
+	return timers.begin()->second;
 }
 
 void TimerQueue::handleRead()
 {
 	loop->assertInLoopThread();
+	assert(timers.size() == activeTimers.size());
 	TimeStamp now(TimeStamp::now());
 
 #ifdef __linux__
@@ -158,28 +170,24 @@ void TimerQueue::handleRead()
 bool TimerQueue::insert(const TimerPtr &timer)
 {
 	loop->assertInLoopThread();
-	assert(timerLists.size() == activeTimers.size());
+	assert(timers.size() == activeTimers.size());
 
 	bool earliestChanged = false;
-	TimeStamp when = timer->getExpiration();
-
-	auto it = timerLists.begin();
-	if (it == timerLists.end() || when < it->first)
+	int64_t microseconds = timer->getExpiration().getMicroSecondsSinceEpoch();
+	auto it = timers.begin();
+	if (it == timers.end() || microseconds < it->first)
 	{
 		earliestChanged = true;
 	}
 
-	{
-		std::pair<TimerList::iterator,bool> result =
-				timerLists.insert(Entry(when,timer));
-		assert(result.second); (void)result;
-	}
+	timers.insert(std::make_pair(microseconds,timer));
+	activeTimers.insert(std::make_pair(timer->getSequence(),timer));
 
+	if (timers.size() != activeTimers.size())
 	{
-		std::pair<ActiveTimerSet::iterator,bool> result =
-				activeTimers.insert(ActiveTimer(timer,timer->getSequence()));
-		assert(result.second); (void)result;
+		assert(false);
 	}
+	assert(timers.size() == activeTimers.size());
 	return earliestChanged;
 }
 
@@ -188,9 +196,8 @@ void TimerQueue::reset(const TimeStamp &now)
 	TimeStamp nextExpire;
 	for (auto &it : expired)
 	{
-		ActiveTimer timer(it.second,it.second->getSequence());
-		if (it.second->getRepeat()
-				&& cancelingTimers.find(timer) == cancelingTimers.end())
+		if (it.second->getRepeat() &&
+				cancelingTimers.find(it.second->getSequence()) == cancelingTimers.end())
 		{
 			it.second->restart(now);
 			insert(it.second);
@@ -202,10 +209,9 @@ void TimerQueue::reset(const TimeStamp &now)
 	}
 
 	expired.clear();
-
-	if (!timerLists.empty())
+	if (!timers.empty())
 	{
-		nextExpire = timerLists.begin()->second->getExpiration();
+		nextExpire = timers.begin()->second->getExpiration();
 	}
 
 	if (nextExpire.valid())
@@ -214,29 +220,24 @@ void TimerQueue::reset(const TimeStamp &now)
 	}
 }
 
+size_t TimerQueue::getTimerSize()
+{
+	loop->assertInLoopThread();
+	assert(timers.size() == activeTimers.size());
+	return timers.size();
+}
+
 void TimerQueue::getExpired(const TimeStamp &now)
 {
-	assert(timerLists.size() == activeTimers.size());
-
-	for (auto it = timerLists.begin(); it != timerLists.end();)
-	{
-		if (it->first.getMicroSecondsSinceEpoch() <= now.getMicroSecondsSinceEpoch())
-		{
-			expired.push_back(*it);
-			timerLists.erase(it++);
-		}
-		else
-		{
-			break;
-		}
-	}
-
+	assert(timers.size() == activeTimers.size());
+	auto end = timers.lower_bound(now.getMicroSecondsSinceEpoch());
+	assert(end == timers.end() || now.getMicroSecondsSinceEpoch() <= end->first);
+	expired.insert(timers.begin(),end);
+	timers.erase(timers.begin(),end);
 	for (auto &it : expired)
 	{
-		ActiveTimer timer(it.second,it.second->getSequence());
-		size_t n = activeTimers.erase(timer);
+		size_t n = activeTimers.erase(it.second->getSequence());
 		assert(n == 1); (void)n;
 	}
-
-	assert(timerLists.size() == activeTimers.size());
+	assert(timers.size() == activeTimers.size());
 }

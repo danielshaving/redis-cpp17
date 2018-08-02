@@ -16,7 +16,7 @@ public:
 	void resetVlaue();
 	void reset();
 
-	void readCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
+	void readCallback(const TcpConnectionPtr &conn,Buffer *buffer);
 	int32_t processMultibulkBuffer(const TcpConnectionPtr &conn,Buffer *buffer);
 	int32_t processInlineBuffer(const TcpConnectionPtr &conn,Buffer *buffer);
 	int32_t processCommand(const TcpConnectionPtr &conn);

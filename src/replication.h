@@ -14,9 +14,9 @@ public:
 	void connectMaster();
 	void replicationSetMaster(const RedisObjectPtr &obj,int16_t port);
 
-	void slaveCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
-	void readCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
-	void connCallBack(const TcpConnectionPtr &conn);
+	void slaveCallback(const TcpConnectionPtr &conn,Buffer *buffer);
+	void readCallback(const TcpConnectionPtr &conn,Buffer *buffer);
+	void connCallback(const TcpConnectionPtr &conn);
 
 	void reconnectTimer(const std::any &context);
 	void syncWithMaster(const TcpConnectionPtr &conn);

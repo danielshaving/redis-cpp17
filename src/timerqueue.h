@@ -14,8 +14,9 @@ public:
 	~TimerQueue();
 
 	void cancelTimer(const TimerPtr &timer);
+	void handleRead();
+	size_t getTimerSize();
 	TimerPtr addTimer(double when,bool repeat,TimerCallback &&cb);
-  	void handleRead();
   	TimerPtr getTimerBegin();
 
 private:
@@ -32,21 +33,19 @@ private:
 	void cancelInloop(const TimerPtr &timer);
 	void addTimerInLoop(const TimerPtr &timer);
 
-	typedef std::pair<TimeStamp,TimerPtr> Entry;
-	typedef std::set<Entry> TimerList;
-	typedef std::pair<TimerPtr,int64_t> ActiveTimer;
-	typedef std::set<ActiveTimer> ActiveTimerSet;
+	typedef std::multimap<int64_t,TimerPtr> TimerList;
+	typedef std::map<int64_t,TimerPtr> ActiveTimer;
 
-	std::vector<Entry> expired;
-	TimerList timerLists;
+	std::multimap<int64_t,TimerPtr> expired;
+	TimerList timers;
 
 	void getExpired(const TimeStamp &now);
 	void reset(const TimeStamp &now);
 	bool insert(const TimerPtr &timer);
 
-	ActiveTimerSet activeTimers;
+	ActiveTimer activeTimers;
 	bool callingExpiredTimers;
-	ActiveTimerSet cancelingTimers;
+	ActiveTimer cancelingTimers;
 };
 
 

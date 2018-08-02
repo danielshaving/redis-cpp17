@@ -59,13 +59,13 @@ void Replication::syncWithMaster(const TcpConnectionPtr &conn)
 	   sockerr = errno;
 	if (sockerr) 
 	{
-	   LOG_WARN<<"Error condition on socket for sync"<< strerror(sockerr);
+	   LOG_WARN<<"Error condition on socket for sync"<<strerror(sockerr);
 	   return ;
 	}
 	syncWrite(conn);	
 }
 
-void Replication::readCallBack(const TcpConnectionPtr &conn, Buffer *buffer)
+void Replication::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 {
 	while (buffer->readableBytes() >= 4)
 	{
@@ -129,7 +129,7 @@ void Replication::readCallBack(const TcpConnectionPtr &conn, Buffer *buffer)
 	}
 }
 
-void Replication::slaveCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
+void Replication::slaveCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 {
 	while (buffer->readableBytes() >= sdslen(shared.ok->ptr))
 	{
@@ -173,7 +173,7 @@ void Replication::slaveCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
 	}
 }
 
-void Replication::connCallBack(const TcpConnectionPtr &conn)
+void Replication::connCallback(const TcpConnectionPtr &conn)
 {
 	if(conn->connected())
 	{
@@ -229,9 +229,9 @@ void Replication::replicationSetMaster(const RedisObjectPtr &obj,int16_t port)
 	}
 
 	TcpClientPtr client(new TcpClient(loop,ip.c_str(),port,this));
-	client->setConnectionCallback(std::bind(&Replication::connCallBack,
+	client->setConnectionCallback(std::bind(&Replication::connCallback,
 			this,std::placeholders::_1));
-	client->setMessageCallback(std::bind(&Replication::readCallBack,
+	client->setMessageCallback(std::bind(&Replication::readCallback,
 			this,std::placeholders::_1,std::placeholders::_2));
 	client->asyncConnect();
 	this->client = client;

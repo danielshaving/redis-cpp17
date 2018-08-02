@@ -27,8 +27,8 @@ public:
     void clear();
 	bool connSetCluster(const char *ip,int16_t port);
 	void connectCluster();
-	void readCallBack(const TcpConnectionPtr &conn,Buffer *buffer);
-	void connCallBack(const TcpConnectionPtr &conn);
+	void readCallback(const TcpConnectionPtr &conn,Buffer *buffer);
+	void connCallback(const TcpConnectionPtr &conn);
 	void reconnectTimer(const std::any &context);
 	void cretateClusterNode(int32_t slot,const std::string &ip,
 			int16_t port,const std::string &name);

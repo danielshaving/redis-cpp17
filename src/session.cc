@@ -13,7 +13,7 @@ Session::Session(Redis *redis,const TcpConnectionPtr &conn)
  fromSlave(false)
 {
 	cmd = createStringObject(nullptr,REDIS_COMMAND_LENGTH);
-	conn->setMessageCallback(std::bind(&Session::readCallBack,
+	conn->setMessageCallback(std::bind(&Session::readCallback,
 			this,std::placeholders::_1,std::placeholders::_2));
 }
 
@@ -32,7 +32,7 @@ void Session::clearCommand()
  * or because a client was blocked and later reactivated, so there could be
  * pending query buffer, already representing a full command, to process. */
 
-void Session::readCallBack(const TcpConnectionPtr &conn,Buffer *buffer)
+void Session::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 {
 	/* Keep processing while there is something in the input buffer */
 	while(buffer->readableBytes() > 0 )
