@@ -28,7 +28,6 @@ private:
 #ifdef __linux__
 	Channel timerfdChannel;
 #endif
-	int64_t sequence;
 
 	void cancelInloop(const TimerPtr &timer);
 	void addTimerInLoop(const TimerPtr &timer);
@@ -36,16 +35,16 @@ private:
 	typedef std::multimap<int64_t,TimerPtr> TimerList;
 	typedef std::map<int64_t,TimerPtr> ActiveTimer;
 
-	std::multimap<int64_t,TimerPtr> expired;
-	TimerList timers;
-
 	void getExpired(const TimeStamp &now);
 	void reset(const TimeStamp &now);
 	bool insert(const TimerPtr &timer);
 
-	ActiveTimer activeTimers;
 	bool callingExpiredTimers;
+	ActiveTimer activeTimers;
 	ActiveTimer cancelingTimers;
+	std::multimap<int64_t,TimerPtr> expired;
+	TimerList timers;
+
 };
 
 

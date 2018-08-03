@@ -20,24 +20,19 @@ public:
 	void setConnectionErrorCallBack(const ErrorConnectionCallback &&cb) 
 	{ errorConnectionCallback = std::move(cb); }
 
-	void asyncStart();
-	bool syncStart();
+	void start(bool flag);
 	void restart();
 	void stop();
-
-	bool syncStartInLoop();
-	void asyncStartInLoop();
 
 private:
 	Connector(const Connector&);
 	void operator=(const Connector&);
 
-	void startInLoop();
+	void startInLoop(bool flag);
 	void stopInLoop();
 
-	void asyncConnect();
-	bool syncConnect();
-	void connecting(int32_t sockfd);
+	void connecting(bool flag);
+	void connecting(bool flag,int32_t sockfd);
 	void resetChannel();
 	void retry(int32_t sockfd);
 

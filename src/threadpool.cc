@@ -38,7 +38,6 @@ void ThreadPool::start(const ThreadInitCallback &cb)
 
 EventLoop *ThreadPool::getNextLoop()
 {
-	baseLoop->assertInLoopThread();
 	assert(started);
 	EventLoop *loop = baseLoop;
 

@@ -596,7 +596,7 @@ bool Cluster::connSetCluster(const char *ip,int16_t port)
 			this,std::placeholders::_1));
 	client->setMessageCallback(std::bind(&Cluster::readCallback,
 			this,std::placeholders::_1, std::placeholders::_2));
-	client->asyncConnect();
+	client->connect();
 	if(state)
 	{
 		clusterConns.push_back(client);

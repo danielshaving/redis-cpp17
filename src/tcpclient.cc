@@ -5,10 +5,12 @@
 TcpClient::TcpClient(EventLoop *loop,const char *ip,int16_t port,const std::any &context)
 :connector(new Connector(loop,ip,port)),
 loop(loop),
-nextConnId(0),
 context(context),
+ip(ip),
+port(port),
 retry(false),
-connect(true)
+connecting(true),
+connection(nullptr)
 {
 	connector->setNewConnectionCallback(
 			std::bind(&TcpClient::newConnection,this,std::placeholders::_1));
@@ -56,20 +58,15 @@ TcpClient::~TcpClient()
 	}
 }
 
-void TcpClient::asyncConnect()
+void TcpClient::connect(bool flag)
 {
-	connect = true;
-	connector->asyncStart();
-}
-
-bool TcpClient::syncConnect()
-{
-	return connector->syncStart();
+	connecting = true;
+	connector->start(flag);
 }
 
 void TcpClient::disConnect()
 {
-	connect = false;
+	connecting = false;
 	{
 		std::unique_lock<std::mutex> lk(mutex);
 		if (connection)
@@ -81,7 +78,7 @@ void TcpClient::disConnect()
 
 void TcpClient::stop()
 {
-	connect = false;
+	connecting = false;
 	connector->stop();
 }
 
@@ -113,10 +110,11 @@ void TcpClient::removeConnection(const TcpConnectionPtr &conn)
 		std::unique_lock<std::mutex> lk(mutex);
 		assert(connection == conn);
 		connection.reset();
+		connection = nullptr;
 	}
 
 	loop->queueInLoop(std::bind(&TcpConnection::connectDestroyed,conn));
-	if (retry && connect)
+	if (retry && connecting)
 	{
 		connector->restart();
 	}

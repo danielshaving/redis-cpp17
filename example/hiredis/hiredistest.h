@@ -41,17 +41,20 @@ public:
 	void subscribeCallback(const RedisAsyncContextPtr &c,
 			const RedisReplyPtr &reply,const std::any &privdata);
 	void monitorCallback(const RedisAsyncContextPtr &c,
-				const RedisReplyPtr &reply,const std::any &privdata);
+			const RedisReplyPtr &reply,const std::any &privdata);
 	void publishCallback(const RedisAsyncContextPtr &c,
-					const RedisReplyPtr &reply,const std::any &privdata);
+			const RedisReplyPtr &reply,const std::any &privdata);
 
+	RedisAsyncContextPtr getRedisAsyncContext();
 private:
 	Hiredis hiredis;
 	std::atomic<int32_t> connectCount;
 	int32_t count;
 	int16_t sessionCount;
 	std::mutex mutex;
+	std::mutex rmutex;
 	std::condition_variable condition;
 	EventLoop *loop;
 	int32_t messageCount;
+	std::map<int32_t,TcpConnectionPtr> redisAsyncConns;
 };

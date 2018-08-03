@@ -210,7 +210,7 @@ void Replication::connCallback(const TcpConnectionPtr &conn)
  
 void Replication::reconnectTimer(const std::any &context)
 {
-	client->asyncConnect();
+	client->connect();
 }
 
 void Replication::replicationSetMaster(const RedisObjectPtr &obj,int16_t port)
@@ -233,7 +233,7 @@ void Replication::replicationSetMaster(const RedisObjectPtr &obj,int16_t port)
 			this,std::placeholders::_1));
 	client->setMessageCallback(std::bind(&Replication::readCallback,
 			this,std::placeholders::_1,std::placeholders::_2));
-	client->asyncConnect();
+	client->connect();
 	this->client = client;
 }
 

@@ -63,7 +63,7 @@ TimerQueue::TimerQueue(EventLoop *loop)
 timerfd(createTimerfd()),
 timerfdChannel(loop,timerfd),
 #endif
-sequence(0)
+callingExpiredTimers(false)
 {
 #ifdef __linux__
 	timerfdChannel.setReadCallback(std::bind(&TimerQueue::handleRead,this));

@@ -17,52 +17,29 @@ Connector::~Connector()
 	assert(!channel);
 }
 
-bool Connector::syncStart()
+void Connector::start(bool flag)
 {
 	connect = true;
-	return syncStartInLoop();
+	loop->runInLoop(std::bind(&Connector::startInLoop,this,flag));
 }
 
-void Connector::asyncStart()
-{
-	connect = true;
-	loop->runInLoop(std::bind(&Connector::asyncStartInLoop,this));
-}
-
-void Connector::startInLoop()
-{
-	asyncStartInLoop();
-}
-
-bool Connector::syncStartInLoop()
+void Connector::startInLoop(bool flag)
 {
 	loop->assertInLoopThread();
+	assert(state == kDisconnected);
 	if (connect)
 	{
-		return syncConnect();
+		connecting(flag);
 	}
 	else
 	{
-		LOG_WARN<<"do not sync connect";
-	}
-}
-
-void Connector::asyncStartInLoop()
-{
-	loop->assertInLoopThread();
-	if (connect)
-	{
-		asyncConnect();
-	}
-	else
-	{
-		LOG_WARN<<"do not async connect";
+		LOG_WARN<<"do not connect";
 	}
 }
 
 void Connector::stop()
 {
-	connect= false;
+	connect = false;
 	loop->queueInLoop(std::bind(&Connector::stopInLoop,this));
 }
 
@@ -90,13 +67,28 @@ int32_t Connector::removeAndResetChannel()
 	return sockfd;
 }
 
-void Connector::connecting(int32_t sockfd)
+void Connector::connecting(bool flag,int32_t sockfd)
 {
 	assert(!channel);
-	channel.reset(new Channel(loop,sockfd));
-	channel->setWriteCallback(std::bind(&Connector::handleWrite,this));
-	channel->setErrorCallback(std::bind(&Connector::handleError,this));
-	channel->enableWriting();
+	if (flag)
+	{
+		setState(kConnected);
+		if (connect)
+		{
+			newConnectionCallback(sockfd);
+		}
+		else
+		{
+			::close(sockfd);
+		}
+	}
+	else
+	{
+		channel.reset(new Channel(loop,sockfd));
+		channel->setWriteCallback(std::bind(&Connector::handleWrite,this));
+		channel->setErrorCallback(std::bind(&Connector::handleError,this));
+		channel->enableWriting();
+	}
 }
 
 void Connector::retry(int32_t sockfd)
@@ -108,7 +100,7 @@ void Connector::retry(int32_t sockfd)
 		LOG_INFO << "Connector::retry - Retry connecting to "<<ip<<" "<<port
 				 << " in " << retryDelayMs << " milliseconds. ";
 		loop->runAfter(retryDelayMs/1000.0,false,
-						std::bind(&Connector::startInLoop,shared_from_this()));
+						std::bind(&Connector::startInLoop,shared_from_this(),false));
 		retryDelayMs = std::min(retryDelayMs * 2,kMaxRetryDelayMs);
 	}
 	else
@@ -123,7 +115,7 @@ void Connector::restart()
 	setState(kDisconnected);
 	retryDelayMs = kInitRetryDelayMs;
 	connect = true;
-	asyncStartInLoop();
+	startInLoop(false);
 }
 
 void Connector::handleWrite()
@@ -171,7 +163,7 @@ void Connector::handleError()
 	}
 }
 
-void Connector::asyncConnect()
+void Connector::connecting(bool flag)
 {
 	int32_t sockfd = socket.createSocket();
 	int32_t ret = socket.connect(sockfd,ip,port);
@@ -184,7 +176,7 @@ void Connector::asyncConnect()
 		case EISCONN:
 			socket.setSocketNonBlock(sockfd);
 			setState(kConnecting);
-			connecting(sockfd);
+			connecting(flag,sockfd);
 			socket.setkeepAlive(sockfd,1);;
 			break;
 
@@ -213,47 +205,5 @@ void Connector::asyncConnect()
 			// connectErrorCallback();
 			break;
 	}
-}
-
-bool Connector::syncConnect()
-{
-    int32_t blocking = 1;
-    int32_t sockfd = socket.createSocket();
-    if(sockfd == -1)
-    {
-    	return false;
-    }
-
-    if(!socket.setSocketNonBlock(sockfd))
-    {
-    	return false;
-    }
-
-    int32_t ret = socket.connect(sockfd,ip,port);
-    int32_t savedErrno = (ret == 0) ? 0 : errno;
-	if (savedErrno == EINPROGRESS && !blocking)
-	{
-
-	}
-	else
-	{
-		if(!socket.connectWaitReady(sockfd,kInitRetryDelayMs))
-		{
-			LOG_ERROR<< "Unexpected error"<<savedErrno<<" "<<strerror(errno);
-			return false;
-		}
-	}
-
-    setState(kConnected);
-    if(!socket.setSocketBlock(sockfd))
-    {
-    	return false;
-    }
-
-    if(!socket.setTcpNoDelay(sockfd,true))
-    {
-    	return false;
-    }
-    return true;
 }
 

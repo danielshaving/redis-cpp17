@@ -202,8 +202,7 @@ private:
 class Hiredis
 {
 public:
-	Hiredis(EventLoop *loop,int16_t sessionCount,
-			const char *ip,int16_t port,bool clusterMode = false);
+	Hiredis(EventLoop *loop,int16_t sessionCount,bool clusterMode = false);
 	~Hiredis();
 
 	void redisAsyncDisconnect(const RedisAsyncContextPtr &ac);
@@ -223,15 +222,16 @@ public:
 	void pushTcpClient(const TcpClientPtr &client);
 	void clearTcpClient();
 	void diconnectTcpClient();
-	void start();
+	void start(const char *ip,int16_t port);
+	bool redirectySlot(const char *ip,int16_t port,
+			const RedisAsyncContextPtr &ac,const RedisReplyPtr &reply,
+			const RedisAsyncCallbackPtr &repliesCb);
 
 	void setThreadNum(int16_t threadNum)
 	{ pool.setThreadNum(threadNum); }
 
 	auto &getPool() { return pool; }
 	auto &getTcpClient() { return tcpClients; }
-
-	RedisAsyncContextPtr getRedisAsyncContext();
 
 private:
 	Hiredis(const Hiredis&);
@@ -243,7 +243,7 @@ private:
 	ConnectionCallback connectionCallback;
 	DisConnectionCallback disConnectionCallback;
 	std::vector<TcpClientPtr> tcpClients;
-	std::vector<TcpClientPtr>::iterator tcpClientNode;
+	int32_t sessionCount;
 };
 
 int redisFormatSdsCommandArgv(sds *target,int argc,

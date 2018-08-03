@@ -6,11 +6,11 @@
 class TcpClient
 {
 public:
-	TcpClient(EventLoop *loop,const char *ip,int16_t port,const std::any &context);
+	TcpClient(EventLoop *loop,const char *ip,
+			int16_t port,const std::any &context);
 	~TcpClient();
 
-	bool syncConnect();
-	void asyncConnect();
+	void connect(bool flag = false);
 	void disConnect();
 	void stop();
 
@@ -36,6 +36,9 @@ public:
 	void setContext(const std::any &context) { this->context = context; }
 	TcpConnectionPtr getConnection() { return connection; }
 
+	const char *getIp() { return ip; }
+	int16_t getPort() { return port; }
+
 private:
 	TcpClient(const TcpClient&);
 	void operator=(const TcpClient&);
@@ -47,7 +50,6 @@ private:
 	ConnectorPtr connector;
 	EventLoop *loop;
 
-	int32_t nextConnId;
 	mutable std::mutex mutex;
 	ConnectionErrorCallback connectionErrorCallBack;
 	ConnectionCallback connectionCallback;
@@ -56,6 +58,8 @@ private:
 
 	TcpConnectionPtr connection;
 	std::any context;
+	const char *ip;
+	int16_t port;
 	bool retry;
-	bool connect;
+	bool connecting;
 };

@@ -25,7 +25,7 @@ public:
 
 	void start()
 	{
-		cli.asyncConnect();
+		cli.connect();
 	}
 
 	void stop()
