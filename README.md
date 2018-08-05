@@ -1,6 +1,6 @@
 
 fragment time(minute) single core absolute fair environment  less than 100k set get bench: redis overall performance faster than redis-cpp17 10 - 25% range qps 
-（because of the memory management cost of using STL and xredis thread safe） kernel bottleneck 80-90% cpu benchmark.pdf 
+（because of the memory management cost of using STL and redis-cpp17 thread safe） kernel bottleneck 80-90% cpu benchmark.pdf 
 
 cd redis-cpp17/src/    
 make ./redis-server
