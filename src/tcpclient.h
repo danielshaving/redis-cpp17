@@ -10,7 +10,7 @@ public:
 			int16_t port,const std::any &context);
 	~TcpClient();
 
-	void connect(bool flag = false);
+	void connect(bool sync = false);
 	void disConnect();
 	void stop();
 
@@ -32,12 +32,13 @@ public:
 
 	EventLoop *getLoop() { return loop; }
 	std::any *getContext() { return &context; }
-	const std::any &getContext() const { return context; }
-	void setContext(const std::any &context) { this->context = context; }
-	TcpConnectionPtr getConnection() { return connection; }
+	const std::any &getContext() const  { return context; }
 
+	void setContext(const std::any &context) { this->context = context;}
 	const char *getIp() { return ip; }
 	int16_t getPort() { return port; }
+
+	TcpConnectionPtr getConnection();
 
 private:
 	TcpClient(const TcpClient&);
@@ -50,7 +51,7 @@ private:
 	ConnectorPtr connector;
 	EventLoop *loop;
 
-	mutable std::mutex mutex;
+	std::mutex mutex;
 	ConnectionErrorCallback connectionErrorCallBack;
 	ConnectionCallback connectionCallback;
 	MessageCallback messageCallback;

@@ -58,10 +58,10 @@ TcpClient::~TcpClient()
 	}
 }
 
-void TcpClient::connect(bool flag)
+void TcpClient::connect(bool sync)
 {
 	connecting = true;
-	connector->start(flag);
+	connector->start(sync);
 }
 
 void TcpClient::disConnect()
@@ -74,6 +74,12 @@ void TcpClient::disConnect()
 			connection->shutdown();
 		}
 	}
+}
+
+TcpConnectionPtr TcpClient::getConnection()
+{
+	std::unique_lock<std::mutex> lk(mutex);
+	return connection;
 }
 
 void TcpClient::stop()

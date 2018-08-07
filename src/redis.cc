@@ -142,7 +142,7 @@ void Redis::clearPubSubState(int32_t sockfd)
 {
 	{
 		std::unique_lock <std::mutex> lck(pubsubMutex);
-		for (auto &it : pubsubs)
+		for (auto &it : pubSubs)
 		{
 			for (auto iter = it.second.begin(); iter != it.second.end();)
 			{
@@ -337,12 +337,12 @@ bool Redis::subscribeCommand(const std::deque<RedisObjectPtr> &obj,
 	{
 		{
 			std::unique_lock <std::mutex> lck(pubsubMutex);
-			auto it = pubsubs.find(obj[i]);
-			if (it == pubsubs.end())
+			auto it = pubSubs.find(obj[i]);
+			if (it == pubSubs.end())
 			{
 				std::unordered_map<int32_t,TcpConnectionPtr> maps;
 				maps[conn->getSockfd()] = conn;
-				pubsubs[obj[i]] = std::move(maps);
+				pubSubs[obj[i]] = std::move(maps);
 				retval = true;
 				sub++;
 			}

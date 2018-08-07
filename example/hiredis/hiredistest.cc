@@ -9,6 +9,8 @@ HiredisTest::HiredisTest(EventLoop *loop,int8_t threadCount,
  messageCount(messageCount),
  count(0)
 {
+	unlockScript = sdsnew("if redis.call('get', KEYS[1]) == ARGV[1] \
+				 then return redis.call('del', KEYS[1]) else return 0 end");
 	if (threadCount <=0 )
 	{
 		threadCount = 1;
@@ -27,27 +29,22 @@ HiredisTest::HiredisTest(EventLoop *loop,int8_t threadCount,
 	{
 		condition.wait(lk);
 	}
-	printf("all connect\n");
 }
 
 HiredisTest::~HiredisTest()
 {
-
+	sdsfree(unlockScript);
 }
 
 void HiredisTest::connectionCallback(const TcpConnectionPtr &conn)
 {
 	connectCount++;
 	condition.notify_one();
-	std::unique_lock<std::mutex> lk(rmutex);
-	redisAsyncConns[conn->getSockfd()] = conn;
 }
 
 void HiredisTest::disConnectionCallback(const TcpConnectionPtr &conn)
 {
 	connectCount--;
-	std::unique_lock<std::mutex> lk(rmutex);
-	redisAsyncConns.erase(conn->getSockfd());
 }
 
 void HiredisTest::setCallback(const RedisAsyncContextPtr &c,
@@ -94,7 +91,7 @@ void HiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,
 	int32_t count = std::any_cast<int32_t>(privdata);
 	assert(reply->len == count);
 
-	for(int i = 0; i < reply->len; i += 2 )
+	for (int i = 0; i < reply->len; i += 2 )
 	{
 		assert(reply->element[i]);
 		assert(reply->element[i]->type == REDIS_REPLY_STRING);
@@ -161,9 +158,88 @@ void HiredisTest::publishCallback(const RedisAsyncContextPtr &c,
 	assert(reply->type == REDIS_REPLY_STATUS);
 }
 
+void HiredisTest::redUnlcokCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata)
+{
+	assert(reply != nullptr);
+	assert(reply->type == REDIS_REPLY_INTEGER);
+	assert(reply->integer == 1);
+}
+
+void HiredisTest::redLockCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply,const std::any &privdata)
+{
+	assert(reply != nullptr);
+	assert(privdata.has_value());
+	const RedLockCallbackPtr &callback = std::any_cast<RedLockCallbackPtr>(privdata);
+	if (reply->type == REDIS_REPLY_STATUS && strcmp(reply->str,"OK") == 0)
+	{
+		callback->doingCallback();
+	}
+	else
+	{
+		//get lock failure rand retry
+		printf("get lock falure\n");
+		auto willCallback = c->getRedisAsyncCommand(std::bind(&HiredisTest::redLockCallback,
+			this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+			callback,"set %s %s px %d nx",callback->resource,callback->val,callback->ttl);
+
+		double retry = ((double)(rand()%100)/100);
+		c->redisConn->getLoop()->runAfter(retry,false,std::move(willCallback));
+	}
+}
+
+void HiredisTest::setRedLockCallback(const RedisAsyncContextPtr &c,
+				const RedisReplyPtr &reply,const std::any &privdata)
+{
+	assert(reply != nullptr);
+	assert(reply->type == REDIS_REPLY_STATUS);
+	assert(strcmp(reply->str,"OK") == 0);
+	assert(privdata.has_value());
+	const std::function<void()> &callback = std::any_cast<std::function<void()>>(privdata);
+	callback();
+}
+
+void HiredisTest::redlock(const char *resource,const char *val,const int32_t ttl)
+{
+	auto redis = hiredis.getRedisAsyncContext();
+	assert(redis != nullptr);
+
+	for (; count < messageCount; count++)
+	{
+		RedLockCallbackPtr callback(new RedLockCallback);
+		auto willCallback = redis->getRedisAsyncCommand(std::bind(&HiredisTest::redUnlcokCallback,
+				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+				nullptr,"eval %s %d %s %s",unlockScript,1,resource,val);
+
+		auto doingCallback = redis->getRedisAsyncCommand(std::bind(&HiredisTest::setRedLockCallback,
+					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+				willCallback,"set redlock redlock");
+
+		auto wasCallback = redis->getRedisAsyncCommand(std::bind(&HiredisTest::redLockCallback,
+				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+				nullptr,"set %s %s px %d nx",resource,val,ttl);
+
+		assert(wasCallback != nullptr);
+		assert(willCallback != nullptr);
+		assert(doingCallback != nullptr);
+
+		callback->resource = resource;
+		callback->ttl = ttl;
+		callback->val = val;
+		callback->wasCallback = std::move(wasCallback);
+		callback->doingCallback = std::move(doingCallback);
+
+		//thread safe
+		redis->redisAsyncCommand(std::bind(&HiredisTest::redLockCallback,
+				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+				callback,"set %s %s px %d nx",resource,val,ttl);
+	}
+}
+
 void HiredisTest::publish()
 {
-	auto redis = getRedisAsyncContext();
+	auto redis = hiredis.getRedisAsyncContext();
 	assert(redis != nullptr);
 	redis->redisAsyncCommand(std::bind(&HiredisTest::publishCallback,
 			this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
@@ -172,7 +248,7 @@ void HiredisTest::publish()
 
 void HiredisTest::subscribe()
 {
-	auto redis = getRedisAsyncContext();
+	auto redis = hiredis.getRedisAsyncContext();
 	assert(redis != nullptr);
 	redis->redisAsyncCommand(std::bind(&HiredisTest::subscribeCallback,
 			this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
@@ -181,7 +257,7 @@ void HiredisTest::subscribe()
 
 void HiredisTest::monitor()
 {
-	auto redis = getRedisAsyncContext();
+	auto redis = hiredis.getRedisAsyncContext();
 	assert(redis != nullptr);
 	redis->redisAsyncCommand(std::bind(&HiredisTest::monitorCallback,
 			this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
@@ -191,26 +267,31 @@ void HiredisTest::monitor()
 void HiredisTest::string()
 {
 	int32_t k = 0;
-	for(; k < messageCount; k++)
+	for (; k < messageCount; k++)
 	{
-		auto redis = getRedisAsyncContext();
+		auto redis = hiredis.getRedisAsyncContext();
 		assert(redis != nullptr);
 		redis->redisAsyncCommand(std::bind(&HiredisTest::setCallback,
 				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
 				nullptr,"set string%d %d",k,k);
-
-		redis->redisAsyncCommand(std::bind(&HiredisTest::getCallback,
-				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-				nullptr,"get string%d",k);
 	}
+
+	for (; k < messageCount; k++)
+	{
+		auto redis = hiredis.getRedisAsyncContext();
+		redis->redisAsyncCommand(std::bind(&HiredisTest::getCallback,
+					this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
+					k,"get string%d",k);
+	}
+
 }
 
 void HiredisTest::hash()
 {
 	int32_t count = 0;
-	for(; count < messageCount; count++)
+	for (; count < messageCount; count++)
 	{
-		auto redis = getRedisAsyncContext();
+		auto redis = hiredis.getRedisAsyncContext();
 		assert(redis != nullptr);
 		redis->redisAsyncCommand(std::bind(&HiredisTest::hsetCallback,
 				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
@@ -225,7 +306,7 @@ void HiredisTest::hash()
 				count,"hget %d hash",count);
 	}
 
-	auto redis = getRedisAsyncContext();
+	auto redis = hiredis.getRedisAsyncContext();
 	assert(redis != nullptr);
 
 	redis->redisAsyncCommand(std::bind(&HiredisTest::hgetallCallback,
@@ -238,9 +319,9 @@ void HiredisTest::hash()
 void HiredisTest::list()
 {
 	int32_t count = 0;
-	for(; count < messageCount; count++)
+	for (; count < messageCount; count++)
 	{
-		auto redis = getRedisAsyncContext();
+		auto redis = hiredis.getRedisAsyncContext();
 		assert(redis != nullptr);
 
 		redis->redisAsyncCommand(std::bind(&HiredisTest::lpushCallback,
@@ -252,9 +333,9 @@ void HiredisTest::list()
 				nullptr,"lpop list%d %d",count,count);
 	}
 
-	for(; count < messageCount; count++)
+	for (; count < messageCount; count++)
 	{
-		auto redis = getRedisAsyncContext();
+		auto redis = hiredis.getRedisAsyncContext();
 		assert(redis != nullptr);
 		redis->redisAsyncCommand(std::bind(&HiredisTest::rpushCallback,
 				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
@@ -267,47 +348,27 @@ void HiredisTest::list()
 
 }
 
-
-RedisAsyncContextPtr HiredisTest::getRedisAsyncContext()
-{
-	std::unique_lock<std::mutex> lk(rmutex);
-	if (redisAsyncConns.empty())
-	{
-		return nullptr;
-	}
-
-	auto conn = redisAsyncConns.begin()->second;
-	assert(conn->getContext().has_value());
-	const RedisAsyncContextPtr &ac =
-				std::any_cast<RedisAsyncContextPtr>(conn->getContext());
-	return ac;
-}
-
 int main(int argc,char *argv[])
 {
- 	if (argc != 6)
- 	{
- 		fprintf(stderr,"Usage: client <host_ip> <port> <sessionCount> <threadCount> <messageCount> \n ");
- 	}
- 	else
- 	{
- 		const char *ip = argv[1];
- 		uint16_t port = atoi(argv[2]);
- 		int16_t sessionCount = atoi(argv[3]);
- 		int8_t threadCount = atoi(argv[4]);
- 		int32_t messageCount = atoi(argv[5]);
+	const char *ip = "127.0.0.1";
+	uint16_t port = 7000;
+	int16_t sessionCount = 10;
+	int8_t threadCount = 1;
+	int32_t messageCount = 1000000;
 
- 		EventLoop loop;
- 		HiredisTest hiredis(&loop,
-				threadCount,sessionCount,messageCount,ip,port);
+	EventLoop loop;
+	HiredisTest hiredis(&loop,
+	threadCount,sessionCount,messageCount,ip,port);
 
-// 		hiredis.monitor();
-//		hiredis.subscribe();
-//		hiredis.string();
-//		hiredis.hash();
-		hiredis.list();
- 		loop.run();
- 	}
+	LOG_INFO<<"all connect success";
+	// 		hiredis.monitor();
+	//		hiredis.subscribe();
+			hiredis.string();
+	//		hiredis.hash();
+	//		hiredis.list();
+	//hiredis.redlock("test","test",100000);
+	loop.run();
+ 	
  	return 0;
 }
 

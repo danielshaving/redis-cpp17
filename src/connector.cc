@@ -17,19 +17,19 @@ Connector::~Connector()
 	assert(!channel);
 }
 
-void Connector::start(bool flag)
+void Connector::start(bool sync)
 {
 	connect = true;
-	loop->runInLoop(std::bind(&Connector::startInLoop,this,flag));
+	loop->runInLoop(std::bind(&Connector::startInLoop,this,sync));
 }
 
-void Connector::startInLoop(bool flag)
+void Connector::startInLoop(bool sync)
 {
 	loop->assertInLoopThread();
 	assert(state == kDisconnected);
 	if (connect)
 	{
-		connecting(flag);
+		connecting(sync);
 	}
 	else
 	{
@@ -67,10 +67,9 @@ int32_t Connector::removeAndResetChannel()
 	return sockfd;
 }
 
-void Connector::connecting(bool flag,int32_t sockfd)
+void Connector::connecting(bool sync,int32_t sockfd)
 {
-	assert(!channel);
-	if (flag)
+	if (sync)
 	{
 		setState(kConnected);
 		if (connect)
@@ -84,6 +83,7 @@ void Connector::connecting(bool flag,int32_t sockfd)
 	}
 	else
 	{
+		assert(!channel);
 		channel.reset(new Channel(loop,sockfd));
 		channel->setWriteCallback(std::bind(&Connector::handleWrite,this));
 		channel->setErrorCallback(std::bind(&Connector::handleError,this));
@@ -163,9 +163,15 @@ void Connector::handleError()
 	}
 }
 
-void Connector::connecting(bool flag)
+void Connector::connecting(bool sync)
 {
 	int32_t sockfd = socket.createSocket();
+	if (sockfd < 0)
+	{
+		::close(sockfd);
+		LOG_ERROR<<"create socket error"<<errno<<ip<<" "<<port;
+	}
+
 	int32_t ret = socket.connect(sockfd,ip,port);
 	int32_t savedErrno = (ret == 0) ? 0 : errno;
 	switch (savedErrno)
@@ -176,8 +182,8 @@ void Connector::connecting(bool flag)
 		case EISCONN:
 			socket.setSocketNonBlock(sockfd);
 			setState(kConnecting);
-			connecting(flag,sockfd);
-			socket.setkeepAlive(sockfd,1);;
+			connecting(sync,sockfd);
+			socket.setkeepAlive(sockfd,1);
 			break;
 
 		case EAGAIN:
@@ -195,12 +201,12 @@ void Connector::connecting(bool flag)
 		case EBADF:
 		case EFAULT:
 		case ENOTSOCK:
-			LOG_ERROR<<"connect error "<<savedErrno;
+			LOG_ERROR<<"connect error "<<savedErrno<<ip<<" "<<port;
 			::close(sockfd);
 			break;
 
 		default:
-			LOG_ERROR<<"Unexpected error "<<savedErrno;
+			LOG_ERROR<<"Unexpected error "<<savedErrno<<ip<<" "<<port;
 			::close(sockfd);
 			// connectErrorCallback();
 			break;

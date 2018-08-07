@@ -36,7 +36,6 @@ private:
 	Socket socket;
 	FILE *fp;
 	TcpConnectionPtr repliConn;
-	Timer *timer;
 	std::atomic<int32_t> port;
 	std::atomic<int32_t> replLen;
 	std::atomic<int32_t> replState;

@@ -199,14 +199,18 @@ public:
 public:
 	typedef std::function<bool(const std::deque<RedisObjectPtr> &,
 			const SessionPtr &,const TcpConnectionPtr &)> CommandFunc;
-	typedef std::unordered_map<RedisObjectPtr,RedisObjectPtr,Hash,Equal> StringMap;
+	typedef std::unordered_map<RedisObjectPtr,
+			RedisObjectPtr,Hash,Equal> StringMap;
 	typedef std::unordered_map<RedisObjectPtr,std::unordered_map<RedisObjectPtr,
 			RedisObjectPtr,Hash,Equal>,Hash,Equal> HashMap;
-	typedef std::unordered_map<RedisObjectPtr,std::deque<RedisObjectPtr>,Hash,Equal> ListMap;
+	typedef std::unordered_map<RedisObjectPtr,
+			std::deque<RedisObjectPtr>,Hash,Equal> ListMap;
 	typedef std::unordered_map<RedisObjectPtr,double,Hash,Equal> SortIndexMap;
 	typedef std::multimap<double,RedisObjectPtr> SortMap;
-	typedef std::unordered_map<RedisObjectPtr,std::pair<SortIndexMap,SortMap>,Hash,Equal> ZsetMap;
-	typedef std::unordered_map<RedisObjectPtr,std::unordered_set<RedisObjectPtr,Hash,Equal>,Hash,Equal> SetMap;
+	typedef std::unordered_map<RedisObjectPtr,
+			std::pair<SortIndexMap,SortMap>,Hash,Equal> ZsetMap;
+	typedef std::unordered_map<RedisObjectPtr,
+			std::unordered_set<RedisObjectPtr,Hash,Equal>,Hash,Equal> SetMap;
 	typedef std::unordered_set<RedisObjectPtr,Hash,Equal> RedisMap;
 
 	std::unordered_set<RedisObjectPtr,Hash,Equal> checkCommands;
@@ -223,20 +227,13 @@ private:
 
 	std::unordered_map<int32_t,SessionPtr> sessions;
 	std::unordered_map<int32_t,TcpConnectionPtr> sessionConns;
-	/* Tcp connection maintenance */
 	std::unordered_map<int32_t,TcpConnectionPtr> slaveConns;
-	/* Tcp master-> salve node tconnection maintenance */
 	std::unordered_map<int32_t,TcpConnectionPtr> clusterConns;
-	/* Tcp cluster node tcpconnection maintenance */
 	std::unordered_map<int32_t,TimerPtr> repliTimers;
-	/*Slaveof commonad -> replication timer maintenace  */
 	std::unordered_map<RedisObjectPtr,TimerPtr,Hash,Equal> expireTimers;
-	/* Setex expire timer maintenace*/
 	std::unordered_map<RedisObjectPtr,
-		std::unordered_map<int32_t,TcpConnectionPtr>,Hash,Equal> pubsubs;
-	/* Pubsub commnand maintenace*/
+		std::unordered_map<int32_t,TcpConnectionPtr>,Hash,Equal> pubSubs;
 	std::unordered_map<int32_t,TcpConnectionPtr> monitorConns;
-    /* Whenever a message is received in a hash index lock granularity*/
 	struct RedisMapLock
 	{		
 		RedisMap redisMap;
@@ -248,13 +245,11 @@ private:
 		std::mutex mtx;
 	};
 
-   /*All datatype maintenace */
 	std::array<RedisMapLock,kShards> redisShards;
 
-	EventLoop loop; /*Current main loop  */
-	TcpServer server; /* Maintain multiple event loops */
+	EventLoop loop;
+	TcpServer server;
 
-    /* Different locks for each module*/
 	std::mutex mtx;
 	std::mutex slaveMutex;
 	std::mutex expireMutex;
@@ -275,12 +270,8 @@ public:
 	std::atomic<bool> forkEnabled;
 	std::atomic<bool> monitorEnabled;
 
-	/* master slave replcation ，To make data consistency,
-	 * use cross-thread calls to maintain conditional variable counts*/
 	std::atomic<int32_t> forkCondWaitCount;
-	/*bgsave fork  Conditional judgment */
 	std::atomic<int32_t> rdbChildPid;
-	/* salve */
 	std::atomic<int32_t> salveCount;
 
 	std::condition_variable expireCondition;

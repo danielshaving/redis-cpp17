@@ -144,6 +144,7 @@ public:
 	RedisReaderPtr reader;	/* Protocol reader */
 };
 
+
 typedef std::function<void(const RedisAsyncContextPtr &context,
 			const RedisReplyPtr &,const std::any &)> RedisCallbackFn;
 struct RedisCallback
@@ -175,6 +176,17 @@ struct SubCallback
 	std::unordered_map<RedisObjectPtr,RedisAsyncCallbackPtr,Hash,Equal> patternCb;
 };
 
+struct RedLockCallback
+{	
+	const char *resource;
+	int32_t ttl;
+	const char *val;
+	std::function<void()> wasCallback;
+	std::function<void()> doingCallback;
+};
+
+typedef std::shared_ptr<RedLockCallback> RedLockCallbackPtr;
+
 class RedisAsyncContext : public std::enable_shared_from_this<RedisAsyncContext>
 {
 public:
@@ -186,6 +198,12 @@ public:
 			const std::any &privdata,const char *format,va_list ap);
 	int32_t redisAsyncCommand(const RedisCallbackFn &fn,
 			const std::any &privdata,const char *format, ...);
+
+	std::function<void()> getRedisAsyncCommand(const RedisCallbackFn &fn,
+			const std::any &privdata,const char *format, ...);
+
+	std::function<void()> getRedisvAsyncCommand(const RedisCallbackFn &fn,
+			const std::any &privdata,const char *format,va_list ap);
 
 	int32_t err;
 	char *errstr;
@@ -233,6 +251,7 @@ public:
 	auto &getPool() { return pool; }
 	auto &getTcpClient() { return tcpClients; }
 
+	RedisAsyncContextPtr getRedisAsyncContext();
 private:
 	Hiredis(const Hiredis&);
 	void operator=(const Hiredis&);
@@ -243,6 +262,7 @@ private:
 	ConnectionCallback connectionCallback;
 	DisConnectionCallback disConnectionCallback;
 	std::vector<TcpClientPtr> tcpClients;
+	int32_t pos;
 	int32_t sessionCount;
 };
 

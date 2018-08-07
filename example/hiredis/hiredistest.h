@@ -16,6 +16,7 @@ public:
 	void subscribe();
 	void publish();
 	void monitor();
+	void redlock(const char *resource,const char *val,const int32_t ttl);
 
 	void connectionCallback(const TcpConnectionPtr &conn);
 	void disConnectionCallback(const TcpConnectionPtr &conn);
@@ -44,8 +45,13 @@ public:
 			const RedisReplyPtr &reply,const std::any &privdata);
 	void publishCallback(const RedisAsyncContextPtr &c,
 			const RedisReplyPtr &reply,const std::any &privdata);
+	void redLockCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void redUnlcokCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
+	void setRedLockCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply,const std::any &privdata);
 
-	RedisAsyncContextPtr getRedisAsyncContext();
 private:
 	Hiredis hiredis;
 	std::atomic<int32_t> connectCount;
@@ -56,5 +62,5 @@ private:
 	std::condition_variable condition;
 	EventLoop *loop;
 	int32_t messageCount;
-	std::map<int32_t,TcpConnectionPtr> redisAsyncConns;
+	sds unlockScript;
 };

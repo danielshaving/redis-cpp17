@@ -8,7 +8,6 @@ Replication::Replication(Redis *redis)
  salveLen(0),
  salveReadLen(0),
  slaveSyncEnabled(false),
- timer(nullptr),
  client(nullptr)
 {
 
@@ -71,7 +70,7 @@ void Replication::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 	{
 		if (salveLen == 0)
 		{
-			salveLen = *(int32_t*)(buffer->peek());
+			salveLen = buffer->peekInt32();
 			if (salveLen >= INT_MAX || salveLen <= 0)
 			{
 				::fclose(fp);

@@ -20,7 +20,7 @@ public:
 	void setConnectionErrorCallBack(const ErrorConnectionCallback &&cb) 
 	{ errorConnectionCallback = std::move(cb); }
 
-	void start(bool flag);
+	void start(bool sync);
 	void restart();
 	void stop();
 
@@ -28,11 +28,11 @@ private:
 	Connector(const Connector&);
 	void operator=(const Connector&);
 
-	void startInLoop(bool flag);
+	void startInLoop(bool sync);
 	void stopInLoop();
 
-	void connecting(bool flag);
-	void connecting(bool flag,int32_t sockfd);
+	void connecting(bool sync);
+	void connecting(bool sync,int32_t sockfd);
 	void resetChannel();
 	void retry(int32_t sockfd);
 

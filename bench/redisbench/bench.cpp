@@ -55,7 +55,7 @@ public:
 	{
 		if(operation == kSet)
 		{
-			while(buffer->readableBytes() > 0)
+			while (buffer->readableBytes() > 0)
 			{
 				const char *end = static_cast<const char*>(memmem(buffer->peek(),
                         buffer->readableBytes(),
@@ -79,7 +79,7 @@ public:
 		}
 		else
 		{
-			while(buffer->readableBytes() > 0)
+			while (buffer->readableBytes() > 0)
 			{
 				const char *end = static_cast<const char*>(memmem(buffer->peek(),
 						buffer->readableBytes(),
@@ -171,7 +171,7 @@ int main(int argc,char* argv[])
 			opertion = Client::kGet;
 		}
 
-		for(int i = 0; i< clients; i++)
+		for (int i = 0; i< clients; i++)
 		{
 			std::shared_ptr<Client> client(new Client(pool.getNextLoop(),ip,port,opertion));
 			clientPtr.push_back(client);
@@ -179,7 +179,7 @@ int main(int argc,char* argv[])
 
 		{
 			std::unique_lock <std::mutex> lck(mtx);
-			while(connectCount < clients)
+			while (connectCount < clients)
 			{
 				condition.wait(lck);
 			}
@@ -188,14 +188,14 @@ int main(int argc,char* argv[])
 		LOG_INFO<<"Client all connected";
 
 		TimeStamp start = TimeStamp::now();
-		for(auto &it : clientPtr)
+		for (auto &it : clientPtr)
 		{
 			it.send();
 		}
 
 		{
 			std::unique_lock <std::mutex> lck(mtx);
-			while(connShutDown < clients)
+			while (connShutDown < clients)
 			{
 				condition.wait(lck);
 			}

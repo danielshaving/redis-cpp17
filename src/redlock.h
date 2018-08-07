@@ -24,16 +24,16 @@ public:
 	~RedLock();
 
 	void syncAddServerUrl(const char *ip,const int16_t port);
-	void asyncAddServerUrl(const char *ip,const int16_t port);
+	void asyncAddServerUrl(int32_t sockfd,const RedisAsyncContextPtr &ac);
 	RedisReplyPtr commandArgv(const RedisContextPtr &c,int32_t argc,char **inargv);
 	sds getUniqueLockId();
+
 	bool lock(const char *resource,const int32_t ttl,Lock &lock);
 	bool unlock(const Lock &lock);
 	void unlockInstance(const RedisContextPtr &c,
 			const char *resource,const char *val);
-	int32_t lockInstance(const RedisContextPtr &c,
+	bool lockInstance(const RedisContextPtr &c,
 			const char *resource,const char *val,const int32_t ttl);
-
 private:
 	RedLock(const RedLock&);
 	void operator=(const RedLock&);
@@ -51,8 +51,6 @@ private:
 	sds continueLockScript;
 
 	struct timeval timeout;
-	std::vector<RedisContextPtr> disconnectServers;
 	std::unordered_map<int32_t,RedisContextPtr> syncServers;
-	HiredisAsyncPtr	asyncServers;
-
+	std::unordered_map<int32_t,RedisAsyncContextPtr> asyncServers;
 };
