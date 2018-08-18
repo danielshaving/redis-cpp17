@@ -38,7 +38,7 @@ void Poll::epollWait(ChannelList *activeChannels, int32_t msTime)
 	{
 		if (savedErrno != EINTR)
 		{
-			errno = savedErrno;
+			printf("%d\n",savedErrno);
 		}
 	}
 	loop->handlerTimerQueue();

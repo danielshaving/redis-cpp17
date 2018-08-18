@@ -24,7 +24,7 @@ EventLoop::EventLoop()
 #ifdef __APPLE__
 	epoller(new Poll(this)),
 	op(socketpair(AF_UNIX, SOCK_STREAM, 0, wakeupFd)),
-	wakeupChannel(new Channel(this, wakeupFd[0])),
+	wakeupChannel(new Channel(this, wakeupFd[1])),
 	timerQueue(new TimerQueue(this)),
 #endif
 #ifdef _WIN32
