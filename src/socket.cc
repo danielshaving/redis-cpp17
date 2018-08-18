@@ -49,7 +49,7 @@ int32_t Socket::pipe(int32_t fildes[2])
 	memset(&name, 0, sizeof(name));
 	name.sin_family = AF_INET;
 	name.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	int32_t namelen = sizeof(name);
+	socklen_t namelen = sizeof(name);
 	int32_t tcp = createSocket();
 
 	if (tcp == -1)
@@ -57,17 +57,17 @@ int32_t Socket::pipe(int32_t fildes[2])
 		goto clean;
 	}
 
-	if (bind(tcp, (sockaddr*)&name, namelen) == -1)
+	if (::bind(tcp, (sockaddr*)&name, namelen) == -1)
 	{
 		goto clean;
 	}
 
-	if (listen(tcp, 5) == -1)
+	if (::listen(tcp, 5) == -1)
 	{
 		goto clean;
 	}
 
-	if (getsockname(tcp, (sockaddr*)&name, &namelen) == -1)
+	if (::getsockname(tcp, (sockaddr*)&name, &namelen) == -1)
 	{
 		goto clean;
 	}
@@ -261,8 +261,9 @@ void Socket::toIpPort(char *buf, size_t size, const struct sockaddr *addr)
 	toIp(buf, size, addr);
 	size_t end = ::strlen(buf);
 	const struct sockaddr_in *addr4 = (const struct sockaddr_in*)(addr);
+#ifdef _WIN32
 	uint16_t port = networkToHost16(addr4->sin_port);
-#ifdef __APPLE__
+#else
 	uint16_t port = ntohs(addr4->sin_port);
 #endif
 	assert(size > end);
@@ -337,7 +338,8 @@ int32_t Socket::createSocket()
 #endif
 
 #ifdef __APPLE__
-	return ::socket(AF_UNIX, SOCK_STREAM, 0);
+	return ::socket(AF_INET, SOCK_STREAM , 0);
+	//return ::socket(AF_UNIX, SOCK_STREAM, 0);
 #endif
 }
 

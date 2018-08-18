@@ -55,7 +55,7 @@
 typedef SSIZE_T ssize_t;
 #define IOV_TYPE WSABUF
 #else
-#define IOV_TYPE struct iovec;
+#define IOV_TYPE struct iovec
 #include <unistd.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
