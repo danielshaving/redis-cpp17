@@ -107,7 +107,7 @@ int32_t Session::processCommand(const TcpConnectionPtr &conn)
 	{
 		if (!authEnabled)
 		{
-			if (strcasecmp(redisCommands[0]->ptr,"auth") != 0)
+			if (strcmp(redisCommands[0]->ptr,"auth") != 0)
 			{
 				addReplyErrorFormat(conn->outputBuffer(),"NOAUTH Authentication required");
 				return REDIS_ERR;
@@ -121,8 +121,12 @@ int32_t Session::processCommand(const TcpConnectionPtr &conn)
 		{
 			goto jump;
 		}
-			
-		assert(!redisCommands.empty());
+		
+		if (redisCommands.empty())
+		{
+			goto jump;
+		}
+		
 		char *key = redisCommands[0]->ptr;
 		int32_t hashslot = redis->getCluster()->keyHashSlot(key,sdslen(key));
 		

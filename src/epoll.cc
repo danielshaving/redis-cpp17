@@ -120,7 +120,7 @@ void Epoll::update(int32_t operation,Channel *channel)
 	int32_t fd = channel->getfd();
 	if (::epoll_ctl(epollFd,operation,fd,&event) < 0)
 	{
-		LOG_ERROR<<"epoll_ctl "<<fd;
+		LOG_WARN<<"epoll_ctl "<<fd;
 	}
 }
 

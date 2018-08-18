@@ -21,11 +21,7 @@ Poll::~Poll()
 void Poll::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
 	auto timerQueue = loop->getTimerQueue();
-	auto timer = timerQueue->getTimerBegin();
-	if (timer)
-	{
-		msTime = timer->getInterval() / 1000;
-	}
+	msTime = timerQueue->getTimeout();
 
 	int32_t numEvents = ::poll(&*events.begin(),events.size(),msTime);
 	int32_t savedErrno = errno;
@@ -33,10 +29,6 @@ void Poll::epollWait(ChannelList *activeChannels,int32_t msTime)
 	if (numEvents > 0)
 	{
 		fillActiveChannels(numEvents,activeChannels);
-		if (numEvents == events.size())
-		{
-			events.resize(events.size()*2);
-		}
 	}
 	else if (numEvents == 0)
 	{
@@ -47,7 +39,6 @@ void Poll::epollWait(ChannelList *activeChannels,int32_t msTime)
 		if (savedErrno != EINTR)
 		{
 			errno = savedErrno;
-		  	LOG_WARN<<"wait error"<<errno;
 		}
 	}
 	loop->handlerTimerQueue();

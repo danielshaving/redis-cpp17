@@ -56,6 +56,4 @@ private:
 
 	ErrorConnectionCallback	errorConnectionCallback;
 	NewConnectionCallback newConnectionCallback;
-	Socket socket;
-
 };

@@ -840,7 +840,7 @@ int32_t string2ll(const char *s,size_t slen,int64_t *value)
 	const char *p = s;
     size_t plen = 0;
     int32_t negative = 0;
-    uint64_t v;
+    int64_t v;
 
     if (plen == slen)
         return 0;
@@ -1085,6 +1085,7 @@ int32_t stringmatch(const char *pattern,const char *string,int32_t nocase)
 
 void getRandomHexChars(char *p,uint32_t len)
 {
+#ifndef _WIN32
 	char *charset = "0123456789abcdef";
 	uint32_t j;
 
@@ -1137,7 +1138,7 @@ void getRandomHexChars(char *p,uint32_t len)
 		pid_t pid = getpid();
 
 		/* Use time and PID to fill the initial array. */
-		gettimeofday(&tv, NULL);
+		gettimeofday(&tv,nullptr);
 		if (l >= sizeof(tv.tv_usec))
 		{
 			memcpy(x, &tv.tv_usec, sizeof(tv.tv_usec));
@@ -1164,17 +1165,23 @@ void getRandomHexChars(char *p,uint32_t len)
 			p[j] = charset[p[j] & 0x0F];
 		}
 	}
+#endif
 }
 
 int64_t ustime(void)
 {
+#ifdef _WIN32
+	auto time_now = std::chrono::system_clock::now();
+	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(time_now.time_since_epoch());
+	return microseconds.count();
+#else
 	struct timeval tv;
 	int64_t ust;
-
 	gettimeofday(&tv, nullptr);
-	ust = ((int64_t)tv.tv_sec)*1000000;
+	ust = ((int64_t)tv.tv_sec) * 1000000;
 	ust += tv.tv_usec;
 	return ust;
+#endif
 }
 
 /* Return the UNIX time in milliseconds */
@@ -1332,7 +1339,7 @@ static const std::string base64_chars =
              "0123456789+/";
 
 
-static inline bool is_base64(unsigned char c)
+static bool is_base64(unsigned char c)
 {
 	return (isalnum(c) || (c == '+') || (c == '/'));
 }

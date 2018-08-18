@@ -3,13 +3,16 @@
 
  Acceptor::Acceptor(EventLoop* loop,const char *ip,int16_t port)
  :loop(loop),
-  socket(ip,port),
-  channel(loop,socket.getListenFd()),
-  listenfd(socket.getListenFd()),
-  listenning(false),
-  idleFd(::open("/dev/null",O_RDONLY | O_CLOEXEC))
+  channel(loop, Socket::createTcpSocket(ip, port)),
+  sockfd(channel.getfd()),
+ #ifndef _WIN32
+  idleFd(::open("/dev/null",O_RDONLY | O_CLOEXEC)),
+ #endif
+  listenning(false)
  {
+#ifndef _WIN32
 	 assert(idleFd >= 0);
+#endif
 	 channel.setReadCallback(std::bind(&Acceptor::handleRead,this));
  }
 
@@ -17,7 +20,7 @@
  {
 	channel.disableAll();
 	channel.remove();
-	::close(listenfd);
+	Socket::close(sockfd);
  }
 
  void Acceptor::handleRead()
@@ -26,12 +29,10 @@
 	struct sockaddr_in6 address;
 	socklen_t len = sizeof(address);
 #ifdef __linux__
-	int32_t connfd = ::accept4(listenfd,(struct sockaddr*)&address,
+	int32_t connfd = ::accept4(sockfd,(struct sockaddr*)&address,
 	                         &len,SOCK_NONBLOCK | SOCK_CLOEXEC);
-#endif
-
-#ifdef __APPLE__
-	int32_t connfd = ::accept(listenfd,(struct sockaddr*)&address,&len);
+#else
+	int32_t connfd = ::accept(sockfd,(struct sockaddr*)&address,&len);
 #endif
 
 	if (connfd >= 0)
@@ -43,7 +44,7 @@
 		}
 		else
 		{
-			::close(connfd);
+			Socket::close(sockfd);
 		}
 	}
 	else

@@ -1,5 +1,6 @@
 #include "eventloop.h"
 #include "tcpconnection.h"
+#include "socket.h"
 
 TcpConnection::TcpConnection(EventLoop *loop,int32_t sockfd,const std::any &context)
 :loop(loop),
@@ -22,7 +23,7 @@ TcpConnection::TcpConnection(EventLoop *loop,int32_t sockfd,const std::any &cont
 TcpConnection::~TcpConnection()
 {
 	assert(state == kDisconnected);
-	::close(sockfd);
+	Socket::close(sockfd);
 }
 
 void TcpConnection::shutdown()
@@ -58,34 +59,53 @@ void TcpConnection::shutdownInLoop()
     loop->assertInLoopThread();
     if (!channel->isWriting())
     {
+#ifdef _WIN32
+		if (::shutdown(sockfd,SD_SEND) < 0)
+		{
+			LOG_WARN << "sockets::shutdownWrite";
+		}
+#else
         if (::shutdown(sockfd,SHUT_WR) < 0)
         {
-            LOG_ERROR<<"sockets::shutdownWrite";
+			LOG_WARN <<"sockets::shutdownWrite";
         }
+#endif
     }
 }
 
 void TcpConnection::handleRead()
 {
 	loop->assertInLoopThread();
-	int savedErrno = 0;
-	ssize_t n = readBuffer.readFd(channel->getfd(),&savedErrno);
+	int saveErrno = 0;
+	ssize_t n = readBuffer.readFd(channel->getfd(),&saveErrno);
 	if (n > 0)
 	{
 		messageCallback(shared_from_this(),&readBuffer);
 	}
-	else if (n == 0)
+#ifdef _WIN32
+	else if (n == 0 || saveErrno == WSAECONNRESET)
 	{
 		handleClose();
 	}
 	else
 	{
-		errno = savedErrno;
+		errno = saveErrno;
+		handleError();
+	}
+#else
+	else if (n == 0 )
+	{
+		handleClose();
+	}
+	else
+	{
+		errno = saveErrno;
 		if (errno != ECONNRESET || errno != ETIMEDOUT)
 		{
 
 		}
 	}
+#endif
 }
 
 void TcpConnection::handleWrite()
@@ -93,7 +113,12 @@ void TcpConnection::handleWrite()
 	loop->assertInLoopThread();
 	if (channel->isWriting())
 	{
-		ssize_t n = ::write(channel->getfd(),writeBuffer.peek(),writeBuffer.readableBytes());
+		assert(writeBuffer.readableBytes() != 0);
+#ifdef _WIN32
+		ssize_t n = ::send(channel->getfd(),writeBuffer.peek(),writeBuffer.readableBytes(),0);
+#else
+		ssize_t n = ::write(channel->getfd(), writeBuffer.peek(), writeBuffer.readableBytes());
+#endif
 		if (n > 0)
 		{
 			writeBuffer.retrieve(n);
@@ -306,13 +331,17 @@ void TcpConnection::sendInLoop(const void *data,size_t len)
 
 	if (!channel->isWriting() && writeBuffer.readableBytes() == 0)
 	{
-		nwrote = ::write(channel->getfd(),data,len);
+#ifdef _WIN32
+		nwrote = ::send(channel->getfd(), (const char *)data, len, 0);
+#else
+		nwrote = ::write(channel->getfd(), data, len);
+#endif
 		if (nwrote >= 0)
 		{
 			remaining = len - nwrote;
 			if (remaining == 0 && writeCompleteCallback)
 			{
-				loop->queueInLoop(std::bind(writeCompleteCallback,shared_from_this()));
+				loop->queueInLoop(std::bind(writeCompleteCallback, shared_from_this()));
 			}
 		}
 		else // nwrote < 0
@@ -322,27 +351,27 @@ void TcpConnection::sendInLoop(const void *data,size_t len)
 			{
 				if (errno == EPIPE || errno == ECONNRESET) // FIXME: any others?
 				{
-				  	faultError = true;
+					faultError = true;
 				}
 			}
 		}
-	}
 
-	assert(remaining <= len);
-	if (!faultError && remaining > 0)
-	{
-		size_t oldLen = writeBuffer.readableBytes();
-		if (oldLen + remaining >= highWaterMark
-		    && oldLen < highWaterMark
-		    && highWaterMarkCallback)
+		assert(remaining <= len);
+		if (!faultError && remaining > 0)
 		{
-		  	loop->queueInLoop(std::bind(highWaterMarkCallback,shared_from_this(),oldLen + remaining));
-		}
-		
-		writeBuffer.append(static_cast<const char*>(data) + nwrote,remaining);
-		if (!channel->isWriting())
-		{
-		  	channel->enableWriting();
+			size_t oldLen = writeBuffer.readableBytes();
+			if (oldLen + remaining >= highWaterMark
+				&& oldLen < highWaterMark
+				&& highWaterMarkCallback)
+			{
+				loop->queueInLoop(std::bind(highWaterMarkCallback, shared_from_this(), oldLen + remaining));
+			}
+
+			writeBuffer.append(static_cast<const char*>(data) + nwrote, remaining);
+			if (!channel->isWriting())
+			{
+				channel->enableWriting();
+			}
 		}
 	}
 }

@@ -5,14 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <unistd.h>
 #include <vector>
 #include <list>
 #include <map>
 #include <sys/types.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <assert.h>
@@ -28,36 +24,52 @@
 #include <memory>
 #include <condition_variable>
 #include <thread>
-#include <sys/syscall.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <string>
 #include <iosfwd>    // for ostream forward-declaration
 #include <string>
-#include <sys/socket.h>
 #include <set>
-#include <arpa/inet.h>
 #include <errno.h>
-#include <sys/uio.h>
 #include <array>
 #include <utility>
 #include <limits.h>
 #include <stdint.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <stdio.h>
 #include <atomic>
 #include <stdarg.h>
-#include <sys/resource.h>
 #include <limits.h>
+#include <any>
+#include <string_view>
+#include <experimental/filesystem>
+#include <ratio>
+#include <chrono>
+
+#ifdef _WIN32
+#include <WinSock2.h>
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib,"ws2_32.lib")
+typedef SSIZE_T ssize_t;
+#define IOV_TYPE WSABUF
+#else
+#define IOV_TYPE struct iovec;
+#include <unistd.h>
+#include <sys/time.h>
+#include <arpa/inet.h>
+#include <sys/syscall.h>
+#include <arpa/inet.h>
+#include <sys/uio.h>
+#include <sys/socket.h>
+#include <sys/resource.h>
 #include <poll.h>
 #include <netdb.h>
 #include <sys/wait.h>
-#include <any>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <string_view>
-#include <experimental/filesystem>
+#endif
 
 #ifdef __APPLE__
 #include <sys/event.h>
@@ -117,7 +129,6 @@
 #define REDIS_REQ_INLINE 1
 #define REDIS_REQ_MULTIBULK 2
 /* Error codes */
-#define REDIS_NULL              0
 #define REDIS_OK                1
 #define REDIS_ERR               -1
 #define REDIS_INLINE_MAX_SIZE   (4096 * 64 *10 * 10) /* Max size of inline reads */
@@ -144,28 +155,13 @@
 #define OBJ_SET_XX (1<<1)     /* Set if key exists. */
 #define OBJ_SET_EX (1<<2)     /* Set if time in seconds is given */
 #define OBJ_SET_PX (1<<3)     /* Set if time in ms in given */
-
-
 /* Units */
 #define UNIT_SECONDS 0
 #define UNIT_MILLISECONDS 1
 
 
-#define OBJ_ENCODING_RAW 0     /* Raw representation */
-#define OBJ_ENCODING_INT 1     /* Encoded as integer */
-#define OBJ_ENCODING_HT 2      /* Encoded as hash table */
-#define OBJ_ENCODING_ZIPMAP 3  /* Encoded as zipmap */
-#define OBJ_ENCODING_LINKEDLIST 4 /* Encoded as regular linked list */
-#define OBJ_ENCODING_ZIPLIST 5 /* Encoded as ziplist */
-#define OBJ_ENCODING_INTSET 6  /* Encoded as intset */
-#define OBJ_ENCODING_SKIPLIST 7  /* Encoded as skiplist */
-#define OBJ_ENCODING_EMBSTR 8  /* Embedded sds string encoding */
-#define OBJ_ENCODING_QUICKLIST 9 /* Encoded as linked list of ziplists */
-
-
-
 /* Static server configuration */
-#define REDIS_COMMAND_LENGTH 15
+#define REDIS_COMMAND_LENGTH    15
 #define REDIS_DEFAULT_HZ        10      /* Time interrupt calls/sec. */
 #define REDIS_MIN_HZ            1
 #define REDIS_MAX_HZ            500
@@ -307,7 +303,6 @@
 #define RDB_64BITLEN 0x81
 #define RDB_ENCVAL 3
 #define RDB_LENERR UINT64_MAX
-#define RDB_OPCODE_EOF 110
 
 /* Protocol and I/O related defines */
 #define PROTO_MAX_QUERYBUF_LENGTH  (1024*1024*1024) /* 1GB max query buffer. */
@@ -341,20 +336,6 @@
  * This flag means no new commands can come in and the connection
  * should be terminated once all replies have been read. */
 #define REDIS_DISCONNECTING 4
-
-/* Flag specific to the async API which means that the context should be clean
- * up as soon as possible. */
-#define REDIS_FREEING 8
-
-/* Flag that is set when an async callback is executed. */
-#define REDIS_IN_CALLBACK 10
-
-/* Flag that is set when the async context has one or more subscriptions. */
-#define REDIS_SUBSCRIBED 20
-
-/* Flag that is set when monitor mode is active */
-#define REDIS_MONITORING 40
-
 
 /* When an error occurs, the err flag in a context is set to hold the type of
  * error that occured. REDIS_ERR_IO means there was an I/O error and you

@@ -45,7 +45,11 @@ size_t convertHex(char buf[],uintptr_t value)
 AppendFile::AppendFile(const std::string &filename)
  :writtenBytes(0)
 {
-	fp = ::fopen(filename.c_str(),"ae"); // 'e' for O_CLOEXEC
+#ifdef _WIN32
+	fp = ::fopen(filename.c_str(), "at+");
+#else
+	fp = ::fopen(filename.c_str(), "ae"); // 'e' for O_CLOEXEC
+#endif
 	assert(fp);
 }
 
@@ -66,7 +70,7 @@ void AppendFile::append(const char *logline,const size_t len)
 			int32_t err = ferror(fp);
 			if (err)
 			{
-				LOG_ERROR << "AppendFile append failed:" << strerror(err);
+				LOG_WARN << "AppendFile append failed:" << strerror(err);
 			}
 			break;
 		}
@@ -185,7 +189,7 @@ void LogFile::getLogFileName(time_t *now)
 	char timebuf[32];
 	struct tm tm;
 	*now = time(0);
-#ifdef WIN32
+#ifdef _WIN32
 	tm = *(localtime(now));
 #else
 	gmtime_r(now,&tm);
@@ -392,7 +396,7 @@ LogStream &LogStream::operator<<(double v)
 
 Logger::LogLevel initLogLevel()
 {
-#ifdef WIN32
+#ifdef _WIN32
 	return Logger::INFO;
 #else
 	if (::getenv("TRACE"))
@@ -413,7 +417,6 @@ const char *LogLevelName[Logger::NUM_LOG_LEVELS] =
 	"INFO  ",
 	"WARN  ",
 	"ERROR ",
-	"FATAL ",
 };
 
 void defaultOutput(const char* msg,int32_t len)
@@ -446,7 +449,7 @@ void Logger::Impl::formatTime()
 	char ttime[32];
 	struct tm tmtime;
 	time_t now = time(0);
-#ifdef WIN32
+#ifdef _WIN32
 	tmtime = *(localtime(&now));
 #else
 	gmtime_r(&now,&tmtime);
@@ -478,12 +481,6 @@ Logger::Logger(SourceFile file,int32_t line,LogLevel level,const char *func)
 
 Logger::Logger(SourceFile file,int32_t line,LogLevel level)
   :impl(level,0,file,line)
-{
-
-}
-
-Logger::Logger(SourceFile file,int32_t line,bool toAbort)
-  :impl(toAbort?FATAL:ERROR,errno,file,line)
 {
 
 }

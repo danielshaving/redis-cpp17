@@ -186,7 +186,6 @@ struct RedLockCallback
 };
 
 typedef std::shared_ptr<RedLockCallback> RedLockCallbackPtr;
-
 class RedisAsyncContext : public std::enable_shared_from_this<RedisAsyncContext>
 {
 public:
@@ -237,6 +236,7 @@ public:
 	void setConnectionCallback(const ConnectionCallback &&cb)
 	{ connectionCallback = std::move(cb); }
 
+	void connect(const char *ip,int16_t port,int32_t count = 0);
 	void pushTcpClient(const TcpClientPtr &client);
 	void clearTcpClient();
 	void diconnectTcpClient();
@@ -264,6 +264,8 @@ private:
 	std::vector<TcpClientPtr> tcpClients;
 	int32_t pos;
 	int32_t sessionCount;
+	const char *ip;
+	int16_t port;
 };
 
 int redisFormatSdsCommandArgv(sds *target,int argc,

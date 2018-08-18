@@ -252,7 +252,7 @@ bool Cluster::replicationToNode(const std::deque<RedisObjectPtr> &obj,const Sess
 	clear();
 
 	TcpConnectionPtr conn;
-	int8_t count;
+	int8_t count = 0;
 
 	{
 		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
@@ -297,7 +297,7 @@ bool Cluster::replicationToNode(const std::deque<RedisObjectPtr> &obj,const Sess
 		}
 	}
 
-	if (!strcasecmp(obj[2]->ptr, ""))
+	if (!strcmp(obj[2]->ptr, ""))
 	{
 		std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 		for (auto &it : clusterDelKeys)
@@ -336,7 +336,7 @@ bool Cluster::replicationToNode(const std::deque<RedisObjectPtr> &obj,const Sess
 		}
 		conn->sendPipe(dump->ptr);
 	}
-	LOG_INFO<<"cluster send success";
+	return true;
 }
 
 void Cluster::connCallback(const TcpConnectionPtr &conn)
@@ -352,9 +352,9 @@ void Cluster::connCallback(const TcpConnectionPtr &conn)
 
 		char buf[64] = "";
 		uint16_t port = 0;
-		auto addr = socket.getPeerAddr(conn->getSockfd());
-		socket.toIp(buf,sizeof(buf),(const struct sockaddr *)&addr);
-		socket.toPort(&port,(const struct sockaddr *)&addr);
+		auto addr = Socket::getPeerAddr(conn->getSockfd());
+		Socket::toIp(buf,sizeof(buf),(const struct sockaddr *)&addr);
+		Socket::toPort(&port,(const struct sockaddr *)&addr);
 		conn->setip(buf);
 		conn->setport(port);
 
@@ -561,7 +561,6 @@ void Cluster::getKeyInSlot(int32_t hashslot,std::vector<RedisObjectPtr> &keys,in
 			}
 			else
 			{
-				LOG_ERROR<<"unknown type error "<<iter->type;
 				assert(false);
 			}
 		}

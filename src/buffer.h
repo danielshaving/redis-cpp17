@@ -147,7 +147,7 @@ public:
 	void append(const char *data,size_t len)
 	{
 		ensureWritableBytes(len);
-		std::copy(data,data+len,beginWrite());
+		std::copy(data,data + len,beginWrite());
 		hasWritten(len);
 	}
 
@@ -163,28 +163,23 @@ public:
 
 	void appendInt32(int32_t x)
 	{
-		int32_t be32 = x;
+		int32_t be32 = Socket::hostToNetwork32(x);
 		append(&be32,sizeof be32);
 	}
 
 	void appendInt64(int64_t x)
 	{
-		int64_t be64 = x;
+		int64_t be64 = Socket::hostToNetwork64(x);
 		append(&be64,sizeof be64);
 	}
 
 	void appendInt16(int16_t x)
 	{
-		int16_t be16 = x;
+		int32_t be16 = Socket::hostToNetwork16(x);
 		append(&be16,sizeof be16);
 	}
 
 	void appendInt8(int8_t x)
-	{
-		append(&x,sizeof x);
-	}
-
-	void appendUInt8(uint8_t x)
 	{
 		append(&x,sizeof x);
 	}

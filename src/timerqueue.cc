@@ -16,9 +16,35 @@ int64_t createTimerfd()
 }
 #endif
 
+int64_t howMuchTimeFrom(const TimeStamp &when)
+{
+	int64_t microseconds = when.getMicroSecondsSinceEpoch()
+						 - TimeStamp::now().getMicroSecondsSinceEpoch();
+	if (microseconds < 1000)
+	{
+		microseconds = 1000;
+	}
+	return static_cast<int>(microseconds / 1000);
+}
+
+
+int64_t TimerQueue::getTimeout() const
+{
+	loop->assertInLoopThread();
+	if (timers.empty())
+	{
+		return 1000;
+	}
+	else
+	{
+		return howMuchTimeFrom(timers.begin()->second->getExpiration());
+	}
+}
+
+#ifdef __linux__
 struct timespec howMuchTimeFromNow(const TimeStamp &when)
 {
-	int64_t  microseconds = when.getMicroSecondsSinceEpoch()
+	int64_t microseconds = when.getMicroSecondsSinceEpoch()
 						 - TimeStamp::now().getMicroSecondsSinceEpoch();
 	if (microseconds < 100)
 	{
@@ -33,7 +59,6 @@ struct timespec howMuchTimeFromNow(const TimeStamp &when)
 
 void resetTimerfd(int64_t timerfd,const TimeStamp &expiration)
 {
-#ifdef __linux__
 	struct itimerspec newValue;
 	struct itimerspec oldValue;
 	bzero(&newValue,sizeof newValue);
@@ -44,7 +69,6 @@ void resetTimerfd(int64_t timerfd,const TimeStamp &expiration)
 	{
 		assert(false);
 	}
-#endif
 }
 
 void readTimerfd(int64_t timerfd,const TimeStamp &now)
@@ -56,6 +80,7 @@ void readTimerfd(int64_t timerfd,const TimeStamp &now)
 		assert(false);
 	}
 }
+#endif
 
 TimerQueue::TimerQueue(EventLoop *loop)
 :loop(loop),
@@ -101,7 +126,6 @@ void TimerQueue::cancelInloop(const TimerPtr &timer)
 	auto it = activeTimers.find(timer->getSequence());
 	if (it != activeTimers.end())
 	{
-
 		auto iter = timers.find(timer->getWhen());
 		while (iter != timers.end())
 		{
@@ -130,7 +154,9 @@ void TimerQueue::addTimerInLoop(const TimerPtr &timer)
 	bool earliestChanged = insert(timer);
 	if (earliestChanged)
 	{
+#ifdef __linux__
 		resetTimerfd(timerfd,timer->getExpiration());
+#endif
 	}
 }
 
@@ -216,7 +242,9 @@ void TimerQueue::reset(const TimeStamp &now)
 
 	if (nextExpire.valid())
 	{
+#ifdef __linux__
 		resetTimerfd(timerfd,nextExpire);
+#endif
 	}
 }
 

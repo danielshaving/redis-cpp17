@@ -1,6 +1,5 @@
 #pragma once
 #include "all.h"
-
 class EventLoop;
 class Channel
 {
@@ -33,6 +32,7 @@ public:
 
 	void enableReading() { events |= kReadEvent; update(); }
 	void disableReading() { events &= ~kReadEvent; update(); }
+
 	void enableWriting() { events |= kWriteEvent; update(); }
 	void disableWriting() { events &= ~kWriteEvent; update(); }
 	void disableAll() { events = kNoneEvent; update(); }
@@ -41,7 +41,7 @@ public:
 	bool isReading() const { return events & kReadEvent; }
 
 	int32_t getEvents() { return events; }
-	int32_t getfd() { return fd;}
+	int32_t getfd() { return fd; }
 	void remove();
 	int32_t getIndex() { return index; }
 	EventLoop *ownerLoop() { return loop; }

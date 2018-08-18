@@ -753,7 +753,11 @@ int32_t RedisContext::redisBufferWrite(int32_t *done)
 
 	if (sender.readableBytes() > 0)
 	{
+#ifdef _WIN32
+		nwritten = ::send(fd,sender.peek(),sender.readableBytes(),0);
+#else
 		nwritten = ::write(fd,sender.peek(),sender.readableBytes());
+#endif
 		if (nwritten < 0 )
 		{
 			if ((errno == EAGAIN && ! (flags == REDIS_BLOCK)) || (errno == EINTR))
@@ -900,7 +904,8 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
     pvariant = (tolower(cstr[0]) == 'p') ? 1 : 0;
     cstr += pvariant;
     clen -= pvariant;
-	if (hasnext && strncasecmp(cstr,"subscribe\r\n",11) == 0) 
+
+	if (hasnext && memcmp(cstr, "subscribe\r\n", 11) == 0)
 	{
 		redisContext->flags = REDIS_SUBSCRIBED;
 		 /* Add every channel/pattern to the list of subscription callbacks. */
@@ -917,7 +922,7 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
 			}
         }
 	}
-	else if (strncasecmp(cstr,"unsubscribe\r\n",13) == 0) 
+	else if (memcmp(cstr, "unsubscribe\r\n", 13) == 0)
 	{
 		/* It is only useful to call (P)UNSUBSCRIBE when the context is
 		* subscribed to one or more channels or patterns. */
@@ -927,7 +932,7 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
 		* pattern that is unsubscribed will receive a message. This means we
 		* should not append a callback function for this command. */
 	}
-	else if(strncasecmp(cstr,"monitor\r\n",9) == 0) 
+	else if (memcmp(cstr, "monitor\r\n", 9) == 0)
 	{
 		/* Set monitor flag and push callback */
 		redisContext->flags = REDIS_MONITORING;
@@ -1473,7 +1478,7 @@ int32_t RedisContext::redisCheckSocketError()
 	int32_t err = 0;
 	socklen_t errlen = sizeof(err);
 
-	if (::getsockopt(fd,SOL_SOCKET,SO_ERROR,&err,&errlen) == -1)
+	if (::getsockopt(fd,SOL_SOCKET,SO_ERROR,(char*)&err,&errlen) == -1)
 	{
 	    redisSetError(REDIS_ERR_IO,"getsockopt(SO_ERROR)");
 	    return REDIS_ERR;
@@ -1491,6 +1496,8 @@ int32_t RedisContext::redisCheckSocketError()
 #define __MAX_MSEC (((LONG_MAX) - 999) / 1000)
 int32_t RedisContext::redisContextWaitReady(int32_t msec)
 {
+#ifdef _WIN32
+#else
 	struct pollfd wfd[1];
 
 	wfd[0].fd = fd;
@@ -1519,6 +1526,7 @@ int32_t RedisContext::redisContextWaitReady(int32_t msec)
 	}
 
 	redisSetError(REDIS_ERR_IO,nullptr);
+#endif
 	return REDIS_ERR;
 }
 
@@ -1549,6 +1557,8 @@ static int32_t redisContextTimeoutMsec(const struct timeval *timeout,int32_t *re
 int32_t RedisContext::redisContextConnectUnix(const char *path,
 		const struct timeval *timeout)
 {
+#ifdef _WIN32
+#else
 	int32_t blocking = (flags == REDIS_BLOCK);
 	struct sockaddr_un sa;
 	int32_t timeoutMsec = -1;
@@ -1598,6 +1608,7 @@ int32_t RedisContext::redisContextConnectUnix(const char *path,
 	{
 		return REDIS_ERR;
 	}
+#endif
     return REDIS_OK;
 }
 
@@ -1762,16 +1773,15 @@ int32_t RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
 
 	RedisCallback cb;
 	cb.fn = std::move(fn);
-	cb.privdata = privdata;
+	cb.privdata = std::move(privdata);
 
 	RedisAsyncCallbackPtr asyncCallback(new RedisAsyncCallback());
 	asyncCallback->data = cmd;
 	asyncCallback->len = len;
 	asyncCallback->cb = std::move(cb);
 
-	redisConn->getLoop()->runInLoop(
-			std::bind(std::bind(&RedisAsyncContext::__redisAsyncCommand,
-					shared_from_this(),asyncCallback)));
+	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
+		shared_from_this(),asyncCallback));
 	return REDIS_OK;
 }
 
@@ -1808,8 +1818,8 @@ void Hiredis::clusterMoveConnCallback(const TcpConnectionPtr &conn)
 				std::any_cast<RedisAsyncCallbackPtr>(conn->getContext());
 		RedisAsyncContextPtr ac(new RedisAsyncContext(conn->intputBuffer(),conn));
 		conn->setContext(ac);
-		ac->repliesCb.push_back(asyncCallback);
-		conn->sendPipe(asyncCallback->data,asyncCallback->len);
+		conn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
+					ac,asyncCallback));
 
 		if (connectionCallback)
 		{
@@ -1882,7 +1892,12 @@ RedisAsyncContextPtr Hiredis::getRedisAsyncContext()
 		return nullptr;
 	}
 
-	if (pos == tcpClients.size() - 1)
+//	if (pos >= sessionCount - 1)
+//	{
+//		pos = 0;
+//	}
+	
+	if (pos >= tcpClients.size() - 1)
 	{
 		pos = 0;
 	}
@@ -1953,7 +1968,7 @@ void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 			{
 				callback = iter->second;
 				/* If this is an unsubscribe message, remove it. */
-				if (strcasecmp(stype + pvariant,"unsubscribe") == 0) 
+				if (strcmp(stype + pvariant,"unsubscribe") == 0) 
 				{
 					 ac->subCb.patternCb.erase(iter);
 
@@ -1972,7 +1987,7 @@ void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 			{
 				callback = iter->second;
 				/* If this is an unsubscribe message, remove it. */
-				if (strcasecmp(stype + pvariant,"unsubscribe") == 0) 
+				if (strcmp(stype + pvariant,"unsubscribe") == 0)
 				{
 					 ac->subCb.channelCb.erase(iter);
 
@@ -2058,11 +2073,9 @@ void Hiredis::redisAsyncDisconnect(const RedisAsyncContextPtr &ac)
 	ac->redisConn->forceCloseInLoop();
 }
 
-void Hiredis::start(const char *ip,int16_t port)
+void Hiredis::connect(const char *ip,int16_t port,int32_t count)
 {
-	pool.start();
-
-	for(int i = 0; i < sessionCount; i++)
+	for(int i = 0; i < sessionCount - count; i++)
 	{
 		TcpClientPtr client(new TcpClient(pool.getNextLoop(),ip,port,nullptr));
 		client->enableRetry();
@@ -2070,9 +2083,24 @@ void Hiredis::start(const char *ip,int16_t port)
 				this,std::placeholders::_1));
 		client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
 				this,std::placeholders::_1,std::placeholders::_2));
-		client->connect();
+		if (count > 0)
+		{
+			client->connect(true);
+		}
+		else
+		{
+			client->connect();
+		}
 		pushTcpClient(client);
 	}
+}
+
+void Hiredis::start(const char *ip,int16_t port)
+{
+	pool.start();
+	connect(ip,port);
+	this->ip = ip;
+	this->port = port;
 }
 
 void Hiredis::redisReadCallback(const TcpConnectionPtr &conn,Buffer *buffer)
@@ -2082,12 +2110,13 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 			std::any_cast<RedisAsyncContextPtr>(conn->getContext());
 	RedisReplyPtr reply;
 	int32_t status;
+	
 	while ((status = ac->redisContext->redisGetReply(reply)) == REDIS_OK)
 	{
 		if (reply == nullptr)
 		{
 			/* When the connection is being disconnected and there are
-             * no more replies, this is the cue to really disconnect. */
+				 * no more replies, this is the cue to really disconnect. */
             if (ac->redisContext->flags == REDIS_DISCONNECTING)
 			{
 				redisAsyncDisconnect(ac);
@@ -2101,12 +2130,12 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn,Buffer *buffer)
             }
 
             /* When the connection is not being disconnected, simply stop
-             * trying to get replies and wait for the next loop tick. */
+				 * trying to get replies and wait for the next loop tick. */
 			break;
 		}
 
         /* Even if the context is subscribed, pending regular callbacks will
-         * get a reply before pub/sub messages arrive. */
+		   * get a reply before pub/sub messages arrive. */
 		RedisAsyncCallbackPtr repliesCb = nullptr;
 		if (ac->repliesCb.empty())
 		{
@@ -2151,46 +2180,43 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 	
 		if (clusterMode && reply->type == REDIS_REPLY_ERROR &&
 				 (!strncmp(reply->str,"MOVED",5) || (!strncmp(reply->str,"ASK",3))))
-		 {
+		{
 			char *p = reply->str,*s;
 			int32_t slot;
 			s = strchr(p,' ');
-			p = strchr(s+1,' ');
+			p = strchr(s + 1,' ');
 			*p = '\0';
-			slot = atoi(s+1);
-			s = strrchr(p+1,':');
+			slot = atoi(s + 1);
+			s = strrchr(p + 1,':');
 			*s = '\0';
 
 			const char *ip = p + 1;
-			int16_t port = atoi(s+1);
-
+			int16_t port = atoi(s + 1);
 			LOG_WARN<<"-> Redirected to slot "<< slot<<" located at "<<ip<<" "<<port;
-
-			if (redirectySlot(ip,port,ac,reply,repliesCb))
+			
+			if (!redirectySlot(ip,port,ac,reply,repliesCb))
 			{
-				for (int i = 0 ; i < sessionCount; i++)
+				TcpClientPtr client(new TcpClient(conn->getLoop(),ip,port,repliesCb));
+				client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
+						this,std::placeholders::_1,std::placeholders::_2));
+				if (!strncmp(reply->str,"MOVED",5))
 				{
-					TcpClientPtr client(new TcpClient(conn->getLoop(),ip,port,repliesCb));
-					client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
-							this,std::placeholders::_1,std::placeholders::_2));
-					if (!strncmp(reply->str,"MOVED",5))
-					{
-						client->setConnectionCallback(std::bind(&Hiredis::clusterMoveConnCallback,
-								this,std::placeholders::_1));
-					}
-					else if (!strncmp(reply->str,"ASK",3))
-					{
-						client->setConnectionCallback(std::bind(&Hiredis::clusterAskConnCallback,
-								this,std::placeholders::_1));
-					}
-
-					client->connect(true);
-					pushTcpClient(client);
+					client->setConnectionCallback(std::bind(&Hiredis::clusterMoveConnCallback,
+							this,std::placeholders::_1));
 				}
+				else if (!strncmp(reply->str,"ASK",3))
+				{
+					client->setConnectionCallback(std::bind(&Hiredis::clusterAskConnCallback,
+							this,std::placeholders::_1));
+				}
+
+				client->connect(true);
+				pushTcpClient(client);
+				connect(ip,port,1);
 			}
-		 }
-		 else
-		 {
+		}
+		else
+		{
 			if (ac->redisContext->flags == REDIS_MONITORING)
 			{
 				LOG_INFO<<reply->str;
@@ -2200,7 +2226,7 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 			{
 				repliesCb->cb.fn(ac,reply,repliesCb->cb.privdata);
 			}
-		 }
+		}
 	}
 
 	/* Disconnect when there was an error reading the reply */
@@ -2215,39 +2241,49 @@ bool Hiredis::redirectySlot(const char *ip,int16_t port,
 		const RedisAsyncCallbackPtr &repliesCb)
 {
 	assert(repliesCb != nullptr);
-	TcpConnectionPtr conn;
-	RedisAsyncContextPtr acContext;
+	TcpConnectionPtr conn = nullptr;
 	bool flag = true;
+	
+
+	std::unique_lock<std::mutex> lk(mutex);
+	assert(!tcpClients.empty());
+
+	int32_t index = 0;
+	int32_t sockfd = ac->redisConn->getSockfd();
+	if (sockfd < sessionCount)
 	{
-		std::unique_lock<std::mutex> lk(mutex);
-		assert(!tcpClients.empty());
-		size_t size = tcpClients.size();
-		while (size--)
+		sockfd += sessionCount;
+	}
+
+	int32_t fix = ac->redisConn->getSockfd() % (sessionCount - 1);
+	while (index <= tcpClients.size())
+	{
+		if (tcpClients.size() <= sessionCount)
 		{
-			if (pos == tcpClients.size() - 1)
-			{
-				pos = 0;
-			}
-			else
-			{
-				pos++;
-			}
+			break;
+		}
 
-			//printf("ip----- %s\n",tcpClients[pos]->getIp());
+		if (index == tcpClients.size())
+		{
+			index = index - 1;
+		}
 
-			if (tcpClients[pos]->getPort() == port)
-			{
-				flag = false;
-				conn = tcpClients[pos]->getConnection();
-				break;
-			}
+		if (tcpClients[index]->getPort() == port)
+		{
+			flag = false;
+			conn = tcpClients[index + fix]->getConnection();
+			break;
+		}
+		else
+		{
+			index += sessionCount;
 		}
 	}
 
 	if (flag)
 	{
-		LOG_INFO<<"Add new cluster client ip port"<<ip<<" "<<port;
-		return true;
+		LOG_INFO<<"-> Add new cluster client ip port "<<ip<<" "<<port;
+		return false;
 	}
 
 	if (conn == nullptr)
@@ -2261,11 +2297,11 @@ bool Hiredis::redirectySlot(const char *ip,int16_t port,
 	else
 	{
 		assert(conn->getContext().has_value());
-		acContext = std::any_cast<RedisAsyncContextPtr>(conn->getContext());
-		acContext->repliesCb.push_back(repliesCb);
-		conn->sendPipe(repliesCb->data,repliesCb->len);
+		RedisAsyncContextPtr acContext = std::any_cast<RedisAsyncContextPtr>(conn->getContext());
+		conn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
+					acContext,repliesCb));
 	}
-	return false;
+	return true;
 }
 
 RedisContextPtr redisConnectUnix(const char *path)

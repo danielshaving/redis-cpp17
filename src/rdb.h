@@ -76,7 +76,6 @@ public:
 	void checkRdb(int32_t argc,char **argv,FILE *fp);
     void rdbCheckInfo(const char *fmt, ...);
     void rdbCheckSetupSignals(void);
-    void rdbCheckHandleCrash(int32_t sig,siginfo_t *info,void *secret);
     void rdbCheckSetError(const char *fmt, ...);
 
 	int32_t rdbSaveInfoAuxFields(Rio *rdb,int32_t flags);
@@ -113,8 +112,8 @@ public:
 	int32_t rdbSaveBinaryDoubleValue(Rio *rdb,double val);
 	int32_t rdbSaveMillisecondTime(Rio *rdb,int64_t t);
 	int32_t rdbSaveType(Rio *rdb,uint8_t type);
-	int32_t rdbSaveLen(Rio *rdb,uint32_t len);
-	int32_t rdbSave(char *filename);
+	size_t rdbSaveLen(Rio *rdb,uint32_t len);
+	int32_t rdbSave(const char *filename);
 	int32_t rdbSaveRio(Rio *rdb,int32_t *error,int32_t flags);
 	int32_t rdbSaveObject(Rio *rdb,const RedisObjectPtr &o);
 	int32_t rdbSaveStringObject(Rio *rdb,const RedisObjectPtr &obj);
@@ -140,7 +139,7 @@ public:
 	int32_t rdbLoadSet(Rio *rdb,int32_t type);
 	uint32_t rdbLoadLen(Rio *rdb,int32_t *isencoded);
 	
-	int32_t rdbLoad(char *fileName);
+	int32_t rdbLoad(const char *fileName);
 	bool rdbReplication(char *filename,const TcpConnectionPtr &conn);
 
 	RedisObjectPtr rdbLoadObject(int32_t type,Rio *rdb);
@@ -156,7 +155,7 @@ public:
 	int32_t rdbEncodeInteger(int64_t value,uint8_t *enc);
 	int32_t rdbWrite(char *filename,const char *buf,size_t len);
 	int32_t rdbSyncWrite(const char *buf,FILE *fp,size_t len);
-	int32_t rdbSyncClose(char *fileName,FILE *fp);
+	int32_t rdbSyncClose(const char *fileName,FILE *fp);
 	void setBlockEnable(bool enabled) { blockEnabled = enabled; }
 	int32_t createDumpPayload(Rio *rdb,const RedisObjectPtr &obj);
 	int32_t verifyDumpPayload(Rio *rdb,const RedisObjectPtr &obj);

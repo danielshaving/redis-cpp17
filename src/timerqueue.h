@@ -18,7 +18,8 @@ public:
 	size_t getTimerSize();
 	TimerPtr addTimer(double when,bool repeat,TimerCallback &&cb);
   	TimerPtr getTimerBegin();
-
+	
+	int64_t getTimeout() const;
 private:
   	TimerQueue(const TimerQueue&);
   	void operator=(const TimerQueue&);

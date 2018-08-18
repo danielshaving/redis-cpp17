@@ -99,7 +99,7 @@ struct Config
 #define CLI_HELP_COMMAND 1
 #define CLI_HELP_GROUP 2
 
-static char *CommandGroups[] =
+const char *CommandGroups[] =
 {
     "generic",
     "string",
@@ -119,11 +119,11 @@ static char *CommandGroups[] =
 
 static struct CommandHelp
 {
-    char *name;
-    char *params;
-    char *summary;
+    const char *name;
+	const char *params;
+	const char *summary;
     int group;
-    char *since;
+	const char *since;
 }commandHelp[] =
 {
     { "APPEND",
@@ -1156,7 +1156,7 @@ public:
     void cliRefreshPrompt();
     sds cliFormatReplyRaw(RedisReplyPtr &r);
     sds sdsCatColorizedLdbReply(sds o,char *s,size_t len);
-    sds cliFormatReplyTTY(RedisReplyPtr &r,char *prefix);
+    sds cliFormatReplyTTY(RedisReplyPtr &r,const char *prefix);
     sds cliFormatReplyCSV(RedisReplyPtr &r);
 
     sds sdscatcolor(sds o,char *s,size_t len,char *color);

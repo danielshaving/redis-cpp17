@@ -29,6 +29,7 @@
  */
 
 #pragma once
+#include "all.h"
 
 /* Double expansion needed for stringification of macro values. */
 #define __xstr(s) __str(s)
@@ -86,7 +87,7 @@ void zmalloc_set_oom_handler(void (*oom_handler)(size_t));
 size_t zmalloc_get_rss(void);
 int zmalloc_get_allocator_info(size_t *allocated, size_t *active, size_t *resident);
 size_t zmalloc_get_private_dirty(long pid);
-size_t zmalloc_get_smap_bytes_by_field(char *field, long pid);
+size_t zmalloc_get_smap_bytes_by_field(const char *field, long pid);
 size_t zmalloc_get_memory_size(void);
 void zlibc_free(void *ptr);
 

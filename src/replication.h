@@ -23,6 +23,7 @@ public:
 	void replicationCron();
 	void syncWrite(const TcpConnectionPtr &conn);
 	void disConnect();
+	void close();
 
 private:
 	Replication(const Replication&);
@@ -33,7 +34,6 @@ private:
 	TcpClientPtr client;
 	std::string ip;
 	Buffer sendBuf;
-	Socket socket;
 	FILE *fp;
 	TcpConnectionPtr repliConn;
 	std::atomic<int32_t> port;

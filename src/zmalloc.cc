@@ -28,21 +28,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-
 /* This function provide us access to the original libc free(). This is useful
  * for instance to free results obtained by backtrace_symbols(). We need
  * to define this function before including zmalloc.h that may shadow the
  * free implementation if we use jemalloc or another non standard allocator. */
+#include "zmalloc.h"
+
 void zlibc_free(void *ptr) {
     free(ptr);
 }
-
-#include <string.h>
-#include <pthread.h>
-#include "zmalloc.h"
 
 #ifdef __APPLE__
 #include <AvailabilityMacros.h>
@@ -205,7 +199,6 @@ void setproctitle(const char *fmt, ...);
 	 * which will force your compiles to bomb until you fix
 	 * the above macros.
 	 */
-#error "Undefined or invalid BYTE_ORDER"
 #endif
 
 #if (__i386 || __amd64 || __powerpc__) && __GNUC__
@@ -302,6 +295,29 @@ void setproctitle(const char *fmt, ...);
 #else
 /* Implementation using pthread mutex. */
 
+#ifdef _WIN32
+#define atomicIncr(var,count) do { \
+    std::unique_lock <std::mutex> lck(mutex); \
+    var += (count); \
+} while(0)
+#define atomicGetIncr(var,oldvalue_var,count) do { \
+    std::unique_lock <std::mutex> lck(mutex); \
+    oldvalue_var = var; \
+    var += (count); \
+} while(0)
+#define atomicDecr(var,count) do { \
+    std::unique_lock <std::mutex> lck(mutex); \
+    var -= (count); \
+} while(0)
+#define atomicGet(var,dstvar) do { \
+    std::unique_lock <std::mutex> lck(mutex); \
+    dstvar = var; \
+} while(0)
+#define atomicSet(var,value) do { \
+    std::unique_lock <std::mutex> lck(mutex); \
+    var = value; \
+} while(0)
+#else
 #define atomicIncr(var,count) do { \
     pthread_mutex_lock(&var ## _mutex); \
     var += (count); \
@@ -328,10 +344,10 @@ void setproctitle(const char *fmt, ...);
     var = value; \
     pthread_mutex_unlock(&var ## _mutex); \
 } while(0)
-#define REDIS_ATOMIC_API "pthread-mutex"
-
 #endif
 
+#define REDIS_ATOMIC_API "pthread-mutex"
+#endif
 
 #define update_zmalloc_stat_alloc(__n) do { \
     size_t _n = (__n); \
@@ -346,7 +362,11 @@ void setproctitle(const char *fmt, ...);
 } while(0)
 
 static size_t used_memory = 0;
-pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
+#ifdef _WIN32
+	std::mutex mutex;
+#else
+	pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 static void zmalloc_default_oom(size_t size) {
     fprintf(stderr, "zmalloc: Out of memory trying to allocate %zu bytes\n",
@@ -605,7 +625,7 @@ int zmalloc_get_allocator_info(size_t *allocated,
  * Example: zmalloc_get_smap_bytes_by_field("Rss:",-1);
  */
 #if defined(HAVE_PROC_SMAPS)
-size_t zmalloc_get_smap_bytes_by_field(char *field, long pid) {
+size_t zmalloc_get_smap_bytes_by_field(const char *field, long pid) {
     char line[1024];
     size_t bytes = 0;
     int flen = strlen(field);
@@ -633,7 +653,7 @@ size_t zmalloc_get_smap_bytes_by_field(char *field, long pid) {
     return bytes;
 }
 #else
-size_t zmalloc_get_smap_bytes_by_field(char *field, long pid) {
+size_t zmalloc_get_smap_bytes_by_field(const char *field, long pid) {
     ((void) field);
     ((void) pid);
     return 0;

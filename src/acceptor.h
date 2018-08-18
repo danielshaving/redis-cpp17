@@ -27,7 +27,7 @@ private:
 	EventLoop *loop;
 	Socket socket;
 	Channel channel;
-	int32_t listenfd;
+	int32_t sockfd;
 
 	NewConnectionCallback newConnectionCallback;
 	bool listenning;

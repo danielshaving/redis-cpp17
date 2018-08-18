@@ -1,5 +1,6 @@
 #include "redlock.h"
 #include "util.h"
+#include "socket.h"
 
 static char **convertToSds(int32_t count,char **args)
 {
@@ -39,25 +40,32 @@ RedLock::RedLock()
 	retryCount = defaultRetryCount;
 	retryDelay = defaultRetryDelay;
 	quoRum = 0;
-	fd = open("/dev/urandom",O_RDONLY);
+#ifndef _WIN32
+	fd = ::open("/dev/urandom",O_RDONLY);
 	if (fd == -1)
 	{
 		printf("Can't open file /dev/urandom\n");
 		exit(-1);
 	}
+#endif
 }
 
 RedLock::~RedLock()
 {
 	sdsfree(continueLockScript);
 	sdsfree(unlockScript);
-	::close(fd);
+	Socket::close(fd);
 }
 
 sds RedLock::getUniqueLockId()
 {
+#ifdef _WIN32
+	char buffer[20];
+	if (::recv(fd, buffer, sizeof(buffer),0) == sizeof(buffer))
+#else
 	unsigned char buffer[20];
 	if (::read(fd,buffer,sizeof(buffer)) == sizeof(buffer))
+#endif
 	{
 		sds s;
 		s = sdsempty();
@@ -185,7 +193,7 @@ bool RedLock::lock(const char *resource,const int32_t ttl,Lock &lock)
 		}
 
 		int32_t delay = rand() % retryDelay + retryDelay / 2;
-		usleep(delay * 1000);
+		std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 		count--;
 
 	}while(count > 0);

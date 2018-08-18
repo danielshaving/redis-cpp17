@@ -19,8 +19,8 @@ rdb(this)
 	}
 
 	server.start();
-	loop.runAfter(1.0,true,std::bind(&Redis::serverCron,this));
-	loop.runAfter(10.0,true,std::bind(&Redis::bgsaveCron,this));
+	//loop.runAfter(1.0,true,std::bind(&Redis::serverCron,this));
+	//loop.runAfter(400.0,true,std::bind(&Redis::bgsaveCron,this));
 
 	{
 		std::thread thread(std::bind(&Replication::connectMaster,&repli));
@@ -52,11 +52,14 @@ void Redis::replyCheck()
 
 void Redis::bgsaveCron()
 {
+#ifndef _WIN32
 	rdbSaveBackground();
+#endif
 }
 
 void Redis::serverCron()
 {
+#ifndef _WIN32
 	if (rdbChildPid != -1)
 	{
 		pid_t pid;
@@ -72,25 +75,25 @@ void Redis::serverCron()
 			 {
 				if (!bysignal && exitcode == 0)
 				{
-					 LOG_INFO <<"background saving terminated with success";
+					LOG_INFO <<"Background saving terminated with success";
 					if (slavefd != -1)
 					{
 						std::unique_lock <std::mutex> lck(slaveMutex);
 						auto it = slaveConns.find(slavefd);
 						if (it == slaveConns.end())
 						{
-							LOG_WARN<<"master sync send failure";
+							LOG_WARN<<"Master sync send failure";
 						}
 						else
 						{
 							if (!rdb.rdbReplication("dump.rdb",it->second))
 							{
 								it->second->forceClose();
-								LOG_WARN<<"master sync send failure";
+								LOG_WARN<<"Master sync send failure";
 							}
 							else
 							{
-								 LOG_INFO <<"master sync send success ";
+								 LOG_INFO <<"Master sync send success ";
 							}
 						}
 
@@ -99,11 +102,11 @@ void Redis::serverCron()
 				}
 				else if (!bysignal && exitcode != 0)
 				{
-					 LOG_INFO <<"background saving error";
+					 LOG_INFO <<"Background saving error";
 				}
 				else
 				{
-					LOG_WARN<<"background saving terminated by signal "<< bysignal;
+					LOG_WARN<<"Background saving terminated by signal "<< bysignal;
 					char tmpfile[256];
 					snprintf(tmpfile,256,"temp-%d.rdb",(int32_t)rdbChildPid);
 					unlink(tmpfile);
@@ -120,6 +123,7 @@ void Redis::serverCron()
 			 rdbChildPid = -1;
 		}
 	}
+#endif
 }
 
 void Redis::slaveRepliTimeOut(int32_t context)
@@ -235,13 +239,13 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{
-		//socket.setTcpNoDelay(conn->getSockfd(),true);
+		//Socket::setTcpNoDelay(conn->getSockfd(),true);
 
 		char buf[64] = "";
 		uint16_t port = 0;
-		auto addr = socket.getPeerAddr(conn->getSockfd());
-		socket.toIp(buf,sizeof(buf),(const struct sockaddr *)&addr);
-		socket.toPort(&port,(const struct sockaddr *)&addr);
+		auto addr = Socket::getPeerAddr(conn->getSockfd());
+		Socket::toIp(buf,sizeof(buf),(const struct sockaddr *)&addr);
+		Socket::toPort(&port,(const struct sockaddr *)&addr);
 		conn->setip(buf);
 		conn->setport(port);
 
@@ -253,7 +257,7 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 		assert(it == sessions.end());
 		sessions[conn->getSockfd()] = session;
 		sessionConns[conn->getSockfd()] = conn;
-		// LOG_INFO <<"Client connect success";
+		LOG_INFO <<"Client connect success";
 	}
 	else
 	{
@@ -262,22 +266,26 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 		clearMonitorState(conn->getSockfd());
 		clearSessionState(conn->getSockfd());
 
-		// LOG_INFO <<"Client disconnect";
+		 LOG_INFO <<"Client disconnect";
 	}
 }
 
 void Redis::feedMonitor(const std::deque<RedisObjectPtr> &obj,int32_t sockfd)
 {
 	char buf[64] = "";
-	auto addr = socket.getPeerAddr(sockfd);
-	socket.toIpPort(buf,sizeof(buf),(const struct sockaddr *)&addr);
+	auto addr = Socket::getPeerAddr(sockfd);
+	Socket::toIpPort(buf,sizeof(buf),(const struct sockaddr *)&addr);
 
 	int j = 0;
 	sds cmdrepr = sdsnew("+");
 	RedisObjectPtr cmdobj;
+#ifdef _WIN32
+	cmdrepr = sdscatprintf(cmdrepr, "%ld.%06ld ", time(0), 0);
+#else
 	struct timeval tv;
-	gettimeofday(&tv,nullptr);
-	cmdrepr = sdscatprintf(cmdrepr,"%ld.%06ld ",(long)tv.tv_sec,(long)tv.tv_usec);
+	gettimeofday(&tv, nullptr);
+	cmdrepr = sdscatprintf(cmdrepr, "%ld.%06ld ", (long)tv.tv_sec, (long)tv.tv_usec);
+#endif
 	cmdrepr = sdscatprintf(cmdrepr,"[%d %s] ",0,buf);
 
 	for(auto &it : obj)
@@ -315,11 +323,11 @@ void Redis::loadDataFromDisk()
 	{
 		int64_t end = ustime();
 		double diff = double(end - end) / (1000 * 1000);
-		LOG_INFO <<"db loaded from disk seconds: "<< double(end - start) / 1000;
+		LOG_INFO <<"DB loaded from disk seconds: "<< double(end - start) / 1000;
 	}
 	else if (errno != ENOENT)
 	{
-       	LOG_WARN <<"fatal error loading the DB: Exiting."<<strerror(errno);
+       	LOG_WARN <<"Fatal error loading the DB: Exiting."<<strerror(errno);
  	}
 }
 
@@ -438,6 +446,7 @@ bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,
 		return false;
 	}
 
+#ifndef _WIN32
 	struct rusage self_ru, c_ru;
 	getrusage(RUSAGE_SELF, &self_ru);
 	getrusage(RUSAGE_CHILDREN, &c_ru);
@@ -498,6 +507,7 @@ bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,
 	}
 	
 	addReplyBulkSds(conn->outputBuffer(),info);
+#endif
 	return true;
 }
 
@@ -539,7 +549,7 @@ bool Redis::authCommand(const std::deque<RedisObjectPtr> &obj,
 		return true;
 	}
 
-	if (!strcasecmp(obj[0]->ptr,password.c_str()))
+	if (!strcmp(obj[0]->ptr,password.c_str()))
 	{
 		session->setAuth(true);
 		addReply(conn->outputBuffer(),shared.ok);
@@ -559,7 +569,7 @@ bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,
 		return false;
 	}
 
-	if (!strcasecmp(obj[0]->ptr,"set"))
+	if (!strcmp(obj[0]->ptr,"set"))
 	{
 		if (obj.size() != 3)
 		{
@@ -568,7 +578,7 @@ bool Redis::configCommand(const std::deque<RedisObjectPtr> &obj,
 			return true;
 		}
 
-		if (!strcasecmp(obj[1]->ptr,"requirepass"))
+		if (!strcmp(obj[1]->ptr,"requirepass"))
 		{
 			password = obj[2]->ptr;
 			authEnabled = true;
@@ -614,15 +624,15 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,
 	for (int i = 5; i < obj.size(); i++)
 	{
 		int moreargs = i < obj.size() - 1;
-		if (!strcasecmp(obj[i]->ptr,"copy"))
+		if (!strcmp(obj[i]->ptr,"copy"))
 		{
 			copy = 1;
 		}
-		else if (!strcasecmp(obj[i]->ptr,"replace"))
+		else if (!strcmp(obj[i]->ptr,"replace"))
 		{
 			replace = 1;
 		}
-		else if (!strcasecmp(obj[i]->ptr,"auth"))
+		else if (!strcmp(obj[i]->ptr,"auth"))
 		{
 			if (!moreargs) 
 			{
@@ -632,7 +642,7 @@ bool Redis::migrateCommand(const std::deque<RedisObjectPtr> &obj,
 			i++;
 			password = obj[i]->ptr;
 		}
-		else if (!strcasecmp(obj[i]->ptr,"keys"))
+		else if (!strcmp(obj[i]->ptr,"keys"))
 		{
 			if (sdslen(obj[2]->ptr) != 0)
 			{
@@ -693,7 +703,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 		return false;
 	}
 
-	if (!strcasecmp(obj[0]->ptr,"meet"))
+	if (!strcmp(obj[0]->ptr,"meet"))
 	{
 		if (obj.size() != 3)
 		{
@@ -739,7 +749,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 			return true;
 		}
 	}
-	else if (!strcasecmp(obj[0]->ptr,"connect") && obj.size() == 3)
+	else if (!strcmp(obj[0]->ptr,"connect") && obj.size() == 3)
 	{
 		int64_t  port;
 	
@@ -764,40 +774,40 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 		clus.connSetCluster(obj[1]->ptr,port);
 		return true;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"info") && obj.size() == 1)
+	else if (!strcmp(obj[0]->ptr,"info") && obj.size() == 1)
 	{
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"flushslots") && obj.size() == 1)
+	else if (!strcmp(obj[0]->ptr,"flushslots") && obj.size() == 1)
 	{
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"saveconfig") && obj.size() == 1)
+	else if (!strcmp(obj[0]->ptr,"saveconfig") && obj.size() == 1)
 	{
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"countkeysinslot") && obj.size() == 2)
+	else if (!strcmp(obj[0]->ptr,"countkeysinslot") && obj.size() == 2)
 	{
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"forget") && obj.size() == 2)
+	else if (!strcmp(obj[0]->ptr,"forget") && obj.size() == 2)
 	{
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"slaves") && obj.size() == 2)
+	else if (!strcmp(obj[0]->ptr,"slaves") && obj.size() == 2)
 	{
 		return false;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"nodes") && obj.size() == 1)
+	else if (!strcmp(obj[0]->ptr,"nodes") && obj.size() == 1)
 	{
 		RedisObjectPtr o = createObject(OBJ_STRING,clus.showClusterNodes());
 		addReplyBulk(conn->outputBuffer(),o);
 		return true;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"getkeysinslot") && obj.size() == 3)
+	else if (!strcmp(obj[0]->ptr,"getkeysinslot") && obj.size() == 3)
 	{
-		int64_t maxkeys, slot;
-		uint32_t numkeys, j;
+		int64_t maxkeys = 0, slot = 0;
+		uint32_t numkeys = 0, j = 0;
 
 		if (getLongLongFromObjectOrReply(conn->outputBuffer(),
 			obj[1],&slot,nullptr) != REDIS_OK)
@@ -823,24 +833,24 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 		}
 		return true;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"slots") && obj.size() == 1)
+	else if (!strcmp(obj[0]->ptr,"slots") && obj.size() == 1)
 	{
 
 	}
-	else if (!strcasecmp(obj[0]->ptr,"keyslot") && obj.size() == 2)
+	else if (!strcmp(obj[0]->ptr,"keyslot") && obj.size() == 2)
 	{
 		char *key = obj[1]->ptr;
 		addReplyLongLong(conn->outputBuffer(),
 			clus.keyHashSlot((char*)key,sdslen(key)));
 		return true;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"setslot") && obj.size() >= 3)
+	else if (!strcmp(obj[0]->ptr,"setslot") && obj.size() >= 3)
 	{		
-		if (!!strcasecmp(obj[1]->ptr,"stable") )
+		if (!!strcmp(obj[1]->ptr,"stable") )
 		{
 			
 		}
-		else if ( !strcasecmp(obj[1]->ptr,"node") )
+		else if ( !strcmp(obj[1]->ptr,"node") )
 		{
 			std::string imipPort = obj[2]->ptr;
 			{
@@ -934,7 +944,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 			return true;
 		}
 		
-		if ( !strcasecmp(obj[2]->ptr,"importing") && obj.size() == 4)
+		if ( !strcmp(obj[2]->ptr,"importing") && obj.size() == 4)
 		{		
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			auto &map = clus.getImporting();
@@ -960,7 +970,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 			}
 			clusterRepliImportEnabeld = true;
 		}
-		else if (!strcasecmp(obj[2]->ptr,"migrating") && obj.size() == 4)
+		else if (!strcmp(obj[2]->ptr,"migrating") && obj.size() == 4)
 		{
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			auto &map = clus.getMigrating();
@@ -991,7 +1001,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 			return true;
 		}
 	}
-	else if (!strcasecmp(obj[0]->ptr,"delsync"))
+	else if (!strcmp(obj[0]->ptr,"delsync"))
 	{
 		int32_t slot;
 		if ((slot = clus.getSlotOrReply(session,obj[1],conn)) == 0)
@@ -1009,7 +1019,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 		return true;
 
 	}
-	else if (!strcasecmp(obj[0]->ptr,"addsync") && obj.size() == 5)
+	else if (!strcmp(obj[0]->ptr,"addsync") && obj.size() == 5)
 	{
 		int32_t slot;
 		int64_t  port;
@@ -1038,7 +1048,7 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 		}
 		return true;
 	}
-	else if (!strcasecmp(obj[0]->ptr,"delslots") && obj.size() == 2)
+	else if (!strcmp(obj[0]->ptr,"delslots") && obj.size() == 2)
 	{		
 		std::unique_lock <std::mutex> lck(clusterMutex);
 		if (clusterConns.size() == 0)
@@ -1076,9 +1086,9 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 		}
 
 	}
-	else if (!strcasecmp(obj[0]->ptr, "addslots") && obj.size() == 2)
+	else if (!strcmp(obj[0]->ptr, "addslots") && obj.size() == 2)
 	{
-		int32_t  j, slot;
+		int32_t  j = 0,slot = 0;
 		for (j = 1; j < obj.size(); j++)
 		{
 			if (slot < 0 || slot > 16384 )
@@ -1157,6 +1167,7 @@ bool Redis::getClusterMap(const RedisObjectPtr &command)
 	return true;
 }
 
+#ifndef _WIN32
 bool Redis::bgsave(const SessionPtr &session,const TcpConnectionPtr &conn,bool enabled)
 {
 	if (rdbChildPid != -1)
@@ -1185,6 +1196,7 @@ bool Redis::bgsave(const SessionPtr &session,const TcpConnectionPtr &conn,bool e
 	}
 	return true;
 }
+#endif
 
 bool Redis::save(const SessionPtr &session,const TcpConnectionPtr &conn)
 {
@@ -1233,8 +1245,7 @@ void Redis::clearFork()
 
 	clusterConns.clear();
 }
-
-
+#ifndef _WIN32
 int32_t Redis::rdbSaveBackground(bool enabled)
 {
 	if (rdbChildPid != -1) return REDIS_ERR;
@@ -1273,6 +1284,8 @@ int32_t Redis::rdbSaveBackground(bool enabled)
 	return REDIS_OK; /* unreached */
 }
 
+#endif
+
 bool Redis::bgsaveCommand(const std::deque<RedisObjectPtr> &obj,
 		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
@@ -1281,7 +1294,9 @@ bool Redis::bgsaveCommand(const std::deque<RedisObjectPtr> &obj,
 		return false;
 	}
 	
+#ifndef _WIN32
 	bgsave(session,conn);
+#endif
 	return true;
 }
 
@@ -1313,12 +1328,12 @@ bool Redis::saveCommand(const std::deque<RedisObjectPtr> &obj,
 bool Redis::slaveofCommand(const std::deque<RedisObjectPtr> &obj,
 		const SessionPtr &session,const TcpConnectionPtr &conn)
 {
-	if (obj.size() !=  2)
+	if (obj.size() != 2)
 	{
 		return false;
 	}
 
-	if (!strcasecmp(obj[0]->ptr,"no") &&!strcasecmp(obj[1]->ptr,"one")) 
+	if (!strcmp(obj[0]->ptr,"no") &&!strcmp(obj[1]->ptr,"one")) 
 	{
 		if (masterHost.c_str() && masterPort) 
 		{
@@ -1334,7 +1349,7 @@ bool Redis::slaveofCommand(const std::deque<RedisObjectPtr> &obj,
 			return false;
 
 		if (ip.c_str() && !memcmp(ip.c_str(),obj[0]->ptr,sdslen(obj[0]->ptr))
-		&& this->port == port)
+				&& this->port == port)
 		{
 			LOG_WARN<<"slave of connect self error .";
 			addReplySds(conn->outputBuffer(),sdsnew("don't connect master self \r\n"));
@@ -1343,8 +1358,8 @@ bool Redis::slaveofCommand(const std::deque<RedisObjectPtr> &obj,
 
 		if (masterPort > 0)
 		{
-			LOG_WARN<<"slave of would result into synchronization with "
-					"<<the master we are already connected with. no operation performed.";
+			LOG_WARN<<"slave of would result into synchronization with ";
+			LOG_WARN<<"the master we are already connected with. no operation performed.";
 			addReplySds(conn->outputBuffer(),sdsnew("+ok already connected to specified master\r\n"));
 			return true;
 		}	
@@ -1753,9 +1768,9 @@ bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 	conn->setMessageCallback(std::bind(&Replication::slaveCallback,
 		&repli,std::placeholders::_1,std::placeholders::_2));
 
+#ifndef _WIN32
 	if (!bgsave(session,conn,true))
 	{
-		LOG_WARN << "bgsave failure";
 		{
 			std::unique_lock <std::mutex> lck(slaveMutex);
 			repliTimers.erase(conn->getSockfd());
@@ -1765,6 +1780,7 @@ bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj,const SessionPtr &
 		slavefd = -1;
 		conn->forceClose();
 	}
+#endif
 
 	if (threadCount > 1)
 	{
@@ -1933,7 +1949,7 @@ bool Redis::debugCommand(const std::deque<RedisObjectPtr> &obj,
 	    return false;
 	}
 
-	if (!strcasecmp(obj[0]->ptr,"sleep"))
+	if (!strcmp(obj[0]->ptr, "sleep"))
 	{
 		double dtime = strtod(obj[1]->ptr,nullptr);
 		int64_t utime = dtime*1000000;
@@ -1941,7 +1957,7 @@ bool Redis::debugCommand(const std::deque<RedisObjectPtr> &obj,
 
 		tv.tv_sec = utime / 1000000;
 		tv.tv_nsec = (utime % 1000000) * 1000;
-		nanosleep(&tv,nullptr);
+		std::this_thread::sleep_for(std::chrono::milliseconds(tv.tv_sec * 1000));
 		addReply(conn->outputBuffer(),shared.ok);
 		return true;
 	}
@@ -2013,7 +2029,8 @@ void Redis::clearCommand()
 			}
 			else
 			{
-				LOG_ERROR<<"type unkown:"<<iter->type;
+				LOG_WARN<<"type unkown:"<<iter->type;
+				assert(false);
 			}
 		}
 		map.clear();
@@ -2363,7 +2380,7 @@ RedisObjectPtr Redis::createDumpPayload(const RedisObjectPtr &dump)
 	buf[1] = (REDIS_RDB_VERSION >> 8) & 0xff;
 	if (rdb.createDumpPayload(&payload, dump) == REDIS_ERR)
 	{
-		LOG_ERROR << "RDB dump error";
+		LOG_WARN << "RDB dump error";
 		return nullptr;
 	}
 
@@ -2408,7 +2425,7 @@ bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,
 
 	for (int i = 3; i < obj.size(); i++)
 	{
-		if (!strcasecmp(obj[i]->ptr,"replace")) 
+		if (!strcmp(obj[i]->ptr,"replace")) 
 		{
 			replace = 1;
 		}
@@ -2470,7 +2487,7 @@ bool Redis::restoreCommand(const std::deque<RedisObjectPtr> &obj,
 	memrev64ifbe(&crc);
 	if (memcmp(&crc,footer+2,8) != 0)
 	{
-		LOG_ERROR<<"DUMP payload version or checksum are wrong";
+		LOG_WARN<<"DUMP payload version or checksum are wrong";
 		return false;
 	}
 
@@ -2629,7 +2646,7 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,
 		return true;
 	}
 
-	if ( !strcasecmp(obj[3]->ptr,"withscores"))
+	if (!strcmp(obj[3]->ptr, "withscores"))
 	{
 		withscores = 1;
 	}
@@ -3316,6 +3333,7 @@ void Redis::initConfig()
 	forkCondWaitCount = 0;
 	rdbChildPid = -1;
 	slavefd = -1;
+	masterfd = -1;
 	dbnum = 1;
 
 	createSharedObjects();

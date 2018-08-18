@@ -57,7 +57,7 @@ off_t Rdb::rioFlush(Rio *r)
 
 size_t Rdb::rioWrite(Rio *r,const void *buf,size_t len)
 {
-	while(len)
+	while (len)
 	{
 		size_t bytesToWrite = (r->maxProcessingChunk &&
 				r->maxProcessingChunk < len) ? r->maxProcessingChunk:len;
@@ -75,15 +75,13 @@ size_t Rdb::rioWrite(Rio *r,const void *buf,size_t len)
 		len -= bytesToWrite;
 		r->processedBytes += bytesToWrite;
 	}
-
 	return REDIS_OK;
 }
 
-
 size_t Rdb::rioRepliRead(Rio *r,void *buf,size_t len)
 {
-	::fseek(r->io.file.fp,r->processedBytes ,SEEK_SET);
-	size_t readBytes = ::fread(buf,REDIS_OK,len,r->io.file.fp);
+	::fseek(r->io.file.fp,r->processedBytes,SEEK_SET);
+	size_t readBytes = ::fread(buf,1,len,r->io.file.fp);
 	if (readBytes == 0)
 	{
 		return 0;
@@ -100,7 +98,7 @@ size_t Rdb::rioRepliRead(Rio *r,void *buf,size_t len)
 
 size_t Rdb::rioRead(Rio *r,void *buf,size_t len)
 {
-	while(len)
+	while (len)
 	{
 		size_t bytesToRead = (r->maxProcessingChunk &&
 				r->maxProcessingChunk <len)? r->maxProcessingChunk:len;
@@ -123,13 +121,13 @@ size_t Rdb::rioRead(Rio *r,void *buf,size_t len)
 
 size_t Rdb::rioFileRead(Rio *r,void *buf,size_t len)
 {
-	return ::fread(buf,len,REDIS_OK,r->io.file.fp);
+	return ::fread(buf,len,1,r->io.file.fp);
 }
 
 size_t Rdb::rioFileWrite(Rio *r,const void *buf,size_t len)
 {
 	 size_t retval;
-	 retval = ::fwrite(buf,len,REDIS_OK,r->io.file.fp);
+	 retval = ::fwrite(buf,len,1,r->io.file.fp);
 	 r->io.file.buffered += len;
 
 	 if (r->io.file.autosync && r->io.file.buffered >= r->io.file.autosync)
@@ -141,7 +139,11 @@ size_t Rdb::rioFileWrite(Rio *r,const void *buf,size_t len)
 
 off_t Rdb::rioFileTell(Rio *r)
 {
+#ifdef _WIN32
+	return ::ftell(r->io.file.fp);
+#else
 	return ::ftello(r->io.file.fp);
+#endif
 }
 
 int32_t Rdb::rioFileFlush(Rio *r)
@@ -624,7 +626,6 @@ int32_t Rdb::rdbLoadSet(Rio *rdb,int32_t type)
 int32_t Rdb::rdbLoadZset(Rio *rdb,int32_t type)
 {
 	RedisObjectPtr key;
-	int32_t rdbver;
 	int32_t len;
 	if ((key = rdbLoadStringObject(rdb)) == nullptr)
 	{
@@ -836,34 +837,28 @@ bool Rdb::rdbReplication(char *filename,const TcpConnectionPtr &conn)
 	rioInitWithFile(&rdb,fp);
 	int32_t sendlen = startLoading(fp);
 
-	int32_t fd;
-	fd = fileno(fp);
-	if (REDIS_ERR == fd)
+	Buffer buf;
+	buf.appendInt32(sendlen);
+	conn->send(&buf);
+
+#ifdef _WIN32
+	int32_t fd = ::_fileno(fp);
+#else
+	int32_t fd = ::fileno(fp);
+#endif
+	
+	if (fd < 0)
 	{
 		return false;
 	}
 
-	size_t len = REDIS_SLAVE_SYNC_SIZE;
-	char str[4];
-	int32_t *sendLen = (int32_t*)str;
-	*sendLen = sendlen;
-	ssize_t n = ::write(conn->getSockfd(),str,4);
-	if (n < 0)
-	{
-		return false;
-	}
-
-	size_t sendSize;
 	off_t offset = 0;
 	ssize_t nwrote = 0;
-	while(sendlen)
+
+	while (sendlen)
 	{
-		if (sendlen < len)
-		{
-			len = sendlen;
-		}
 #ifdef __linux__
-		nwrote = ::sendfile(conn->getSockfd(),fd,&offset,len);
+		nwrote = ::sendfile(conn->getSockfd(),fd,&offset,REDIS_SLAVE_SYNC_SIZE);
 #endif
 		if (nwrote >= 0)
 		{
@@ -883,6 +878,7 @@ int32_t Rdb::rdbSyncWrite(const char *buf,FILE *fp,size_t len)
 	{
 		return REDIS_ERR;
 	}
+	return REDIS_OK;
 }
 
 int32_t Rdb::createDumpPayload(Rio *rdb,const RedisObjectPtr &obj)
@@ -1011,14 +1007,16 @@ int32_t Rdb::verifyDumpPayload(Rio *rdb,const RedisObjectPtr &obj)
 	return REDIS_OK;
 }
 
-int32_t Rdb::rdbSyncClose(char *fileName,FILE *fp)
+int32_t Rdb::rdbSyncClose(const char *fileName,FILE *fp)
 {
 	if (::fflush(fp) == EOF) return REDIS_ERR;
+#ifndef _WIN32
 	if (::fsync(fileno(fp)) == REDIS_ERR) return REDIS_ERR;
+#endif
 	if (::fclose(fp) == EOF) return REDIS_ERR;
 
 	char tmpfile[256];
-	snprintf(tmpfile,256,"temp-%d.rdb",getpid());
+	snprintf(tmpfile,256,"temp-%d.rdb", std::this_thread::get_id());
 	
 	if (::rename(tmpfile,fileName) == REDIS_ERR) return REDIS_ERR;
 	return REDIS_OK;
@@ -1029,7 +1027,7 @@ int32_t Rdb::rdbWrite(char *filename,const char *buf,size_t len)
 	FILE *fp;
 	Rio rdb;
 	char tmpfile[256];
-	snprintf(tmpfile,256,"temp-%d.rdb",getpid());
+	snprintf(tmpfile,256,"temp-%d.rdb", std::this_thread::get_id());
 	fp = ::fopen(tmpfile,"w");
 	if (!fp)
 	{
@@ -1048,10 +1046,12 @@ int32_t Rdb::rdbWrite(char *filename,const char *buf,size_t len)
 		return REDIS_ERR;
 	}
 
+#ifndef _WIN32
 	if (::fsync(fileno(fp)) == REDIS_ERR)
 	{
 		return REDIS_ERR;
 	}
+#endif
 
 	if (::fclose(fp) == EOF)
 	{
@@ -1069,14 +1069,17 @@ int32_t Rdb::rdbWrite(char *filename,const char *buf,size_t len)
 int32_t Rdb::startLoading(FILE *fp)
 {
 	struct stat sb;
-	if (fstat(fileno(fp),&sb) == REDIS_ERR)
+#ifdef _WIN32
+	if (::fstat(::_fileno(fp),&sb) == REDIS_ERR)
+#else
+	if (::fstat(::fileno(fp),&sb) == REDIS_ERR)
+#endif
 	{
-		assert(false);
+		return REDIS_ERR;
 	}
 	LOG_INFO<<"dump.rdb file size "<<sb.st_size;
 	return sb.st_size;
 }
-
 
 /* This is just a wrapper for the low level function rioRead() that will
  * automatically abort if it is not possible to read the specified amount
@@ -1110,7 +1113,7 @@ int32_t Rdb::rdbLoadRio(Rio *rdb)
 
 	if (memcmp(buf,"REDIS",5) != 0)
 	{
-		LOG_ERROR<<"Wrong signature trying to load DB from file";
+		LOG_WARN<<"Wrong signature trying to load DB from file";
 		errno = EINVAL;
 		return REDIS_ERR;
 	}
@@ -1125,7 +1128,7 @@ int32_t Rdb::rdbLoadRio(Rio *rdb)
 
 	int64_t expiretime = REDIS_ERR,now = mstime();
 
-	while(1)
+	while (1)
 	{
 		if ((type = rdbLoadType(rdb)) == REDIS_ERR)
 		{
@@ -1276,7 +1279,7 @@ int32_t Rdb::rdbLoadRio(Rio *rdb)
 	return REDIS_OK;
 }
 
-int32_t Rdb::rdbLoad(char *filename)
+int32_t Rdb::rdbLoad(const char *filename)
 {
 	FILE *fp;
 	Rio rdb;
@@ -1313,7 +1316,7 @@ uint32_t Rdb::rdbLoadUType(Rio *rdb)
     return type;
 }
 
-int32_t Rdb::rdbSaveLen(Rio *rdb, uint32_t len)
+size_t Rdb::rdbSaveLen(Rio *rdb, uint32_t len)
 {
     unsigned char buf[2];
     size_t nwritten;
@@ -1410,7 +1413,6 @@ int32_t Rdb::rdbSaveLzfStringObject(Rio *rdb,uint8_t *s,size_t len)
 
 size_t Rdb::rdbSaveRawString(Rio *rdb,const char *s,size_t len)
 {
-	int32_t enclen;
 	int32_t n,nwritten = 0;
 
 	if (len > 20)
@@ -1450,6 +1452,7 @@ int32_t Rdb::rdbLoadBinaryDoubleValue(Rio *rdb,double *val)
 		return REDIS_ERR;
 	}
    	memrev64ifbe(val);
+	return REDIS_OK;
 }
 
 int64_t Rdb::rdbLoadMillisecondTime(Rio *rdb)
@@ -1465,8 +1468,6 @@ int64_t Rdb::rdbLoadMillisecondTime(Rio *rdb)
 RedisObjectPtr Rdb::rdbLoadObject(int32_t rdbtype,Rio *rdb)
 {
 	RedisObjectPtr o = nullptr;
-	size_t len;
-	uint32_t i;
 	if (rdbtype == REDIS_RDB_TYPE_STRING)
 	{
 		if ((o = rdbLoadEncodedStringObject(rdb)) == nullptr)
@@ -1808,14 +1809,13 @@ werr:
 	return REDIS_ERR;
 }
 
-int32_t Rdb::rdbSave(char *filename)
+int32_t Rdb::rdbSave(const char *filename)
 {
 	char tmpfile[256];
 	FILE *fp;
 	Rio rdb;
 	int32_t error;
-
-	snprintf(tmpfile,256,"temp-%d.rdb",getpid());
+	snprintf(tmpfile,256,"temp-%d.rdb",std::this_thread::get_id());
 	fp = ::fopen(tmpfile,"w");
 	if (!fp)
 	{
@@ -1830,19 +1830,29 @@ int32_t Rdb::rdbSave(char *filename)
 	}
 	
 	if (::fflush(fp) == EOF) goto werr;
+#ifndef _WIN32
 	if (::fsync(fileno(fp)) == REDIS_ERR) goto werr;
+#endif
 	if (::fclose(fp) == EOF) goto werr;
 	if (::rename(tmpfile,filename) == REDIS_ERR)
 	{
 		LOG_TRACE<<"Error moving temp DB file on the final:"<<strerror(errno);
+#ifdef _WIN32
+		_unlink(tmpfile);
+#else
 		unlink(tmpfile);
+#endif
 		return REDIS_ERR;
 	}
 	return REDIS_OK;
 werr:
 	LOG_WARN<<"Write error saving DB on disk:"<<strerror(errno);
 	::fclose(fp);
+#ifdef _WIN32
+	_unlink(tmpfile);
+#else
 	unlink(tmpfile);
+#endif
 	return REDIS_ERR;
 }
 
@@ -1941,6 +1951,7 @@ int32_t Rdb::rdbSaveInfoAuxFields(Rio *rdb,int32_t flags)
     int32_t aofPreamble = (flags & RDB_SAVE_AOF_PREAMBLE) != 0;
     char version = REDIS_RDB_VERSION;
 
+#ifndef _WIN32
     /* Add a few fields about the state when the RDB was created. */
     if (rdbSaveAuxFieldStrStr(rdb,"redis-ver",&version) == REDIS_ERR)
     {
@@ -1966,6 +1977,8 @@ int32_t Rdb::rdbSaveInfoAuxFields(Rio *rdb,int32_t flags)
     {
     	return REDIS_ERR;
     }
+
+#endif
     return REDIS_OK;
 }
 
@@ -1985,11 +1998,6 @@ void Rdb::rdbCheckInfo(const char *fmt, ...)
 }
 
 void Rdb::rdbCheckSetupSignals(void)
-{
-
-}
-
-void Rdb::rdbCheckHandleCrash(int32_t sig,siginfo_t *info,void *secret)
 {
 
 }

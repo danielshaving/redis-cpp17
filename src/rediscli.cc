@@ -223,7 +223,11 @@ sds RedisCli::readArgFromStdin(void)
 
 	while (1)
 	{
-		int nread = ::read(fileno(stdin),buf,1024);
+#ifdef _WIN32
+		int nread = ::recv(_fileno(stdin),buf,1024,0);
+#else
+		int nread = ::read(fileno(stdin), buf, 1024);
+#endif
 		if (nread == 0)
 		{
 			break;
@@ -307,6 +311,7 @@ sds RedisCli::sdscatcolor(sds o,char *s,size_t len,char *color)
 
 sds RedisCli::sdsCatColorizedLdbReply(sds o,char *s,size_t len)
 {
+#ifndef _WIN32
 	char *color = "white";
 	if (strstr(s,"<debug>")) color = "bold";
 	if (strstr(s,"<redis>")) color = "green";
@@ -320,6 +325,9 @@ sds RedisCli::sdsCatColorizedLdbReply(sds o,char *s,size_t len)
 		else if (s[2] == '#') color = "bold"; /* Break point. */
 	}
 	return sdscatcolor(o,s,len,color);
+#else
+	return sdsempty();
+#endif
 }
 
 sds RedisCli::cliFormatReplyRaw(RedisReplyPtr &r)
@@ -428,7 +436,7 @@ char **RedisCli::convertToSds(int count,char** args)
 	return sds;
 }
 
-sds RedisCli::cliFormatReplyTTY(RedisReplyPtr &r,char *prefix)
+sds RedisCli::cliFormatReplyTTY(RedisReplyPtr &r,const char *prefix)
 {
 	sds out = sdsempty();
 	switch (r->type)
@@ -606,7 +614,7 @@ int RedisCli::cliSendCommand(int argc,char **argv,int repeat)
 	int j,outputRaw;
 
 	if (!config.evalLdb && /* In debugging mode, let's pass "help" to Redis. */
-		(!strcasecmp(command,"help") || !strcasecmp(command,"?")))
+		(!strcmp(command,"help") || !strcmp(command,"?")))
 	{
 		cliOutputHelp(--argc,++argv);
 		return REDIS_OK;
@@ -615,38 +623,38 @@ int RedisCli::cliSendCommand(int argc,char **argv,int repeat)
     if (context == nullptr) { return REDIS_ERR; }
 
     outputRaw = 0;
-	if (!strcasecmp(command,"info") ||
-		(argc >= 2 && !strcasecmp(command,"debug") &&
-		 !strcasecmp(argv[1],"htstats")) ||
-		(argc >= 2 && !strcasecmp(command,"memory") &&
-		 (!strcasecmp(argv[1],"malloc-stats") ||
-		  !strcasecmp(argv[1],"doctor"))) ||
-		(argc == 2 && !strcasecmp(command,"cluster") &&
-		 (!strcasecmp(argv[1],"nodes") ||
-		  !strcasecmp(argv[1],"info"))) ||
-		(argc == 2 && !strcasecmp(command,"client") &&
-		 !strcasecmp(argv[1],"list")) ||
-		(argc == 3 && !strcasecmp(command,"latency") &&
-		 !strcasecmp(argv[1],"graph")) ||
-		(argc == 2 && !strcasecmp(command,"latency") &&
-		 !strcasecmp(argv[1],"doctor")))
+	if (!strcmp(command,"info") ||
+		(argc >= 2 && !strcmp(command,"debug") &&
+		 !strcmp(argv[1],"htstats")) ||
+		(argc >= 2 && !strcmp(command,"memory") &&
+		 (!strcmp(argv[1],"malloc-stats") ||
+		  !strcmp(argv[1],"doctor"))) ||
+		(argc == 2 && !strcmp(command,"cluster") &&
+		 (!strcmp(argv[1],"nodes") ||
+		  !strcmp(argv[1],"info"))) ||
+		(argc == 2 && !strcmp(command,"client") &&
+		 !strcmp(argv[1],"list")) ||
+		(argc == 3 && !strcmp(command,"latency") &&
+		 !strcmp(argv[1],"graph")) ||
+		(argc == 2 && !strcmp(command,"latency") &&
+		 !strcmp(argv[1],"doctor")))
 	{
 		outputRaw = 1;
 	}
 
-	if (!strcasecmp(command,"shutdown"))  { config.shutdown = 1; }
-	if (!strcasecmp(command,"monitor")) { config.monitorMde = 1; }
-	if (!strcasecmp(command,"subscribe") ||
-		!strcasecmp(command,"psubscribe"))  { config.pubsubMode = 1; }
-	if (!strcasecmp(command,"sync") ||
-		!strcasecmp(command,"psync")) { config.slaveMode = 1; }
+	if (!strcmp(command,"shutdown"))  { config.shutdown = 1; }
+	if (!strcmp(command,"monitor")) { config.monitorMde = 1; }
+	if (!strcmp(command,"subscribe") ||
+		!strcmp(command,"psubscribe"))  { config.pubsubMode = 1; }
+	if (!strcmp(command,"sync") ||
+		!strcmp(command,"psync")) { config.slaveMode = 1; }
 
 	/* When the user manually calls SCRIPT DEBUG, setup the activation of
  	* debugging mode on the next eval if needed. */
-	if (argc == 3 && !strcasecmp(argv[0],"script") &&
-		!strcasecmp(argv[1],"debug"))
+	if (argc == 3 && !strcmp(argv[0],"script") &&
+		!strcmp(argv[1],"debug"))
 	{
-		if (!strcasecmp(argv[2],"yes") || !strcasecmp(argv[2],"sync"))
+		if (!strcmp(argv[2],"yes") || !strcmp(argv[2],"sync"))
 		{
 			config.enableLdbOnEval = 1;
 		}
@@ -657,7 +665,7 @@ int RedisCli::cliSendCommand(int argc,char **argv,int repeat)
 	}
 
 	/* Actually activate LDB on EVAL if needed. */
-	if (!strcasecmp(command,"eval") && config.enableLdbOnEval)
+	if (!strcmp(command,"eval") && config.enableLdbOnEval)
 	{
 		config.evalLdb = 1;
 		config.output = OUTPUT_RAW;
@@ -709,19 +717,23 @@ int RedisCli::cliSendCommand(int argc,char **argv,int repeat)
 		else
 		{
 			/* Store database number when SELECT was successfully executed. */
-			if (!strcasecmp(command,"select") && argc == 2 && config.lastCmdType != REDIS_REPLY_ERROR)
+			if (!strcmp(command,"select") && argc == 2 && config.lastCmdType != REDIS_REPLY_ERROR)
 			{
 				config.dbnum = atoi(argv[1]);
 				cliRefreshPrompt();
 			}
-			else if (!strcasecmp(command,"auth") && argc == 2)
+			else if (!strcmp(command,"auth") && argc == 2)
 			{
 				cliSelect();
 			}
 		}
 
-		if (config.interval) { usleep(config.interval); }
-		fflush(stdout); /* Make it grep friendly */
+		if (config.interval) 
+		{
+			//usleep(config.interval); 
+		}
+
+		::fflush(stdout); /* Make it grep friendly */
 	}
 
 	zfree(argvlen);
@@ -803,7 +815,7 @@ void RedisCli::cliOutputHelp(int argc,char **argv)
 		len = sizeof(CommandGroups)/sizeof(char*);
 		for (i = 0; i < len; i++)
 		{
-			if (strcasecmp(argv[0]+1,CommandGroups[i]) == 0)
+			if (strcmp(argv[0]+1,CommandGroups[i]) == 0)
 			{
 				group = i;
 				break;
@@ -825,7 +837,7 @@ void RedisCli::cliOutputHelp(int argc,char **argv)
 			{
 				for (j = 0; j < argc; j++)
 				{
-					if (strcasecmp(argv[j],entry->argv[j]) != 0) break;
+					if (strcmp(argv[j],entry->argv[j]) != 0) break;
 				}
 
 				if (j == argc)
@@ -887,7 +899,15 @@ int RedisCli::pollWait(int fd,int mask,int64_t milliseconds)
     pfd.fd = fd;
     if (mask & AE_READABLE) pfd.events |= POLLIN;
     if (mask & AE_WRITABLE) pfd.events |= POLLOUT;
-    if ((retval = poll(&pfd, 1, milliseconds)) == 1)
+	
+#ifdef _WIN32
+	struct timeval delay;
+	delay.tv_sec = 0;
+	delay.tv_usec = milliseconds * 1000;
+	if ((retval = ::select(fd,nullptr,nullptr,nullptr,&delay)))
+#else
+	if ((retval = ::poll(&pfd, 1, milliseconds)) == 1)
+#endif
     {
         if (pfd.revents & POLLIN) retmask |= AE_READABLE;
         if (pfd.revents & POLLOUT) retmask |= AE_WRITABLE;

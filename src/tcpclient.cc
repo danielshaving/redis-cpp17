@@ -116,7 +116,6 @@ void TcpClient::removeConnection(const TcpConnectionPtr &conn)
 		std::unique_lock<std::mutex> lk(mutex);
 		assert(connection == conn);
 		connection.reset();
-		connection = nullptr;
 	}
 
 	loop->queueInLoop(std::bind(&TcpConnection::connectDestroyed,conn));

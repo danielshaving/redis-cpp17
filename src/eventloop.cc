@@ -24,8 +24,14 @@ EventLoop::EventLoop()
 #ifdef __APPLE__
  epoller(new Poll(this)),
  op(socketpair(AF_UNIX,SOCK_STREAM,0,wakeupFd)),
- timerQueue(new TimerQueue(this)),
  wakeupChannel(new Channel(this,wakeupFd[0])),
+ timerQueue(new TimerQueue(this)),
+#endif
+#ifdef _WIN32
+epoller(new Select(this)),
+op(Socket::pipe(wakeupFd)),
+wakeupChannel(new Channel(this,wakeupFd[0])),
+timerQueue(new TimerQueue(this)),
 #endif
  currentActiveChannel(nullptr),
  running(false),
@@ -49,10 +55,14 @@ EventLoop::~EventLoop()
 	::close(wakeupFd);
 #endif
 
-
 #ifdef __APPLE__
 	::close(wakeupFd[0]);
 	::close(wakeupFd[1]);
+#endif
+
+#ifdef _WIN32
+	::closesocket(wakeupFd[0]);
+	::closesocket(wakeupFd[1]);
 #endif
 }
 
@@ -78,7 +88,8 @@ void EventLoop::removeChannel(Channel *channel)
 	if (eventHandling)
 	{
 		assert(currentActiveChannel == channel ||
-		std::find(activeChannels.begin(),activeChannels.end(),channel) == activeChannels.end());
+		std::find(activeChannels.begin(),
+			activeChannels.end(),channel) == activeChannels.end());
 	}
 	epoller->removeChannel(channel);
 }
@@ -104,16 +115,17 @@ void  EventLoop::handleRead()
 {
 	uint64_t one = 1;
 #ifdef __linux__	
-	ssize_t n = ::read(wakeupFd,&one,sizeof one);
+	ssize_t n = ::read(wakeupFd, &one, sizeof one);
 #endif
 
 #ifdef __APPLE__
-	ssize_t n = ::read(wakeupFd[1],&one,sizeof one);
+	ssize_t n = ::read(wakeupFd[1], &one, sizeof one);
 #endif
-	if (n != sizeof one)
-	{
-		LOG_ERROR<<"EventLoop::handleRead() reads error";
-	}
+
+#ifdef _WIN32
+	ssize_t n = Socket::read(wakeupFd[0], &one, sizeof one);
+#endif
+	assert(n == sizeof one);
 }
 
 void EventLoop::quit()
@@ -136,10 +148,10 @@ void EventLoop::wakeup()
   	ssize_t n = ::write(wakeupFd[0],&one,sizeof one);
 #endif
 
-	if (n != sizeof one)
-	{
-		LOG_ERROR<<"EventLoop::wakeup() wrties error";
-	}
+#ifdef _WIN32
+	ssize_t n = Socket::write(wakeupFd[1], &one, sizeof(one));
+#endif
+	assert(n == sizeof one);
 }
 
 void EventLoop::runInLoop(Functor &&cb)

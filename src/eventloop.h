@@ -10,6 +10,10 @@
 #include "epoll.h"
 #endif
 
+#ifdef _WIN32
+#include "select.h"
+#endif
+
 #include "timerqueue.h"
 #include "callback.h"
 
@@ -50,13 +54,19 @@ private:
     mutable std::mutex mutex;
 #ifdef __APPLE__
     PollPtr epoller;
-    int op;
-    int wakeupFd[2];
+    int32_t op;
+	int32_t wakeupFd[2];
 #endif
 
 #ifdef __linux__
     EpollPtr epoller;
-    int wakeupFd;
+	int32_t wakeupFd;
+#endif
+
+#ifdef _WIN32
+	SelectPtr epoller;
+	int32_t op;
+	int wakeupFd[2];
 #endif
 
     TimerQueuePtr timerQueue;
@@ -71,6 +81,5 @@ private:
     bool callingPendingFunctors;
     std::vector<Functor> functors;
     std::vector<Functor> pendingFunctors;
-    Socket socket;
 };
 

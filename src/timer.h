@@ -32,10 +32,16 @@ public:
 	std::string toFormattedString(bool showMicroseconds = true) const;
 	static TimeStamp now()
 	{
+#ifdef _WIN32
+		auto time_now = std::chrono::system_clock::now();
+		auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(time_now.time_since_epoch());
+		return TimeStamp(microseconds.count());
+#else
 		struct timeval tv;
-		gettimeofday(&tv, nullptr);
+		gettimeofday(&tv,nullptr);
 		int64_t seconds = tv.tv_sec;
 		return TimeStamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
+#endif
 	}
 
 	std::string toString() const;

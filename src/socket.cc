@@ -1,11 +1,6 @@
 #include "socket.h"
 #include "log.h"
 
-Socket::Socket(const char *ip,int16_t port)
-{
-	assert(createTcpSocket(ip,port));
-}
-
 Socket::Socket()
 {
 
@@ -13,64 +8,213 @@ Socket::Socket()
 
 Socket::~Socket()
 {
-	::close(sockfd);
+
+}
+
+ssize_t Socket::readv(int32_t sockfd, IOV_TYPE *iov, int32_t iovcnt)
+{
+#ifdef _WIN32
+	DWORD bytesRead;
+	DWORD flags = 0;
+	if (::WSARecv(sockfd, iov, iovcnt, &bytesRead, &flags, nullptr, nullptr)) 
+	{
+		if (GetLastError() == WSAECONNABORTED)
+			return  0;
+		else
+			return -1;
+	}
+	else
+	{
+		return bytesRead;
+	}
+#else
+	return ::readv(sockfd, iov, iovcnt);
+#endif
+}
+
+ssize_t Socket::read(int32_t sockfd, void *buf, int32_t count)
+{
+	return ::recv(sockfd, static_cast<char*>(buf), count, 0);
+}
+
+ssize_t Socket::write(int32_t sockfd, const void* buf, int32_t count)
+{
+	return ::send(sockfd, static_cast<const char*>(buf), count, 0);
+}
+
+int32_t Socket::pipe(int32_t fildes[2])
+{
+	int32_t tcp1 = -1, tcp2 = 1;
+	sockaddr_in name;
+	memset(&name, 0, sizeof(name));
+	name.sin_family = AF_INET;
+	name.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	int32_t namelen = sizeof(name);
+	int32_t tcp = createSocket();
+
+	if (tcp == -1)
+	{
+		goto clean;
+	}
+
+	if (bind(tcp, (sockaddr*)&name, namelen) == -1)
+	{
+		goto clean;
+	}
+
+	if (listen(tcp, 5) == -1)
+	{
+		goto clean;
+	}
+
+	if (getsockname(tcp, (sockaddr*)&name, &namelen) == -1)
+	{
+		goto clean;
+	}
+
+	tcp1 = createSocket();
+	if (tcp1 == -1)
+	{
+		goto clean;
+	}
+
+	if (-1 == connect(tcp1, (sockaddr*)&name))
+	{
+		goto clean;
+	}
+
+	tcp2 = accept(tcp, (sockaddr*)&name, &namelen);
+	if (tcp2 == -1)
+	{
+		goto clean;
+	}
+
+	close(tcp);
+
+	fildes[0] = tcp1;
+	fildes[1] = tcp2;
+	return 0;
+clean:
+	if (tcp != -1)
+	{
+		close(tcp);
+	}
+
+	if (tcp2 != -1)
+	{
+		close(tcp2);
+	}
+
+	if (tcp1 != -1)
+	{
+		close(tcp1);
+	}
+	return -1;
 }
 
 uint64_t Socket::hostToNetwork64(uint64_t host64) 
 {
-	return htobe64(host64); 
+#ifdef _WIN32
+	uint64_t ret = 0;
+	uint32_t high,low;
+
+	low = host64 & 0xFFFFFFFF;
+	high = (host64 >> 32) & 0xFFFFFFFF;
+	low = htonl(low);
+	high = htonl(high);
+	ret = low;
+	ret <<= 32;
+	ret |= high;
+	return ret;
+#else
+	return htobe64(host64);
+#endif
 }
 
 uint32_t Socket::hostToNetwork32(uint32_t host32) 
 { 
-	return htobe32(host32); 
+#ifdef _WIN32
+	return htonl(host32);
+#else
+	return htobe32(host32);
+#endif
 }
 
 uint16_t Socket::hostToNetwork16(uint16_t host16)
 { 
-	return htobe16(host16); 
+#ifdef _WIN32
+	return htons(host16);
+#else
+	return htobe16(host16);
+#endif
 }
 
 uint64_t Socket::networkToHost64(uint64_t net64) 
 { 
-	return be64toh(net64); 
+#ifdef _WIN32
+	uint64_t ret = 0;
+	uint32_t high,low;
+
+	low = net64 & 0xFFFFFFFF;
+	high = (net64 >> 32) & 0xFFFFFFFF;
+	low = ntohl(low);
+	high = ntohl(high);
+
+	ret = low;
+	ret <<= 32;
+	ret |= high;
+	return ret;
+#else
+	return be64toh(net64);
+#endif
 }
 
 uint32_t Socket::networkToHost32(uint32_t net32) 
 { 
-	return be32toh(net32); 
+#ifdef _WIN32
+	return ntohl(net32);
+#else
+	return be32toh(net32);
+#endif 
 }
 
 uint16_t Socket::networkToHost16(uint16_t net16) 
 {
-	return be16toh(net16); 
+#ifdef _WIN32
+	return ntohs(net16);
+#else
+	return be16toh(net16);
+#endif
 }
 
-int32_t Socket::getListenFd()
+void Socket::close(int32_t sockfd)
 {
-	return sockfd;
+#ifdef _WIN32
+	::closesocket(sockfd);
+#else
+	::close(sockfd);
+#endif
 }
-
 struct sockaddr_in6 Socket::getLocalAddr(int32_t sockfd)
 {
 	struct sockaddr_in6 localaddr;
-	bzero(&localaddr, sizeof localaddr);
+	memset(&localaddr, sizeof localaddr,0);
 	socklen_t addrlen = static_cast<socklen_t>(sizeof localaddr);
 	if (::getsockname(sockfd,(struct sockaddr*)&localaddr,&addrlen) < 0)
 	{
-		LOG_SYSERR << "Socket::getLocalAddr";
+		LOG_WARN << "Socket::getLocalAddr";
 	}
 	return localaddr;
 }
 
-struct sockaddr_in6 Socket::getPeerAddr(int sockfd)
+struct sockaddr_in6 Socket::getPeerAddr(int32_t sockfd)
 {
 	struct sockaddr_in6 peeraddr;
-	bzero(&peeraddr, sizeof peeraddr);
+	memset(&peeraddr, sizeof peeraddr,0);
 	socklen_t addrlen = static_cast<socklen_t>(sizeof peeraddr);
 	if (::getpeername(sockfd,(struct sockaddr*)&peeraddr,&addrlen) < 0)
 	{
-		LOG_SYSERR << "Socket::getPeerAddr";
+		LOG_WARN << "Socket::getPeerAddr";
 	}
 	return peeraddr;
 }
@@ -99,10 +243,10 @@ bool Socket::isSelfConnect(int32_t sockfd)
 
 int32_t Socket::getSocketError(int32_t sockfd)
 {
-	int optval;
+	int32_t optval;
 	socklen_t optlen = static_cast<socklen_t>(sizeof optval);
 
-	if (::getsockopt(sockfd,SOL_SOCKET,SO_ERROR,&optval,&optlen) < 0)
+	if (::getsockopt(sockfd,SOL_SOCKET,SO_ERROR,(char*)&optval,&optlen) < 0)
 	{
 		return errno;
 	}
@@ -117,9 +261,7 @@ void Socket::toIpPort(char *buf,size_t size,const struct sockaddr *addr)
 	toIp(buf,size, addr);
 	size_t end = ::strlen(buf);
 	const struct sockaddr_in *addr4 = (const struct sockaddr_in*)(addr);
-#ifdef __linux__
 	uint16_t port = networkToHost16(addr4->sin_port);
-#endif
 #ifdef __APPLE__
 	uint16_t port = ntohs(addr4->sin_port);
 #endif
@@ -165,7 +307,7 @@ void Socket::fromIpPort(const char *ip,uint16_t port,struct sockaddr_in *addr)
 #endif
 	if (::inet_pton(AF_INET,ip,&addr->sin_addr) <= 0)
 	{
-		LOG_SYSERR << "Socket::fromIpPort";
+		LOG_WARN << "Socket::fromIpPort";
 	}
 }
 
@@ -180,12 +322,16 @@ void Socket::fromIpPort(const char *ip,uint16_t port,struct sockaddr_in6 *addr)
 #endif
 	if (::inet_pton(AF_INET6,ip,&addr->sin6_addr) <= 0)
 	{
-		LOG_SYSERR << "Socket::fromIpPort";
+		LOG_WARN << "Socket::fromIpPort";
 	}
 }
 
 int32_t Socket::createSocket()
 {
+#ifdef _WIN32
+	return ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#endif
+
 #ifdef __linux__
 	return ::socket(AF_INET,SOCK_STREAM | SOCK_CLOEXEC,0);
 #endif
@@ -197,13 +343,15 @@ int32_t Socket::createSocket()
 
 bool Socket::connectWaitReady(int32_t fd,int32_t msec)
 {
+#ifdef _WIN32
+#else
 	struct pollfd wfd[1];
 	wfd[0].fd = fd;
 	wfd[0].events = POLLOUT;
 
 	if (errno == EINPROGRESS)
 	{
-		 int res;
+		 int32_t res;
 		 if ((res = ::poll(wfd,1,msec)) == -1)
 		 {
 			 return false;
@@ -214,6 +362,7 @@ bool Socket::connectWaitReady(int32_t fd,int32_t msec)
 			 return false;
 		 }
 	}
+#endif
 	return true;
 }
 
@@ -227,28 +376,22 @@ int32_t Socket::connect(int32_t sockfd,const char *ip,int16_t port)
 	return connect(sockfd,(struct sockaddr *)&sin);
 }
 
-int32_t Socket::connect(int32_t sockfd,struct sockaddr *sin)
+int32_t Socket::connect(int32_t sockfd, struct sockaddr *sin)
 {
 	return ::connect(sockfd,sin,sizeof(*sin));
 }
 
-int32_t Socket::setFlag(int32_t fd,int32_t flag)
-{
-	int32_t ret = ::fcntl(fd,F_GETFD);
-	return ::fcntl(fd,F_SETFD,ret | flag);
-}
-
 bool Socket::setTimeOut(int32_t sockfd,const struct timeval tv)
 {
-    if (::setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&tv,sizeof(tv)) == -1)
+    if (::setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,(char*)&tv,sizeof(tv)) == -1)
     {
-        LOG_ERROR<<"setsockopt(SO_RCVTIMEO)";
+        LOG_WARN<<"setsockopt(SO_RCVTIMEO)";
         return false;
     }
 
-    if (::setsockopt(sockfd,SOL_SOCKET,SO_SNDTIMEO,&tv,sizeof(tv)) == -1)
+    if (::setsockopt(sockfd,SOL_SOCKET,SO_SNDTIMEO, (char*)&tv,sizeof(tv)) == -1)
     {
-        LOG_ERROR<<"setsockopt(SO_SNDTIMEO)";
+        LOG_WARN<<"setsockopt(SO_SNDTIMEO)";
         return false;
     }
     return true;
@@ -285,42 +428,40 @@ void Socket::setkeepAlive(int32_t fd,int32_t idle)
 #endif
 }
 
-void Socket::setReuseAddr(bool on)
+void Socket::setReuseAddr(int32_t sockfd,bool on)
 {
-	int optval = on ? 1 : 0;
+	int32_t optval = on ? 1 : 0;
 	::setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,
-			   &optval,static_cast<socklen_t>(sizeof optval));
+			   (char*)&optval,static_cast<socklen_t>(sizeof optval));
 	// FIXME CHECK
 }
 
-void Socket::setReusePort(bool on)
+void Socket::setReusePort(int32_t sockfd,bool on)
 {
 #ifdef SO_REUSEPORT
-	int optval = on ? 1 : 0;
-	int ret = ::setsockopt(sockfd,SOL_SOCKET,SO_REUSEPORT,
+	int32_t optval = on ? 1 : 0;
+	int32_t ret = ::setsockopt(sockfd,SOL_SOCKET,SO_REUSEPORT,
 						 &optval,static_cast<socklen_t>(sizeof optval));
 	if (ret < 0 && on)
 	{
-		LOG_SYSERR << "SO_REUSEPORT failed.";
+		LOG_WARN << "SO_REUSEPORT failed.";
 	}
 #else
 	if (on)
 	{
-		LOG_ERROR << "SO_REUSEPORT is not supported.";
+		LOG_WARN << "SO_REUSEPORT is not supported.";
 	}
 #endif
 }
 
-bool Socket::createTcpSocket(const char *ip,int16_t port)
+int32_t Socket::createTcpSocket(const char *ip,int16_t port)
 {
-#ifdef __linux__
 	struct sockaddr_in sa;
 	sa.sin_family = AF_INET;
-	sa.sin_port  = htons(port);
+	sa.sin_port = htons(port);
 	sa.sin_addr.s_addr = inet_addr(ip);
-#endif
 
-#ifdef __APPLE__
+ /*#ifdef __APPLE__
 	struct sockaddr_un sa;
 	sa.sun_family = AF_UNIX;
 	char *path = "./redis.sock";
@@ -328,40 +469,49 @@ bool Socket::createTcpSocket(const char *ip,int16_t port)
 	mode_t unixsocketperm = 777;
 	::chmod(sa.sun_path,unixsocketperm);
 #endif
+*/
 
-    sockfd = createSocket();
+    int32_t sockfd = createSocket();
     if (sockfd < 0)
     {
-        LOG_SYSERR<<"Create Tcp Socket Failed! "<< strerror(errno);
+        LOG_WARN<<"Create Tcp Socket Failed! "<<strerror(errno);
         return false;
     }
 
     if (!setSocketNonBlock(sockfd))
     {
-		LOG_SYSERR<<"Set listen socket to non-block failed!";
+		LOG_WARN<<"Set listen socket to non-block failed!";
 		return false;
     }
 
     int32_t optval = 1;
-	
-	if (::setsockopt(sockfd,SOL_SOCKET,SO_REUSEPORT,&optval,sizeof(optval)) < 0)
+#ifdef _WIN32
+	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof(optval)) < 0)
+	{
+		LOG_WARN << "Set SO_REUSEPORT socket failed! error " << strerror(errno);
+		Socket::close(sockfd);
+		return false;
+	}
+#else
+	if (::setsockopt(sockfd,SOL_SOCKET,SO_REUSEPORT,(const char*)&optval,sizeof(optval)) < 0)
     {
-		LOG_SYSERR<<"Set SO_REUSEPORT socket failed! error "<<strerror(errno);
-        ::close(sockfd);
+		LOG_WARN<<"Set SO_REUSEPORT socket failed! error "<<strerror(errno);
+		Socket::close(sockfd);
         return false;
     }
+#endif
 	
-    if (::setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval)) < 0)
+    if (::setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,(const char*)&optval,sizeof(optval)) < 0)
     {
-		LOG_SYSERR<<"Set SO_REUSEADDR socket  failed! error "<<strerror(errno);
-		::close(sockfd);
+		LOG_WARN<<"Set SO_REUSEADDR socket  failed! error "<<strerror(errno);
+		Socket::close(sockfd);
         return false;
     }
 
     if (::bind(sockfd,(struct sockaddr*)&sa,sizeof(sa)) < 0 )
     {
-        LOG_SYSERR<<"Bind bind socket failed! error "<<strerror(errno);
-        ::close(sockfd);
+        LOG_WARN<<"Bind bind socket failed! error "<<strerror(errno);
+		Socket::close(sockfd);
         return false;
     }
 
@@ -369,12 +519,12 @@ bool Socket::createTcpSocket(const char *ip,int16_t port)
 //        char buf[1024];
 //        if (!fp) return;
 //        if (fgets(buf,sizeof(buf),fp) != NULL)
-//            int somaxconn = atoi(buf);
+//            int32_t somaxconn = atoi(buf);
 //            if (somaxconn > 0 && somaxconn < server.tcp_backlog)
 
     if (::listen(sockfd,SOMAXCONN))
     {
-        LOG_SYSERR<<"Listen listen socket failed! error "<<strerror(errno);
+        LOG_WARN<<"Listen listen socket failed! error "<<strerror(errno);
         close(sockfd);
         return false;
     }
@@ -386,52 +536,75 @@ bool Socket::createTcpSocket(const char *ip,int16_t port)
     ::setsockopt(sockfd,SOL_SOCKET,SO_RCVBUF,(void*)&len,sizeof(len));
     ::setsockopt(sockfd,SOL_SOCKET,SO_SNDBUF,(void*)&len,sizeof(len));
 #endif
-    return true;
+    return sockfd;
 }
 
-bool Socket::setTcpNoDelay(int32_t socketFd,bool on)
+bool Socket::setTcpNoDelay(int32_t sockfd,bool on)
 {
 #ifdef __linux__
 	int32_t optval = on ? 1 : 0;
-	::setsockopt(socketFd,IPPROTO_TCP,TCP_NODELAY,&optval,static_cast<socklen_t>(sizeof optval));
+	int32_t opt = ::setsockopt(sockfd,IPPROTO_TCP,TCP_NODELAY,&optval,static_cast<socklen_t>(sizeof optval));
+	if (opt < 0)
+	{
+		return false;
+	}
 #endif
+	return true;
 }
 
-bool Socket::setSocketBlock(int32_t socketFd)
+bool Socket::setSocketBlock(int32_t sockfd)
 {
-    int32_t opt = ::fcntl(socketFd,F_GETFL);
+#ifdef _WIN32
+	u_long nonblock = 0;
+	int32_t ret = ::ioctlsocket(sockfd,FIONBIO,&nonblock);
+	if (ret < 0)
+	{
+		return false;
+	}
+	return true;
+#else
+	int32_t opt = ::fcntl(sockfd,F_GETFL);
     if (opt < 0)
     {
-        LOG_SYSERR<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+        LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
 
     opt = opt &~ O_NONBLOCK;
-    if (::fcntl(socketFd,F_SETFL,opt) < 0)
+    if (::fcntl(sockfd,F_SETFL,opt) < 0)
     {
-    	LOG_SYSERR<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+    	LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
     return true;
+#endif
+
 }
 
-bool Socket::setSocketNonBlock(int32_t socketFd)
+bool Socket::setSocketNonBlock(int32_t sockfd)
 {
-    int32_t opt = ::fcntl(socketFd,F_GETFL);
+#ifdef _WIN32
+	u_long nonblock = 1;
+	int32_t ret = ::ioctlsocket(sockfd,FIONBIO,&nonblock);
+	if (ret < 0)
+	{
+		return false;
+	}
+	return true;
+#else
+    int32_t opt = ::fcntl(sockfd,F_GETFL);
     if (opt < 0)
     {
-        LOG_SYSERR<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+        LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
 
     opt = opt | O_NONBLOCK;
-    if (::fcntl(socketFd,F_SETFL,opt) < 0)
+    if (::fcntl(sockfd,F_SETFL,opt) < 0)
     {
-    	LOG_SYSERR<<"fcntl F_GETFL) failed! error"<<strerror(errno);
+    	LOG_WARN<<"fcntl F_GETFL) failed! error"<<strerror(errno);
         return false;
     }
     return true;
+#endif
 }
-
-
-

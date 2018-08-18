@@ -147,9 +147,11 @@ public:
 	bool monitorCommand(const std::deque<RedisObjectPtr> &obj,
 			const SessionPtr &session,const TcpConnectionPtr &conn);
 public:
+#ifndef _WIN32
 	int32_t rdbSaveBackground(bool enabled = false);
 	bool bgsave(const SessionPtr &session,
 			const TcpConnectionPtr &conn,bool enabled = false);
+#endif
 	bool save(const SessionPtr &session,const TcpConnectionPtr &conn);
 	bool removeCommand(const RedisObjectPtr &obj);
 
@@ -294,12 +296,10 @@ public:
 	int32_t dbnum;
 	int32_t slavefd;
 	int32_t masterfd;
-
 private:
 	Replication repli;
 	Cluster clus;
 	Rdb rdb;
-	Socket socket;
 };
 
 

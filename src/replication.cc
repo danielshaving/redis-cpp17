@@ -37,9 +37,8 @@ void Replication::disConnect()
 
 void Replication::syncWrite(const TcpConnectionPtr &conn)
 {
-	FILE *fp;
 	char tmpfile[256];
-	snprintf(tmpfile,256,"temp-%d.rdb",getpid());
+	snprintf(tmpfile,256,"temp-%d.rdb",std::this_thread::get_id());
 	fp = ::fopen(tmpfile,"w");
 	if (!fp)
 	{
@@ -53,32 +52,35 @@ void Replication::syncWithMaster(const TcpConnectionPtr &conn)
 {
 	int32_t sockerr = 0;
    	socklen_t errlen = sizeof(sockerr);
-	/* Check for errors in the socket. */
-	if (getsockopt(conn->getSockfd(),SOL_SOCKET,SO_ERROR,&sockerr,&errlen) == -1)
-	   sockerr = errno;
+	/* Check for errors in the Socket:: */
+	if (::getsockopt(conn->getSockfd(),
+			SOL_SOCKET,SO_ERROR,(char*)&sockerr,&errlen) == REDIS_ERR)
+	{
+		sockerr = errno;
+	}
+
 	if (sockerr) 
 	{
 	   LOG_WARN<<"Error condition on socket for sync"<<strerror(sockerr);
 	   return ;
 	}
-	syncWrite(conn);	
+	syncWrite(conn);
+}
+
+void Replication::close()
+{
+	::fclose(fp);
+	salveLen = 0;
+	repliConn->forceClose();
 }
 
 void Replication::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 {
-	while (buffer->readableBytes() >= 4)
+	while (buffer->readableBytes() >= sizeof(int32_t))
 	{
 		if (salveLen == 0)
 		{
 			salveLen = buffer->peekInt32();
-			if (salveLen >= INT_MAX || salveLen <= 0)
-			{
-				::fclose(fp);
-				conn->forceClose();
-				LOG_WARN << "Length is too large";
-				break;
-			}
-
 			buffer->retrieveInt32();
 			if (buffer->readableBytes() == 0)
 			{
@@ -86,44 +88,31 @@ void Replication::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 			}
 		}
 
-		redis->getRdb()->rdbSyncWrite(buffer->peek(),fp,buffer->readableBytes());
+		int32_t status = redis->getRdb()->rdbSyncWrite(buffer->peek(),
+				fp,buffer->readableBytes());
+		assert(status != REDIS_ERR);
+
 		salveReadLen += buffer->readableBytes();
 		buffer->retrieveAll();
 
-		if (salveReadLen > salveLen)
-		{
-			::fclose(fp);
-			conn->forceClose();
-			salveLen = 0;
-			LOG_WARN << "Slave read data failure";
-		}
+		assert(salveReadLen <= salveLen);
 		if (salveLen == salveReadLen)
 		{
 			redis->getRdb()->rdbSyncClose(REDIS_DEFAULT_RDB_FILENGTHAME,fp);
 			redis->clearCommand();
 
-			if (redis->getRdb()->rdbLoad(REDIS_DEFAULT_RDB_FILENGTHAME) == REDIS_OK)
+			assert(redis->getRdb()->rdbLoad(REDIS_DEFAULT_RDB_FILENGTHAME) != REDIS_ERR);
+			std::shared_ptr<Session> session(new Session(redis,conn));
 			{
-				salveLen = 0;
-				{
-					std::shared_ptr<Session> session(new Session(redis,conn));
-					std::unique_lock <std::mutex> lck(redis->getMutex());
-					auto &sessions = redis->getSession();
-					sessions[conn->getSockfd()] = session;
-					auto &sessionConns = redis->getSessionConn();
-					sessionConns[conn->getSockfd()] = conn;
-				}
+				std::unique_lock <std::mutex> lck(redis->getMutex());
+				auto &sessions = redis->getSession();
+				sessions[conn->getSockfd()] = session;
+				auto &sessionConns = redis->getSessionConn();
+				sessionConns[conn->getSockfd()] = conn;
+			}
 
-				conn->send(shared.ok->ptr,sdslen(shared.ok->ptr));
-				LOG_INFO << "Replication load rdb success";
-			}
-			else
-			{
-				::fclose(fp);
-				conn->forceClose();
-				salveLen = 0;
-				LOG_INFO << "Replication load rdb failure";
-			}
+			conn->send(shared.ok->ptr,sdslen(shared.ok->ptr));
+			LOG_INFO << "Replication load rdb success";
 		}
 	}
 }
@@ -164,7 +153,6 @@ void Replication::slaveCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 						auto &sessionConns = redis->getSessionConn();
 						sessionConns[conn->getSockfd()] = conn;
 					}
-
 					LOG_INFO << "Slaveof sync success";
 				}
 			}
@@ -174,14 +162,15 @@ void Replication::slaveCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 
 void Replication::connCallback(const TcpConnectionPtr &conn)
 {
-	if(conn->connected())
+	if (conn->connected())
 	{
 		repliConn = conn;
 		char buf[64] = "";
 		uint16_t port = 0;
-		auto addr = socket.getPeerAddr(conn->getSockfd());
-		socket.toIp(buf,sizeof(buf),(const  struct sockaddr *)&addr);
-		socket.toPort(&port,(const struct sockaddr *)&addr);
+		salveLen = 0;
+		auto addr = Socket::getPeerAddr(conn->getSockfd());
+		Socket::toIp(buf,sizeof(buf),(const  struct sockaddr *)&addr);
+		Socket::toPort(&port,(const struct sockaddr *)&addr);
 		conn->setip(buf);
 		conn->setport(port);
 		redis->masterHost = conn->getip();
@@ -202,7 +191,6 @@ void Replication::connCallback(const TcpConnectionPtr &conn)
 		redis->masterfd = 0;
 		redis->slaveEnabled = false;
 		redis->repliEnabled = false;
-		redis->clearSessionState(conn->getSockfd());
 		LOG_INFO<<"connect master disconnect";
 	}
 }
@@ -214,10 +202,7 @@ void Replication::reconnectTimer(const std::any &context)
 
 void Replication::replicationSetMaster(const RedisObjectPtr &obj,int16_t port)
 {
-	this->ip = obj->ptr;
-	this->port = port;
-
-	if(redis->repliEnabled)
+	if (redis->repliEnabled)
 	{
 		std::unique_lock<std::mutex> lck(redis->getSlaveMutex());
 		auto &slaveConns = redis->getSlaveConn();
@@ -233,6 +218,9 @@ void Replication::replicationSetMaster(const RedisObjectPtr &obj,int16_t port)
 	client->setMessageCallback(std::bind(&Replication::readCallback,
 			this,std::placeholders::_1,std::placeholders::_2));
 	client->connect();
+
+	this->ip = obj->ptr;
+	this->port = port;
 	this->client = client;
 }
 

@@ -75,7 +75,6 @@ private:
 
 	EventLoop *loop;
 	Redis *redis;
-	Socket socket;
 	std::atomic<bool> state;
 	std::atomic<bool> isConnect;
 	std::vector<TcpClientPtr> clusterConns;
