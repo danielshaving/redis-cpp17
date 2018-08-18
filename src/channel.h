@@ -5,7 +5,7 @@ class Channel
 {
 public:
 	typedef std::function<void()> EventCallback;
-	Channel(EventLoop *loop,int32_t fd);
+	Channel(EventLoop *loop, int32_t fd);
 	~Channel();
 
 	void handleEvent();
@@ -15,16 +15,24 @@ public:
 	void setIndex(int32_t idx) { index = idx; }
 
 	void setReadCallback(const EventCallback &&cb)
-	{ readCallback  = std::move(cb); }
+	{
+		readCallback = std::move(cb);
+	}
 
 	void setWriteCallback(const EventCallback &&cb)
-	{ writeCallback = std::move(cb); }
+	{
+		writeCallback = std::move(cb);
+	}
 
 	void setCloseCallback(const EventCallback &&cb)
-	{ closeCallback = std::move(cb); }
+	{
+		closeCallback = std::move(cb);
+	}
 
 	void setErrorCallback(const EventCallback &&cb)
-	{ errorCallback = std::move(cb); }
+	{
+		errorCallback = std::move(cb);
+	}
 
 	bool readEnabled() { return events & kReadEvent; }
 	bool writeEnabled() { return events & kWriteEvent; }

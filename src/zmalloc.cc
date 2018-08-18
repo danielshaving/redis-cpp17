@@ -28,14 +28,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* This function provide us access to the original libc free(). This is useful
- * for instance to free results obtained by backtrace_symbols(). We need
- * to define this function before including zmalloc.h that may shadow the
- * free implementation if we use jemalloc or another non standard allocator. */
+ /* This function provide us access to the original libc free(). This is useful
+  * for instance to free results obtained by backtrace_symbols(). We need
+  * to define this function before including zmalloc.h that may shadow the
+  * free implementation if we use jemalloc or another non standard allocator. */
 #include "zmalloc.h"
 
 void zlibc_free(void *ptr) {
-    free(ptr);
+	free(ptr);
 }
 
 #ifdef __APPLE__
@@ -122,9 +122,9 @@ void zlibc_free(void *ptr) {
 #define rdb_fsync_range(fd,off,size) fsync(fd)
 #endif
 
-/* Check if we can use setproctitle().
- * BSD systems have support for it, we provide an implementation for
- * Linux and osx. */
+ /* Check if we can use setproctitle().
+  * BSD systems have support for it, we provide an implementation for
+  * Linux and osx. */
 #if (defined __NetBSD__ || defined __FreeBSD__ || defined __OpenBSD__)
 #define USE_SETPROCTITLE
 #endif
@@ -194,11 +194,11 @@ void setproctitle(const char *fmt, ...);
 
 #if !defined(BYTE_ORDER) || \
     (BYTE_ORDER != BIG_ENDIAN && BYTE_ORDER != LITTLE_ENDIAN)
-	/* you must determine what the correct bit order is for
-	 * your compiler - the next line is an intentional error
-	 * which will force your compiles to bomb until you fix
-	 * the above macros.
-	 */
+ /* you must determine what the correct bit order is for
+  * your compiler - the next line is an intentional error
+  * which will force your compiles to bomb until you fix
+  * the above macros.
+  */
 #endif
 
 #if (__i386 || __amd64 || __powerpc__) && __GNUC__
@@ -213,8 +213,8 @@ void setproctitle(const char *fmt, ...);
 #endif
 #endif
 
-/* Make sure we can test for ARM just checking for __arm__, since sometimes
- * __arm is defined but __arm__ is not. */
+  /* Make sure we can test for ARM just checking for __arm__, since sometimes
+   * __arm is defined but __arm__ is not. */
 #if defined(__arm) && !defined(__arm__)
 #define __arm__
 #endif
@@ -222,7 +222,7 @@ void setproctitle(const char *fmt, ...);
 #define __arm64__
 #endif
 
-/* Make sure we can test for SPARC just checking for __sparc__. */
+   /* Make sure we can test for SPARC just checking for __sparc__. */
 #if defined(__sparc) && !defined(__sparc__)
 #define __sparc__
 #endif
@@ -260,7 +260,7 @@ void setproctitle(const char *fmt, ...);
  * the following macro, so that __sync macros are used: those can be detected
  * by Helgrind (even if they are less efficient) so that no false positive
  * is reported. */
-// #define __ATOMIC_VAR_FORCE_SYNC_MACROS
+ // #define __ATOMIC_VAR_FORCE_SYNC_MACROS
 
 #if !defined(__ATOMIC_VAR_FORCE_SYNC_MACROS) && defined(__ATOMIC_RELAXED) && !defined(__sun) && (!defined(__clang__) || !defined(__APPLE__) || __apple_build_version__ > 4210057)
 /* Implementation using __atomic macros. */
@@ -363,31 +363,31 @@ void setproctitle(const char *fmt, ...);
 
 static size_t used_memory = 0;
 #ifdef _WIN32
-	std::mutex mutex;
+std::mutex mutex;
 #else
-	pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 static void zmalloc_default_oom(size_t size) {
-    fprintf(stderr, "zmalloc: Out of memory trying to allocate %zu bytes\n",
-        size);
-    fflush(stderr);
-    abort();
+	fprintf(stderr, "zmalloc: Out of memory trying to allocate %zu bytes\n",
+		size);
+	fflush(stderr);
+	abort();
 }
 
-static void (*zmalloc_oom_handler)(size_t) = zmalloc_default_oom;
+static void(*zmalloc_oom_handler)(size_t) = zmalloc_default_oom;
 
 void *zmalloc(size_t size) {
-    void *ptr = malloc(size+PREFIX_SIZE);
+	void *ptr = malloc(size + PREFIX_SIZE);
 
-    if (!ptr) zmalloc_oom_handler(size);
+	if (!ptr) zmalloc_oom_handler(size);
 #ifdef HAVE_MALLOC_SIZE
-    update_zmalloc_stat_alloc(zmalloc_size(ptr));
-    return ptr;
+	update_zmalloc_stat_alloc(zmalloc_size(ptr));
+	return ptr;
 #else
-    *((size_t*)ptr) = size;
-    update_zmalloc_stat_alloc(size+PREFIX_SIZE);
-    return (char*)ptr+PREFIX_SIZE;
+	*((size_t*)ptr) = size;
+	update_zmalloc_stat_alloc(size + PREFIX_SIZE);
+	return (char*)ptr + PREFIX_SIZE;
 #endif
 }
 
@@ -396,59 +396,59 @@ void *zmalloc(size_t size) {
  * Currently implemented only for jemalloc. Used for online defragmentation. */
 #ifdef HAVE_DEFRAG
 void *zmalloc_no_tcache(size_t size) {
-    void *ptr = mallocx(size+PREFIX_SIZE, MALLOCX_TCACHE_NONE);
-    if (!ptr) zmalloc_oom_handler(size);
-    update_zmalloc_stat_alloc(zmalloc_size(ptr));
-    return ptr;
+	void *ptr = mallocx(size + PREFIX_SIZE, MALLOCX_TCACHE_NONE);
+	if (!ptr) zmalloc_oom_handler(size);
+	update_zmalloc_stat_alloc(zmalloc_size(ptr));
+	return ptr;
 }
 
 void zfree_no_tcache(void *ptr) {
-    if (ptr == NULL) return;
-    update_zmalloc_stat_free(zmalloc_size(ptr));
-    dallocx(ptr, MALLOCX_TCACHE_NONE);
+	if (ptr == NULL) return;
+	update_zmalloc_stat_free(zmalloc_size(ptr));
+	dallocx(ptr, MALLOCX_TCACHE_NONE);
 }
 #endif
 
 void *zcalloc(size_t size) {
-    void *ptr = calloc(1, size+PREFIX_SIZE);
+	void *ptr = calloc(1, size + PREFIX_SIZE);
 
-    if (!ptr) zmalloc_oom_handler(size);
+	if (!ptr) zmalloc_oom_handler(size);
 #ifdef HAVE_MALLOC_SIZE
-    update_zmalloc_stat_alloc(zmalloc_size(ptr));
-    return ptr;
+	update_zmalloc_stat_alloc(zmalloc_size(ptr));
+	return ptr;
 #else
-    *((size_t*)ptr) = size;
-    update_zmalloc_stat_alloc(size+PREFIX_SIZE);
-    return (char*)ptr+PREFIX_SIZE;
+	*((size_t*)ptr) = size;
+	update_zmalloc_stat_alloc(size + PREFIX_SIZE);
+	return (char*)ptr + PREFIX_SIZE;
 #endif
 }
 
 void *zrealloc(void *ptr, size_t size) {
 #ifndef HAVE_MALLOC_SIZE
-    void *realptr;
+	void *realptr;
 #endif
-    size_t oldsize;
-    void *newptr;
+	size_t oldsize;
+	void *newptr;
 
-    if (ptr == NULL) return zmalloc(size);
+	if (ptr == NULL) return zmalloc(size);
 #ifdef HAVE_MALLOC_SIZE
-    oldsize = zmalloc_size(ptr);
-    newptr = realloc(ptr,size);
-    if (!newptr) zmalloc_oom_handler(size);
+	oldsize = zmalloc_size(ptr);
+	newptr = realloc(ptr, size);
+	if (!newptr) zmalloc_oom_handler(size);
 
-    update_zmalloc_stat_free(oldsize);
-    update_zmalloc_stat_alloc(zmalloc_size(newptr));
-    return newptr;
+	update_zmalloc_stat_free(oldsize);
+	update_zmalloc_stat_alloc(zmalloc_size(newptr));
+	return newptr;
 #else
-    realptr = (char*)ptr-PREFIX_SIZE;
-    oldsize = *((size_t*)realptr);
-    newptr = realloc(realptr,size+PREFIX_SIZE);
-    if (!newptr) zmalloc_oom_handler(size);
+	realptr = (char*)ptr - PREFIX_SIZE;
+	oldsize = *((size_t*)realptr);
+	newptr = realloc(realptr, size + PREFIX_SIZE);
+	if (!newptr) zmalloc_oom_handler(size);
 
-    *((size_t*)newptr) = size;
-    update_zmalloc_stat_free(oldsize);
-    update_zmalloc_stat_alloc(size+PREFIX_SIZE);
-    return (char*)newptr+PREFIX_SIZE;
+	*((size_t*)newptr) = size;
+	update_zmalloc_stat_free(oldsize);
+	update_zmalloc_stat_alloc(size + PREFIX_SIZE);
+	return (char*)newptr + PREFIX_SIZE;
 #endif
 }
 
@@ -457,52 +457,52 @@ void *zrealloc(void *ptr, size_t size) {
  * information as the first bytes of every allocation. */
 #ifndef HAVE_MALLOC_SIZE
 size_t zmalloc_size(void *ptr) {
-    void *realptr = (char*)ptr-PREFIX_SIZE;
-    size_t size = *((size_t*)realptr);
-    /* Assume at least that all the allocations are padded at sizeof(long) by
-     * the underlying allocator. */
-    if (size&(sizeof(long)-1)) size += sizeof(long)-(size&(sizeof(long)-1));
-    return size+PREFIX_SIZE;
+	void *realptr = (char*)ptr - PREFIX_SIZE;
+	size_t size = *((size_t*)realptr);
+	/* Assume at least that all the allocations are padded at sizeof(long) by
+	 * the underlying allocator. */
+	if (size&(sizeof(long) - 1)) size += sizeof(long) - (size&(sizeof(long) - 1));
+	return size + PREFIX_SIZE;
 }
 size_t zmalloc_usable(void *ptr) {
-    return zmalloc_size(ptr)-PREFIX_SIZE;
+	return zmalloc_size(ptr) - PREFIX_SIZE;
 }
 #endif
 
 void zfree(void *ptr) {
 #ifndef HAVE_MALLOC_SIZE
-    void *realptr;
-    size_t oldsize;
+	void *realptr;
+	size_t oldsize;
 #endif
 
-    if (ptr == NULL) return;
+	if (ptr == NULL) return;
 #ifdef HAVE_MALLOC_SIZE
-    update_zmalloc_stat_free(zmalloc_size(ptr));
-    free(ptr);
+	update_zmalloc_stat_free(zmalloc_size(ptr));
+	free(ptr);
 #else
-    realptr = (char*)ptr-PREFIX_SIZE;
-    oldsize = *((size_t*)realptr);
-    update_zmalloc_stat_free(oldsize+PREFIX_SIZE);
-    free(realptr);
+	realptr = (char*)ptr - PREFIX_SIZE;
+	oldsize = *((size_t*)realptr);
+	update_zmalloc_stat_free(oldsize + PREFIX_SIZE);
+	free(realptr);
 #endif
 }
 
 char *zstrdup(const char *s) {
-    size_t l = strlen(s)+1;
-    char *p = (char*)zmalloc(l);
+	size_t l = strlen(s) + 1;
+	char *p = (char*)zmalloc(l);
 
-    memcpy(p,s,l);
-    return p;
+	memcpy(p, s, l);
+	return p;
 }
 
 size_t zmalloc_used_memory(void) {
-    size_t um;
-    atomicGet(used_memory,um);
-    return um;
+	size_t um;
+	atomicGet(used_memory, um);
+	return um;
 }
 
-void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
-    zmalloc_oom_handler = oom_handler;
+void zmalloc_set_oom_handler(void(*oom_handler)(size_t)) {
+	zmalloc_oom_handler = oom_handler;
 }
 
 /* Get the RSS information in an OS-specific way.
@@ -522,35 +522,35 @@ void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
 #include <fcntl.h>
 
 size_t zmalloc_get_rss(void) {
-    int page = sysconf(_SC_PAGESIZE);
-    size_t rss;
-    char buf[4096];
-    char filename[256];
-    int fd, count;
-    char *p, *x;
+	int page = sysconf(_SC_PAGESIZE);
+	size_t rss;
+	char buf[4096];
+	char filename[256];
+	int fd, count;
+	char *p, *x;
 
-    snprintf(filename,256,"/proc/%d/stat",getpid());
-    if ((fd = open(filename,O_RDONLY)) == -1) return 0;
-    if (read(fd,buf,4096) <= 0) {
-        close(fd);
-        return 0;
-    }
-    close(fd);
+	snprintf(filename, 256, "/proc/%d/stat", getpid());
+	if ((fd = open(filename, O_RDONLY)) == -1) return 0;
+	if (read(fd, buf, 4096) <= 0) {
+		close(fd);
+		return 0;
+	}
+	close(fd);
 
-    p = buf;
-    count = 23; /* RSS is the 24th field in /proc/<pid>/stat */
-    while(p && count--) {
-        p = strchr(p,' ');
-        if (p) p++;
-    }
-    if (!p) return 0;
-    x = strchr(p,' ');
-    if (!x) return 0;
-    *x = '\0';
+	p = buf;
+	count = 23; /* RSS is the 24th field in /proc/<pid>/stat */
+	while (p && count--) {
+		p = strchr(p, ' ');
+		if (p) p++;
+	}
+	if (!p) return 0;
+	x = strchr(p, ' ');
+	if (!x) return 0;
+	*x = '\0';
 
-    rss = strtoll(p,NULL,10);
-    rss *= page;
-    return rss;
+	rss = strtoll(p, NULL, 10);
+	rss *= page;
+	return rss;
 }
 #elif defined(HAVE_TASKINFO)
 #include <unistd.h>
@@ -562,55 +562,55 @@ size_t zmalloc_get_rss(void) {
 #include <mach/mach_init.h>
 
 size_t zmalloc_get_rss(void) {
-    task_t task = MACH_PORT_NULL;
-    struct task_basic_info t_info;
-    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+	task_t task = MACH_PORT_NULL;
+	struct task_basic_info t_info;
+	mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
 
-    if (task_for_pid(current_task(), getpid(), &task) != KERN_SUCCESS)
-        return 0;
-    task_info(task, TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
+	if (task_for_pid(current_task(), getpid(), &task) != KERN_SUCCESS)
+		return 0;
+	task_info(task, TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
 
-    return t_info.resident_size;
+	return t_info.resident_size;
 }
 #else
 size_t zmalloc_get_rss(void) {
-    /* If we can't get the RSS in an OS-specific way for this system just
-     * return the memory usage we estimated in zmalloc()..
-     *
-     * Fragmentation will appear to be always 1 (no fragmentation)
-     * of course... */
-    return zmalloc_used_memory();
+	/* If we can't get the RSS in an OS-specific way for this system just
+	 * return the memory usage we estimated in zmalloc()..
+	 *
+	 * Fragmentation will appear to be always 1 (no fragmentation)
+	 * of course... */
+	return zmalloc_used_memory();
 }
 #endif
 
 #if defined(USE_JEMALLOC)
 int zmalloc_get_allocator_info(size_t *allocated,
-                               size_t *active,
-                               size_t *resident) {
-    uint64_t epoch = 1;
-    size_t sz;
-    *allocated = *resident = *active = 0;
-    /* Update the statistics cached by mallctl. */
-    sz = sizeof(epoch);
-    je_mallctl("epoch", &epoch, &sz, &epoch, sz);
-    sz = sizeof(size_t);
-    /* Unlike RSS, this does not include RSS from shared libraries and other non
-     * heap mappings. */
-    je_mallctl("stats.resident", resident, &sz, NULL, 0);
-    /* Unlike resident, this doesn't not include the pages jemalloc reserves
-     * for re-use (purge will clean that). */
-    je_mallctl("stats.active", active, &sz, NULL, 0);
-    /* Unlike zmalloc_used_memory, this matches the stats.resident by taking
-     * into account all allocations done by this process (not only zmalloc). */
-    je_mallctl("stats.allocated", allocated, &sz, NULL, 0);
-    return 1;
+	size_t *active,
+	size_t *resident) {
+	uint64_t epoch = 1;
+	size_t sz;
+	*allocated = *resident = *active = 0;
+	/* Update the statistics cached by mallctl. */
+	sz = sizeof(epoch);
+	je_mallctl("epoch", &epoch, &sz, &epoch, sz);
+	sz = sizeof(size_t);
+	/* Unlike RSS, this does not include RSS from shared libraries and other non
+	 * heap mappings. */
+	je_mallctl("stats.resident", resident, &sz, NULL, 0);
+	/* Unlike resident, this doesn't not include the pages jemalloc reserves
+	 * for re-use (purge will clean that). */
+	je_mallctl("stats.active", active, &sz, NULL, 0);
+	/* Unlike zmalloc_used_memory, this matches the stats.resident by taking
+	 * into account all allocations done by this process (not only zmalloc). */
+	je_mallctl("stats.allocated", allocated, &sz, NULL, 0);
+	return 1;
 }
 #else
 int zmalloc_get_allocator_info(size_t *allocated,
-                               size_t *active,
-                               size_t *resident) {
-    *allocated = *resident = *active = 0;
-    return 1;
+	size_t *active,
+	size_t *resident) {
+	*allocated = *resident = *active = 0;
+	return 1;
 }
 #endif
 
@@ -626,42 +626,43 @@ int zmalloc_get_allocator_info(size_t *allocated,
  */
 #if defined(HAVE_PROC_SMAPS)
 size_t zmalloc_get_smap_bytes_by_field(const char *field, long pid) {
-    char line[1024];
-    size_t bytes = 0;
-    int flen = strlen(field);
-    FILE *fp;
+	char line[1024];
+	size_t bytes = 0;
+	int flen = strlen(field);
+	FILE *fp;
 
-    if (pid == -1) {
-        fp = fopen("/proc/self/smaps","r");
-    } else {
-        char filename[128];
-        snprintf(filename,sizeof(filename),"/proc/%ld/smaps",pid);
-        fp = fopen(filename,"r");
-    }
+	if (pid == -1) {
+		fp = fopen("/proc/self/smaps", "r");
+	}
+	else {
+		char filename[128];
+		snprintf(filename, sizeof(filename), "/proc/%ld/smaps", pid);
+		fp = fopen(filename, "r");
+	}
 
-    if (!fp) return 0;
-    while(fgets(line,sizeof(line),fp) != NULL) {
-        if (strncmp(line,field,flen) == 0) {
-            char *p = strchr(line,'k');
-            if (p) {
-                *p = '\0';
-                bytes += strtol(line+flen,NULL,10) * 1024;
-            }
-        }
-    }
-    fclose(fp);
-    return bytes;
+	if (!fp) return 0;
+	while (fgets(line, sizeof(line), fp) != NULL) {
+		if (strncmp(line, field, flen) == 0) {
+			char *p = strchr(line, 'k');
+			if (p) {
+				*p = '\0';
+				bytes += strtol(line + flen, NULL, 10) * 1024;
+			}
+		}
+	}
+	fclose(fp);
+	return bytes;
 }
 #else
 size_t zmalloc_get_smap_bytes_by_field(const char *field, long pid) {
-    ((void) field);
-    ((void) pid);
-    return 0;
+	((void)field);
+	((void)pid);
+	return 0;
 }
 #endif
 
 size_t zmalloc_get_private_dirty(long pid) {
-    return zmalloc_get_smap_bytes_by_field("Private_Dirty:",pid);
+	return zmalloc_get_smap_bytes_by_field("Private_Dirty:", pid);
 }
 
 /* Returns the size of physical memory (RAM) in bytes.
@@ -681,42 +682,42 @@ size_t zmalloc_get_memory_size(void) {
 #if defined(__unix__) || defined(__unix) || defined(unix) || \
     (defined(__APPLE__) && defined(__MACH__))
 #if defined(CTL_HW) && (defined(HW_MEMSIZE) || defined(HW_PHYSMEM64))
-    int mib[2];
-    mib[0] = CTL_HW;
+	int mib[2];
+	mib[0] = CTL_HW;
 #if defined(HW_MEMSIZE)
-    mib[1] = HW_MEMSIZE;            /* OSX. --------------------- */
+	mib[1] = HW_MEMSIZE;            /* OSX. --------------------- */
 #elif defined(HW_PHYSMEM64)
-    mib[1] = HW_PHYSMEM64;          /* NetBSD, OpenBSD. --------- */
+	mib[1] = HW_PHYSMEM64;          /* NetBSD, OpenBSD. --------- */
 #endif
-    int64_t size = 0;               /* 64-bit */
-    size_t len = sizeof(size);
-    if (sysctl( mib, 2, &size, &len, NULL, 0) == 0)
-        return (size_t)size;
-    return 0L;          /* Failed? */
+	int64_t size = 0;               /* 64-bit */
+	size_t len = sizeof(size);
+	if (sysctl(mib, 2, &size, &len, NULL, 0) == 0)
+		return (size_t)size;
+	return 0L;          /* Failed? */
 
 #elif defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
-    /* FreeBSD, Linux, OpenBSD, and Solaris. -------------------- */
-    return (size_t)sysconf(_SC_PHYS_PAGES) * (size_t)sysconf(_SC_PAGESIZE);
+	/* FreeBSD, Linux, OpenBSD, and Solaris. -------------------- */
+	return (size_t)sysconf(_SC_PHYS_PAGES) * (size_t)sysconf(_SC_PAGESIZE);
 
 #elif defined(CTL_HW) && (defined(HW_PHYSMEM) || defined(HW_REALMEM))
-    /* DragonFly BSD, FreeBSD, NetBSD, OpenBSD, and OSX. -------- */
-    int mib[2];
-    mib[0] = CTL_HW;
+	/* DragonFly BSD, FreeBSD, NetBSD, OpenBSD, and OSX. -------- */
+	int mib[2];
+	mib[0] = CTL_HW;
 #if defined(HW_REALMEM)
-    mib[1] = HW_REALMEM;        /* FreeBSD. ----------------- */
+	mib[1] = HW_REALMEM;        /* FreeBSD. ----------------- */
 #elif defined(HW_PHYSMEM)
-    mib[1] = HW_PHYSMEM;        /* Others. ------------------ */
+	mib[1] = HW_PHYSMEM;        /* Others. ------------------ */
 #endif
-    unsigned int size = 0;      /* 32-bit */
-    size_t len = sizeof(size);
-    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0)
-        return (size_t)size;
-    return 0L;          /* Failed? */
+	unsigned int size = 0;      /* 32-bit */
+	size_t len = sizeof(size);
+	if (sysctl(mib, 2, &size, &len, NULL, 0) == 0)
+		return (size_t)size;
+	return 0L;          /* Failed? */
 #else
-    return 0L;          /* Unknown method to get the data. */
+	return 0L;          /* Unknown method to get the data. */
 #endif
 #else
-    return 0L;          /* Unknown OS. */
+	return 0L;          /* Unknown OS. */
 #endif
 }
 

@@ -25,8 +25,8 @@ private:
 
 	EventLoop *baseLoop;
 	bool started;
-	int32_t	numThreads;
-	int32_t	next;
+	int32_t numThreads;
+	int32_t next;
 
 	std::vector<ThreadPtr> threads;
 	std::vector<EventLoop*> loops;

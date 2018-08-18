@@ -112,7 +112,7 @@ typedef SSIZE_T ssize_t;
  * up as soon as possible. */
 #define REDIS_FREEING 0x8
 
-/* Flag that is set when an async callback is executed. */
+ /* Flag that is set when an async callback is executed. */
 #define REDIS_IN_CALLBACK 0x10
 
 /* Flag that is set when the async context has one or more subscriptions. */
@@ -233,35 +233,35 @@ typedef SSIZE_T ssize_t;
  * backward compatible this number gets incremented. */
 #define REDIS_RDB_VERSION 9
 
-/* Defines related to the dump file format. To store 32 bits lengthgths for short
- * keys requires a lot of space, so we check the most significant 2 bits of
- * the first byte to interpreter the lengthgth:
- *
- * 00|000000 => if the two MSB are 00 the length is the 6 bits of this byte
- * 01|000000 00000000 =>  01, the length is 14 byes, 6 bits + 8 bits of next byte
- * 10|000000 [32 bit integer] => if it's 01, a full 32 bit length will follow
- * 11|000000 this means: specially encoded object will follow. The six bits
- *           number specify the kind of object that follows.
- *           See the REDIS_RDB_ENC_* defines.
- *
- * lengthgths up to 63 are stored using a single byte, most DB keys, and may
- * values, will fit inside. */
+ /* Defines related to the dump file format. To store 32 bits lengthgths for short
+  * keys requires a lot of space, so we check the most significant 2 bits of
+  * the first byte to interpreter the lengthgth:
+  *
+  * 00|000000 => if the two MSB are 00 the length is the 6 bits of this byte
+  * 01|000000 00000000 =>  01, the length is 14 byes, 6 bits + 8 bits of next byte
+  * 10|000000 [32 bit integer] => if it's 01, a full 32 bit length will follow
+  * 11|000000 this means: specially encoded object will follow. The six bits
+  *           number specify the kind of object that follows.
+  *           See the REDIS_RDB_ENC_* defines.
+  *
+  * lengthgths up to 63 are stored using a single byte, most DB keys, and may
+  * values, will fit inside. */
 #define REDIS_RDB_6BITLEN 0
 #define REDIS_RDB_14BITLEN 1
 #define REDIS_RDB_32BITLEN 2
 #define REDIS_RDB_ENCVAL 3
 #define REDIS_RDB_LENERR UINT_MAX
 
-/* When a lengthgth of a string object stored on disk has the first two bits
- * set, the remaining two bits specify a special encoding for the object
- * accordingly to the following defines: */
+  /* When a lengthgth of a string object stored on disk has the first two bits
+   * set, the remaining two bits specify a special encoding for the object
+   * accordingly to the following defines: */
 #define REDIS_RDB_ENC_INT8 0        /* 8 bit signed integer */
 #define REDIS_RDB_ENC_INT16 1       /* 16 bit signed integer */
 #define REDIS_RDB_ENC_INT32 2       /* 32 bit signed integer */
 #define REDIS_RDB_ENC_LZF 3         /* string compressed with FASTLZ */
 
-/* Dup object types to RDB object types. Only reason is readability (are we
- * dealing with RDB types or with in-memory object types?). */
+   /* Dup object types to RDB object types. Only reason is readability (are we
+	* dealing with RDB types or with in-memory object types?). */
 #define REDIS_RDB_TYPE_STRING 0
 #define REDIS_RDB_TYPE_LIST   1
 #define REDIS_RDB_TYPE_SET    2
@@ -269,7 +269,7 @@ typedef SSIZE_T ssize_t;
 #define REDIS_RDB_TYPE_HASH   4
 #define REDIS_RDB_TYPE_EXPIRE  5
 
-/* Object types for encoded objects. */
+	/* Object types for encoded objects. */
 #define REDIS_RDB_TYPE_HASH_ZIPMAP    9
 #define REDIS_RDB_TYPE_LIST_ZIPLIST  10
 #define REDIS_RDB_TYPE_SET_INTSET    11
@@ -327,20 +327,20 @@ typedef SSIZE_T ssize_t;
  * least significant bit of the flags field in redisContext. */
 #define REDIS_BLOCK 1
 
-/* Connection may be disconnected before being free'd. The second bit
- * in the flags field is set when the context is connected. */
+ /* Connection may be disconnected before being free'd. The second bit
+  * in the flags field is set when the context is connected. */
 #define REDIS_CONNECTED 2
 
-/* The async API might try to disconnect cleanly and flush the output
- * buffer and read all subsequent replies before disconnecting.
- * This flag means no new commands can come in and the connection
- * should be terminated once all replies have been read. */
+  /* The async API might try to disconnect cleanly and flush the output
+   * buffer and read all subsequent replies before disconnecting.
+   * This flag means no new commands can come in and the connection
+   * should be terminated once all replies have been read. */
 #define REDIS_DISCONNECTING 4
 
-/* When an error occurs, the err flag in a context is set to hold the type of
- * error that occured. REDIS_ERR_IO means there was an I/O error and you
- * should use the "errno" variable to find out what is wrong.
- * For other values, the "errstr" field will hold a description. */
+   /* When an error occurs, the err flag in a context is set to hold the type of
+	* error that occured. REDIS_ERR_IO means there was an I/O error and you
+	* should use the "errno" variable to find out what is wrong.
+	* For other values, the "errstr" field will hold a description. */
 #define REDIS_ERR_IO 1 /* Error in read or write */
 #define REDIS_ERR_EOF 3 /* End of file */
 #define REDIS_ERR_PROTOCOL 4 /* Protocol error */
@@ -360,7 +360,7 @@ typedef SSIZE_T ssize_t;
 
 #define NET_IP_STR_LEN 46
 
- /* Redirection errors returned by getNodeByQuery(). */
+	/* Redirection errors returned by getNodeByQuery(). */
 #define CLUSTER_REDIR_NONE 0          /* Node can serve the request. */
 #define CLUSTER_REDIR_CROSS_SLOT 1    /* -CROSSSLOT request. */
 #define CLUSTER_REDIR_UNSTABLE 2      /* -TRYAGAIN redirection required */

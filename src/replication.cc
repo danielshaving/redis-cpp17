@@ -3,12 +3,12 @@
 #include "log.h"
 
 Replication::Replication(Redis *redis)
-:redis(redis),
- port(0),
- salveLen(0),
- salveReadLen(0),
- slaveSyncEnabled(false),
- client(nullptr)
+	:redis(redis),
+	port(0),
+	salveLen(0),
+	salveReadLen(0),
+	slaveSyncEnabled(false),
+	client(nullptr)
 {
 
 }
@@ -38,31 +38,31 @@ void Replication::disConnect()
 void Replication::syncWrite(const TcpConnectionPtr &conn)
 {
 	char tmpfile[256];
-	snprintf(tmpfile,256,"temp-%d.rdb",std::this_thread::get_id());
-	fp = ::fopen(tmpfile,"w");
+	snprintf(tmpfile, 256, "temp-%d.rdb", std::this_thread::get_id());
+	fp = ::fopen(tmpfile, "w");
 	if (!fp)
 	{
-		LOG_TRACE<<"Failed opening .rdb for saving:"<<strerror(errno);
-		return ;
+		LOG_TRACE << "Failed opening .rdb for saving:" << strerror(errno);
+		return;
 	}
-	conn->send("sync\r\n",6);
+	conn->send("sync\r\n", 6);
 }
 
 void Replication::syncWithMaster(const TcpConnectionPtr &conn)
 {
 	int32_t sockerr = 0;
-   	socklen_t errlen = sizeof(sockerr);
+	socklen_t errlen = sizeof(sockerr);
 	/* Check for errors in the Socket:: */
 	if (::getsockopt(conn->getSockfd(),
-			SOL_SOCKET,SO_ERROR,(char*)&sockerr,&errlen) == REDIS_ERR)
+		SOL_SOCKET, SO_ERROR, (char*)&sockerr, &errlen) == REDIS_ERR)
 	{
 		sockerr = errno;
 	}
 
-	if (sockerr) 
+	if (sockerr)
 	{
-	   LOG_WARN<<"Error condition on socket for sync"<<strerror(sockerr);
-	   return ;
+		LOG_WARN << "Error condition on socket for sync" << strerror(sockerr);
+		return;
 	}
 	syncWrite(conn);
 }
@@ -74,7 +74,7 @@ void Replication::close()
 	repliConn->forceClose();
 }
 
-void Replication::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
+void Replication::readCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 {
 	while (buffer->readableBytes() >= sizeof(int32_t))
 	{
@@ -89,7 +89,7 @@ void Replication::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 		}
 
 		int32_t status = redis->getRdb()->rdbSyncWrite(buffer->peek(),
-				fp,buffer->readableBytes());
+			fp, buffer->readableBytes());
 		assert(status != REDIS_ERR);
 
 		salveReadLen += buffer->readableBytes();
@@ -98,11 +98,11 @@ void Replication::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 		assert(salveReadLen <= salveLen);
 		if (salveLen == salveReadLen)
 		{
-			redis->getRdb()->rdbSyncClose(REDIS_DEFAULT_RDB_FILENGTHAME,fp);
+			redis->getRdb()->rdbSyncClose(REDIS_DEFAULT_RDB_FILENGTHAME, fp);
 			redis->clearCommand();
 
 			assert(redis->getRdb()->rdbLoad(REDIS_DEFAULT_RDB_FILENGTHAME) != REDIS_ERR);
-			std::shared_ptr<Session> session(new Session(redis,conn));
+			std::shared_ptr<Session> session(new Session(redis, conn));
 			{
 				std::unique_lock <std::mutex> lck(redis->getMutex());
 				auto &sessions = redis->getSession();
@@ -111,13 +111,13 @@ void Replication::readCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 				sessionConns[conn->getSockfd()] = conn;
 			}
 
-			conn->send(shared.ok->ptr,sdslen(shared.ok->ptr));
+			conn->send(shared.ok->ptr, sdslen(shared.ok->ptr));
 			LOG_INFO << "Replication load rdb success";
 		}
 	}
 }
 
-void Replication::slaveCallback(const TcpConnectionPtr &conn,Buffer *buffer)
+void Replication::slaveCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 {
 	while (buffer->readableBytes() >= sdslen(shared.ok->ptr))
 	{
@@ -126,7 +126,7 @@ void Replication::slaveCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 		auto it = salveConn.find(conn->getSockfd());
 		if (it != salveConn.end())
 		{
-			if (memcmp(buffer->peek(),shared.ok->ptr,sdslen(shared.ok->ptr)) == 0)
+			if (memcmp(buffer->peek(), shared.ok->ptr, sdslen(shared.ok->ptr)) == 0)
 			{
 				buffer->retrieve(sdslen(shared.ok->ptr));
 				if (++redis->salveCount >= salveConn.size())
@@ -146,7 +146,7 @@ void Replication::slaveCallback(const TcpConnectionPtr &conn,Buffer *buffer)
 					repliTimer.erase(conn->getSockfd());
 
 					{
-						std::shared_ptr<Session> session(new Session(redis,conn));
+						std::shared_ptr<Session> session(new Session(redis, conn));
 						auto &sessions = redis->getSession();
 						std::unique_lock<std::mutex> lck(redis->getMutex());
 						sessions[conn->getSockfd()] = session;
@@ -169,8 +169,8 @@ void Replication::connCallback(const TcpConnectionPtr &conn)
 		uint16_t port = 0;
 		salveLen = 0;
 		auto addr = Socket::getPeerAddr(conn->getSockfd());
-		Socket::toIp(buf,sizeof(buf),(const  struct sockaddr *)&addr);
-		Socket::toPort(&port,(const struct sockaddr *)&addr);
+		Socket::toIp(buf, sizeof(buf), (const  struct sockaddr *)&addr);
+		Socket::toPort(&port, (const struct sockaddr *)&addr);
 		conn->setip(buf);
 		conn->setport(port);
 		redis->masterHost = conn->getip();
@@ -179,7 +179,7 @@ void Replication::connCallback(const TcpConnectionPtr &conn)
 		redis->slaveEnabled = true;
 		redis->repliEnabled = true;
 		syncWithMaster(conn);
-		LOG_INFO<<"connect master success";
+		LOG_INFO << "connect master success";
 	}
 	else
 	{
@@ -191,16 +191,16 @@ void Replication::connCallback(const TcpConnectionPtr &conn)
 		redis->masterfd = 0;
 		redis->slaveEnabled = false;
 		redis->repliEnabled = false;
-		LOG_INFO<<"connect master disconnect";
+		LOG_INFO << "connect master disconnect";
 	}
 }
- 
+
 void Replication::reconnectTimer(const std::any &context)
 {
 	client->connect();
 }
 
-void Replication::replicationSetMaster(const RedisObjectPtr &obj,int16_t port)
+void Replication::replicationSetMaster(const RedisObjectPtr &obj, int16_t port)
 {
 	if (redis->repliEnabled)
 	{
@@ -212,11 +212,11 @@ void Replication::replicationSetMaster(const RedisObjectPtr &obj,int16_t port)
 		}
 	}
 
-	TcpClientPtr client(new TcpClient(loop,ip.c_str(),port,this));
+	TcpClientPtr client(new TcpClient(loop, ip.c_str(), port, this));
 	client->setConnectionCallback(std::bind(&Replication::connCallback,
-			this,std::placeholders::_1));
+		this, std::placeholders::_1));
 	client->setMessageCallback(std::bind(&Replication::readCallback,
-			this,std::placeholders::_1,std::placeholders::_2));
+		this, std::placeholders::_1, std::placeholders::_2));
 	client->connect();
 
 	this->ip = obj->ptr;

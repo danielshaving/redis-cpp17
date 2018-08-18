@@ -1,13 +1,13 @@
 #include "connector.h"
 
 const int Connector::kMaxRetryDelayMs;
-Connector::Connector(EventLoop *loop,const char *ip,int16_t port)
- :loop(loop),
-  ip(ip),
-  port(port),
-  state(kDisconnected),
-  connect(false),
-  retryDelayMs(kInitRetryDelayMs)
+Connector::Connector(EventLoop *loop, const char *ip, int16_t port)
+	:loop(loop),
+	ip(ip),
+	port(port),
+	state(kDisconnected),
+	connect(false),
+	retryDelayMs(kInitRetryDelayMs)
 {
 
 }
@@ -20,7 +20,7 @@ Connector::~Connector()
 void Connector::start(bool sync)
 {
 	connect = true;
-	loop->runInLoop(std::bind(&Connector::startInLoop,this,sync));
+	loop->runInLoop(std::bind(&Connector::startInLoop, this, sync));
 }
 
 void Connector::startInLoop(bool sync)
@@ -33,14 +33,14 @@ void Connector::startInLoop(bool sync)
 	}
 	else
 	{
-		LOG_WARN<<"do not connect";
+		LOG_WARN << "do not connect";
 	}
 }
 
 void Connector::stop()
 {
 	connect = false;
-	loop->queueInLoop(std::bind(&Connector::stopInLoop,this));
+	loop->queueInLoop(std::bind(&Connector::stopInLoop, this));
 }
 
 void Connector::stopInLoop()
@@ -63,11 +63,11 @@ int32_t Connector::removeAndResetChannel()
 	channel->disableAll();
 	channel->remove();
 	int32_t sockfd = channel->getfd();
-	loop->queueInLoop(std::bind(&Connector::resetChannel,this));
+	loop->queueInLoop(std::bind(&Connector::resetChannel, this));
 	return sockfd;
 }
 
-void Connector::connecting(bool sync,int32_t sockfd)
+void Connector::connecting(bool sync, int32_t sockfd)
 {
 	if (sync)
 	{
@@ -84,9 +84,9 @@ void Connector::connecting(bool sync,int32_t sockfd)
 	else
 	{
 		assert(!channel);
-		channel.reset(new Channel(loop,sockfd));
-		channel->setWriteCallback(std::bind(&Connector::handleWrite,this));
-		channel->setErrorCallback(std::bind(&Connector::handleError,this));
+		channel.reset(new Channel(loop, sockfd));
+		channel->setWriteCallback(std::bind(&Connector::handleWrite, this));
+		channel->setErrorCallback(std::bind(&Connector::handleError, this));
 		channel->enableWriting();
 	}
 }
@@ -98,10 +98,10 @@ void Connector::retry(int32_t sockfd)
 	setState(kDisconnected);
 	if (connect)
 	{
-		LOG_INFO << "Connector::retry - Retry connecting to "<<ip<<" "<<port
-				 << " in " << retryDelayMs << " milliseconds. ";
-		loop->runAfter(retryDelayMs/1000.0,false,
-						std::bind(&Connector::startInLoop,shared_from_this(),false));
+		LOG_INFO << "Connector::retry - Retry connecting to " << ip << " " << port
+			<< " in " << retryDelayMs << " milliseconds. ";
+		loop->runAfter(retryDelayMs / 1000.0, false,
+			std::bind(&Connector::startInLoop, shared_from_this(), false));
 #ifdef _WIN32
 		retryDelayMs = (retryDelayMs * 2) < (kMaxRetryDelayMs) ? (retryDelayMs * 2) : (kMaxRetryDelayMs);
 #else
@@ -174,11 +174,11 @@ void Connector::connecting(bool sync)
 	if (sockfd < 0)
 	{
 		Socket::close(sockfd);
-		LOG_WARN<<"create socket error "<<errno<<" "<<ip<<" "<<port;
-		return ;
+		LOG_WARN << "create socket error " << errno << " " << ip << " " << port;
+		return;
 	}
 
-	int32_t savedErrno = Socket::connect(sockfd,ip,port);
+	int32_t savedErrno = Socket::connect(sockfd, ip, port);
 	if (savedErrno < 0)
 	{
 #ifdef _WIN32
@@ -190,39 +190,39 @@ void Connector::connecting(bool sync)
 
 	switch (savedErrno)
 	{
-		case 0:
-		case EINPROGRESS:
-		case EINTR:
-		case EISCONN:
-			Socket::setSocketNonBlock(sockfd);
-			setState(kConnecting);
-			connecting(sync,sockfd);
-			//socket.setkeepAlive(sockfd,1);
-			break;
+	case 0:
+	case EINPROGRESS:
+	case EINTR:
+	case EISCONN:
+		Socket::setSocketNonBlock(sockfd);
+		setState(kConnecting);
+		connecting(sync, sockfd);
+		//socket.setkeepAlive(sockfd,1);
+		break;
 
-		case EAGAIN:
-		case EADDRINUSE:
-		case EADDRNOTAVAIL:
-		case ECONNREFUSED:
-		case ENETUNREACH:
-			retry(sockfd);
-			break;
+	case EAGAIN:
+	case EADDRINUSE:
+	case EADDRNOTAVAIL:
+	case ECONNREFUSED:
+	case ENETUNREACH:
+		retry(sockfd);
+		break;
 
-		case EACCES:
-		case EPERM:
-		case EAFNOSUPPORT:
-		case EALREADY:
-		case EBADF:
-		case EFAULT:
-		case ENOTSOCK:
-			LOG_WARN<<"connect error " << savedErrno << " " << ip << " " << port;
-			Socket::close(sockfd);
-			break;
+	case EACCES:
+	case EPERM:
+	case EAFNOSUPPORT:
+	case EALREADY:
+	case EBADF:
+	case EFAULT:
+	case ENOTSOCK:
+		LOG_WARN << "connect error " << savedErrno << " " << ip << " " << port;
+		Socket::close(sockfd);
+		break;
 
-		default:
-			LOG_WARN <<"Unexpected error " << savedErrno << " " << ip << " " << port;
-			Socket::close(sockfd);
-			break;
+	default:
+		LOG_WARN << "Unexpected error " << savedErrno << " " << ip << " " << port;
+		Socket::close(sockfd);
+		break;
 	}
 }
 

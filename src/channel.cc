@@ -5,15 +5,15 @@ const int32_t Channel::kNoneEvent = 0;
 const int32_t Channel::kReadEvent = POLLIN | POLLPRI;
 const int32_t Channel::kWriteEvent = POLLOUT;
 
-Channel::Channel(EventLoop *loop,int32_t fd)
-:loop(loop),
- fd(fd),
- events(0),
- revents(0),
- index(-1),
- tied(false),
- eventHandling(false),
- addedToLoop(false)
+Channel::Channel(EventLoop *loop, int32_t fd)
+	:loop(loop),
+	fd(fd),
+	events(0),
+	revents(0),
+	index(-1),
+	tied(false),
+	eventHandling(false),
+	addedToLoop(false)
 {
 
 }
@@ -25,7 +25,7 @@ Channel::~Channel()
 
 	if (loop->isInLoopThread())
 	{
-		assert(!loop->hasChannel(this)); 
+		assert(!loop->hasChannel(this));
 	}
 }
 
@@ -45,7 +45,7 @@ void Channel::update()
 void Channel::handleEventWithGuard()
 {
 	eventHandling = true;
-	
+
 	if ((revents & POLLHUP) && !(revents & POLLIN))
 	{
 		if (logHup)
@@ -58,7 +58,7 @@ void Channel::handleEventWithGuard()
 			closeCallback();
 		}
 	}
-	
+
 	if (revents & POLLNVAL)
 	{
 
@@ -71,9 +71,9 @@ void Channel::handleEventWithGuard()
 			errorCallback();
 		}
 	}
-	
+
 #ifndef POLLRDHUP
-  const int POLLRDHUP = 0;
+	const int POLLRDHUP = 0;
 #endif
 
 	if (revents & (POLLIN | POLLPRI | POLLRDHUP))

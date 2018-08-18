@@ -17,7 +17,7 @@
 class Redis
 {
 public:
-	Redis(const char *ip,int16_t port,int16_t threadCount,bool enbaledCluster = false);
+	Redis(const char *ip, int16_t port, int16_t threadCount, bool enbaledCluster = false);
 	~Redis();
 
 	void initConfig();
@@ -26,7 +26,7 @@ public:
 	void bgsaveCron();
 	void slaveRepliTimeOut(int32_t context);
 	void setExpireTimeOut(const RedisObjectPtr &expire);
-   	void forkWait();
+	void forkWait();
 
 	void run() { loop.run(); }
 	void connCallBack(const TcpConnectionPtr &conn);
@@ -35,124 +35,124 @@ public:
 	void flush();
 
 	bool saveCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool pingCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool debugCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool flushdbCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool dbsizeCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool quitCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool delCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool setCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool getCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool hkeysCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool hlenCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool hsetCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool hgetCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool hgetallCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool zaddCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool zrangeCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool zcardCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool zrevrangeCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn,int reverse);
+		const SessionPtr &session, const TcpConnectionPtr &conn, int reverse);
 	bool lpushCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool lpopCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool lrangeCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool rpushCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool rpopCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool llenCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool scardCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool saddCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool subscribeCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool unsubscribeCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool psubscribeCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool punsubscribeCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool publishCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool pubsubCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool existsCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool dumpCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool restoreCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool slaveofCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool syncCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool psyncCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool commandCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool clusterCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool authCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool configCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool infoCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool clientCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool echoCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool keysCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool bgsaveCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool memoryCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool sentinelCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool migrateCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool ttlCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool incrCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool decrCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool incrDecrCommand(const RedisObjectPtr &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn,int64_t incr);
+		const SessionPtr &session, const TcpConnectionPtr &conn, int64_t incr);
 	bool monitorCommand(const std::deque<RedisObjectPtr> &obj,
-			const SessionPtr &session,const TcpConnectionPtr &conn);
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 public:
 #ifndef _WIN32
 	int32_t rdbSaveBackground(bool enabled = false);
 	bool bgsave(const SessionPtr &session,
-			const TcpConnectionPtr &conn,bool enabled = false);
+		const TcpConnectionPtr &conn, bool enabled = false);
 #endif
-	bool save(const SessionPtr &session,const TcpConnectionPtr &conn);
+	bool save(const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool removeCommand(const RedisObjectPtr &obj);
 
 	bool clearClusterMigradeCommand();
@@ -166,9 +166,9 @@ public:
 	void clearCommand(std::deque<RedisObjectPtr> &commands);
 
 	RedisObjectPtr createDumpPayload(const RedisObjectPtr &dump);
-	void feedMonitor(const std::deque<RedisObjectPtr> &obj,int32_t sockfd);
-	void structureRedisProtocol(Buffer &buffer,std::deque<RedisObjectPtr> &robjs);
-	void setExpire(const RedisObjectPtr &key,double when);
+	void feedMonitor(const std::deque<RedisObjectPtr> &obj, int32_t sockfd);
+	void structureRedisProtocol(Buffer &buffer, std::deque<RedisObjectPtr> &robjs);
+	void setExpire(const RedisObjectPtr &key, double when);
 	bool checkCommand(const RedisObjectPtr &cmd);
 
 	EventLoop *getEventLoop() { return &loop; }
@@ -200,44 +200,44 @@ public:
 
 public:
 	typedef std::function<bool(const std::deque<RedisObjectPtr> &,
-			const SessionPtr &,const TcpConnectionPtr &)> CommandFunc;
+		const SessionPtr &, const TcpConnectionPtr &)> CommandFunc;
 	typedef std::unordered_map<RedisObjectPtr,
-			RedisObjectPtr,Hash,Equal> StringMap;
-	typedef std::unordered_map<RedisObjectPtr,std::unordered_map<RedisObjectPtr,
-			RedisObjectPtr,Hash,Equal>,Hash,Equal> HashMap;
+		RedisObjectPtr, Hash, Equal> StringMap;
+	typedef std::unordered_map<RedisObjectPtr, std::unordered_map<RedisObjectPtr,
+		RedisObjectPtr, Hash, Equal>, Hash, Equal> HashMap;
 	typedef std::unordered_map<RedisObjectPtr,
-			std::deque<RedisObjectPtr>,Hash,Equal> ListMap;
-	typedef std::unordered_map<RedisObjectPtr,double,Hash,Equal> SortIndexMap;
-	typedef std::multimap<double,RedisObjectPtr> SortMap;
+		std::deque<RedisObjectPtr>, Hash, Equal> ListMap;
+	typedef std::unordered_map<RedisObjectPtr, double, Hash, Equal> SortIndexMap;
+	typedef std::multimap<double, RedisObjectPtr> SortMap;
 	typedef std::unordered_map<RedisObjectPtr,
-			std::pair<SortIndexMap,SortMap>,Hash,Equal> ZsetMap;
+		std::pair<SortIndexMap, SortMap>, Hash, Equal> ZsetMap;
 	typedef std::unordered_map<RedisObjectPtr,
-			std::unordered_set<RedisObjectPtr,Hash,Equal>,Hash,Equal> SetMap;
-	typedef std::unordered_set<RedisObjectPtr,Hash,Equal> RedisMap;
+		std::unordered_set<RedisObjectPtr, Hash, Equal>, Hash, Equal> SetMap;
+	typedef std::unordered_set<RedisObjectPtr, Hash, Equal> RedisMap;
 
-	std::unordered_set<RedisObjectPtr,Hash,Equal> checkCommands;
-	std::unordered_set<RedisObjectPtr,Hash,Equal> stopReplis;
-	std::unordered_set<RedisObjectPtr,Hash,Equal> replyCommands;
-	std::unordered_set<RedisObjectPtr,Hash,Equal> cluterCommands;
-	std::unordered_map<RedisObjectPtr,CommandFunc,Hash,Equal> handlerCommands;
+	std::unordered_set<RedisObjectPtr, Hash, Equal> checkCommands;
+	std::unordered_set<RedisObjectPtr, Hash, Equal> stopReplis;
+	std::unordered_set<RedisObjectPtr, Hash, Equal> replyCommands;
+	std::unordered_set<RedisObjectPtr, Hash, Equal> cluterCommands;
+	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> handlerCommands;
 
 	const static int32_t kShards = 1024;
-	
+
 private:
 	Redis(const Redis&);
 	void operator=(const Redis&);
 
-	std::unordered_map<int32_t,SessionPtr> sessions;
-	std::unordered_map<int32_t,TcpConnectionPtr> sessionConns;
-	std::unordered_map<int32_t,TcpConnectionPtr> slaveConns;
-	std::unordered_map<int32_t,TcpConnectionPtr> clusterConns;
-	std::unordered_map<int32_t,TimerPtr> repliTimers;
-	std::unordered_map<RedisObjectPtr,TimerPtr,Hash,Equal> expireTimers;
+	std::unordered_map<int32_t, SessionPtr> sessions;
+	std::unordered_map<int32_t, TcpConnectionPtr> sessionConns;
+	std::unordered_map<int32_t, TcpConnectionPtr> slaveConns;
+	std::unordered_map<int32_t, TcpConnectionPtr> clusterConns;
+	std::unordered_map<int32_t, TimerPtr> repliTimers;
+	std::unordered_map<RedisObjectPtr, TimerPtr, Hash, Equal> expireTimers;
 	std::unordered_map<RedisObjectPtr,
-		std::unordered_map<int32_t,TcpConnectionPtr>,Hash,Equal> pubSubs;
-	std::unordered_map<int32_t,TcpConnectionPtr> monitorConns;
+		std::unordered_map<int32_t, TcpConnectionPtr>, Hash, Equal> pubSubs;
+	std::unordered_map<int32_t, TcpConnectionPtr> monitorConns;
 	struct RedisMapLock
-	{		
+	{
 		RedisMap redisMap;
 		StringMap stringMap;
 		HashMap hashMap;
@@ -247,7 +247,7 @@ private:
 		std::mutex mtx;
 	};
 
-	std::array<RedisMapLock,kShards> redisShards;
+	std::array<RedisMapLock, kShards> redisShards;
 
 	EventLoop loop;
 	TcpServer server;

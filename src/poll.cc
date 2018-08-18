@@ -8,7 +8,7 @@ const int32_t kAdded = 1;
 const int32_t kDeleted = 2;
 
 Poll::Poll(EventLoop *loop)
-:loop(loop)
+	:loop(loop)
 {
 
 }
@@ -18,17 +18,17 @@ Poll::~Poll()
 
 }
 
-void Poll::epollWait(ChannelList *activeChannels,int32_t msTime)
+void Poll::epollWait(ChannelList *activeChannels, int32_t msTime)
 {
 	auto timerQueue = loop->getTimerQueue();
 	msTime = timerQueue->getTimeout();
 
-	int32_t numEvents = ::poll(&*events.begin(),events.size(),msTime);
+	int32_t numEvents = ::poll(&*events.begin(), events.size(), msTime);
 	int32_t savedErrno = errno;
 
 	if (numEvents > 0)
 	{
-		fillActiveChannels(numEvents,activeChannels);
+		fillActiveChannels(numEvents, activeChannels);
 	}
 	else if (numEvents == 0)
 	{
@@ -62,7 +62,7 @@ void Poll::updateChannel(Channel *channel)
 		pfd.events = static_cast<short>(channel->getEvents());
 		pfd.revents = 0;
 		events.push_back(pfd);
-		int32_t idx = static_cast<int32_t>(events.size())-1;
+		int32_t idx = static_cast<int32_t>(events.size()) - 1;
 		channel->setIndex(idx);
 		channels[pfd.fd] = channel;
 	}
@@ -74,14 +74,14 @@ void Poll::updateChannel(Channel *channel)
 		int32_t idx = channel->getIndex();
 		assert(0 <= idx && idx < static_cast<int32_t>(events.size()));
 		struct pollfd &pfd = events[idx];
-		assert(pfd.fd == channel->getfd() || pfd.fd == -channel->getfd()-1);
+		assert(pfd.fd == channel->getfd() || pfd.fd == -channel->getfd() - 1);
 		pfd.fd = channel->getfd();
 		pfd.events = static_cast<short>(channel->getEvents());
 		pfd.revents = 0;
 		if (channel->isNoneEvent())
 		{
 			// ignore this pollfd
-			pfd.fd = -channel->getfd()-1;
+			pfd.fd = -channel->getfd() - 1;
 		}
 	}
 }
@@ -105,7 +105,7 @@ void Poll::removeChannel(Channel *channel)
 	else
 	{
 		int32_t channelAtEnd = events.back().fd;
-		iter_swap(events.begin() + idx,events.end() - 1);
+		iter_swap(events.begin() + idx, events.end() - 1);
 		if (channelAtEnd < 0)
 		{
 			channelAtEnd = -channelAtEnd - 1;
@@ -116,11 +116,11 @@ void Poll::removeChannel(Channel *channel)
 	}
 }
 
-void Poll::fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) const
+void Poll::fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const
 {
-	for(auto it = events.begin(); it != events.end() && numEvents > 0 ; ++it)
+	for (auto it = events.begin(); it != events.end() && numEvents > 0; ++it)
 	{
-		if((*it).revents > 0)
+		if ((*it).revents > 0)
 		{
 			--numEvents;
 			auto iter = channels.find((*it).fd);

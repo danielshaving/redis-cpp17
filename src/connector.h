@@ -11,14 +11,18 @@ public:
 	typedef std::function<void(int32_t)> NewConnectionCallback;
 	typedef std::function<void()> ErrorConnectionCallback;
 
-	Connector(EventLoop *loop,const char *ip,int16_t port);
+	Connector(EventLoop *loop, const char *ip, int16_t port);
 	~Connector();
 
-	void setNewConnectionCallback(const NewConnectionCallback &&cb) 
-	{ newConnectionCallback = std::move(cb); }
+	void setNewConnectionCallback(const NewConnectionCallback &&cb)
+	{
+		newConnectionCallback = std::move(cb);
+	}
 
-	void setConnectionErrorCallBack(const ErrorConnectionCallback &&cb) 
-	{ errorConnectionCallback = std::move(cb); }
+	void setConnectionErrorCallBack(const ErrorConnectionCallback &&cb)
+	{
+		errorConnectionCallback = std::move(cb);
+	}
 
 	void start(bool sync);
 	void restart();
@@ -32,7 +36,7 @@ private:
 	void stopInLoop();
 
 	void connecting(bool sync);
-	void connecting(bool sync,int32_t sockfd);
+	void connecting(bool sync, int32_t sockfd);
 	void resetChannel();
 	void retry(int32_t sockfd);
 
@@ -41,7 +45,7 @@ private:
 
 	int32_t removeAndResetChannel();
 
-  	enum States { kDisconnected,kConnecting,kConnected };
+	enum States { kDisconnected, kConnecting, kConnected };
 	void setState(States s) { state = s; }
 	static const int kMaxRetryDelayMs = 30 * 1000;
 	static const int kInitRetryDelayMs = 1000;

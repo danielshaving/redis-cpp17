@@ -11,16 +11,16 @@ class Poll
 public:
 	typedef std::vector<pollfd> EventList;
 	typedef std::vector<Channel*> ChannelList;
-	typedef std::unordered_map<int32_t,Channel*> ChannelMap;
+	typedef std::unordered_map<int32_t, Channel*> ChannelMap;
 
 	Poll(EventLoop *loop);
 	~Poll();
 
-	void epollWait(ChannelList *activeChannels,int32_t msTime = 100);
+	void epollWait(ChannelList *activeChannels, int32_t msTime = 100);
 	bool hasChannel(Channel *channel);
 	void updateChannel(Channel *channel);
 	void removeChannel(Channel *channel);
-	void fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) const;
+	void fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const;
 
 private:
 	Poll(const Poll&);

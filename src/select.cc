@@ -24,7 +24,7 @@ void Select::epollWait(ChannelList *activeChannels, int32_t msTime)
 	size_t maxfd = 0;
 	for (auto &it : events)
 	{
-		if ((it.events) & (POLLIN | POLLPRI ))
+		if ((it.events) & (POLLIN | POLLPRI))
 		{
 			FD_SET(it.fd, &rfds);
 		}
@@ -34,7 +34,7 @@ void Select::epollWait(ChannelList *activeChannels, int32_t msTime)
 			FD_SET(it.fd, &wfds);
 		}
 
-		FD_SET(it.fd,&efds);
+		FD_SET(it.fd, &efds);
 		if (it.fd > maxfd)
 			maxfd = it.fd;
 	}
@@ -46,12 +46,12 @@ void Select::epollWait(ChannelList *activeChannels, int32_t msTime)
 	timeout.tv_sec = msTime / 1000;
 	timeout.tv_usec = static_cast<int>(msTime % 1000) * 1000;
 
-	int numEvents = ::select(maxfd + 1,&rfds,&wfds,&efds,&timeout);
+	int numEvents = ::select(maxfd + 1, &rfds, &wfds, &efds, &timeout);
 	int saveErrno = GetLastError();
 
 	if (numEvents > 0)
 	{
-		fillActiveChannels(numEvents,activeChannels);
+		fillActiveChannels(numEvents, activeChannels);
 	}
 	else if (numEvents == 0)
 	{
@@ -142,17 +142,17 @@ void Select::fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) 
 	for (auto it = events.begin(); it != events.end() && numEvents > 0; ++it)
 	{
 		int revents = 0;//it->revents is readonly
-		if (FD_ISSET(it->fd,&rfds))
+		if (FD_ISSET(it->fd, &rfds))
 		{
 			revents |= POLLIN;
 		}
 
-		if (FD_ISSET(it->fd,&wfds))
+		if (FD_ISSET(it->fd, &wfds))
 		{
 			revents |= POLLOUT;
 		}
 
-		if (FD_ISSET(it->fd,&efds))
+		if (FD_ISSET(it->fd, &efds))
 		{
 			revents |= POLLERR;
 		}

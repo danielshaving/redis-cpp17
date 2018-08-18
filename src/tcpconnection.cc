@@ -2,22 +2,22 @@
 #include "tcpconnection.h"
 #include "socket.h"
 
-TcpConnection::TcpConnection(EventLoop *loop,int32_t sockfd,const std::any &context)
-:loop(loop),
- sockfd(sockfd),
- reading(true),
- state(kConnecting),
- channel(new Channel(loop,sockfd)),
- context(context)
+TcpConnection::TcpConnection(EventLoop *loop, int32_t sockfd, const std::any &context)
+	:loop(loop),
+	sockfd(sockfd),
+	reading(true),
+	state(kConnecting),
+	channel(new Channel(loop, sockfd)),
+	context(context)
 {
 	channel->setReadCallback(
-	  std::bind(&TcpConnection::handleRead,this));
+		std::bind(&TcpConnection::handleRead, this));
 	channel->setWriteCallback(
-	  std::bind(&TcpConnection::handleWrite,this));
+		std::bind(&TcpConnection::handleWrite, this));
 	channel->setCloseCallback(
-	  std::bind(&TcpConnection::handleClose,this));
+		std::bind(&TcpConnection::handleClose, this));
 	channel->setErrorCallback(
-	  std::bind(&TcpConnection::handleError,this));
+		std::bind(&TcpConnection::handleError, this));
 }
 
 TcpConnection::~TcpConnection()
@@ -31,7 +31,7 @@ void TcpConnection::shutdown()
 	if (state == kConnected)
 	{
 		setState(kDisconnecting);
-		loop->runInLoop(std::bind(&TcpConnection::shutdownInLoop,this));
+		loop->runInLoop(std::bind(&TcpConnection::shutdownInLoop, this));
 	}
 }
 
@@ -40,14 +40,14 @@ void TcpConnection::forceClose()
 	if (state == kConnected || state == kDisconnecting)
 	{
 		setState(kDisconnecting);
-		loop->queueInLoop(std::bind(&TcpConnection::forceCloseInLoop,shared_from_this()));
+		loop->queueInLoop(std::bind(&TcpConnection::forceCloseInLoop, shared_from_this()));
 	}
 }
 
 void TcpConnection::forceCloseInLoop()
 {
 	loop->assertInLoopThread();
-	if (state== kConnected || state == kDisconnecting)
+	if (state == kConnected || state == kDisconnecting)
 	{
 		// as if we received 0 byte in handleRead();
 		handleClose();
@@ -56,31 +56,31 @@ void TcpConnection::forceCloseInLoop()
 
 void TcpConnection::shutdownInLoop()
 {
-    loop->assertInLoopThread();
-    if (!channel->isWriting())
-    {
+	loop->assertInLoopThread();
+	if (!channel->isWriting())
+	{
 #ifdef _WIN32
-		if (::shutdown(sockfd,SD_SEND) < 0)
+		if (::shutdown(sockfd, SD_SEND) < 0)
 		{
 			LOG_WARN << "sockets::shutdownWrite";
 		}
 #else
-        if (::shutdown(sockfd,SHUT_WR) < 0)
-        {
-			LOG_WARN <<"sockets::shutdownWrite";
-        }
+		if (::shutdown(sockfd, SHUT_WR) < 0)
+		{
+			LOG_WARN << "sockets::shutdownWrite";
+		}
 #endif
-    }
+	}
 }
 
 void TcpConnection::handleRead()
 {
 	loop->assertInLoopThread();
 	int saveErrno = 0;
-	ssize_t n = readBuffer.readFd(channel->getfd(),&saveErrno);
+	ssize_t n = readBuffer.readFd(channel->getfd(), &saveErrno);
 	if (n > 0)
 	{
-		messageCallback(shared_from_this(),&readBuffer);
+		messageCallback(shared_from_this(), &readBuffer);
 	}
 #ifdef _WIN32
 	else if (n == 0 || saveErrno == WSAECONNRESET)
@@ -93,7 +93,7 @@ void TcpConnection::handleRead()
 		handleError();
 	}
 #else
-	else if (n == 0 )
+	else if (n == 0)
 	{
 		handleClose();
 	}
@@ -115,7 +115,7 @@ void TcpConnection::handleWrite()
 	{
 		assert(writeBuffer.readableBytes() != 0);
 #ifdef _WIN32
-		ssize_t n = ::send(channel->getfd(),writeBuffer.peek(),writeBuffer.readableBytes(),0);
+		ssize_t n = ::send(channel->getfd(), writeBuffer.peek(), writeBuffer.readableBytes(), 0);
 #else
 		ssize_t n = ::write(channel->getfd(), writeBuffer.peek(), writeBuffer.readableBytes());
 #endif
@@ -127,7 +127,7 @@ void TcpConnection::handleWrite()
 				channel->disableWriting();
 				if (writeCompleteCallback)
 				{
-					loop->queueInLoop(std::bind(writeCompleteCallback,shared_from_this()));
+					loop->queueInLoop(std::bind(writeCompleteCallback, shared_from_this()));
 				}
 
 				if (state == kDisconnecting)
@@ -161,12 +161,12 @@ void TcpConnection::handleClose()
 
 void TcpConnection::startRead()
 {
-	loop->runInLoop(std::bind(&TcpConnection::startReadInLoop,this));
+	loop->runInLoop(std::bind(&TcpConnection::startReadInLoop, this));
 }
 
 void TcpConnection::stopRead()
 {
-	loop->runInLoop(std::bind(&TcpConnection::stopReadInLoop,this));
+	loop->runInLoop(std::bind(&TcpConnection::stopReadInLoop, this));
 }
 
 void TcpConnection::startReadInLoop()
@@ -199,7 +199,7 @@ void TcpConnection::forceCloseWithDelay(double seconds)
 	if (state == kConnected || state == kDisconnecting)
 	{
 		setState(kDisconnecting);
-		loop->runAfter(seconds,false,std::bind(&TcpConnection::forceCloseDelay,shared_from_this()));
+		loop->runAfter(seconds, false, std::bind(&TcpConnection::forceCloseDelay, shared_from_this()));
 	}
 }
 
@@ -222,20 +222,20 @@ void TcpConnection::sendPipe(Buffer *buf)
 	{
 		if (loop->isInLoopThread())
 		{
-			sendPipeInLoop(buf->peek(),buf->readableBytes());
+			sendPipeInLoop(buf->peek(), buf->readableBytes());
 		}
 		else
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendPipeInLoop;
-						loop->runInLoop(std::bind(fp,this,buf->retrieveAllAsString()));
+			loop->runInLoop(std::bind(fp, this, buf->retrieveAllAsString()));
 			//loop->runInLoop(std::bind(&bindSendPipeInLoop,this,buf->retrieveAllAsString()));
 		}
 	}
 }
 
-void TcpConnection::sendPipe(const void *message,int len)
+void TcpConnection::sendPipe(const void *message, int len)
 {
-    sendPipe(std::string_view(static_cast<const char*>(message),len));
+	sendPipe(std::string_view(static_cast<const char*>(message), len));
 }
 
 void TcpConnection::sendPipe(const std::string_view &message)
@@ -244,20 +244,20 @@ void TcpConnection::sendPipe(const std::string_view &message)
 	{
 		if (loop->isInLoopThread())
 		{
-			sendPipeInLoop(message.data(),message.size());
+			sendPipeInLoop(message.data(), message.size());
 		}
 		else
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendPipeInLoop;
-			loop->runInLoop(std::bind(fp,this,std::string(message)));
+			loop->runInLoop(std::bind(fp, this, std::string(message)));
 			//loop->runInLoop(std::bind(&bindSendPipeInLoop,this,std::string(message)));
 		}
 	}
 }
 
-void TcpConnection::send(const void *message,int len)
+void TcpConnection::send(const void *message, int len)
 {
-	send(std::string_view(static_cast<const char*>(message),len));
+	send(std::string_view(static_cast<const char*>(message), len));
 }
 
 void TcpConnection::send(const std::string_view &message)
@@ -266,39 +266,39 @@ void TcpConnection::send(const std::string_view &message)
 	{
 		if (loop->isInLoopThread())
 		{
-		  	sendInLoop(message.data(),message.size());
+			sendInLoop(message.data(), message.size());
 		}
 		else
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendInLoop;
-			loop->runInLoop( std::bind(fp,this,std::string(message)));
-		  	//loop->runInLoop(std::bind(&bindSendInLoop,this,std::string(message)));
+			loop->runInLoop(std::bind(fp, this, std::string(message)));
+			//loop->runInLoop(std::bind(&bindSendInLoop,this,std::string(message)));
 		}
 	}
 }
 
 void TcpConnection::sendPipeInLoop(const std::string_view &message)
 {
-	sendPipeInLoop(message.data(),message.size());
+	sendPipeInLoop(message.data(), message.size());
 }
 
-void TcpConnection::sendPipeInLoop(const void *message,size_t len)
+void TcpConnection::sendPipeInLoop(const void *message, size_t len)
 {
-	writeBuffer.append(message,len);
+	writeBuffer.append(message, len);
 	if (!channel->isWriting())
 	{
 		channel->enableWriting();
 	}
 }
 
-void TcpConnection::bindSendPipeInLoop(TcpConnection *conn,const std::string_view &message)
+void TcpConnection::bindSendPipeInLoop(TcpConnection *conn, const std::string_view &message)
 {
-	conn->sendPipeInLoop(message.data(),message.size());
+	conn->sendPipeInLoop(message.data(), message.size());
 }
 
-void TcpConnection::bindSendInLoop(TcpConnection *conn,const std::string_view &message)
+void TcpConnection::bindSendInLoop(TcpConnection *conn, const std::string_view &message)
 {
-	conn->sendInLoop(message.data(),message.size());
+	conn->sendInLoop(message.data(), message.size());
 }
 
 void TcpConnection::send(Buffer *buf)
@@ -307,21 +307,21 @@ void TcpConnection::send(Buffer *buf)
 	{
 		if (loop->isInLoopThread())
 		{
-		  	sendInLoop(buf->peek(),buf->readableBytes());
+			sendInLoop(buf->peek(), buf->readableBytes());
 		}
 		else
 		{
-		  	loop->runInLoop(std::bind(&bindSendInLoop,this,buf->retrieveAllAsString()));
+			loop->runInLoop(std::bind(&bindSendInLoop, this, buf->retrieveAllAsString()));
 		}
 	}
 }
 
 void TcpConnection::sendInLoop(const std::string_view &message)
 {
-	sendInLoop(message.data(),message.size());
+	sendInLoop(message.data(), message.size());
 }
 
-void TcpConnection::sendInLoop(const void *data,size_t len)
+void TcpConnection::sendInLoop(const void *data, size_t len)
 {
 	loop->assertInLoopThread();
 	ssize_t nwrote = 0;

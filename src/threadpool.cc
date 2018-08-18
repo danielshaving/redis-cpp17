@@ -3,10 +3,10 @@
 #include "thread.h"
 
 ThreadPool::ThreadPool(EventLoop *baseLoop)
-:baseLoop(baseLoop),
- started(false),
- numThreads(0),
- next(0)
+	:baseLoop(baseLoop),
+	started(false),
+	numThreads(0),
+	next(0)
 {
 
 }
@@ -23,14 +23,14 @@ void ThreadPool::start(const ThreadInitCallback &cb)
 
 	started = true;
 
-	for(int i = 0 ; i < numThreads; i++)
+	for (int i = 0; i < numThreads; i++)
 	{
 		ThreadPtr t(new Thread(cb));
 		threads.push_back(t);
 		loops.push_back(t->startLoop());
 	}
 
-	if(numThreads == 0 && cb)
+	if (numThreads == 0 && cb)
 	{
 		cb(baseLoop);
 	}
@@ -71,7 +71,7 @@ std::vector<EventLoop*> ThreadPool::getAllLoops()
 	assert(started);
 	if (loops.empty())
 	{
-		return std::vector<EventLoop*>(1,baseLoop);
+		return std::vector<EventLoop*>(1, baseLoop);
 	}
 	else
 	{

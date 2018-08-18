@@ -2,9 +2,9 @@
 #include "eventloop.h"
 
 Thread::Thread(const ThreadInitCallback &cb)
-:loop(nullptr),
- exiting(false),
- callback(std::move(cb))
+	:loop(nullptr),
+	exiting(false),
+	callback(std::move(cb))
 {
 
 }
@@ -16,7 +16,7 @@ Thread::~Thread()
 
 EventLoop *Thread::startLoop()
 {
-	std::thread t(std::bind(&Thread::threadFunc,this));
+	std::thread t(std::bind(&Thread::threadFunc, this));
 	t.detach();
 	{
 		std::unique_lock<std::mutex> lk(mutex);

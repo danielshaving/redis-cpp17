@@ -9,42 +9,52 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection>
 {
 public:
 	enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };
-	TcpConnection(EventLoop *loop,int32_t sockfd,const std::any &context);
+	TcpConnection(EventLoop *loop, int32_t sockfd, const std::any &context);
 	~TcpConnection();
 
 	EventLoop *getLoop() { return loop; }
 	int32_t getSockfd() { return sockfd; }
-	void setState(StateE s) { state  = s; }
+	void setState(StateE s) { state = s; }
 
 	void setConnectionCallback(const ConnectionCallback &&cb)
-	{ connectionCallback = std::move(cb); }
+	{
+		connectionCallback = std::move(cb);
+	}
 
 	void setMessageCallback(const MessageCallback &&cb)
-	{ messageCallback = std::move(cb); }
+	{
+		messageCallback = std::move(cb);
+	}
 
 	void setWriteCompleteCallback(const WriteCompleteCallback &&cb)
-	{ writeCompleteCallback = std::move(cb); }
+	{
+		writeCompleteCallback = std::move(cb);
+	}
 
-	void setHighWaterMarkCallback(const HighWaterMarkCallback &&cb,size_t highWaterMark)
-	{ highWaterMarkCallback = std::move(cb); this->highWaterMark  = highWaterMark; }
+	void setHighWaterMarkCallback(const HighWaterMarkCallback &&cb, size_t highWaterMark)
+	{
+		highWaterMarkCallback = std::move(cb); this->highWaterMark = highWaterMark;
+	}
 
 	void setCloseCallback(const CloseCallback &cb)
-	{ closeCallback = cb; }
+	{
+		closeCallback = cb;
+	}
 
-	void sendInLoop(const void *message,size_t len);
+	void sendInLoop(const void *message, size_t len);
 	void sendInLoop(const std::string_view &message);
-	void sendPipeInLoop(const void *message,size_t len);
+	void sendPipeInLoop(const void *message, size_t len);
 	void sendPipeInLoop(const std::string_view &message);
 
-	static void bindSendInLoop(TcpConnection *conn,const std::string_view &message);
-	static void bindSendPipeInLoop(TcpConnection *conn,const std::string_view &message);
-	
+	static void bindSendInLoop(TcpConnection *conn, const std::string_view &message);
+	static void bindSendPipeInLoop(TcpConnection *conn, const std::string_view &message);
+
 	void sendPipe();
 	void sendPipe(const std::string_view &message);
 	void sendPipe(Buffer *message);
-	void sendPipe(const void *message,int32_t len);
+	void sendPipe(const void *message, int32_t len);
 
-  	void send(const void *message,int32_t len);
+	void send(const void *message, int32_t len);
 	void send(Buffer *message);
 	void send(const std::string_view &message);
 
@@ -59,7 +69,7 @@ public:
 	void shutdown();
 	void shutdownInLoop();
 	void forceClose();
-	
+
 	void handleRead();
 	void handleWrite();
 	void handleClose();

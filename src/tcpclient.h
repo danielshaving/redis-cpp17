@@ -6,8 +6,8 @@
 class TcpClient
 {
 public:
-	TcpClient(EventLoop *loop,const char *ip,
-			int16_t port,const std::any &context);
+	TcpClient(EventLoop *loop, const char *ip,
+		int16_t port, const std::any &context);
 	~TcpClient();
 
 	void connect(bool sync = false);
@@ -19,22 +19,30 @@ public:
 	void closeRetry() { retry = false; }
 
 	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb)
-	{ connectionErrorCallBack = std::move(cb); }
+	{
+		connectionErrorCallBack = std::move(cb);
+	}
 
 	void setConnectionCallback(const ConnectionCallback &&cb)
-	{ connectionCallback = std::move(cb); }
+	{
+		connectionCallback = std::move(cb);
+	}
 
 	void setMessageCallback(const MessageCallback &&cb)
-	{ messageCallback = std::move(cb); }
+	{
+		messageCallback = std::move(cb);
+	}
 
 	void setWriteCompleteCallback(const WriteCompleteCallback &&cb)
-	{ writeCompleteCallback = std::move(cb); }
+	{
+		writeCompleteCallback = std::move(cb);
+	}
 
 	EventLoop *getLoop() { return loop; }
 	std::any *getContext() { return &context; }
-	const std::any &getContext() const  { return context; }
+	const std::any &getContext() const { return context; }
 
-	void setContext(const std::any &context) { this->context = context;}
+	void setContext(const std::any &context) { this->context = context; }
 	const char *getIp() { return ip; }
 	int16_t getPort() { return port; }
 

@@ -7,13 +7,13 @@ class TimeStamp
 {
 public:
 	TimeStamp()
-	:microSecondsSinceEpoch(0)
+		:microSecondsSinceEpoch(0)
 	{
 
 	}
 
 	explicit TimeStamp(int64_t microSecondsSinceEpochArg)
-	: microSecondsSinceEpoch(microSecondsSinceEpochArg)
+		: microSecondsSinceEpoch(microSecondsSinceEpochArg)
 	{
 
 	}
@@ -24,8 +24,8 @@ public:
 	}
 
 	time_t secondsSinceEpoch() const
-	{ 
-		return static_cast<time_t>(microSecondsSinceEpoch / kMicroSecondsPerSecond); 
+	{
+		return static_cast<time_t>(microSecondsSinceEpoch / kMicroSecondsPerSecond);
 	}
 
 	bool valid() const { return microSecondsSinceEpoch > 0; }
@@ -38,7 +38,7 @@ public:
 		return TimeStamp(microseconds.count());
 #else
 		struct timeval tv;
-		gettimeofday(&tv,nullptr);
+		gettimeofday(&tv, nullptr);
 		int64_t seconds = tv.tv_sec;
 		return TimeStamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
 #endif
@@ -53,23 +53,23 @@ private:
 	int64_t microSecondsSinceEpoch;
 };
 
-inline bool operator<(const TimeStamp &lhs,const TimeStamp &rhs)
+inline bool operator<(const TimeStamp &lhs, const TimeStamp &rhs)
 {
 	return lhs.getMicroSecondsSinceEpoch() < rhs.getMicroSecondsSinceEpoch();
 }
 
-inline bool operator==(const TimeStamp &lhs,const TimeStamp &rhs)
+inline bool operator==(const TimeStamp &lhs, const TimeStamp &rhs)
 {
 	return lhs.getMicroSecondsSinceEpoch() == rhs.getMicroSecondsSinceEpoch();
 }
 
-inline TimeStamp addTime(const TimeStamp &timestamp,double seconds)
+inline TimeStamp addTime(const TimeStamp &timestamp, double seconds)
 {
 	int64_t delta = static_cast<int64_t>(seconds * TimeStamp::kMicroSecondsPerSecond);
 	return TimeStamp(timestamp.getMicroSecondsSinceEpoch() + delta);
 }
 
-inline double timeDifference(const TimeStamp &high,const TimeStamp &low)
+inline double timeDifference(const TimeStamp &high, const TimeStamp &low)
 {
 	int64_t diff = high.getMicroSecondsSinceEpoch() - low.getMicroSecondsSinceEpoch();
 	return static_cast<double>(diff) / TimeStamp::kMicroSecondsPerSecond;
@@ -78,8 +78,8 @@ inline double timeDifference(const TimeStamp &high,const TimeStamp &low)
 class Timer
 {
 public:
-	Timer(TimerCallback &&cb,TimeStamp &&expiration,
-			bool repeat,double interval);
+	Timer(TimerCallback &&cb, TimeStamp &&expiration,
+		bool repeat, double interval);
 	~Timer();
 
 	void run();

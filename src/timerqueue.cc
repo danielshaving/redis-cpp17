@@ -6,7 +6,7 @@
 int64_t createTimerfd()
 {
 	int64_t timerfd = ::timerfd_create(CLOCK_MONOTONIC,
-								 TFD_NONBLOCK | TFD_CLOEXEC);
+		TFD_NONBLOCK | TFD_CLOEXEC);
 	if (timerfd < 0)
 	{
 		assert(false);
@@ -19,7 +19,7 @@ int64_t createTimerfd()
 int64_t howMuchTimeFrom(const TimeStamp &when)
 {
 	int64_t microseconds = when.getMicroSecondsSinceEpoch()
-						 - TimeStamp::now().getMicroSecondsSinceEpoch();
+		- TimeStamp::now().getMicroSecondsSinceEpoch();
 	if (microseconds < 1000)
 	{
 		microseconds = 1000;
@@ -45,7 +45,7 @@ int64_t TimerQueue::getTimeout() const
 struct timespec howMuchTimeFromNow(const TimeStamp &when)
 {
 	int64_t microseconds = when.getMicroSecondsSinceEpoch()
-						 - TimeStamp::now().getMicroSecondsSinceEpoch();
+		- TimeStamp::now().getMicroSecondsSinceEpoch();
 	if (microseconds < 100)
 	{
 		microseconds = 100;
@@ -57,24 +57,24 @@ struct timespec howMuchTimeFromNow(const TimeStamp &when)
 	return ts;
 }
 
-void resetTimerfd(int64_t timerfd,const TimeStamp &expiration)
+void resetTimerfd(int64_t timerfd, const TimeStamp &expiration)
 {
 	struct itimerspec newValue;
 	struct itimerspec oldValue;
-	bzero(&newValue,sizeof newValue);
-	bzero(&oldValue,sizeof oldValue);
+	bzero(&newValue, sizeof newValue);
+	bzero(&oldValue, sizeof oldValue);
 	newValue.it_value = howMuchTimeFromNow(expiration);
-	int64_t net = ::timerfd_settime(timerfd,0,&newValue,&oldValue);
-	if (net < 0 )
+	int64_t net = ::timerfd_settime(timerfd, 0, &newValue, &oldValue);
+	if (net < 0)
 	{
 		assert(false);
 	}
 }
 
-void readTimerfd(int64_t timerfd,const TimeStamp &now)
+void readTimerfd(int64_t timerfd, const TimeStamp &now)
 {
 	uint64_t howmany;
-	ssize_t n = ::read(timerfd,&howmany,sizeof howmany);
+	ssize_t n = ::read(timerfd, &howmany, sizeof howmany);
 	if (n != sizeof howmany)
 	{
 		assert(false);
@@ -83,15 +83,15 @@ void readTimerfd(int64_t timerfd,const TimeStamp &now)
 #endif
 
 TimerQueue::TimerQueue(EventLoop *loop)
-:loop(loop),
+	:loop(loop),
 #ifdef __linux__
-timerfd(createTimerfd()),
-timerfdChannel(loop,timerfd),
+	timerfd(createTimerfd()),
+	timerfdChannel(loop, timerfd),
 #endif
-callingExpiredTimers(false)
+	callingExpiredTimers(false)
 {
 #ifdef __linux__
-	timerfdChannel.setReadCallback(std::bind(&TimerQueue::handleRead,this));
+	timerfdChannel.setReadCallback(std::bind(&TimerQueue::handleRead, this));
 	timerfdChannel.enableReading();
 #endif
 }
@@ -105,17 +105,17 @@ TimerQueue::~TimerQueue()
 #endif
 }
 
-TimerPtr TimerQueue::addTimer(double when,bool repeat,TimerCallback &&cb)
+TimerPtr TimerQueue::addTimer(double when, bool repeat, TimerCallback &&cb)
 {
-	TimeStamp time(addTime(TimeStamp::now(),when));
-	TimerPtr timer(new Timer(std::move(cb),std::move(time),repeat,when));
-	loop->runInLoop(std::bind(&TimerQueue::addTimerInLoop,this,timer));
+	TimeStamp time(addTime(TimeStamp::now(), when));
+	TimerPtr timer(new Timer(std::move(cb), std::move(time), repeat, when));
+	loop->runInLoop(std::bind(&TimerQueue::addTimerInLoop, this, timer));
 	return timer;
 }
 
 void TimerQueue::cancelTimer(const TimerPtr &timer)
 {
-	loop->runInLoop(std::bind(&TimerQueue::cancelInloop,this,timer));
+	loop->runInLoop(std::bind(&TimerQueue::cancelInloop, this, timer));
 }
 
 void TimerQueue::cancelInloop(const TimerPtr &timer)
@@ -143,7 +143,7 @@ void TimerQueue::cancelInloop(const TimerPtr &timer)
 	}
 	else if (callingExpiredTimers)
 	{
-		cancelingTimers.insert(std::make_pair(timer->getSequence(),timer));
+		cancelingTimers.insert(std::make_pair(timer->getSequence(), timer));
 	}
 	assert(timers.size() == activeTimers.size());
 }
@@ -155,7 +155,7 @@ void TimerQueue::addTimerInLoop(const TimerPtr &timer)
 	if (earliestChanged)
 	{
 #ifdef __linux__
-		resetTimerfd(timerfd,timer->getExpiration());
+		resetTimerfd(timerfd, timer->getExpiration());
 #endif
 	}
 }
@@ -176,7 +176,7 @@ void TimerQueue::handleRead()
 	TimeStamp now(TimeStamp::now());
 
 #ifdef __linux__
-	readTimerfd(timerfd,now);
+	readTimerfd(timerfd, now);
 #endif
 	getExpired(now);
 
@@ -206,8 +206,8 @@ bool TimerQueue::insert(const TimerPtr &timer)
 		earliestChanged = true;
 	}
 
-	timers.insert(std::make_pair(microseconds,timer));
-	activeTimers.insert(std::make_pair(timer->getSequence(),timer));
+	timers.insert(std::make_pair(microseconds, timer));
+	activeTimers.insert(std::make_pair(timer->getSequence(), timer));
 
 	if (timers.size() != activeTimers.size())
 	{
@@ -223,7 +223,7 @@ void TimerQueue::reset(const TimeStamp &now)
 	for (auto &it : expired)
 	{
 		if (it.second->getRepeat() &&
-				cancelingTimers.find(it.second->getSequence()) == cancelingTimers.end())
+			cancelingTimers.find(it.second->getSequence()) == cancelingTimers.end())
 		{
 			it.second->restart(now);
 			insert(it.second);
@@ -243,7 +243,7 @@ void TimerQueue::reset(const TimeStamp &now)
 	if (nextExpire.valid())
 	{
 #ifdef __linux__
-		resetTimerfd(timerfd,nextExpire);
+		resetTimerfd(timerfd, nextExpire);
 #endif
 	}
 }
@@ -260,8 +260,8 @@ void TimerQueue::getExpired(const TimeStamp &now)
 	assert(timers.size() == activeTimers.size());
 	auto end = timers.lower_bound(now.getMicroSecondsSinceEpoch());
 	assert(end == timers.end() || now.getMicroSecondsSinceEpoch() <= end->first);
-	expired.insert(timers.begin(),end);
-	timers.erase(timers.begin(),end);
+	expired.insert(timers.begin(), end);
+	timers.erase(timers.begin(), end);
 	for (auto &it : expired)
 	{
 		size_t n = activeTimers.erase(it.second->getSequence());

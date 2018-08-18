@@ -9,16 +9,16 @@ class Redis;
 class Session : public std::enable_shared_from_this<Session>
 {
 public:
-	Session(Redis *redis,const TcpConnectionPtr &conn);
+	Session(Redis *redis, const TcpConnectionPtr &conn);
 	~Session();
 
 	void clearCommand();
 	void resetVlaue();
 	void reset();
 
-	void readCallback(const TcpConnectionPtr &conn,Buffer *buffer);
-	int32_t processMultibulkBuffer(const TcpConnectionPtr &conn,Buffer *buffer);
-	int32_t processInlineBuffer(const TcpConnectionPtr &conn,Buffer *buffer);
+	void readCallback(const TcpConnectionPtr &conn, Buffer *buffer);
+	int32_t processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *buffer);
+	int32_t processInlineBuffer(const TcpConnectionPtr &conn, Buffer *buffer);
 	int32_t processCommand(const TcpConnectionPtr &conn);
 	void setAuth(bool enbaled) { authEnabled = enbaled; }
 

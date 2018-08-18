@@ -10,12 +10,12 @@ class Replication
 public:
 	Replication(Redis *redis);
 	~Replication();
-	
-	void connectMaster();
-	void replicationSetMaster(const RedisObjectPtr &obj,int16_t port);
 
-	void slaveCallback(const TcpConnectionPtr &conn,Buffer *buffer);
-	void readCallback(const TcpConnectionPtr &conn,Buffer *buffer);
+	void connectMaster();
+	void replicationSetMaster(const RedisObjectPtr &obj, int16_t port);
+
+	void slaveCallback(const TcpConnectionPtr &conn, Buffer *buffer);
+	void readCallback(const TcpConnectionPtr &conn, Buffer *buffer);
 	void connCallback(const TcpConnectionPtr &conn);
 
 	void reconnectTimer(const std::any &context);

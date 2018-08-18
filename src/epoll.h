@@ -12,17 +12,17 @@ class Epoll
 public:
 	typedef std::vector<struct epoll_event> EventList;
 	typedef std::vector<Channel*> ChannelList;
-	typedef std::unordered_map<int32_t,Channel*> ChannelMap;
-	
+	typedef std::unordered_map<int32_t, Channel*> ChannelMap;
+
 	Epoll(EventLoop *loop);
 	~Epoll();
 
-	void epollWait(ChannelList *activeChannels,int32_t msTime = 100);
+	void epollWait(ChannelList *activeChannels, int32_t msTime = 100);
 	bool hasChannel(Channel *channel);
 	void updateChannel(Channel *channel);
 	void removeChannel(Channel *channel);
-	void update(int32_t operation,Channel *channel);
-	void fillActiveChannels(int32_t numEvents,ChannelList *activeChannels) const;
+	void update(int32_t operation, Channel *channel);
+	void fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const;
 
 private:
 	Epoll(const Epoll&);

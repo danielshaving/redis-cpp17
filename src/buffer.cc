@@ -5,7 +5,7 @@ const char Buffer::CONTENT[] = "Content-Length";
 const size_t Buffer::kCheapPrepend;
 const size_t Buffer::kInitialSize;
 
-ssize_t Buffer::readFd(int32_t fd,int32_t *saveErrno)
+ssize_t Buffer::readFd(int32_t fd, int32_t *saveErrno)
 {
 	char extrabuf[65536];
 	IOV_TYPE vec[2];

@@ -4,41 +4,41 @@
 #ifdef __linux__
 int createEventfd()
 {
-  int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-  if (evtfd < 0)
-  {
-    assert(false);
-  }
-  return evtfd;
+	int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	if (evtfd < 0)
+	{
+		assert(false);
+	}
+	return evtfd;
 }
 #endif
 
 EventLoop::EventLoop()
-:threadId(std::this_thread::get_id()),
+	:threadId(std::this_thread::get_id()),
 #ifdef __linux__
- wakeupFd(createEventfd()),
- epoller(new Epoll(this)),
- timerQueue(new TimerQueue(this)),
- wakeupChannel(new Channel(this,wakeupFd)),
+	wakeupFd(createEventfd()),
+	epoller(new Epoll(this)),
+	timerQueue(new TimerQueue(this)),
+	wakeupChannel(new Channel(this, wakeupFd)),
 #endif
 #ifdef __APPLE__
- epoller(new Poll(this)),
- op(socketpair(AF_UNIX,SOCK_STREAM,0,wakeupFd)),
- wakeupChannel(new Channel(this,wakeupFd[0])),
- timerQueue(new TimerQueue(this)),
+	epoller(new Poll(this)),
+	op(socketpair(AF_UNIX, SOCK_STREAM, 0, wakeupFd)),
+	wakeupChannel(new Channel(this, wakeupFd[0])),
+	timerQueue(new TimerQueue(this)),
 #endif
 #ifdef _WIN32
-epoller(new Select(this)),
-op(Socket::pipe(wakeupFd)),
-wakeupChannel(new Channel(this,wakeupFd[0])),
-timerQueue(new TimerQueue(this)),
+	epoller(new Select(this)),
+	op(Socket::pipe(wakeupFd)),
+	wakeupChannel(new Channel(this, wakeupFd[0])),
+	timerQueue(new TimerQueue(this)),
 #endif
- currentActiveChannel(nullptr),
- running(false),
- eventHandling(false),
- callingPendingFunctors(false)
+	currentActiveChannel(nullptr),
+	running(false),
+	eventHandling(false),
+	callingPendingFunctors(false)
 {
-	wakeupChannel->setReadCallback(std::bind(&EventLoop::handleRead,this));
+	wakeupChannel->setReadCallback(std::bind(&EventLoop::handleRead, this));
 	wakeupChannel->enableReading();
 }
 
@@ -88,8 +88,8 @@ void EventLoop::removeChannel(Channel *channel)
 	if (eventHandling)
 	{
 		assert(currentActiveChannel == channel ||
-		std::find(activeChannels.begin(),
-			activeChannels.end(),channel) == activeChannels.end());
+			std::find(activeChannels.begin(),
+				activeChannels.end(), channel) == activeChannels.end());
 	}
 	epoller->removeChannel(channel);
 }
@@ -99,9 +99,9 @@ void EventLoop::cancelAfter(const TimerPtr &timer)
 	timerQueue->cancelTimer(timer);
 }
 
-TimerPtr EventLoop::runAfter(double when,bool repeat,TimerCallback &&cb)
+TimerPtr EventLoop::runAfter(double when, bool repeat, TimerCallback &&cb)
 {
-	return timerQueue->addTimer(when,repeat,std::move(cb));
+	return timerQueue->addTimer(when, repeat, std::move(cb));
 }
 
 bool EventLoop::hasChannel(Channel *channel)
@@ -141,11 +141,11 @@ void EventLoop::wakeup()
 {
 	uint64_t one = 1;
 #ifdef __linux__
-    ssize_t n = ::write(wakeupFd,&one,sizeof one);
+	ssize_t n = ::write(wakeupFd, &one, sizeof one);
 #endif
 
 #ifdef __APPLE__
-  	ssize_t n = ::write(wakeupFd[0],&one,sizeof one);
+	ssize_t n = ::write(wakeupFd[0], &one, sizeof one);
 #endif
 
 #ifdef _WIN32
@@ -206,7 +206,7 @@ void EventLoop::run()
 		epoller->epollWait(&activeChannels);
 		eventHandling = true;
 
-		for(auto &it : activeChannels)
+		for (auto &it : activeChannels)
 		{
 			currentActiveChannel = it;
 			currentActiveChannel->handleEvent();
