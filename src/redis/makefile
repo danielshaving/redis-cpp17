@@ -19,10 +19,10 @@ all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
 	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread  -lstdc++fs #-lz -lcurl
-${CXXOBJS}:./%.o:../src/%.cc
+${CXXOBJS}:./%.o:./%.cc
 	g++-7 -MMD -c -o $@ $< ${CFLAGS} 
 
-${COBJS}:./%.o:../src/%.c
+${COBJS}:./%.o:./%.c
 	${CC} -MMD -c -o $@ $< ${CFLAGS} 
 
 -include $(DEPS)
