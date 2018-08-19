@@ -100,6 +100,11 @@ void Session::readCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 	}
 }
 
+void Session::setAuth(bool enbaled)
+{
+	authEnabled = enbaled;
+}
+
 /* Only reset the client when the command was executed. */
 int32_t Session::processCommand(const TcpConnectionPtr &conn)
 {

@@ -21,14 +21,14 @@ public:
 	~Redis();
 
 	void initConfig();
-	void timeOut() { loop.quit(); }
+	void timeOut();
 	void serverCron();
 	void bgsaveCron();
 	void slaveRepliTimeOut(int32_t context);
 	void setExpireTimeOut(const RedisObjectPtr &expire);
 	void forkWait();
 
-	void run() { loop.run(); }
+	void run();
 	void connCallBack(const TcpConnectionPtr &conn);
 	void replyCheck();
 	void loadDataFromDisk();
@@ -236,6 +236,7 @@ private:
 	std::unordered_map<RedisObjectPtr,
 		std::unordered_map<int32_t, TcpConnectionPtr>, Hash, Equal> pubSubs;
 	std::unordered_map<int32_t, TcpConnectionPtr> monitorConns;
+
 	struct RedisMapLock
 	{
 		RedisMap redisMap;

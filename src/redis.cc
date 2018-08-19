@@ -3315,6 +3315,16 @@ bool Redis::checkCommand(const RedisObjectPtr &cmd)
 	return true;
 }
 
+void Redis::timeOut()
+{
+	loop.quit();
+}
+
+void Redis::run()
+{
+	loop.run();
+}
+
 void Redis::initConfig()
 {
 	LOG_INFO << "Server initialized";

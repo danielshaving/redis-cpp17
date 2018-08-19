@@ -2,8 +2,28 @@
 #include "all.h"
 #include "callback.h"
 
-class Thread;
 class EventLoop;
+class Thread
+{
+public:
+	typedef std::function<void(EventLoop*)> ThreadInitCallback;
+
+	Thread(const ThreadInitCallback &cb = ThreadInitCallback());
+	~Thread();
+	EventLoop *startLoop();
+
+private:
+	Thread(const Thread&);
+	void operator=(const Thread&);
+
+	void threadFunc();
+	EventLoop *loop;
+	bool exiting;
+	mutable std::mutex mutex;
+	std::condition_variable condition;
+	ThreadInitCallback callback;
+};
+
 class ThreadPool
 {
 public:

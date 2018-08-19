@@ -1,7 +1,7 @@
 #include "acceptor.h"
 #include "log.h"
 
-Acceptor::Acceptor(EventLoop* loop, const char *ip, int16_t port)
+Acceptor::Acceptor(EventLoop *loop, const char *ip, int16_t port)
 	:loop(loop),
 	channel(loop, Socket::createTcpSocket(ip, port)),
 	sockfd(channel.getfd()),

@@ -144,6 +144,7 @@ void Connector::handleWrite()
 			if (connect)
 			{
 				newConnectionCallback(sockfd);
+				Socket::setkeepAlive(sockfd,1);
 			}
 			else
 			{
@@ -190,39 +191,38 @@ void Connector::connecting(bool sync)
 
 	switch (savedErrno)
 	{
-	case 0:
-	case EINPROGRESS:
-	case EINTR:
-	case EISCONN:
-		Socket::setSocketNonBlock(sockfd);
-		setState(kConnecting);
-		connecting(sync, sockfd);
-		//socket.setkeepAlive(sockfd,1);
-		break;
+		case 0:
+		case EINPROGRESS:
+		case EINTR:
+		case EISCONN:
+			Socket::setSocketNonBlock(sockfd);
+			setState(kConnecting);
+			connecting(sync, sockfd);
+			break;
 
-	case EAGAIN:
-	case EADDRINUSE:
-	case EADDRNOTAVAIL:
-	case ECONNREFUSED:
-	case ENETUNREACH:
-		retry(sockfd);
-		break;
+		case EAGAIN:
+		case EADDRINUSE:
+		case EADDRNOTAVAIL:
+		case ECONNREFUSED:
+		case ENETUNREACH:
+			retry(sockfd);
+			break;
 
-	case EACCES:
-	case EPERM:
-	case EAFNOSUPPORT:
-	case EALREADY:
-	case EBADF:
-	case EFAULT:
-	case ENOTSOCK:
-		LOG_WARN << "connect error " << savedErrno << " " << ip << " " << port;
-		Socket::close(sockfd);
-		break;
+		case EACCES:
+		case EPERM:
+		case EAFNOSUPPORT:
+		case EALREADY:
+		case EBADF:
+		case EFAULT:
+		case ENOTSOCK:
+			LOG_WARN << "connect error " << savedErrno << " " << ip << " " << port;
+			Socket::close(sockfd);
+			break;
 
-	default:
-		LOG_WARN << "Unexpected error " << savedErrno << " " << ip << " " << port;
-		Socket::close(sockfd);
-		break;
+		default:
+			LOG_WARN << "Unexpected error " << savedErrno << " " << ip << " " << port;
+			Socket::close(sockfd);
+			break;
 	}
 }
 

@@ -189,12 +189,8 @@ void LogFile::getLogFileName(time_t *now)
 	char timebuf[32];
 	struct tm tm;
 	*now = time(0);
-#ifdef _WIN32
 	tm = *(localtime(now));
-#else
-	gmtime_r(now,&tm);
-#endif
-	strftime(timebuf,sizeof timebuf,".%Y%m%d-%H%M%S",&tm);
+	strftime(timebuf,sizeof timebuf,".%Y-%m-%d-%H-%M-%S",&tm);
 	filename += timebuf;
 	filename += ".log";
 }
@@ -449,15 +445,11 @@ void Logger::Impl::formatTime()
 	char ttime[32];
 	struct tm tmtime;
 	time_t now = time(0);
-#ifdef _WIN32
 	tmtime = *(localtime(&now));
-#else
-	gmtime_r(&now,&tmtime);
-#endif
-	int32_t len = snprintf(ttime,sizeof(ttime),"%4d%02d%02d %02d:%02d:%02d",
+	int32_t len = snprintf(ttime,sizeof(ttime),"%4d-%02d-%02d %02d:%02d:%02d",
 		tmtime.tm_year + 1900, tmtime.tm_mon + 1, tmtime.tm_mday,
 		tmtime.tm_hour + 8, tmtime.tm_min, tmtime.tm_sec);
-	assert(len == 17); (void)len;
+	assert(len == 19); (void)len;
 	stream<<T(ttime,17);
 	stream<<"  ";
 }

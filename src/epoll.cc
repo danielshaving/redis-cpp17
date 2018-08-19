@@ -17,7 +17,7 @@ epollFd(::epoll_create1(EPOLL_CLOEXEC))
 
 Epoll::~Epoll()
 {
-	::close(epollFd);
+	Socket::close(sockfd);
 }
 
 void Epoll::epollWait(ChannelList *activeChannels,int32_t msTime)
@@ -28,7 +28,10 @@ void Epoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 	if (numEvents > 0)
 	{
 		fillActiveChannels(numEvents,activeChannels);
-		if (numEvents == events.size()) { events.resize(events.size() * 2); }
+		if (numEvents == events.size())
+		{
+			events.resize(events.size() * 2);
+		}
 	}
 	else if (numEvents == 0)
 	{
@@ -38,8 +41,7 @@ void Epoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 	{
 		if (savedErrno != EINTR)
 		{
-			errno = savedErrno;
-		  	LOG_WARN<<"wait error"<<errno;
+
 		}
 	}
 }
