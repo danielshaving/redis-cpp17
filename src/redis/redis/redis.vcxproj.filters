@@ -1,0 +1,195 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="redlock.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="replication.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="sds.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="select.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="session.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="socket.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="tcpclient.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="tcpconnection.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="tcpserver.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="threadpool.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="timerqueue.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="util.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="zmalloc.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="acceptor.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="buffer.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="channel.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="cluster.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="connector.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="epoll.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="eventloop.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="hiredis.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="log.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="object.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="poll.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="rdb.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="redis.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="rediscli.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="redlock.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="replication.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="sds.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="select.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="session.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="socket.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="tcpclient.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="tcpconnection.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="tcpserver.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="threadpool.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="timerqueue.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="zmalloc.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="acceptor.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="all.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="buffer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="callback.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="channel.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="cluster.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="connector.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="epoll.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="eventloop.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="hiredis.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="log.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="object.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="poll.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="rdb.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="redis.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="rediscli.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="makefile" />
+  </ItemGroup>
+</Project>
