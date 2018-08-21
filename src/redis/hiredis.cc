@@ -2246,41 +2246,28 @@ bool Hiredis::redirectySlot(const char *ip, int16_t port,
 	TcpConnectionPtr conn = nullptr;
 	bool flag = true;
 
-
 	std::unique_lock<std::mutex> lk(mutex);
 	assert(!tcpClients.empty());
-
-	int32_t index = 0;
-	int32_t sockfd = ac->redisConn->getSockfd();
-	if (sockfd < sessionCount)
-	{
-		sockfd += sessionCount;
-	}
-
 	int32_t fix = ac->redisConn->getSockfd() % (sessionCount - 1);
-	while (index <= tcpClients.size())
+
+	if (tcpClients.size() > sessionCount)
 	{
-		if (tcpClients.size() <= sessionCount)
+		int32_t index = 0;
+		while (index < tcpClients.size())
 		{
-			break;
-		}
-
-		if (index == tcpClients.size())
-		{
-			index = index - 1;
-		}
-
-		if (tcpClients[index]->getPort() == port)
-		{
-			flag = false;
-			conn = tcpClients[index + fix]->getConnection();
-			break;
-		}
-		else
-		{
-			index += sessionCount;
+			if (tcpClients[index]->getPort() == port)
+			{
+				flag = false;
+				conn = tcpClients[index + fix]->getConnection();
+				break;
+			}
+			else
+			{
+				index += sessionCount;
+			}
 		}
 	}
+
 
 	if (flag)
 	{
