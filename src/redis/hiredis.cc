@@ -1,10 +1,10 @@
 #include "hiredis.h"
 RedisReply::RedisReply()
-:str(nullptr),
-elements(0),
-len(0),
-integer(0),
-type(-1)
+	:str(nullptr),
+	elements(0),
+	len(0),
+	integer(0),
+	type(-1)
 {
 
 }
@@ -18,18 +18,18 @@ RedisReply::~RedisReply()
 }
 
 RedisReader::RedisReader(Buffer *buffer)
-:buffer(buffer),
-pos(0),
-err(0),
-ridx(-1)
+	:buffer(buffer),
+	pos(0),
+	err(0),
+	ridx(-1)
 {
 	errstr[0] = '\0';
 }
 
 RedisReader::RedisReader()
-:pos(0),
-err(0),
-ridx(-1)
+	:pos(0),
+	err(0),
+	ridx(-1)
 {
 	buffer = &buf;
 	errstr[0] = '\0';
@@ -49,7 +49,7 @@ void RedisReader::redisReaderSetError(int32_t type, const char *str)
 	/* Set error. */
 	err = type;
 	len = strlen(str);
-	len = len < (sizeof(errstr)-1) ? len : (sizeof(errstr)-1);
+	len = len < (sizeof(errstr) - 1) ? len : (sizeof(errstr) - 1);
 	memcpy(errstr, str, len);
 	errstr[len] = '\0';
 }
@@ -334,7 +334,7 @@ void RedisContext::redisSetError(int32_t type, const char *str)
 	if (str != nullptr)
 	{
 		len = strlen(str);
-		len = len < (sizeof(errstr)-1) ? len : (sizeof(errstr)-1);
+		len = len < (sizeof(errstr) - 1) ? len : (sizeof(errstr) - 1);
 		memcpy(errstr, str, len);
 		errstr[len] = '\0';
 	}
@@ -695,8 +695,8 @@ int32_t RedisReader::redisReaderGetReply(RedisReplyPtr &reply)
 }
 
 RedisAsyncCallback::RedisAsyncCallback()
-:data(nullptr),
-len(0)
+	:data(nullptr),
+	len(0)
 {
 
 }
@@ -711,13 +711,13 @@ RedisAsyncCallback::~RedisAsyncCallback()
 }
 
 RedisContext::RedisContext()
-:reader(new RedisReader())
+	:reader(new RedisReader())
 {
 	clear();
 }
 
 RedisContext::RedisContext(Buffer *buffer, int32_t sockfd)
-: reader(new RedisReader(buffer))
+	: reader(new RedisReader(buffer))
 {
 	clear();
 }
@@ -1051,115 +1051,115 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 			default:
 				/* Try to detect printf format */
 			{
-					   static const char intfmts[] = "diouxX";
-					   char _format[16];
-					   const char *_p = c + 1;
-					   size_t _l = 0;
-					   va_list _cpy;
+				static const char intfmts[] = "diouxX";
+				char _format[16];
+				const char *_p = c + 1;
+				size_t _l = 0;
+				va_list _cpy;
 
-					   /* Flags */
-					   if (*_p != '\0' && *_p == '#')
-						   _p++;
+				/* Flags */
+				if (*_p != '\0' && *_p == '#')
+					_p++;
 
-					   if (*_p != '\0' && *_p == '0')
-						   _p++;
+				if (*_p != '\0' && *_p == '0')
+					_p++;
 
-					   if (*_p != '\0' && *_p == '-')
-						   _p++;
+				if (*_p != '\0' && *_p == '-')
+					_p++;
 
-					   if (*_p != '\0' && *_p == ' ')
-						   _p++;
+				if (*_p != '\0' && *_p == ' ')
+					_p++;
 
-					   if (*_p != '\0' && *_p == '+')
-						   _p++;
+				if (*_p != '\0' && *_p == '+')
+					_p++;
 
-					   /* Field width */
-					   while (*_p != '\0' && isdigit(*_p))
-						   _p++;
+				/* Field width */
+				while (*_p != '\0' && isdigit(*_p))
+					_p++;
 
-					   /* Precision */
-					   if (*_p == '.')
-					   {
-						   _p++;
-						   while (*_p != '\0' && isdigit(*_p))
-							   _p++;
-					   }
-					   /* Copy va_list before consuming with va_arg */
-					   va_copy(_cpy, ap);
-					   /* Integer conversion (without modifiers) */
-					   if (strchr(intfmts, *_p) != nullptr)
-					   {
-						   va_arg(ap, int32_t);
-						   goto fmt_valid;
-					   }
-					   /* Double conversion (without modifiers) */
-					   if (strchr("eEfFgGaA", *_p) != nullptr)
-					   {
-						   va_arg(ap, double);
-						   goto fmt_valid;
-					   }
-					   /* Size: char */
-					   if (_p[0] == 'h' && _p[1] == 'h')
-					   {
-						   _p += 2;
-						   if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
-						   {
-							   va_arg(ap, int32_t);	/* char gets promoted to int32_t */
-							   goto fmt_valid;
-						   }
-						   goto fmt_invalid;
-					   }
-					   /* Size: short */
-					   if (_p[0] == 'h')
-					   {
-						   _p += 1;
-						   if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
-						   {
-							   va_arg(ap, int32_t);	/* short gets promoted to int32_t */
-							   goto fmt_valid;
-						   }
-						   goto fmt_invalid;
-					   }
-					   /* Size: long long */
-					   if (_p[0] == 'l' && _p[1] == 'l')
-					   {
-						   _p += 2;
-						   if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
-						   {
-							   va_arg(ap, long long);
-							   goto fmt_valid;
-						   }
+				/* Precision */
+				if (*_p == '.')
+				{
+					_p++;
+					while (*_p != '\0' && isdigit(*_p))
+						_p++;
+				}
+				/* Copy va_list before consuming with va_arg */
+				va_copy(_cpy, ap);
+				/* Integer conversion (without modifiers) */
+				if (strchr(intfmts, *_p) != nullptr)
+				{
+					va_arg(ap, int32_t);
+					goto fmt_valid;
+				}
+				/* Double conversion (without modifiers) */
+				if (strchr("eEfFgGaA", *_p) != nullptr)
+				{
+					va_arg(ap, double);
+					goto fmt_valid;
+				}
+				/* Size: char */
+				if (_p[0] == 'h' && _p[1] == 'h')
+				{
+					_p += 2;
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+					{
+						va_arg(ap, int32_t);	/* char gets promoted to int32_t */
+						goto fmt_valid;
+					}
+					goto fmt_invalid;
+				}
+				/* Size: short */
+				if (_p[0] == 'h')
+				{
+					_p += 1;
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+					{
+						va_arg(ap, int32_t);	/* short gets promoted to int32_t */
+						goto fmt_valid;
+					}
+					goto fmt_invalid;
+				}
+				/* Size: long long */
+				if (_p[0] == 'l' && _p[1] == 'l')
+				{
+					_p += 2;
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+					{
+						va_arg(ap, long long);
+						goto fmt_valid;
+					}
 
-						   goto fmt_invalid;
-					   }
-					   /* Size: long */
-					   if (_p[0] == 'l')
-					   {
-						   _p += 1;
-						   if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
-						   {
-							   va_arg(ap, long);
-							   goto fmt_valid;
-						   }
-						   goto fmt_invalid;
-					   }
-				   fmt_invalid:
-					   va_end(_cpy);
-					   goto err;
-				   fmt_valid:
-					   _l = (_p + 1) - c;
-					   if (_l < sizeof(_format)-2)
-					   {
-						   memcpy(_format, c, _l);
-						   _format[_l] = '\0';
-						   newarg = sdscatvprintf(curarg, _format, _cpy);
+					goto fmt_invalid;
+				}
+				/* Size: long */
+				if (_p[0] == 'l')
+				{
+					_p += 1;
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+					{
+						va_arg(ap, long);
+						goto fmt_valid;
+					}
+					goto fmt_invalid;
+				}
+			fmt_invalid:
+				va_end(_cpy);
+				goto err;
+			fmt_valid:
+				_l = (_p + 1) - c;
+				if (_l < sizeof(_format) - 2)
+				{
+					memcpy(_format, c, _l);
+					_format[_l] = '\0';
+					newarg = sdscatvprintf(curarg, _format, _cpy);
 
-						   /* Update current position (note: outer blocks
-							* increment c twice so compensate here) */
-						   c = _p - 1;
-					   }
-					   va_end(_cpy);
-					   break;
+					/* Update current position (note: outer blocks
+					 * increment c twice so compensate here) */
+					c = _p - 1;
+				}
+				va_end(_cpy);
+				break;
 
 			}
 			}
@@ -1703,11 +1703,11 @@ SubCallback::~SubCallback()
 }
 
 RedisAsyncContext::RedisAsyncContext(Buffer *buffer, const TcpConnectionPtr &conn)
-:redisContext(new RedisContext(buffer, conn->getSockfd())),
-redisConn(conn),
-err(0),
-errstr(nullptr),
-data(nullptr)
+	:redisContext(new RedisContext(buffer, conn->getSockfd())),
+	redisConn(conn),
+	err(0),
+	errstr(nullptr),
+	data(nullptr)
 {
 
 }
@@ -1799,10 +1799,10 @@ int32_t RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
 }
 
 Hiredis::Hiredis(EventLoop *loop, int16_t sessionCount, bool clusterMode)
-:pool(loop),
-clusterMode(true),
-sessionCount(sessionCount),
-pos(0)
+	:pool(loop),
+	clusterMode(true),
+	sessionCount(sessionCount),
+	pos(0)
 {
 
 }

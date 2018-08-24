@@ -48,8 +48,8 @@ size_t convertHex(char buf[], uintptr_t value)
 }
 
 AppendFile::AppendFile(const std::string &filename)
-:filename(filename),
- writtenBytes(0)
+	:filename(filename),
+	writtenBytes(0)
 {
 #ifdef _WIN32
 	fp = ::fopen(filename.c_str(), "at+");
@@ -101,8 +101,8 @@ bool AppendFile::lockFile(const std::string &fname)
 	{
 		this->fd = fd;
 	}
-	return true;
 #endif
+	return true;
 }
 
 bool AppendFile::unlockFile()
@@ -113,7 +113,7 @@ bool AppendFile::unlockFile()
 		fileLock.unlock();
 		return true;
 	}
-	catch  (const std::exception &e) 
+	catch (const std::exception &e)
 	{
 		return false;
 	}
@@ -126,8 +126,8 @@ bool AppendFile::unlockFile()
 	}
 
 	::close(fd);
-	return true;
 #endif
+	return true;
 }
 
 int32_t AppendFile::lockOrUnlock(int32_t fd, bool lock)
@@ -141,7 +141,10 @@ int32_t AppendFile::lockOrUnlock(int32_t fd, bool lock)
 	f.l_start = 0;
 	f.l_len = 0;        // Lock/unlock entire file
 	return ::fcntl(fd, F_SETLK, &f);
+#else
+	return 0;
 #endif
+
 }
 
 void AppendFile::append(const char *logline, const size_t len)
@@ -161,7 +164,7 @@ void AppendFile::append(const char *logline, const size_t len)
 			break;
 		}
 		n += x;
-		remain = len - n; // remain -= x
+		remain = len - n;
 	}
 	writtenBytes += len;
 }
@@ -219,9 +222,9 @@ void LogFile::appendUnlocked(const char *logline, int32_t len)
 	{
 		rollFile();
 		file->append(logline, len);
-		return ;
+		return;
 	}
-	
+
 	file->append(logline, len);
 	if (file->getWrittenBytes() > rollSize)
 	{
@@ -283,14 +286,14 @@ void LogFile::getLogFileName(time_t *now)
 }
 
 AsyncLogging::AsyncLogging(std::string filePath, std::string baseName, size_t rollSize, int32_t interval)
-:filePath(filePath),
-baseName(baseName),
-interval(interval),
-running(false),
-rollSize(rollSize),
-currentBuffer(new Buffer),
-nextBuffer(new Buffer),
-buffers()
+	:filePath(filePath),
+	baseName(baseName),
+	interval(interval),
+	running(false),
+	rollSize(rollSize),
+	currentBuffer(new Buffer),
+	nextBuffer(new Buffer),
+	buffers()
 {
 	currentBuffer->bzero();
 	nextBuffer->bzero();
@@ -524,10 +527,10 @@ Logger::OutputFunc g_output = defaultOutput;
 Logger::FlushFunc g_flush = defaultFlush;
 
 Logger::Impl::Impl(LogLevel level, int32_t savedErrno, const SourceFile &file, int32_t line)
-:stream(),
-level(level),
-line(line),
-baseName(file)
+	:stream(),
+	level(level),
+	line(line),
+	baseName(file)
 {
 	formatTime();
 }
@@ -552,19 +555,19 @@ void Logger::Impl::finish()
 }
 
 Logger::Logger(SourceFile file, int32_t line)
-:impl(INFO, 0, file, line)
+	:impl(INFO, 0, file, line)
 {
 
 }
 
 Logger::Logger(SourceFile file, int32_t line, LogLevel level, const char *func)
-: impl(level, 0, file, line)
+	: impl(level, 0, file, line)
 {
 	impl.stream << func << ' ';
 }
 
 Logger::Logger(SourceFile file, int32_t line, LogLevel level)
-: impl(level, 0, file, line)
+	: impl(level, 0, file, line)
 {
 
 }

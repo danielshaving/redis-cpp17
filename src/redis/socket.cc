@@ -338,7 +338,7 @@ int32_t Socket::createSocket()
 #endif
 
 #ifdef __APPLE__
-	return ::socket(AF_INET, SOCK_STREAM , 0);
+	return ::socket(AF_INET, SOCK_STREAM, 0);
 	//return ::socket(AF_UNIX, SOCK_STREAM, 0);
 #endif
 }
