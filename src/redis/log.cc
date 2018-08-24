@@ -74,8 +74,6 @@ bool AppendFile::exists()
 bool AppendFile::lockFile(const std::string &fname)
 {
 #ifdef _BOOST_FILE_LOCK
-	//std::ofstream of(fname, std::ios_base::trunc | std::ios_base::out);
-
 	boost::interprocess::file_lock fl(fname.c_str());
 	fileLock = std::move(fl);
 	try

@@ -44,11 +44,6 @@ namespace fs = std::experimental::filesystem;
 
 boost::interprocess::file_lock fileLock;
 
-bool exists(const std::string &fname)
-{
-	return fs::exists(fname.c_str());
-}
-
 bool lockFile(const std::string &fname)
 {
 	boost::interprocess::file_lock fl(fname.c_str());
@@ -58,7 +53,7 @@ bool lockFile(const std::string &fname)
 		fileLock.lock();
 		return true;
 	}
-	catch (boost::interprocess::interprocess_exception& e)
+	catch (boost::interprocess::interprocess_exception &e)
 	{
 		return false;
 	}
@@ -146,8 +141,13 @@ int main()
 			{
 				fileName += "log/";
 				auto fe = it.path();
-				feName = fe.filename().c_str();
-				fileName += feName;
+				fileName += fe.filename();
+				
+				if (!fs::exists( it.path()))
+				{
+					printf("filename %s not found..........\n",fe.filename().c_str());
+					continue;
+				}
 				
 				if (!lockFile(fileName))
 				{
@@ -178,7 +178,6 @@ int main()
 					}
 				}
 
-				feName.clear();
 				fileName.clear();
 				unlockFile();
 				::fclose(fp);
