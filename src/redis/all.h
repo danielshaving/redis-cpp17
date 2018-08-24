@@ -69,6 +69,9 @@ typedef SSIZE_T ssize_t;
 #include <sys/wait.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <pwd.h>
+#include <dirent.h>
+#include <sys/times.h>
 #endif
 
 #ifdef __APPLE__
@@ -77,7 +80,7 @@ typedef SSIZE_T ssize_t;
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <libkern/OSByteOrder.h>
-#include <zlib.h>
+//#include <zlib.h>
 
 #define htobe16(x) OSSwapHostToBigInt16(x)
 #define htole16(x) OSSwapHostToLittleInt16(x)
@@ -103,6 +106,7 @@ typedef SSIZE_T ssize_t;
 #include <sys/eventfd.h>
 #include <endian.h>
 #include <sys/un.h>
+#include <sys/utsname.h>
 #endif
 
 #define REDIS_CONNECT_RETRIES  10

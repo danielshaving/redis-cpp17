@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 #endif
 
 	logFile.reset(new LogFile("redislog", "redis", 4096, false));
-	Logger::setOutput(dummyOutput);
+	Logger::setOutput(dummyOutput);        
 	printf("%s\n", logo);
 
 	if (argc == 5)

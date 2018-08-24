@@ -1,5 +1,10 @@
 #pragma once
 #include "all.h"
+
+#ifdef _BOOST_FILE_LOCK
+#include <boost/interprocess/sync/file_lock.hpp>
+#endif
+
 const int32_t kSmallBuffer = 4000;
 const int32_t kLargeBuffer = 4000 * 10;
 
@@ -53,10 +58,15 @@ class AppendFile
 public:
 	explicit AppendFile(const std::string &filename);
 	~AppendFile();
+	
 	void append(const char *logline, const size_t len);
 	void flush();
-	void rename(const std::string &oldname, const std::string &rename);
+	
+	bool exists();
 	size_t getWrittenBytes() const { return writtenBytes; }
+	int32_t lockOrUnlock(int32_t fd, bool lock);
+	bool lockFile(const std::string &fname);
+	bool unlockFile();
 
 private:
 	AppendFile(const AppendFile&);
@@ -66,6 +76,11 @@ private:
 	FILE *fp;
 	char buffer[64 * 1024];
 	size_t writtenBytes;
+	int32_t fd;
+	const std::string filename;
+#ifdef _BOOST_FILE_LOCK
+	boost::interprocess::file_lock fileLock;
+#endif
 };
 
 class LogFile
@@ -328,6 +343,7 @@ private:
 	Impl impl;
 };
 
+
 extern Logger::LogLevel g_logLevel;
 inline Logger::LogLevel Logger::logLevel()
 {
@@ -335,11 +351,11 @@ inline Logger::LogLevel Logger::logLevel()
 }
 
 #define LOG_TRACE if (Logger::logLevel() <= Logger::TRACE) \
-  Logger(__FILE__, __LINE__, Logger::TRACE, __func__).stream()
+	Logger(__FILE__, __LINE__, Logger::TRACE, __func__).stream()
 #define LOG_DEBUG if (Logger::logLevel() <= Logger::DEBUG) \
-  Logger(__FILE__, __LINE__, Logger::DEBUG, __func__).stream()
+	Logger(__FILE__, __LINE__, Logger::DEBUG, __func__).stream()
 #define LOG_INFO if (Logger::logLevel() <= Logger::INFO) \
-  Logger(__FILE__, __LINE__).stream()
+	Logger(__FILE__, __LINE__).stream()
 #define LOG_WARN Logger(__FILE__, __LINE__, Logger::WARN).stream()
 #define LOG_FATAL Logger(__FILE__, __LINE__, Logger::FATAL).stream()
 #define LOG_SYSERR Logger(__FILE__, __LINE__, false).stream()

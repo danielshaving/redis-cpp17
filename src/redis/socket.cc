@@ -463,27 +463,17 @@ int32_t Socket::createTcpSocket(const char *ip, int16_t port)
 	sa.sin_port = htons(port);
 	sa.sin_addr.s_addr = inet_addr(ip);
 
-	/*#ifdef __APPLE__
-	   struct sockaddr_un sa;
-	   sa.sun_family = AF_UNIX;
-	   char *path = "./redis.sock";
-	   strncpy(sa.sun_path,path,sizeof(sa.sun_path) - 1);
-	   mode_t unixsocketperm = 777;
-	   ::chmod(sa.sun_path,unixsocketperm);
-   #endif
-   */
-
 	int32_t sockfd = createSocket();
 	if (sockfd < 0)
 	{
 		LOG_WARN << "Create Tcp Socket Failed! " << strerror(errno);
-		return false;
+		exit(1);
 	}
 
 	if (!setSocketNonBlock(sockfd))
 	{
 		LOG_WARN << "Set listen socket to non-block failed!";
-		return false;
+		exit(1);
 	}
 
 	int32_t optval = 1;
@@ -492,43 +482,29 @@ int32_t Socket::createTcpSocket(const char *ip, int16_t port)
 	{
 		LOG_WARN << "Set SO_REUSEPORT socket failed! error " << strerror(errno);
 		Socket::close(sockfd);
-		return false;
+		exit(1);
 	}
 #else
 	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&optval, sizeof(optval)) < 0)
 	{
 		LOG_WARN << "Set SO_REUSEPORT socket failed! error " << strerror(errno);
 		Socket::close(sockfd);
-		return false;
+		assert(false);
 	}
 #endif
-
-	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof(optval)) < 0)
-	{
-		LOG_WARN << "Set SO_REUSEADDR socket  failed! error " << strerror(errno);
-		Socket::close(sockfd);
-		return false;
-	}
 
 	if (::bind(sockfd, (struct sockaddr*)&sa, sizeof(sa)) < 0)
 	{
 		LOG_WARN << "Bind bind socket failed! error " << strerror(errno);
 		Socket::close(sockfd);
-		return false;
+		exit(1);
 	}
-
-	//        FILE *fp = fopen("/proc/sys/net/core/somaxconn","r");
-	//        char buf[1024];
-	//        if (!fp) return;
-	//        if (fgets(buf,sizeof(buf),fp) != NULL)
-	//            int32_t somaxconn = atoi(buf);
-	//            if (somaxconn > 0 && somaxconn < server.tcp_backlog)
 
 	if (::listen(sockfd, SOMAXCONN))
 	{
 		LOG_WARN << "Listen listen socket failed! error " << strerror(errno);
 		close(sockfd);
-		return false;
+		exit(1);
 	}
 
 #ifdef __linux__

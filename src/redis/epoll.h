@@ -31,6 +31,6 @@ private:
 	ChannelMap channels;
 	EventList events;
 	EventLoop *loop;
-	int32_t epollFd;
+	int32_t sockfd;
 };
 #endif

@@ -10,9 +10,9 @@ const int32_t kDeleted = 2;
 Epoll::Epoll(EventLoop *loop)
 :events(64),
 loop(loop),
-epollFd(::epoll_create1(EPOLL_CLOEXEC))
+sockfd(::epoll_create1(EPOLL_CLOEXEC))
 {
-	assert(epollFd >= 0);
+	assert(sockfd >= 0);
 }
 
 Epoll::~Epoll()
@@ -22,7 +22,7 @@ Epoll::~Epoll()
 
 void Epoll::epollWait(ChannelList *activeChannels,int32_t msTime)
 {
-	int32_t numEvents = ::epoll_wait(epollFd,&*events.begin(),events.size(),msTime);
+	int32_t numEvents = ::epoll_wait(sockfd,&*events.begin(),events.size(),msTime);
 	int32_t savedErrno = errno;
 
 	if (numEvents > 0)
@@ -120,7 +120,7 @@ void Epoll::update(int32_t operation,Channel *channel)
 	event.events = channel->getEvents();
 	event.data.ptr = channel;
 	int32_t fd = channel->getfd();
-	if (::epoll_ctl(epollFd,operation,fd,&event) < 0)
+	if (::epoll_ctl(sockfd,operation,fd,&event) < 0)
 	{
 		LOG_WARN<<"epoll_ctl "<<fd;
 	}

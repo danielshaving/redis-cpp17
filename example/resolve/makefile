@@ -1,5 +1,5 @@
 TARGET= ./resolve
-CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations  -Wl,--no-as-needed -std=c++17   -I /usr/local/mysql/connector-c++-8.0/include
+CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations  -Wl,--no-as-needed -std=c++17 -I /usr/local/mysql/connector-c++-8.0/include
 cppfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))
@@ -18,7 +18,7 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread  -lstdc++fs #-lz -ldl -lcurl
+	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread  -lstdc++fs  -ldl -lssl -lcrypto
 ${CXXOBJS}:./%.o:./%.cc
 	g++-7 -MMD -c -o $@ $< ${CFLAGS} 
 

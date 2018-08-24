@@ -4,10 +4,10 @@
 #include "util.h"
 
 Cluster::Cluster(Redis *redis)
-	:redis(redis),
-	state(true),
-	isConnect(false),
-	replyCount(0)
+:redis(redis),
+state(true),
+isConnect(false),
+replyCount(0)
 {
 
 }
@@ -168,14 +168,14 @@ uint32_t Cluster::keyHashSlot(char *key, int32_t keylen)
 	int32_t s, e; /* start-end indexes of { and } */
 
 	for (s = 0; s < keylen; s++)
-		if (key[s] == '{') break;
+	if (key[s] == '{') break;
 
 	/* No '{' ? Hash the whole key. This is the base case. */
 	if (s == keylen) return crc16(key, keylen) & 0x3FFF;
 
 	/* '{' found? Check if we have the corresponding '}'. */
 	for (e = s + 1; e < keylen; e++)
-		if (key[e] == '}') break;
+	if (key[e] == '}') break;
 
 	/* No '}' or nothing betweeen {} ? Hash the whole key. */
 	if (e == keylen || e == s + 1) return crc16(key, keylen) & 0x3FFF;
@@ -293,7 +293,7 @@ bool Cluster::replicationToNode(const std::deque<RedisObjectPtr> &obj, const Ses
 		{
 			clusterDelKeys.push_back(
 				createRawStringObject(obj[firstKey + j]->type,
-					obj[firstKey + j]->ptr, sdslen(obj[firstKey + j]->ptr)));
+				obj[firstKey + j]->ptr, sdslen(obj[firstKey + j]->ptr)));
 		}
 	}
 

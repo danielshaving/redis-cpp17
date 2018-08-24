@@ -31,7 +31,9 @@ Redis::Redis(const char *ip, int16_t port, int16_t threadCount, bool enbaledClus
 		std::thread thread(std::bind(&Cluster::connectCluster, &clus));
 		thread.detach();
 	}
+
 	LOG_INFO << "Ready to accept connections";
+
 }
 
 

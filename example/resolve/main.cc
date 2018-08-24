@@ -6,6 +6,14 @@
 #include <assert.h>
 #include <string.h>
 #include <mysqlx/xapi.h>
+#include <chrono>
+#include <thread>
+#include <fstream>
+#include <functional>
+#include <algorithm>
+#include <memory>
+
+#include <boost/interprocess/sync/file_lock.hpp>
 
 /* Error processing macros */
 #define CRUD_CHECK(C, S) if (!C) \
@@ -34,6 +42,41 @@
 
 namespace fs = std::experimental::filesystem;
 
+boost::interprocess::file_lock fileLock;
+
+bool exists(const std::string &fname)
+{
+	return fs::exists(fname.c_str());
+}
+
+bool lockFile(const std::string &fname)
+{
+	boost::interprocess::file_lock fl(fname.c_str());
+	fileLock = std::move(fl);
+	try
+	{
+		fileLock.lock();
+		return true;
+	}
+	catch (boost::interprocess::interprocess_exception& e)
+	{
+		return false;
+	}
+}
+
+bool unlockFile()
+{
+	try
+	{
+		fileLock.unlock();
+		return true;
+	}
+	catch  (const std::exception &e) 
+	{
+		return false;
+	}
+}
+
 int main()
 {
 	mysqlx_session_t  *sess;
@@ -45,7 +88,7 @@ int main()
 
 	char conn_error[MYSQLX_MAX_ERROR_LEN];
 	int conn_err_code;
-	
+
 	sess = mysqlx_get_session("127.0.0.1",33060,"root","123456","game",conn_error, &conn_err_code);
 	if (!sess)
 	{
@@ -54,7 +97,7 @@ int main()
 	}
 
 	printf("Connected...\n");
-  
+
 	{
 		/*
 		TODO: Only working with server version 8
@@ -80,52 +123,67 @@ int main()
 			mysqlx_session_close(sess);
 			return 0;
 		}
+
+		std::string alter = "alter table log_item AUTO_INCREMENT = 1";
+		res = mysqlx_sql(sess,alter.c_str(),MYSQLX_NULL_TERMINATED);
+		RESULT_CHECK(res, sess);
 	}
-  
+
 	const char *path = "log";
 	std::string fileName;
 	std::string feName;
 
-	if(!fs::is_directory(path))
+	if (!fs::is_directory(path))
 	{
 		printf("path no exists\n");
 	}
 	else
 	{
 		const int MAX_LINE = 65536;
-		for (auto &it : fs::directory_iterator(path))
+		while (1)
 		{
-			fileName += "log/";
-			auto fe = it.path();
-			feName = fe.filename().c_str();
-			fileName += feName;
-			FILE *fp = ::fopen(fileName.c_str(),"r");
-			assert(fp);
-			fseek(fp,0,0);
-			char buf[MAX_LINE];
-			while(fgets(buf,MAX_LINE,fp) != nullptr)
+			for (auto &it : fs::directory_iterator(path))
 			{
-				char *start; 
-				start = strchr(buf,'#');
-			    if (start != nullptr)
-			    {
-			    	printf("%s\n",start);
-			    	start = start + 3;
-			    	char *end;
-					end = strchr(start,'#');
-					assert(end != nullptr);
-					printf("length %d\n",int(end - start));
-				    std::string ret(start,end);
-				    printf("string %s\n",ret.c_str());
-					
-					res = mysqlx_sql(sess,ret.c_str(),MYSQLX_NULL_TERMINATED);
-					RESULT_CHECK(res, sess);
-			    }
-			}
+				fileName += "log/";
+				auto fe = it.path();
+				feName = fe.filename().c_str();
+				fileName += feName;
+				
+				if (!lockFile(fileName))
+				{
+					printf("lock..........\n");
+					continue;
+				}
+				
+				FILE *fp = ::fopen(fileName.c_str(),"r");
+				assert(fp);
+				fseek(fp,0,0);
+				char buf[MAX_LINE];
+				while (fgets(buf,MAX_LINE,fp) != nullptr)
+				{
+					char *start;
+					start = strchr(buf,'#');
+					if (start != nullptr)
+					{
+						printf("%s\n",start);
+						start = start + 3;
+						char *end;
+						end = strchr(start,'#');
+						assert(end != nullptr);
+						printf("length %d\n",int(end - start));
+						std::string ret(start,end);
+						printf("string %s\n",ret.c_str());
+						res = mysqlx_sql(sess,ret.c_str(),MYSQLX_NULL_TERMINATED);
+						RESULT_CHECK(res, sess);
+					}
+				}
 
-			feName.clear();
-			fileName.clear();
-			::fclose(fp);
+				feName.clear();
+				fileName.clear();
+				unlockFile();
+				::fclose(fp);
+				fs::remove(it.path());
+			}
 		}
 	}
 	return 0;

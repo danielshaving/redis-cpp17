@@ -1,5 +1,5 @@
 TARGET= ./redis-server
-CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17  # -I /usr/local/include/  #-DUSE_JEMALLOC
+CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17 -D_BOOST_FILE_LOCK  # -I /usr/local/include/  #-DUSE_JEMALLOC
 cppfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))
@@ -18,7 +18,7 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread  -lstdc++fs #-lz -lcurl
+	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread -lstdc++fs #-lz -lcurl -lcrypto -ldl -lssl 
 ${CXXOBJS}:./%.o:./%.cc
 	g++-7 -MMD -c -o $@ $< ${CFLAGS} 
 
@@ -28,7 +28,7 @@ ${COBJS}:./%.o:./%.c
 -include $(DEPS)
 
 clean:
-	rm -f *.sock *.rdb *.log *.temp ${OBJS} ${TARGET} ${DEPS}
+	rm -rf redislog *.sock *.rdb *.log *.temp ${OBJS} ${TARGET} ${DEPS}
 
 show:
 	@echo GPROF=$(GPROF)
