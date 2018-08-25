@@ -247,7 +247,7 @@ public:
 	void start(const char *ip, int16_t port);
 	bool redirectySlot(const char *ip, int16_t port,
 		const RedisAsyncContextPtr &ac, const RedisReplyPtr &reply,
-		const RedisAsyncCallbackPtr &repliesCb);
+		const RedisAsyncCallbackPtr &repliesCb, std::unique_lock<std::mutex> &lk);
 
 	void setThreadNum(int16_t threadNum)
 	{

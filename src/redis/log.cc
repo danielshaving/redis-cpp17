@@ -124,7 +124,6 @@ bool AppendFile::unlockFile()
 	{
 		return false;
 	}
-
 	::close(fd);
 #endif
 	return true;
@@ -176,7 +175,11 @@ void AppendFile::flush()
 
 size_t AppendFile::write(const char *logline, size_t len)
 {
+#ifdef __linux__
+	return ::fwrite_unlocked(logline, 1, len, fp);
+#else
 	return ::fwrite(logline, 1, len, fp);
+#endif
 }
 
 LogFile::LogFile(const std::string &filePath, const std::string &basename,
@@ -218,6 +221,15 @@ void LogFile::flush()
 
 void LogFile::appendUnlocked(const char *logline, int32_t len)
 {
+	fs::space_info info = fs::space(filePath.c_str());
+	if (info.free <= rollSize * interval)
+	{
+		std::cout << ".        Capacity       Free      Available\n"
+			              << ":   " << info.capacity << "   "
+			              << info.free << "   " << info.available  << '\n';
+		return ;
+	}
+
 	if (!file->exists())
 	{
 		rollFile();

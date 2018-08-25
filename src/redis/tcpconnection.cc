@@ -228,7 +228,6 @@ void TcpConnection::sendPipe(Buffer *buf)
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendPipeInLoop;
 			loop->runInLoop(std::bind(fp, this, buf->retrieveAllAsString()));
-			//loop->runInLoop(std::bind(&bindSendPipeInLoop,this,buf->retrieveAllAsString()));
 		}
 	}
 }
@@ -250,7 +249,6 @@ void TcpConnection::sendPipe(const std::string_view &message)
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendPipeInLoop;
 			loop->runInLoop(std::bind(fp, this, std::string(message)));
-			//loop->runInLoop(std::bind(&bindSendPipeInLoop,this,std::string(message)));
 		}
 	}
 }

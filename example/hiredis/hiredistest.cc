@@ -345,15 +345,14 @@ void HiredisTest::list()
 				this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
 				nullptr,"rpop list%d %d",count,count);
 	}
-
 }
 
 int main(int argc,char *argv[])
 {
 	const char *ip = "127.0.0.1";
-	uint16_t port = 7000;
-	int16_t sessionCount = 10;
-	int8_t threadCount = 1;
+	uint16_t port = 6379;
+	int16_t sessionCount = 100;
+	int8_t threadCount = 4;
 	int32_t messageCount = 1000000;
 
 	EventLoop loop;
@@ -363,7 +362,7 @@ int main(int argc,char *argv[])
 	LOG_INFO<<"all connect success";
 	// 		hiredis.monitor();
 	//		hiredis.subscribe();
-			hiredis.string();
+	//		hiredis.string();
 	//		hiredis.hash();
 	//		hiredis.list();
 	//hiredis.redlock("test","test",100000);

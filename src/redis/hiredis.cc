@@ -2197,7 +2197,8 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 			int16_t port = atoi(s + 1);
 			LOG_WARN << "-> Redirected to slot " << slot << " located at " << ip << " " << port;
 
-			if (!redirectySlot(ip, port, ac, reply, repliesCb))
+			std::unique_lock<std::mutex> lk(mutex);
+			if (!redirectySlot(ip, port, ac, reply, repliesCb, lk))
 			{
 				TcpClientPtr client(new TcpClient(conn->getLoop(), ip, port, repliesCb));
 				client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
@@ -2241,13 +2242,12 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 
 bool Hiredis::redirectySlot(const char *ip, int16_t port,
 	const RedisAsyncContextPtr &ac, const RedisReplyPtr &reply,
-	const RedisAsyncCallbackPtr &repliesCb)
+	const RedisAsyncCallbackPtr &repliesCb, std::unique_lock<std::mutex> &lk)
 {
 	assert(repliesCb != nullptr);
 	TcpConnectionPtr conn = nullptr;
 	bool flag = true;
 
-	std::unique_lock<std::mutex> lk(mutex);
 	assert(!tcpClients.empty());
 	int32_t fix = ac->redisConn->getSockfd() % (sessionCount - 1);
 
@@ -2269,18 +2269,20 @@ bool Hiredis::redirectySlot(const char *ip, int16_t port,
 		}
 	}
 
-
 	if (flag)
 	{
 		LOG_INFO << "-> Add new cluster client ip port " << ip << " " << port;
 		return false;
 	}
 
+	lk.unlock();
+
 	if (conn == nullptr)
 	{
 		LOG_WARN << "-> Cluster node disconnect " << ip << " " << port;
 		if (repliesCb->cb.fn)
 		{
+			reply->type = REDIS_REPLY_CLUSTER;
 			repliesCb->cb.fn(ac, reply, repliesCb->cb.privdata);
 		}
 	}

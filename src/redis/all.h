@@ -324,6 +324,7 @@ typedef SSIZE_T ssize_t;
 #define REDIS_REPLY_NIL 4
 #define REDIS_REPLY_STATUS 5
 #define REDIS_REPLY_ERROR 6
+#define REDIS_REPLY_CLUSTER 7
 
 #define REPLI_TIME_OUT	60
 
