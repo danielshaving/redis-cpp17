@@ -1,4 +1,4 @@
-#include "processPerformanceInspector::h"
+#include "processinfo.h"
 
 ReadSmallFile::ReadSmallFile(const std::string_view  &filename)
 	: fd(::open(filename.data(), O_RDONLY | O_CLOEXEC)),

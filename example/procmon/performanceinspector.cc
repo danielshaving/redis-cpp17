@@ -1,9 +1,11 @@
 #include "performanceinspector.h"
+#include "processinfo.h"
+#ifdef HAVE_TCMALLOC
 #include <gperftools/malloc_extension.h>
 #include <gperftools/profiler.h>
 
 ///usr/local/liblibprofiler.a
-void PerformanceInspector::registerCommands(Inspector* ins)
+void PerformanceInspector::registerCommands(Inspector *ins)
 {
 	ins->add("pprof", "heap", PerformanceInspector::heap, "get heap information");
 	ins->add("pprof", "growth", PerformanceInspector::growth, "get heap growth information");
@@ -15,30 +17,30 @@ void PerformanceInspector::registerCommands(Inspector* ins)
 	ins->add("pprof", "releasefreememory", PerformanceInspector::releaseFreeMemory, "release free memory");
 }
 
-string PerformanceInspector::heap(HttpRequest::Method, const Inspector::ArgList&)
+std::string PerformanceInspector::heap(HttpRequest::Method, const Inspector::ArgList&)
 {
 	std::string result;
 	MallocExtension::instance()->GetHeapSample(&result);
-	return string(result.data(), result.size());
+	return std::string(result.data(), result.size());
 }
 
-string PerformanceInspector::growth(HttpRequest::Method, const Inspector::ArgList&)
+std::string PerformanceInspector::growth(HttpRequest::Method, const Inspector::ArgList&)
 {
 	std::string result;
 	MallocExtension::instance()->GetHeapGrowthStacks(&result);
-	return string(result.data(), result.size());
+	return std::string(result.data(), result.size());
 }
 
-string PerformanceInspector::profile(HttpRequest::Method, const Inspector::ArgList&)
+std::string PerformanceInspector::profile(HttpRequest::Method, const Inspector::ArgList&)
 {
-	string filename = "/tmp/" + ProcessInfo::procname();
+	std::string filename = "/tmp/" + ProcessInfo::procname();
 	filename += ".";
 	filename += ProcessInfo::pidString();
 	filename += ".";
 	filename += TimeStamp::now().toString();
 	filename += ".profile";
 
-	string profile;
+	std::string profile;
 	if (ProfilerStart(filename.c_str()))
 	{
 		// FIXME: async
@@ -51,19 +53,19 @@ string PerformanceInspector::profile(HttpRequest::Method, const Inspector::ArgLi
 	return profile;
 }
 
-string PerformanceInspector::cmdline(HttpRequest::Method, const Inspector::ArgList&)
+std::string PerformanceInspector::cmdline(HttpRequest::Method, const Inspector::ArgList&)
 {
 	return "";
 }
 
-string PerformanceInspector::memstats(HttpRequest::Method, const Inspector::ArgList&)
+std::string PerformanceInspector::memstats(HttpRequest::Method, const Inspector::ArgList&)
 {
 	char buf[1024 * 64];
 	MallocExtension::instance()->GetStats(buf, sizeof buf);
 	return buf;
 }
 
-string PerformanceInspector::memhistogram(HttpRequest::Method, const Inspector::ArgList&)
+std::string PerformanceInspector::memhistogram(HttpRequest::Method, const Inspector::ArgList&)
 {
 	int blocks = 0;
 	size_t total = 0;
@@ -74,10 +76,10 @@ string PerformanceInspector::memhistogram(HttpRequest::Method, const Inspector::
 	s << "blocks " << blocks << "\ntotal " << total << "\n";
 	for (int i = 0; i < kMallocHistogramSize; ++i)
 		s << i << " " << histogram[i] << "\n";
-	return s.buffer().toString();
+	return s.getBuffer().toString();
 }
 
-string PerformanceInspector::releaseFreeMemory(HttpRequest::Method, const Inspector::ArgList&)
+std::string PerformanceInspector::releaseFreeMemory(HttpRequest::Method, const Inspector::ArgList&)
 {
 	char buf[256];
 	snprintf(buf, sizeof buf, "memory release rate: %f\nAll free memory released.\n",
@@ -85,3 +87,4 @@ string PerformanceInspector::releaseFreeMemory(HttpRequest::Method, const Inspec
 	MallocExtension::instance()->ReleaseFreeMemory();
 	return buf;
 }
+#endif

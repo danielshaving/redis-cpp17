@@ -242,7 +242,6 @@ public:
 		return *this;
 	}
 
-
 	self &operator<<(const Buffer &v)
 	{
 		*this << v.toStringView();

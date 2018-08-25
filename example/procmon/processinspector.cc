@@ -1,9 +1,10 @@
 #include "processinspector.h"
+#include "processinfo.h"
 
-string uptime(TimeStamp now, TimeStamp start, bool showMicroseconds)
+std::string uptime(TimeStamp now, TimeStamp start, bool showMicroseconds)
 {
 	char buf[256];
-	int64_t age = now.microSecondsSinceEpoch() - start.microSecondsSinceEpoch();
+	int64_t age = now.getMicroSecondsSinceEpoch() - start.getMicroSecondsSinceEpoch();
 	int seconds = static_cast<int>(age / TimeStamp::kMicroSecondsPerSecond);
 	int days = seconds / 86400;
 	int hours = (seconds % 86400) / 3600;
@@ -22,22 +23,22 @@ string uptime(TimeStamp now, TimeStamp start, bool showMicroseconds)
 	return buf;
 }
 
-long getLong(const string& procStatus, const char* key)
+long getLong(const std::string &procStatus, const char *key)
 {
 	long result = 0;
 	size_t pos = procStatus.find(key);
-	if (pos != string::npos)
+	if (pos != std::string::npos)
 	{
 		result = ::atol(procStatus.c_str() + pos + strlen(key));
 	}
 	return result;
 }
 
-string getProcessName(const string& procStatus)
+std::string getProcessName(const std::string &procStatus)
 {
-	string result;
+	std::string result;
 	size_t pos = procStatus.find("Name:");
-	if (pos != string::npos)
+	if (pos != std::string::npos)
 	{
 		pos += strlen("Name:");
 		while (procStatus[pos] == '\t')
@@ -50,7 +51,7 @@ string getProcessName(const string& procStatus)
 	return result;
 }
 
-StringPiece next(StringPiece data)
+std::string_view next(std::string_view data)
 {
 	const char* sp = static_cast<const char*>(::memchr(data.data(), ' ', data.size()));
 	if (sp)
@@ -61,7 +62,7 @@ StringPiece next(StringPiece data)
 	return "";
 }
 
-ProcessInfo::CpuTime getCpuTime(StringPiece data)
+ProcessInfo::CpuTime getCpuTime(std::string_view data)
 {
 	ProcessInfo::CpuTime t;
 
@@ -78,9 +79,9 @@ ProcessInfo::CpuTime getCpuTime(StringPiece data)
 	return t;
 }
 
-int stringPrintf(string* out, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
+int stringPrintf(std::string *out, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
-int stringPrintf(string* out, const char* fmt, ...)
+int stringPrintf(std::string *out, const char *fmt, ...)
 {
 	char buf[256];
 	va_list args;
@@ -91,9 +92,9 @@ int stringPrintf(string* out, const char* fmt, ...)
 	return ret;
 }
 
-string ProcessInspector::username_ = ProcessInfo::username();
+std::string ProcessInspector::username_ = ProcessInfo::username();
 
-void ProcessInspector::registerCommands(Inspector* ins)
+void ProcessInspector::registerCommands(Inspector *ins)
 {
 	ins->add("proc", "overview", ProcessInspector::overview, "print basic overview");
 	ins->add("proc", "pid", ProcessInspector::pid, "print pid");
@@ -102,9 +103,9 @@ void ProcessInspector::registerCommands(Inspector* ins)
 	ins->add("proc", "threads", ProcessInspector::threads, "list /proc/self/task");
 }
 
-string ProcessInspector::overview(HttpRequest::Method, const Inspector::ArgList&)
+std::string ProcessInspector::overview(HttpRequest::Method, const Inspector::ArgList&)
 {
-	string result;
+	std::string result;
 	result.reserve(1024);
 	TimeStamp now = TimeStamp::now();
 	result += "Page generated at ";
@@ -115,7 +116,7 @@ string ProcessInspector::overview(HttpRequest::Method, const Inspector::ArgList&
 	result += uptime(now, ProcessInfo::startTime(), true/* show microseconds */);
 	result += "\n";
 
-	string procStatus = ProcessInfo::procStatus();
+	std::string procStatus = ProcessInfo::procStatus();
 	result += getProcessName(procStatus);
 	result += " (";
 	result += ProcessInfo::exePath();
@@ -146,7 +147,7 @@ string ProcessInspector::overview(HttpRequest::Method, const Inspector::ArgList&
 	stringPrintf(&result, "Opened files: %d, limit: %d\n",
 		ProcessInfo::openedFiles(), ProcessInfo::maxOpenFiles());
 
-	// string procStat = ProcessInfo::procStat();
+	// std::string procStat = ProcessInfo::procStat();
 
 	/*
 	stringPrintf(&result, "ppid %ld\n", getStatField(procStat, 0));
@@ -162,44 +163,45 @@ string ProcessInspector::overview(HttpRequest::Method, const Inspector::ArgList&
 	return result;
 }
 
-string ProcessInspector::pid(HttpRequest::Method, const Inspector::ArgList&)
+std::string ProcessInspector::pid(HttpRequest::Method, const Inspector::ArgList&)
 {
 	char buf[32];
 	snprintf(buf, sizeof buf, "%d", ProcessInfo::pid());
 	return buf;
 }
 
-string ProcessInspector::procStatus(HttpRequest::Method, const Inspector::ArgList&)
+std::string ProcessInspector::procStatus(HttpRequest::Method, const Inspector::ArgList&)
 {
 	return ProcessInfo::procStatus();
 }
 
-string ProcessInspector::openedFiles(HttpRequest::Method, const Inspector::ArgList&)
+std::string ProcessInspector::openedFiles(HttpRequest::Method, const Inspector::ArgList&)
 {
 	char buf[32];
 	snprintf(buf, sizeof buf, "%d", ProcessInfo::openedFiles());
 	return buf;
 }
 
-string ProcessInspector::threads(HttpRequest::Method, const Inspector::ArgList&)
+std::string ProcessInspector::threads(HttpRequest::Method, const Inspector::ArgList&)
 {
 	std::vector<pid_t> threads = ProcessInfo::threads();
-	string result = "  TID NAME             S    User Time  System Time\n";
+	std::string result = "  TID NAME             S    User Time  System Time\n";
 	result.reserve(threads.size() * 64);
-	string stat;
+	std::string stat;
 	for (size_t i = 0; i < threads.size(); ++i)
 	{
 		char buf[256];
 		int tid = threads[i];
 		snprintf(buf, sizeof buf, "/proc/%d/task/%d/stat", ProcessInfo::pid(), tid);
-		if (FileUtil::readFile(buf, 65536, &stat) == 0)
+		ReadSmallFile file(buf);
+		if (file.readToString(65536, &stat) == 0)
 		{
-			StringPiece name = ProcessInfo::procname(stat);
+			std::string_view name = ProcessInfo::procname(stat);
 			const char* rp = name.end();
 			assert(*rp == ')');
 			const char* state = rp + 2;
 			*const_cast<char*>(rp) = '\0';  // don't do this at home
-			StringPiece data(stat);
+			std::string_view data(stat);
 			data.remove_prefix(static_cast<int>(state - data.data() + 2));
 			ProcessInfo::CpuTime t = getCpuTime(data);
 			snprintf(buf, sizeof buf, "%5d %-16s %c %12.3f %12.3f\n",

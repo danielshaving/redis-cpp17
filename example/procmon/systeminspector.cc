@@ -1,8 +1,9 @@
 #include "systeminspector.h"
+#include "processinfo.h"
 
-string uptime(TimeStamp now, TimeStamp start, bool showMicroseconds);
-long getLong(const string& content, const char* key);
-int stringPrintf(string* out, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
+std::string uptime(TimeStamp now, TimeStamp start, bool showMicroseconds);
+long getLong(const std::string& content, const char* key);
+int stringPrintf(std::string* out, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 
 
 void SystemInspector::registerCommands(Inspector* ins)
@@ -15,44 +16,49 @@ void SystemInspector::registerCommands(Inspector* ins)
 	ins->add("sys", "stat", SystemInspector::stat, "print /proc/stat");
 }
 
-string SystemInspector::loadavg(HttpRequest::Method, const Inspector::ArgList&)
+std::string SystemInspector::loadavg(HttpRequest::Method, const Inspector::ArgList&)
 {
-	string loadavg;
-	FileUtil::readFile("/proc/loadavg", 65536, &loadavg);
+	ReadSmallFile file("/proc/loadavg");
+	std::string loadavg;
+	file.readToString(65536, &loadavg);
 	return loadavg;
 }
 
-string SystemInspector::version(HttpRequest::Method, const Inspector::ArgList&)
+std::string SystemInspector::version(HttpRequest::Method, const Inspector::ArgList&)
 {
-	string version;
-	FileUtil::readFile("/proc/version", 65536, &version);
+	ReadSmallFile file("/proc/version");
+	std::string version;
+	file.readToString(65536, &version);
 	return version;
 }
 
-string SystemInspector::cpuinfo(HttpRequest::Method, const Inspector::ArgList&)
+std::string SystemInspector::cpuinfo(HttpRequest::Method, const Inspector::ArgList&)
 {
-	string cpuinfo;
-	FileUtil::readFile("/proc/cpuinfo", 65536, &cpuinfo);
+	ReadSmallFile file("/proc/cpuinfo");
+	std::string cpuinfo;
+	file.readToString(65536, &cpuinfo);
 	return cpuinfo;
 }
 
-string SystemInspector::meminfo(HttpRequest::Method, const Inspector::ArgList&)
+std::string SystemInspector::meminfo(HttpRequest::Method, const Inspector::ArgList&)
 {
-	string meminfo;
-	FileUtil::readFile("/proc/meminfo", 65536, &meminfo);
+	ReadSmallFile file("/proc/meminfo");
+	std::string meminfo;
+	file.readToString(65536, &meminfo);
 	return meminfo;
 }
 
-string SystemInspector::stat(HttpRequest::Method, const Inspector::ArgList&)
+std::string SystemInspector::stat(HttpRequest::Method, const Inspector::ArgList&)
 {
-	string stat;
-	FileUtil::readFile("/proc/stat", 65536, &stat);
+	ReadSmallFile file("/proc/stat");
+	std::string stat;
+	file.readToString(65536, &stat);
 	return stat;
 }
 
-string SystemInspector::overview(HttpRequest::Method, const Inspector::ArgList&)
+std::string SystemInspector::overview(HttpRequest::Method, const Inspector::ArgList&)
 {
-	string result;
+	std::string result;
 	result.reserve(1024);
 	TimeStamp now = TimeStamp::now();
 	result += "Page generated at ";
@@ -60,6 +66,7 @@ string SystemInspector::overview(HttpRequest::Method, const Inspector::ArgList&)
 	result += " (UTC)\n";
 	// Hardware and OS
 	{
+#ifdef __linux__
 		struct utsname un;
 		if (::uname(&un) == 0)
 		{
@@ -67,9 +74,11 @@ string SystemInspector::overview(HttpRequest::Method, const Inspector::ArgList&)
 			stringPrintf(&result, "Machine: %s\n", un.machine);
 			stringPrintf(&result, "OS: %s %s %s\n", un.sysname, un.release, un.version);
 		}
+#endif
 	}
-	string stat;
-	FileUtil::readFile("/proc/stat", 65536, &stat);
+	std::string stat;
+	ReadSmallFile file("/proc/stat");
+	file.readToString(65536, &stat);
 	TimeStamp bootTime(TimeStamp::kMicroSecondsPerSecond * getLong(stat, "btime "));
 	result += "Boot time: ";
 	result += bootTime.toFormattedString(false /* show microseconds */);
@@ -80,16 +89,18 @@ string SystemInspector::overview(HttpRequest::Method, const Inspector::ArgList&)
 
 	// CPU load
 	{
-		string loadavg;
-		FileUtil::readFile("/proc/loadavg", 65536, &loadavg);
+		ReadSmallFile file("/proc/loadavg");
+		std::string loadavg;
+		file.readToString(65536, &loadavg);
 		stringPrintf(&result, "Processes created: %ld\n", getLong(stat, "processes "));
 		stringPrintf(&result, "Loadavg: %s\n", loadavg.c_str());
 	}
 
 	// Memory
 	{
-		string meminfo;
-		FileUtil::readFile("/proc/meminfo", 65536, &meminfo);
+		ReadSmallFile file("/proc/meminfo");
+		std::string meminfo;
+		file.readToString(65536, &meminfo);
 		long total_kb = getLong(meminfo, "MemTotal:");
 		long free_kb = getLong(meminfo, "MemFree:");
 		long buffers_kb = getLong(meminfo, "Buffers:");

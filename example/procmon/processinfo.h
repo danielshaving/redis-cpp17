@@ -30,9 +30,8 @@ private:
 	char buf[kBufferSize];
 };
 
-class ProcessInfo
+namespace ProcessInfo
 {
-public:
 	pid_t pid();
 	std::string pidString();
 	uid_t uid();

@@ -4,13 +4,13 @@
 class ProcessInspector
 {
 public:
-	void registerCommands(Inspector* ins);
+	void registerCommands(Inspector *ins);
 
-	static string overview(HttpRequest::Method, const Inspector::ArgList&);
-	static string pid(HttpRequest::Method, const Inspector::ArgList&);
-	static string procStatus(HttpRequest::Method, const Inspector::ArgList&);
-	static string openedFiles(HttpRequest::Method, const Inspector::ArgList&);
-	static string threads(HttpRequest::Method, const Inspector::ArgList&);
+	static std::string overview(HttpRequest::Method, const Inspector::ArgList&);
+	static std::string pid(HttpRequest::Method, const Inspector::ArgList&);
+	static std::string procStatus(HttpRequest::Method, const Inspector::ArgList&);
+	static std::string openedFiles(HttpRequest::Method, const Inspector::ArgList&);
+	static std::string threads(HttpRequest::Method, const Inspector::ArgList&);
 
-	static string username_;
+	static std::string username_;
 };

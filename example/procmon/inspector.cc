@@ -1,20 +1,20 @@
+#include "eventloop.h"
 #include "inspector.h"
 #include "log.h"
-#include "httprequest.h"
 #include "httpresponse.h"
 #include "processinspector.h"
 #include "performanceinspector.h"
 #include "systemInspector.h"
 
-Inspector* g_globalInspector = 0;
+Inspector *g_globalInspector = 0;
 
 // Looks buggy
-std::vector<string> split(const string& str)
+std::vector<std::string> split(const std::string &str)
 {
-	std::vector<string> result;
+	std::vector<std::string> result;
 	size_t start = 0;
 	size_t pos = str.find('/');
-	while (pos != string::npos)
+	while (pos != std::string::npos)
 	{
 		if (pos > start)
 		{
@@ -34,70 +34,68 @@ std::vector<string> split(const string& str)
 
 extern char favicon[1743];
 
-Inspector::Inspector(EventLoop* loop,
-	const InetAddress& httpAddr,
-	const string& name)
-	: server_(loop, httpAddr, "Inspector:" + name),
-	processInspector_(new ProcessInspector),
-	systemInspector_(new SystemInspector)
+Inspector::Inspector(EventLoop *loop,
+	const char *ip, uint16_t port,
+	const std::string &name)
+	: server(loop, ip, port),
+	processInspector(new ProcessInspector),
+	systemInspector(new SystemInspector)
 {
-	assert(CurrentThread::isMainThread());
 	assert(g_globalInspector == 0);
 	g_globalInspector = this;
-	server_.setHttpCallback(std::bind(&Inspector::onRequest, this, _1, _2));
-	processInspector_->registerCommands(this);
-	systemInspector_->registerCommands(this);
+	server.setMessageCallback(std::bind(&Inspector::onRequest, this, std::placeholders::_1, std::placeholders::_2));
+	processInspector->registerCommands(this);
+	systemInspector->registerCommands(this);
 #ifdef HAVE_TCMALLOC
-	performanceInspector_.reset(new PerformanceInspector);
-	performanceInspector_->registerCommands(this);
+	performanceInspector.reset(new PerformanceInspector);
+	performanceInspector->registerCommands(this);
 #endif
-	loop->runAfter(0, std::bind(&Inspector::start, this)); // little race condition
+	loop->runAfter(0, false,std::bind(&Inspector::start, this)); // little race condition
 }
 
 Inspector::~Inspector()
 {
-	assert(CurrentThread::isMainThread());
 	g_globalInspector = NULL;
 }
 
-void Inspector::add(const string& module,
-	const string& command,
+void Inspector::add(const std::string& module,
+	const std::string& command,
 	const Callback& cb,
-	const string& help)
+	const std::string& help)
 {
-	MutexLockGuard lock(mutex_);
-	modules_[module][command] = cb;
-	helps_[module][command] = help;
+	std::unique_lock<std::mutex> lk(mutex);
+	modules[module][command] = cb;
+	helps[module][command] = help;
 }
 
-void Inspector::remove(const string& module, const string& command)
+void Inspector::remove(const std::string& module, const std::string& command)
 {
-	MutexLockGuard lock(mutex_);
-	std::map<string, CommandList>::iterator it = modules_.find(module);
-	if (it != modules_.end())
+	std::unique_lock<std::mutex> lk(mutex);
+	auto it = modules.find(module);
+	if (it != modules.end())
 	{
 		it->second.erase(command);
-		helps_[module].erase(command);
+		helps[module].erase(command);
 	}
 }
 
 void Inspector::start()
 {
-	server_.start();
+	server.start();
 }
 
-void Inspector::onRequest(const HttpRequest& req, HttpResponse* resp)
+void Inspector::onRequest(const HttpRequest &req, HttpResponse *resp)
 {
-	if (req.path() == "/")
+	if (req.getPath() == "/")
 	{
-		string result;
-		MutexLockGuard lock(mutex_);
-		for (std::map<string, HelpList>::const_iterator helpListI = helps_.begin();
-			helpListI != helps_.end();
+		std::string result;
+		std::unique_lock<std::mutex> lk(mutex);
+		for (auto helpListI = helps.begin();
+			helpListI != helps.end();
 			++helpListI)
 		{
 			const HelpList& list = helpListI->second;
-			for (HelpList::const_iterator it = list.begin();
+			for (auto it = list.begin();
 				it != list.end();
 				++it)
 			{
@@ -106,63 +104,63 @@ void Inspector::onRequest(const HttpRequest& req, HttpResponse* resp)
 				result += "/";
 				result += it->first;
 				size_t len = helpListI->first.size() + it->first.size();
-				result += string(len >= 25 ? 1 : 25 - len, ' ');
+				result += std::string(len >= 25 ? 1 : 25 - len, ' ');
 				result += it->second;
 				result += "\n";
 			}
 		}
-		resp->setStatusCode(HttpResponse::k200Ok);
+		resp->setStatusCode(HttpResponse::k200k);
 		resp->setStatusMessage("OK");
 		resp->setContentType("text/plain");
 		resp->setBody(result);
 	}
 	else
 	{
-		std::vector<string> result = split(req.path());
+		std::vector<std::string> result = split(req.getPath());
 		// boost::split(result, req.path(), boost::is_any_of("/"));
-		//std::copy(result.begin(), result.end(), std::ostream_iterator<string>(std::cout, ", "));
+		//std::copy(result.begin(), result.end(), std::ostream_iterator<std::string>(std::cout, ", "));
 		//std::cout << "\n";
 		bool ok = false;
 		if (result.size() == 0)
 		{
-			LOG_DEBUG << req.path();
+			LOG_DEBUG << req.getPath();
 		}
 		else if (result.size() == 1)
 		{
-			string module = result[0];
+			std::string module = result[0];
 			if (module == "favicon.ico")
 			{
-				resp->setStatusCode(HttpResponse::k200Ok);
+				resp->setStatusCode(HttpResponse::k200k);
 				resp->setStatusMessage("OK");
 				resp->setContentType("image/png");
-				resp->setBody(string(favicon, sizeof favicon));
+				resp->setBody(std::string(favicon, sizeof favicon));
 
 				ok = true;
 			}
 			else
 			{
-				LOG_ERROR << "Unimplemented " << module;
+				LOG_WARN << "Unimplemented " << module;
 			}
 		}
 		else
 		{
-			string module = result[0];
-			std::map<string, CommandList>::const_iterator commListI = modules_.find(module);
-			if (commListI != modules_.end())
+			std::string module = result[0];
+			auto commListI = modules.find(module);
+			if (commListI != modules.end())
 			{
-				string command = result[1];
-				const CommandList& commList = commListI->second;
-				CommandList::const_iterator it = commList.find(command);
+				std::string command = result[1];
+				const CommandList &ommList = commListI->second;
+				auto it = commList.find(command);
 				if (it != commList.end())
 				{
 					ArgList args(result.begin() + 2, result.end());
 					if (it->second)
 					{
-						resp->setStatusCode(HttpResponse::k200Ok);
+						resp->setStatusCode(HttpResponse::k200k);
 						resp->setStatusMessage("OK");
 						resp->setContentType("text/plain");
 						const Callback& cb = it->second;
-						resp->setBody(cb(req.method(), args));
+						resp->setBody(cb(req.getMethod(), args));
 						ok = true;
 					}
 				}

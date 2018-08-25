@@ -8,7 +8,7 @@ public:
 	enum HttpStatusCode
 	{
 		kUnknown,
-		k2000k = 200,
+		k200k = 200,
 		k301MovedPermanently = 301,
 		k400BadRequest = 400,
 		k404NotFound = 404,

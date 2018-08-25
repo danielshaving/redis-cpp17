@@ -8,7 +8,7 @@ CXXOBJS=${patsubst %.cc,./%.o,$(cppfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB=  #/usr/local/lib/libprotobuf.a #./libjemalloc.a # ./libhiredis.a    /usr/lib64/libprofiler.so.0 #-ltcmalloc
+LIB=  #/usr/local/lib/libprofiler.a /usr/local/lib/libtcmalloc.a #/usr/local/lib/libprotobuf.a #./libjemalloc.a # ./libhiredis.a    /usr/lib64/libprofiler.so.0 #-ltcmalloc
 
 SO_LIB= 
 
