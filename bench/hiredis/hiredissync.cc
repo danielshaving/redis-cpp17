@@ -12,13 +12,13 @@ void testCommand(RedisContextPtr c)
 {
 	RedisReplyPtr reply;
 	reply = c->redisCommand("PING");
-	if(reply != nullptr)
-	printf("PING: %s\n", reply->str);
+	if (reply != nullptr)
+		printf("PING: %s\n", reply->str);
 
 	reply = c->redisCommand("SET %s %s", "foo", "hello world");
 	printf("SET: %s\n", reply->str);
 
-	reply = c->redisCommand("SET %b %b", "bar", (size_t) 3, "hello", (size_t) 5);
+	reply = c->redisCommand("SET %b %b", "bar", (size_t)3, "hello", (size_t)5);
 	printf("SET (binary API): %s\n", reply->str);
 
 	reply = c->redisCommand("GET foo");
@@ -36,7 +36,7 @@ void testCommand(RedisContextPtr c)
 	{
 		char buf[64];
 
-		snprintf(buf,64,"%d",j);
+		snprintf(buf, 64, "%d", j);
 		reply = c->redisCommand("LPUSH mylist element-%s", buf);
 	}
 
@@ -56,45 +56,45 @@ void testFormatCommand()
 	int len;
 
 	test("Format command without interpolation: ");
-	len = redisFormatCommand(&cmd,"SET foo bar");
-	test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(3+2)+4+(3+2));
+	len = redisFormatCommand(&cmd, "SET foo bar");
+	test_cond(strncmp(cmd, "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (3 + 2) + 4 + (3 + 2));
 	zfree(cmd);
 
 	test("Format command with %%s string interpolation: ");
-	len = redisFormatCommand(&cmd,"SET %s %s","foo","bar");
-	test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(3+2)+4+(3+2));
+	len = redisFormatCommand(&cmd, "SET %s %s", "foo", "bar");
+	test_cond(strncmp(cmd, "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (3 + 2) + 4 + (3 + 2));
 	zfree(cmd);
 
 	test("Format command with %%s and an empty string: ");
-	len = redisFormatCommand(&cmd,"SET %s %s","foo","");
-	test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$0\r\n\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(3+2)+4+(0+2));
+	len = redisFormatCommand(&cmd, "SET %s %s", "foo", "");
+	test_cond(strncmp(cmd, "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$0\r\n\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (3 + 2) + 4 + (0 + 2));
 	zfree(cmd);
 
 	test("Format command with an empty string in between proper interpolations: ");
-	len = redisFormatCommand(&cmd,"SET %s %s","","foo");
-	test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$0\r\n\r\n$3\r\nfoo\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(0+2)+4+(3+2));
+	len = redisFormatCommand(&cmd, "SET %s %s", "", "foo");
+	test_cond(strncmp(cmd, "*3\r\n$3\r\nSET\r\n$0\r\n\r\n$3\r\nfoo\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (0 + 2) + 4 + (3 + 2));
 	zfree(cmd);
 
 	test("Format command with %%b string interpolation: ");
-	len = redisFormatCommand(&cmd,"SET %b %b","foo",(size_t)3,"b\0r",(size_t)3);
-	test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nb\0r\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(3+2)+4+(3+2));
+	len = redisFormatCommand(&cmd, "SET %b %b", "foo", (size_t)3, "b\0r", (size_t)3);
+	test_cond(strncmp(cmd, "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nb\0r\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (3 + 2) + 4 + (3 + 2));
 	zfree(cmd);
 
 	test("Format command with %%b and an empty string: ");
-	len = redisFormatCommand(&cmd,"SET %b %b","foo",(size_t)3,"",(size_t)0);
-	test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$0\r\n\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(3+2)+4+(0+2));
+	len = redisFormatCommand(&cmd, "SET %b %b", "foo", (size_t)3, "", (size_t)0);
+	test_cond(strncmp(cmd, "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$0\r\n\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (3 + 2) + 4 + (0 + 2));
 	zfree(cmd);
 
 	test("Format command with literal %%: ");
-	len = redisFormatCommand(&cmd,"SET %% %%");
-	test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$1\r\n%\r\n$1\r\n%\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(1+2)+4+(1+2));
+	len = redisFormatCommand(&cmd, "SET %% %%");
+	test_cond(strncmp(cmd, "*3\r\n$3\r\nSET\r\n$1\r\n%\r\n$1\r\n%\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (1 + 2) + 4 + (1 + 2));
 	zfree(cmd);
 
 #define INTEGER_WIDTH_TEST(fmt, type) do {                                                \
@@ -129,7 +129,7 @@ void testFormatCommand()
 	FLOAT_WIDTH_TEST(double);
 
 	test("Format command with invalid printf format: ");
-	len = redisFormatCommand(&cmd,"key:%08p %b",(void*)1234,"foo",(size_t)3);
+	len = redisFormatCommand(&cmd, "key:%08p %b", (void*)1234, "foo", (size_t)3);
 	test_cond(len == -1);
 
 	const char *argv[3];
@@ -140,31 +140,31 @@ void testFormatCommand()
 	int argc = 3;
 
 	test("Format command by passing argc/argv without lengths: ");
-	len = redisFormatCommandArgv(&cmd,argc,argv,nullptr);
-	test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(3+2)+4+(3+2));
+	len = redisFormatCommandArgv(&cmd, argc, argv, nullptr);
+	test_cond(strncmp(cmd, "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (3 + 2) + 4 + (3 + 2));
 	zfree(cmd);
 
 	test("Format command by passing argc/argv with lengths: ");
-	len = redisFormatCommandArgv(&cmd,argc,argv,lens);
-	test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$7\r\nfoo\0xxx\r\n$3\r\nbar\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(7+2)+4+(3+2));
+	len = redisFormatCommandArgv(&cmd, argc, argv, lens);
+	test_cond(strncmp(cmd, "*3\r\n$3\r\nSET\r\n$7\r\nfoo\0xxx\r\n$3\r\nbar\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (7 + 2) + 4 + (3 + 2));
 	zfree(cmd);
 
 	sds sds_cmd;
 
 	sds_cmd = sdsempty();
 	test("Format command into sds by passing argc/argv without lengths: ");
-	len = redisFormatSdsCommandArgv(&sds_cmd,argc,argv,nullptr);
-	test_cond(strncmp(sds_cmd,"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(3+2)+4+(3+2));
+	len = redisFormatSdsCommandArgv(&sds_cmd, argc, argv, nullptr);
+	test_cond(strncmp(sds_cmd, "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (3 + 2) + 4 + (3 + 2));
 	sdsfree(sds_cmd);
 
 	sds_cmd = sdsempty();
 	test("Format command into sds by passing argc/argv with lengths: ");
-	len = redisFormatSdsCommandArgv(&sds_cmd,argc,argv,lens);
-	test_cond(strncmp(sds_cmd,"*3\r\n$3\r\nSET\r\n$7\r\nfoo\0xxx\r\n$3\r\nbar\r\n",len) == 0 &&
-	    len == 4+4+(3+2)+4+(7+2)+4+(3+2));
+	len = redisFormatSdsCommandArgv(&sds_cmd, argc, argv, lens);
+	test_cond(strncmp(sds_cmd, "*3\r\n$3\r\nSET\r\n$7\r\nfoo\0xxx\r\n$3\r\nbar\r\n", len) == 0 &&
+		len == 4 + 4 + (3 + 2) + 4 + (7 + 2) + 4 + (3 + 2));
 	sdsfree(sds_cmd);
 }
 
@@ -175,7 +175,7 @@ void testReplyReader()
 
 void testBlockingConnectionTimeOuts()
 {
-	RedisContextPtr c = redisConnect(ip,port);
+	RedisContextPtr c = redisConnect(ip, port);
 	RedisReplyPtr reply;
 	Socket socket;
 	ssize_t s;
@@ -184,21 +184,21 @@ void testBlockingConnectionTimeOuts()
 	test("Successfully completes a command when the timeout is not exceeded: ");
 	reply = c->redisCommand("SET foo fast");
 
-	tv.tv_sec = 0; 
+	tv.tv_sec = 0;
 	tv.tv_usec = 10000;
-	socket.setTimeOut(c->fd,tv);
+	socket.setTimeOut(c->fd, tv);
 	reply = c->redisCommand("GET foo");
-	test_cond(reply != nullptr && reply->type == REDIS_REPLY_STRING && memcmp(reply->str,"fast",4) == 0);
+	test_cond(reply != nullptr && reply->type == REDIS_REPLY_STRING && memcmp(reply->str, "fast", 4) == 0);
 
 	test("Does not return a reply when the command times out: ");
-	s = ::write(c->fd,cmd,strlen(cmd));
-	reply = c->redisCommand( "GET foo");
+	s = ::write(c->fd, cmd, strlen(cmd));
+	reply = c->redisCommand("GET foo");
 	test_cond(s > 0 && reply == nullptr && c->err == REDIS_ERR_IO && strcmp(c->errstr, "Resource temporarily unavailable") == 0);
 
 	test("Reconnect properly reconnects after a timeout: ");
 	c.reset();
-	c = redisConnect(ip,port);
-	reply = c->redisCommand( "PING");
+	c = redisConnect(ip, port);
+	reply = c->redisCommand("PING");
 	test_cond(reply != nullptr && reply->type == REDIS_REPLY_STATUS && strcmp(reply->str, "PONG") == 0);
 }
 
@@ -207,86 +207,86 @@ void testBlockingConnection()
 	RedisContextPtr c;
 	RedisReplyPtr reply;
 	Socket socket;
-	c = redisConnect(ip,port);
+	c = redisConnect(ip, port);
 	test("Is able to deliver commands: ");
 	reply = c->redisCommand("PING");
 	test_cond(reply->type == REDIS_REPLY_STATUS &&
-	strcasecmp(reply->str,"pong") == 0)
+		strcasecmp(reply->str, "pong") == 0)
 
-	test("Is a able to send commands verbatim: ");
+		test("Is a able to send commands verbatim: ");
 	reply = c->redisCommand("SET foo bar");
-	test_cond (reply->type == REDIS_REPLY_STATUS &&
-	strcasecmp(reply->str,"ok") == 0)
+	test_cond(reply->type == REDIS_REPLY_STATUS &&
+		strcasecmp(reply->str, "ok") == 0)
 
-	test("%%s String interpolation works: ");
-	reply = c->redisCommand("SET %s %s","foo","hello world");
+		test("%%s String interpolation works: ");
+	reply = c->redisCommand("SET %s %s", "foo", "hello world");
 	reply = c->redisCommand("GET foo");
 	test_cond(reply->type == REDIS_REPLY_STRING &&
-	strcmp(reply->str,"hello world") == 0);
+		strcmp(reply->str, "hello world") == 0);
 
 	test("%%b String interpolation works: ");
-	reply =c->redisCommand("SET %b %b","foo",(size_t)3,"hello\x00world",(size_t)11);
+	reply = c->redisCommand("SET %b %b", "foo", (size_t)3, "hello\x00world", (size_t)11);
 	reply = c->redisCommand("GET foo");
 	test_cond(reply->type == REDIS_REPLY_STRING &&
-	memcmp(reply->str,"hello\x00world",11) == 0)
+		memcmp(reply->str, "hello\x00world", 11) == 0)
 
-	test("Binary reply length is correct: ");
+		test("Binary reply length is correct: ");
 	test_cond(reply->len == 11)
 
-	test("Can parse nil replies: ");
+		test("Can parse nil replies: ");
 	reply = c->redisCommand("GET nokey");
 	test_cond(reply->type == REDIS_REPLY_NIL)
 
-	/* test 7 */
-	test("Can parse integer replies: ");
+		/* test 7 */
+		test("Can parse integer replies: ");
 	reply = c->redisCommand("INCR mycounter");
 	test_cond(reply->type == REDIS_REPLY_INTEGER && reply->integer == 1)
-	test("Can parse multi bulk replies: ");
+		test("Can parse multi bulk replies: ");
 
 	c->redisCommand("LPUSH mylist foo");
 	c->redisCommand("LPUSH mylist bar");
 
 	reply = c->redisCommand("LRANGE mylist 0 -1");
 	test_cond(reply->type == REDIS_REPLY_ARRAY &&
-	reply->elements == 2 &&
-	!memcmp(reply->element[0]->str,"bar",3) &&
-	!memcmp(reply->element[1]->str,"foo",3))
+		reply->elements == 2 &&
+		!memcmp(reply->element[0]->str, "bar", 3) &&
+		!memcmp(reply->element[1]->str, "foo", 3))
 
-	/* m/e with multi bulk reply *before* other reply.
-	* specifically test ordering of reply items to parse. */
-	test("Can handle nested multi bulk replies: ");
+		/* m/e with multi bulk reply *before* other reply.
+		* specifically test ordering of reply items to parse. */
+		test("Can handle nested multi bulk replies: ");
 	c->redisCommand("MULTI");
 	c->redisCommand("LRANGE mylist 0 -1");
 	c->redisCommand("PING");
 
 	reply = (c->redisCommand("EXEC"));
 	test_cond(reply->type == REDIS_REPLY_ARRAY &&
-	reply->elements == 2 &&
-	reply->element[0]->type == REDIS_REPLY_ARRAY &&
-	reply->element[0]->elements == 2 &&
-	!memcmp(reply->element[0]->element[0]->str,"bar",3) &&
-	!memcmp(reply->element[0]->element[1]->str,"foo",3) &&
-	reply->element[1]->type == REDIS_REPLY_STATUS &&
-	strcasecmp(reply->element[1]->str,"pong") == 0);
+		reply->elements == 2 &&
+		reply->element[0]->type == REDIS_REPLY_ARRAY &&
+		reply->element[0]->elements == 2 &&
+		!memcmp(reply->element[0]->element[0]->str, "bar", 3) &&
+		!memcmp(reply->element[0]->element[1]->str, "foo", 3) &&
+		reply->element[1]->type == REDIS_REPLY_STATUS &&
+		strcasecmp(reply->element[1]->str, "pong") == 0);
 }
 
 void testBlockingConecntionerros()
 {
 	RedisContextPtr c;
 	test("Returns error when host cannot be resolved: ");
-	c = redisConnect((char*)"text",port);
+	c = redisConnect((char*)"text", port);
 	test_cond(c->err == REDIS_ERR_OTHER &&
-		(strcmp(c->errstr,"Name or service not known") == 0 ||
-		 strcmp(c->errstr,"nodename nor servname provided, or not known") == 0 ||
-		 strcmp(c->errstr,"No address associated with hostname") == 0 ||
-		 strcmp(c->errstr,"Temporary failure in name resolution") == 0 ||
-		 strcmp(c->errstr,"hostname nor servname provided, or not known") == 0 ||
-		 strcmp(c->errstr,"no address associated with name") == 0))
+		(strcmp(c->errstr, "Name or service not known") == 0 ||
+			strcmp(c->errstr, "nodename nor servname provided, or not known") == 0 ||
+			strcmp(c->errstr, "No address associated with hostname") == 0 ||
+			strcmp(c->errstr, "Temporary failure in name resolution") == 0 ||
+			strcmp(c->errstr, "hostname nor servname provided, or not known") == 0 ||
+			strcmp(c->errstr, "no address associated with name") == 0))
 
-	c.reset();
+		c.reset();
 	test("Returns error when the port is not open: ");
 	c = redisConnect("127.0.0.1", 1);
-	test_cond(c->err == REDIS_ERR_IO &&strcmp(c->errstr,"Connection refused") == 0);
+	test_cond(c->err == REDIS_ERR_IO && strcmp(c->errstr, "Connection refused") == 0);
 }
 
 void testBlockIoerrors()
@@ -294,17 +294,17 @@ void testBlockIoerrors()
 	RedisContextPtr c;
 	Socket socket;
 	RedisReplyPtr reply;
-	int major,minor;
-	c = redisConnect(ip,port);
+	int major, minor;
+	c = redisConnect(ip, port);
 	{
 		const char *field = "redis_version:";
 		char *p, *eptr;
 
 		reply = c->redisCommand("INFO");
-		p = strstr(reply->str,field);
-		major = strtol(p+strlen(field),&eptr,10);
-		p = eptr+1; /* char next to the first "." */
-		minor = strtol(p,&eptr,10);
+		p = strstr(reply->str, field);
+		major = strtol(p + strlen(field), &eptr, 10);
+		p = eptr + 1; /* char next to the first "." */
+		minor = strtol(p, &eptr, 10);
 	}
 
 	test("Returns I/O error when the connection is lost: ");
@@ -313,37 +313,37 @@ void testBlockIoerrors()
 	{
 		/* > 2.0 returns OK on QUIT and read() should be issued once more
 		 * to know the descriptor is at EOF. */
-		test_cond(strcasecmp(reply->str,"OK") == 0 && c->redisGetReply(reply) == REDIS_ERR);
-	} 
+		test_cond(strcasecmp(reply->str, "OK") == 0 && c->redisGetReply(reply) == REDIS_ERR);
+	}
 	else
 	{
 		test_cond(reply == nullptr);
 	}
-	
-	assert(c->err == REDIS_ERR_EOF && strcmp(c->errstr,"Server closed the connection") == 0);
+
+	assert(c->err == REDIS_ERR_EOF && strcmp(c->errstr, "Server closed the connection") == 0);
 	c.reset();
-	c = redisConnect(ip,port);
+	c = redisConnect(ip, port);
 	test("Returns I/O error on socket timeout: ");
 	struct timeval tv = { 0, 1000 };
-	assert(socket.setTimeOut(c->fd,tv));
+	assert(socket.setTimeOut(c->fd, tv));
 	test_cond(c->redisGetReply(reply) == REDIS_ERR &&
-        c->err == REDIS_ERR_IO && errno == EAGAIN);
-		
+		c->err == REDIS_ERR_IO && errno == EAGAIN);
+
 }
 
 void testInvalidTimeOuterros()
 {
 	test("Set error when an invalid timeout usec value is given to redisConnectWithTimeout: ");
 	{
-		struct timeval timeout = { 0, 10000001 }; 
-		RedisContextPtr c = redisConnectWithTimeout(ip,port,timeout);
+		struct timeval timeout = { 0, 10000001 };
+		RedisContextPtr c = redisConnectWithTimeout(ip, port, timeout);
 		test_cond(c->err == REDIS_ERR_IO && strcmp(c->errstr, "Invalid timeout specified") == 0);
 	}
-	
+
 	test("Set error when an invalid timeout sec value is given to redisConnectWithTimeout: ");
 	{
-		struct timeval timeout = { (((LONG_MAX) - 999) / 1000) + 1, 0 }; 
-		RedisContextPtr c = redisConnectWithTimeout(ip,port,timeout);
+		struct timeval timeout = { (((LONG_MAX)-999) / 1000) + 1, 0 };
+		RedisContextPtr c = redisConnectWithTimeout(ip, port, timeout);
 		test_cond(c->err == REDIS_ERR_IO && strcmp(c->errstr, "Invalid timeout specified") == 0);
 	}
 }
@@ -354,30 +354,30 @@ void testAppendFormateedCommands()
 	RedisReplyPtr reply;
 	char *cmd;
 	int len;
-	c = redisConnect(ip,port);
+	c = redisConnect(ip, port);
 	test("Append format command: ");
-	len = redisFormatCommand(&cmd,"SET foo bar");
-	c->redisAppendFormattedCommand(cmd,len);
+	len = redisFormatCommand(&cmd, "SET foo bar");
+	c->redisAppendFormattedCommand(cmd, len);
 	assert(c->redisGetReply(reply) == REDIS_OK);
 	zfree(cmd);
 }
 
 void testThroughPut()
 {
-	RedisContextPtr c = redisConnect(ip,port);
+	RedisContextPtr c = redisConnect(ip, port);
 	std::vector<RedisReplyPtr> replies;
-	int i,num;
-	int64_t t1,t2;
+	int i, num;
+	int64_t t1, t2;
 
 	test("Throughput:\n");
 	for (i = 0; i < 500; i++)
 	{
-		 c->redisCommand("LPUSH mylist foo");
+		c->redisCommand("LPUSH mylist foo");
 	}
 
 	num = 1000;
 	t1 = ustime();
-	for(i = 0; i < num; i++)
+	for (i = 0; i < num; i++)
 	{
 		replies.push_back(c->redisCommand("PING"));
 		assert(replies[i] != nullptr && replies[i]->type == REDIS_REPLY_STATUS);
@@ -385,58 +385,58 @@ void testThroughPut()
 
 	t2 = ustime();
 	replies.clear();
-	
-	printf("\t(%dx PING: %.3fs)\n",num,(t2-t1)/1000000.0);
+
+	printf("\t(%dx PING: %.3fs)\n", num, (t2 - t1) / 1000000.0);
 
 	t1 = ustime();
 	replies.reserve(num);
-	for (i = 0; i < num; i++) 
+	for (i = 0; i < num; i++)
 	{
 		replies.push_back(c->redisCommand("LRANGE mylist 0 499"));
 		assert(replies[i] != nullptr && replies[i]->type == REDIS_REPLY_ARRAY);
 		assert(replies[i] != nullptr && replies[i]->elements == 500);
 	}
-	
+
 	t2 = ustime();
 	replies.clear();
-	printf("\t(%dx LRANGE with 500 elements: %.3fs)\n",num,(t2-t1)/1000000.0);
+	printf("\t(%dx LRANGE with 500 elements: %.3fs)\n", num, (t2 - t1) / 1000000.0);
 
 	for (i = 0; i < num; i++)
 	{
 		c->redisAppendCommand("PING");
 	}
-	    
+
 	t1 = ustime();
 
 	for (i = 0; i < num; i++)
 	{
-	    assert(c->redisGetReply(replies[i]) == REDIS_OK);
-	    assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_STATUS);
+		assert(c->redisGetReply(replies[i]) == REDIS_OK);
+		assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_STATUS);
 	}
-	
+
 	t2 = ustime();
 	replies.clear();
 
-	printf("\t(%dx PING (pipelined): %.3fs)\n", num, (t2-t1)/1000000.0);
+	printf("\t(%dx PING (pipelined): %.3fs)\n", num, (t2 - t1) / 1000000.0);
 	for (i = 0; i < num; i++)
 	{
-	    c->redisAppendCommand("LRANGE mylist 0 499");
+		c->redisAppendCommand("LRANGE mylist 0 499");
 	}
-	
+
 	t1 = ustime();
 	for (i = 0; i < num; i++)
 	{
-	    assert(c->redisGetReply(replies[i]) == REDIS_OK);
-	    assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_ARRAY);
-	    assert(replies[i] != NULL && replies[i]->elements == 500);
+		assert(c->redisGetReply(replies[i]) == REDIS_OK);
+		assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_ARRAY);
+		assert(replies[i] != NULL && replies[i]->elements == 500);
 	}
-	
+
 	t2 = ustime();
 	replies.clear();
-	printf("\t(%dx LRANGE with 500 elements (pipelined): %.3fs)\n", num, (t2-t1)/1000000.0);
+	printf("\t(%dx LRANGE with 500 elements (pipelined): %.3fs)\n", num, (t2 - t1) / 1000000.0);
 }
 
-int main(int argc,char* argv[])
+int main(int argc, char* argv[])
 {
 	if (argc != 3)
 	{
@@ -450,19 +450,19 @@ int main(int argc,char* argv[])
 
 		RedisContextPtr c;
 		RedisReplyPtr reply;
-	
-		c = redisConnectWithTimeout(ip,port,timeout);
+
+		c = redisConnectWithTimeout(ip, port, timeout);
 		if (c == nullptr || c->err)
 		{
-			if (c) 
+			if (c)
 			{
 				printf("Connection error: %s\n", c->errstr);
-			} 
+			}
 			else
 			{
 				printf("Connection error: can't allocate redis context\n");
 			}
-			
+
 			exit(1);
 		}
 

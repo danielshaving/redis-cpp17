@@ -15,8 +15,8 @@ public:
 	};
 
 	explicit HttpResponse(bool close)
-	:statusCode(kUnknown),
-	 closeConnection(close)
+		:statusCode(kUnknown),
+		closeConnection(close)
 	{
 
 	}
@@ -43,15 +43,15 @@ public:
 
 	void setContentType(const std::string &contentType)
 	{
-		addHeader("Content-Type",contentType);
+		addHeader("Content-Type", contentType);
 	}
 
-	void addHeader(const std::string &key,const std::string &value)
+	void addHeader(const std::string &key, const std::string &value)
 	{
 		headers[key] = value;
 	}
 
-	void setBody(const std::string &body )
+	void setBody(const std::string &body)
 	{
 		this->body = body;
 	}
@@ -59,7 +59,7 @@ public:
 	void appendToBuffer(Buffer *output) const;
 
 private:
-	std::map<std::string,std::string> headers;
+	std::map<std::string, std::string> headers;
 	HttpStatusCode statusCode;
 	std::string statusMessage;
 	bool closeConnection;

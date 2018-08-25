@@ -6,8 +6,8 @@ class BlockingQueue
 {
 public:
 	BlockingQueue()
-	: mutex(),
-	  queue()
+		: mutex(),
+		queue()
 	{
 
 	}

@@ -5,14 +5,14 @@
 #include "buffer.h"
 #include "tcpconnection.h"
 
-HttpServer::HttpServer(EventLoop *loop,const char *ip,uint16_t port)
-:loop(loop),
- server(loop,ip,port,nullptr)
+HttpServer::HttpServer(EventLoop *loop, const char *ip, uint16_t port)
+	:loop(loop),
+	server(loop, ip, port, nullptr)
 {
 	server.setConnectionCallback(std::bind(&HttpServer::onConnection,
-										   this,std::placeholders::_1));
+		this, std::placeholders::_1));
 	server.setMessageCallback(std::bind(&HttpServer::onMessage,
-										this,std::placeholders::_1,std::placeholders::_2));
+		this, std::placeholders::_1, std::placeholders::_2));
 }
 
 
@@ -40,7 +40,7 @@ void HttpServer::start()
 
 void HttpServer::onConnection(const TcpConnectionPtr &conn)
 {
-	if(conn->connected())
+	if (conn->connected())
 	{
 		HttpContext context;
 		conn->setContext(context);
@@ -51,38 +51,38 @@ void HttpServer::onConnection(const TcpConnectionPtr &conn)
 	}
 }
 
-void HttpServer::onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
+void HttpServer::onMessage(const TcpConnectionPtr &conn, Buffer *buffer)
 {
 	HttpContext *context = std::any_cast<HttpContext>(conn->getMutableContext());
-	if(!context->parseRequest(buffer))
+	if (!context->parseRequest(buffer))
 	{
 		conn->send("HTTP/1.1 400 Bad Request\r\n\r\n");
 		conn->shutdown();
 	}
 
-	if(context->gotAll())
+	if (context->gotAll())
 	{
-		if(context->getRequest().getMethod() == HttpRequest::kPost)
+		if (context->getRequest().getMethod() == HttpRequest::kPost)
 		{
 			context->getRequest().setQuery(buffer->peek(),
-										   buffer->peek() + buffer->readableBytes());
+				buffer->peek() + buffer->readableBytes());
 		}
-		onRequest(conn,context->getRequest());
+		onRequest(conn, context->getRequest());
 		context->reset();
 	}
 }
 
-void HttpServer::onRequest(const TcpConnectionPtr &conn,const HttpRequest &req)
+void HttpServer::onRequest(const TcpConnectionPtr &conn, const HttpRequest &req)
 {
 	const std::string &connection = req.getHeader("Connection");
 	bool close = connection == "close" ||
-			(req.getVersion() == HttpRequest::kHttp10 && connection != "Keep-Alive");
+		(req.getVersion() == HttpRequest::kHttp10 && connection != "Keep-Alive");
 	HttpResponse response(close);
-	httpCallback(req,&response);
+	httpCallback(req, &response);
 	Buffer sendBuf;
 	response.appendToBuffer(&sendBuf);
 	conn->send(&sendBuf);
-	if(response.getCloseConnection())
+	if (response.getCloseConnection())
 	{
 		conn->shutdown();
 	}

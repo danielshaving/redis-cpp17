@@ -12,7 +12,7 @@ public:
 		kGotAll,
 	};
 	HttpContext()
-	:state(kExpectRequestLine)
+		:state(kExpectRequestLine)
 	{
 
 	}
@@ -35,7 +35,7 @@ public:
 		return request;
 	}
 
-	bool processRequestLine(const char *begin,const char *end);
+	bool processRequestLine(const char *begin, const char *end);
 
 private:
 	HttpRequestParseState state;

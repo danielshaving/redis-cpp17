@@ -8,13 +8,13 @@ struct redisAsyncContext;
 class HiredisClient :public std::enable_shared_from_this<HiredisClient>
 {
 public:
-	typedef std::function<void (HiredisClient *,int)> ConnectCallback;
-	typedef std::function<void (HiredisClient *,int)> DisconnectCallback;
-	typedef std::function<void (HiredisClient *,redisReply*)> CommandCallback;
+	typedef std::function<void(HiredisClient *, int)> ConnectCallback;
+	typedef std::function<void(HiredisClient *, int)> DisconnectCallback;
+	typedef std::function<void(HiredisClient *, redisReply*)> CommandCallback;
 
-	HiredisClient(EventLoop *loop,const std::string &ip,uint16_t port);
+	HiredisClient(EventLoop *loop, const std::string &ip, uint16_t port);
 	~HiredisClient();
-	
+
 	bool connected() const;
 	const char *errstr() const;
 
@@ -24,9 +24,9 @@ public:
 	void connect();
 	void disconnect();
 
-	int command(const CommandCallback& cb,StringArg cmd,...);
+	int command(const CommandCallback& cb, StringArg cmd, ...);
 	int ping();
-	 
+
 	void handleRead();
 	void handleWrite();
 
@@ -34,15 +34,15 @@ public:
 
 	void setChannel();
 	void removeChannel();
-	
+
 	void connectCallback(int status);
 	void disconnectCallback(int status);
-	void commandCallback(redisReply *reply,CommandCallback *cb);
+	void commandCallback(redisReply *reply, CommandCallback *cb);
 
 	static HiredisClient *getHiredis(const redisAsyncContext *ac);
-	static void connectCallback(const redisAsyncContext *ac,int status);
-	static void disconnectCallback(const redisAsyncContext *ac,int status);
-	static void commandCallback(redisAsyncContext *ac,void *,void *);
+	static void connectCallback(const redisAsyncContext *ac, int status);
+	static void disconnectCallback(const redisAsyncContext *ac, int status);
+	static void commandCallback(redisAsyncContext *ac, void *, void *);
 
 	static void addRead(void *privdata);
 	static void delRead(void *privdata);
@@ -50,10 +50,10 @@ public:
 	static void delWrite(void *privdata);
 	static void cleanup(void *privdata);
 
-	void pingCallback(HiredisClient *msg,redisReply *reply);
+	void pingCallback(HiredisClient *msg, redisReply *reply);
 
 private:
-	EventLoop *loop;
+	EventLoop * loop;
 	std::string ip;
 	uint16_t port;
 	redisAsyncContext *context;

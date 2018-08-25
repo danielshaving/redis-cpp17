@@ -6,14 +6,14 @@ class GzipFile : boost::noncopyable
 {
 public:
 	GzipFile(GzipFile && rhs)
-	:file(rhs.file)
+		:file(rhs.file)
 	{
 		rhs.file = nullptr;
 	}
 
 	~GzipFile()
 	{
-		if(file)
+		if (file)
 		{
 			::gzclose(file);
 		}
@@ -26,16 +26,16 @@ public:
 	}
 
 	bool valid() const { return file != nullptr; }
-	void swap(GzipFile &rhs) { std::swap(file,rhs.file); }
+	void swap(GzipFile &rhs) { std::swap(file, rhs.file); }
 #if ZLIB_VERNUM >= 0x1240
-	bool setBuffer(int32_t size) { return ::gzbuffer(file,size) == 0; }
+	bool setBuffer(int32_t size) { return ::gzbuffer(file, size) == 0; }
 #endif
 
 	// return the number of uncompressed bytes actually read, 0 for eof, -1 for error
-	int32_t read(void *buf,int32_t len) { return ::gzread(file,buf,len); }
+	int32_t read(void *buf, int32_t len) { return ::gzread(file, buf, len); }
 
 	// return the number of uncompressed bytes actually written
-	int32_t write(StringPiece buf) { return ::gzwrite(file,buf.data(),buf.size()); }
+	int32_t write(StringPiece buf) { return ::gzwrite(file, buf.data(), buf.size()); }
 
 	// number of uncompressed bytes
 	off_t tell() const { return ::gztell(file); }
@@ -49,30 +49,30 @@ public:
 
 	static GzipFile openForRead(xStringArg filename)
 	{
-		return GzipFile(::gzopen(filename.c_str(),"rbe"));
+		return GzipFile(::gzopen(filename.c_str(), "rbe"));
 	}
 
 	static GzipFile openForAppend(xStringArg filename)
 	{
-		return GzipFile(::gzopen(filename.c_str(),"abe"));
+		return GzipFile(::gzopen(filename.c_str(), "abe"));
 	}
 
 	static GzipFile openForWriteExclusive(xStringArg filename)
 	{
-		return GzipFile(::gzopen(filename.c_str(),"wbxe"));
+		return GzipFile(::gzopen(filename.c_str(), "wbxe"));
 	}
 
 	static GzipFile openForWriteTruncate(xStringArg filename)
 	{
-		return GzipFile(::gzopen(filename.c_str(),"wbe"));
+		return GzipFile(::gzopen(filename.c_str(), "wbe"));
 	}
 
 private:
 	explicit GzipFile(gzFile file)
-    :file(file)
-  	{
+		:file(file)
+	{
 
-  	}
+	}
 	gzFile file;
 };
 

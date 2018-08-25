@@ -8,9 +8,9 @@
 class TimeWheel : boost::noncopyable
 {
 public:
-	TimeWheel(EventLoop *loop,const char *ip,int16_t port,int8_t idleSeconds);
+	TimeWheel(EventLoop *loop, const char *ip, int16_t port, int8_t idleSeconds);
 	void onConnection(const TcpConnectionPtr &conn);
-	void onMessage(const TcpConnectionPtr &conn,Buffer *buffer);
+	void onMessage(const TcpConnectionPtr &conn, Buffer *buffer);
 	void onTimer();
 	void dumpConnectionBuckets() const;
 	typedef std::weak_ptr<TcpConnection> WeakTcpConnectionPtr;
@@ -18,7 +18,7 @@ public:
 	struct Entry
 	{
 		explicit Entry(const WeakTcpConnectionPtr &weakConn)
-		: weakConn(weakConn)
+			: weakConn(weakConn)
 		{
 
 		}
@@ -36,7 +36,7 @@ public:
 	};
 
 private:
-	EventLoop *loop;
+	EventLoop * loop;
 	typedef std::shared_ptr<Entry> EntryPtr;
 	typedef std::weak_ptr<Entry> WeakEntryPtr;
 	typedef std::unordered_set<EntryPtr> Bucket;

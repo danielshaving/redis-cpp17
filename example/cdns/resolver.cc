@@ -3,7 +3,7 @@
 double getSeconds(struct timeval *tv)
 {
 	if (tv)
-		return double(tv->tv_sec) + double(tv->tv_usec)/1000000.0;
+		return double(tv->tv_sec) + double(tv->tv_usec) / 1000000.0;
 	else
 		return -1.0;
 }
@@ -20,10 +20,10 @@ const char *getSocketType(int32_t type)
 
 const bool kDebug = false;
 
-Resolver::Resolver(EventLoop *loop,Option opt)
-:loop(loop),
- ctx(nullptr),
- timerActive(false)
+Resolver::Resolver(EventLoop *loop, Option opt)
+	:loop(loop),
+	ctx(nullptr),
+	timerActive(false)
 {
 	static char lookups[] = "b";
 	struct ares_options options;
@@ -42,12 +42,12 @@ Resolver::Resolver(EventLoop *loop,Option opt)
 		options.lookups = lookups;
 	}
 
-	int32_t status = ares_init_options(&ctx_,&options,optmask);
+	int32_t status = ares_init_options(&ctx_, &options, optmask);
 	if (status != ARES_SUCCESS)
 	{
 		assert(0);
 	}
-	ares_set_socket_callback(ctx,&Resolver::ares_sock_create_callback,this);
+	ares_set_socket_callback(ctx, &Resolver::ares_sock_create_callback, this);
 }
 
 Resolver::~Resolver()
@@ -55,19 +55,19 @@ Resolver::~Resolver()
 	ares_destroy(ctx);
 }
 
-bool Resolver::resolve(StringArg hostname,const Callback& cb)
+bool Resolver::resolve(StringArg hostname, const Callback& cb)
 {
 	loop->assertInLoopThread();
-	QueryData *queryData = new QueryData(this,cb);
-	ares_gethostbyname(ctx,hostname.c_str(),AF_INET,
-	  &Resolver::ares_host_callback,queryData);
+	QueryData *queryData = new QueryData(this, cb);
+	ares_gethostbyname(ctx, hostname.c_str(), AF_INET,
+		&Resolver::ares_host_callback, queryData);
 	struct timeval tv;
-	struct timeval *tvp = ares_timeout(ctx,nullptr,&tv);
+	struct timeval *tvp = ares_timeout(ctx, nullptr, &tv);
 	double timeout = getSeconds(tvp);
-	LOG_DEBUG << "timeout " <<  timeout << " active " << timerActive;
+	LOG_DEBUG << "timeout " << timeout << " active " << timerActive;
 	if (!timerActive)
 	{
-		loop->runAfter(timeout,false,std::bind(&Resolver::onTimer,this));
+		loop->runAfter(timeout, false, std::bind(&Resolver::onTimer, this));
 		timerActive = true;
 	}
 	return queryData != nullptr;
@@ -76,16 +76,16 @@ bool Resolver::resolve(StringArg hostname,const Callback& cb)
 void Resolver::onRead(int32_t sockfd)
 {
 	LOG_DEBUG << "onRead " << sockfd << " at ";
-	ares_process_fd(ctx,sockfd,ARES_SOCKET_BAD);
+	ares_process_fd(ctx, sockfd, ARES_SOCKET_BAD);
 }
 
 
 void Resolver::onTimer()
 {
 	assert(timerActive == true);
-	ares_process_fd(ctx,ARES_SOCKET_BAD,ARES_SOCKET_BAD);
+	ares_process_fd(ctx, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
 	struct timeval tv;
-	struct timeval *tvp = ares_timeout(ctx,nullptr,&tv);
+	struct timeval *tvp = ares_timeout(ctx, nullptr, &tv);
 	double timeout = getSeconds(tvp);
 
 	if (timeout < 0)
@@ -94,15 +94,15 @@ void Resolver::onTimer()
 	}
 	else
 	{
-		loop->runAfter(timeout,false,std::bind(&Resolver::onTimer,this));
+		loop->runAfter(timeout, false, std::bind(&Resolver::onTimer, this));
 	}
 }
 
-void Resolver::onQueryResult(int32_t status,struct hostent *result,const Callback &callback)
+void Resolver::onQueryResult(int32_t status, struct hostent *result, const Callback &callback)
 {
 	LOG_DEBUG << "onQueryResult " << status;
 	struct sockaddr_in addr;
-	bzero(&addr,sizeof addr);
+	bzero(&addr, sizeof addr);
 	addr.sin_family = AF_INET;
 	addr.sin_port = 0;
 	if (result)
@@ -113,37 +113,37 @@ void Resolver::onQueryResult(int32_t status,struct hostent *result,const Callbac
 			printf("h_name %s\n", result->h_name);
 			for (char **alias = result->h_aliases; *alias != nullptr; ++alias)
 			{
-				printf("alias: %s\n",*alias);
+				printf("alias: %s\n", *alias);
 			}
 			// printf("ttl %d\n", ttl);
 			// printf("h_length %d\n", result->h_length);
 			for (char **haddr = result->h_addr_list; *haddr != nullptr; ++haddr)
 			{
 				char buf[32];
-				inet_ntop(AF_INET,*haddr,buf,sizeof buf);
-				printf("  %s\n",buf);
+				inet_ntop(AF_INET, *haddr, buf, sizeof buf);
+				printf("  %s\n", buf);
 			}
 		}
 	}
 
 	char buf[64];
-	socket.toIp(buf,sizeof buf,(const struct sockaddr*)&addr);
+	socket.toIp(buf, sizeof buf, (const struct sockaddr*)&addr);
 	uint16_t port;
-	socket.toPort(&port,(const struct sockaddr*)&addr);
-	callback(buf,port);
+	socket.toPort(&port, (const struct sockaddr*)&addr);
+	callback(buf, port);
 }
 
-void Resolver::onSockCreate(int32_t sockfd,int32_t type)
+void Resolver::onSockCreate(int32_t sockfd, int32_t type)
 {
 	loop->assertInLoopThread();
 	assert(channels.find(sockfd) == channels.end());
-	ChannelPtr channel(new Channel(loop,sockfd));
-	channel->setReadCallback(std::bind(&Resolver::onRead,this,sockfd));
+	ChannelPtr channel(new Channel(loop, sockfd));
+	channel->setReadCallback(std::bind(&Resolver::onRead, this, sockfd));
 	channel->enableReading();
 	channels[sockfd] = channel;
 }
 
-void Resolver::onSockStateChange(int32_t sockfd,bool read,bool write)
+void Resolver::onSockStateChange(int32_t sockfd, bool read, bool write)
 {
 	loop->assertInLoopThread();
 	auto it = channels.find(sockfd);
@@ -162,24 +162,24 @@ void Resolver::onSockStateChange(int32_t sockfd,bool read,bool write)
 	}
 }
 
-void Resolver::ares_host_callback(void *data,int32_t status,int32_t timeouts,struct hostent *hostent)
+void Resolver::ares_host_callback(void *data, int32_t status, int32_t timeouts, struct hostent *hostent)
 {
 	QueryData *query = static_cast<QueryData*>(data);
-	query->owner->onQueryResult(status,hostent,query->callback);
+	query->owner->onQueryResult(status, hostent, query->callback);
 	delete query;
 }
 
-int32_t Resolver::ares_sock_create_callback(int32_t sockfd,int32_t type,void *data)
+int32_t Resolver::ares_sock_create_callback(int32_t sockfd, int32_t type, void *data)
 {
 	LOG_TRACE << "sockfd=" << sockfd << " type=" << getSocketType(type);
-	static_cast<Resolver*>(data)->onSockCreate(sockfd,type);
+	static_cast<Resolver*>(data)->onSockCreate(sockfd, type);
 	return 0;
 }
 
-void Resolver::ares_sock_state_callback(void *data,int32_t sockfd,int32_t read,int32_t write)
+void Resolver::ares_sock_state_callback(void *data, int32_t sockfd, int32_t read, int32_t write)
 {
 	LOG_TRACE << "sockfd=" << sockfd << " read=" << read << " write=" << write;
-	static_cast<Resolver*>(data)->onSockStateChange(sockfd,read,write);
+	static_cast<Resolver*>(data)->onSockStateChange(sockfd, read, write);
 }
 
 

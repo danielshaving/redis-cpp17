@@ -1,9 +1,9 @@
 #include "util.h"
 #include "arena.h"
 
-int main(int argc,char** argv)
+int main(int argc, char** argv)
 {
-	std::vector<std::pair<size_t,char*>> allocated;
+	std::vector<std::pair<size_t, char*>> allocated;
 	Arena arena;
 	const int N = 100000;
 	size_t bytes = 0;
@@ -18,7 +18,7 @@ int main(int argc,char** argv)
 		else
 		{
 			s = rnd.oneIn(4000) ? rnd.uniform(6000) :
-			(rnd.oneIn(10) ? rnd.uniform(100) : rnd.uniform(20));
+				(rnd.oneIn(10) ? rnd.uniform(100) : rnd.uniform(20));
 		}
 		if (s == 0)
 		{
@@ -43,9 +43,9 @@ int main(int argc,char** argv)
 		}
 
 		bytes += s;
-		allocated.push_back(std::make_pair(s,r));
+		allocated.push_back(std::make_pair(s, r));
 		assert(arena.getMemoryUsage() >= bytes);
-		if (i > N/10)
+		if (i > N / 10)
 		{
 			assert(arena.getMemoryUsage() <= bytes * 1.10);
 		}
@@ -57,7 +57,7 @@ int main(int argc,char** argv)
 		const char *p = allocated[i].second;
 		for (size_t b = 0; b < numBytes; b++)
 		{
-		  // Check the "i"th allocation for the known bit pattern
+			// Check the "i"th allocation for the known bit pattern
 			assert((int(p[b]) & 0xff) == (i % 256));
 		}
 	}

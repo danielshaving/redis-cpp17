@@ -5,13 +5,13 @@
 
 char favicon[555];
 bool benchmark = false;
-void onMessage(const HttpRequest &req,HttpResponse *resp)
+void onMessage(const HttpRequest &req, HttpResponse *resp)
 {
 	std::cout << "Headers " << req.methodString() << " " << req.getPath() << std::endl;
 	if (!benchmark)
 	{
 		auto &headers = req.getHeaders();
-		for (auto  it = headers.begin();it != headers.end(); ++it)
+		for (auto it = headers.begin(); it != headers.end(); ++it)
 		{
 			//std::cout << it->first << ": " << it->second << std::endl;
 		}
@@ -19,7 +19,7 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 
 	//std::string getContext = req.getQuery();
 
-	if(req.getMethod() == HttpRequest::kGet)
+	if (req.getMethod() == HttpRequest::kGet)
 	{
 		if (req.getPath() == "/")
 		{
@@ -27,7 +27,7 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 			resp->setStatusCode(HttpResponse::k2000k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/html");
-			resp->addHeader("Server","xHttp");
+			resp->addHeader("Server", "xHttp");
 			std::string now = TimeStamp::now().toFormattedString();
 			resp->setBody("<html><head><title>This is title</title></head>"
 				"<body><h1>Hello</h1>Now is " + now +
@@ -45,7 +45,7 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 			resp->setStatusCode(HttpResponse::k2000k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/plain");
-			resp->addHeader("Server","xHttp");
+			resp->addHeader("Server", "xHttp");
 			resp->setBody("hello, world!\n");
 		}
 		else if (req.getPath() == "/test.txt")
@@ -55,7 +55,7 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 			resp->setStatusCode(HttpResponse::k2000k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/plain");
-			resp->addHeader("Content-Disposition",filename);
+			resp->addHeader("Content-Disposition", filename);
 			resp->setBody("test!\n");
 		}
 		else
@@ -65,18 +65,18 @@ void onMessage(const HttpRequest &req,HttpResponse *resp)
 			resp->setCloseConnection(true);
 		}
 	}
-	else if(req.getMethod() == HttpRequest::kPost)
+	else if (req.getMethod() == HttpRequest::kPost)
 	{
 		resp->setStatusCode(HttpResponse::k2000k);
 		resp->setStatusMessage("OK");
 	}
 }
 
-int main(int argc,char* argv[])
+int main(int argc, char* argv[])
 {
-	if(argc !=  4)
+	if (argc != 4)
 	{
-		fprintf(stderr,"Usage: client <host_ip> <port> <thread>\n");
+		fprintf(stderr, "Usage: client <host_ip> <port> <thread>\n");
 		exit(1);
 	}
 
@@ -85,7 +85,7 @@ int main(int argc,char* argv[])
 	int16_t threadNum = static_cast<int16_t>(atoi(argv[3]));
 
 	EventLoop loop;
-	HttpServer server(&loop,ip,port);
+	HttpServer server(&loop, ip, port);
 	server.setThreadNum(threadNum);
 	server.setMessageCallback(onMessage);
 	server.start();

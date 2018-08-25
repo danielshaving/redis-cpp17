@@ -5,8 +5,8 @@ class WebRequest
 {
 public:
 	WebRequest()
-	: method(kInvalid),
-	  version(kUnknown)
+		: method(kInvalid),
+		version(kUnknown)
 	{
 
 	}
@@ -24,7 +24,7 @@ public:
 
 	enum Method
 	{
-		kInvalid, kGet, kPost, kHead, kPut, kDelete,kContent
+		kInvalid, kGet, kPost, kHead, kPut, kDelete, kContent
 	};
 
 	enum Version
@@ -36,10 +36,10 @@ public:
 	Version getVersion()const { return version; }
 	void setMethod() { method = kContent; }
 
-	bool setMethod(const char * start,const char * end)
+	bool setMethod(const char * start, const char * end)
 	{
 		assert(method == kInvalid);
-		std::string m(start,end);
+		std::string m(start, end);
 		if (m == "GET")
 		{
 			method = kGet;
@@ -72,35 +72,35 @@ public:
 	const char *methodString() const
 	{
 		const char *result = "UNKNOWN";
-		switch(method)
+		switch (method)
 		{
-			case kGet:
-			{
-				result = "GET";
-				break;
-			}
-			case kPost:
-			{
-				result = "POST";
-				break;
-			}
-			case kHead:
-			{
-				result = "HEAD";
-				break;
-			}
-			case kPut:
-			{
-				result = "PUT";
-				break;
-			}
-			case kDelete:
-			{
-				result = "DELETE";
-				break;
-			}
-			default:
-				break;
+		case kGet:
+		{
+			result = "GET";
+			break;
+		}
+		case kPost:
+		{
+			result = "POST";
+			break;
+		}
+		case kHead:
+		{
+			result = "HEAD";
+			break;
+		}
+		case kPut:
+		{
+			result = "PUT";
+			break;
+		}
+		case kDelete:
+		{
+			result = "DELETE";
+			break;
+		}
+		default:
+			break;
 
 		}
 
@@ -108,41 +108,41 @@ public:
 	}
 
 	const std::string &getPath() const { return path; }
-	void setPath(const char *start,const char *end) { path.assign(start,end); }
-	void setQuery(const char *start,const char * end) { query.assign(start,end); }
+	void setPath(const char *start, const char *end) { path.assign(start, end); }
+	void setQuery(const char *start, const char * end) { query.assign(start, end); }
 	const std::string &getQuery()const { return query; }
 
-	void addContent(const char *start,const char *colon,const char *end)
+	void addContent(const char *start, const char *colon, const char *end)
 	{
-		std::string field(start,colon);
+		std::string field(start, colon);
 		++colon;
-		while(colon < end && isspace(*colon))
+		while (colon < end && isspace(*colon))
 		{
 			++colon;
 		}
 
-		std::string value(colon,end);
-		while (!value.empty() && isspace(value[value.size()-1]))
+		std::string value(colon, end);
+		while (!value.empty() && isspace(value[value.size() - 1]))
 		{
-			value.resize(value.size()-1);
+			value.resize(value.size() - 1);
 		}
 
 		contentLength = atoi(value.c_str());
 	}
 
-	void addHeader(const char *start,const char *colon,const char *end)
+	void addHeader(const char *start, const char *colon, const char *end)
 	{
-		std::string field(start,colon);
+		std::string field(start, colon);
 		++colon;
-		while(colon < end && isspace(*colon))
+		while (colon < end && isspace(*colon))
 		{
 			++colon;
 		}
 
-		std::string value(colon,end);
-		while (!value.empty() && isspace(value[value.size()-1]))
+		std::string value(colon, end);
+		while (!value.empty() && isspace(value[value.size() - 1]))
 		{
-			value.resize(value.size()-1);
+			value.resize(value.size() - 1);
 		}
 
 		headers[field] = value;
@@ -177,7 +177,7 @@ public:
 
 	WebSocketType &getOpCode() { return opcode; }
 	void setOpCode() { opcode = ERROR_FRAME; }
-	void setOpCodeType(WebSocketType op) {  opcode = op; }
+	void setOpCodeType(WebSocketType op) { opcode = op; }
 	std::string &getCacheFrame() { return cacheFrame; }
 	std::string &getParseString() { return parseString; }
 
@@ -189,7 +189,7 @@ private:
 	int32_t queryLength;
 	int32_t contentLength;
 	WebSocketType opcode;
-	std::map<std::string,std::string> headers;
+	std::map<std::string, std::string> headers;
 	std::string cacheFrame;
 	std::string parseString;
 };

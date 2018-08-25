@@ -5,24 +5,24 @@
 #include "common.h"
 #include "ttcp.h"
 
-int main(int argc,char *argv[])
+int main(int argc, char *argv[])
 {
-    TTcp tcp;
-    Options options;
-    if (parseCommandLine(argc,argv,&options))
-    {
-        if (options.transmit)
-        {
-            tcp.transmit(options);
-        }
-        else if (options.receive)
-        {
-            tcp.receive(options);
-        }
-        else
-        {
-            assert(0);
-        }
-    }
-    return 0;
+	TTcp tcp;
+	Options options;
+	if (parseCommandLine(argc, argv, &options))
+	{
+		if (options.transmit)
+		{
+			tcp.transmit(options);
+		}
+		else if (options.receive)
+		{
+			tcp.receive(options);
+		}
+		else
+		{
+			assert(0);
+		}
+	}
+	return 0;
 }

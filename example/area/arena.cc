@@ -3,9 +3,9 @@
 static const int kBlockSize = 4096;
 
 Arena::Arena()
-:memoryUsage(0),
- allocPtr(nullptr),
- allocBytesRemaining(0)
+	:memoryUsage(0),
+	allocPtr(nullptr),
+	allocBytesRemaining(0)
 {
 
 }
@@ -41,8 +41,8 @@ char *Arena::allocateFallback(size_t bytes)
 char *Arena::allocateAligned(size_t bytes)
 {
 	const int align = (sizeof(void*) > 8) ? sizeof(void*) : 8;
-	assert((align & (align-1)) == 0);   // Pointer size should be a power of 2
-	size_t currentmod = reinterpret_cast<uintptr_t>(allocPtr) & (align-1);
+	assert((align & (align - 1)) == 0);   // Pointer size should be a power of 2
+	size_t currentmod = reinterpret_cast<uintptr_t>(allocPtr) & (align - 1);
 	size_t slop = (currentmod == 0 ? 0 : align - currentmod);
 	size_t needed = bytes + slop;
 	char *result;
@@ -57,7 +57,7 @@ char *Arena::allocateAligned(size_t bytes)
 		// AllocateFallback always returned aligned memory
 		result = allocateFallback(bytes);
 	}
-	assert((reinterpret_cast<uintptr_t>(result) & (align-1)) == 0);
+	assert((reinterpret_cast<uintptr_t>(result) & (align - 1)) == 0);
 	return result;
 }
 

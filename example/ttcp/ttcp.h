@@ -9,15 +9,15 @@
 class TTcp
 {
 public:
-    void transmit(const Options& opt);
-    void receive(const Options& opt);
+	void transmit(const Options& opt);
+	void receive(const Options& opt);
 
-    void blockTransmit(const Options& opt);
-    void blockReceive(const Options& opt);
+	void blockTransmit(const Options& opt);
+	void blockReceive(const Options& opt);
 
-    int read(int sockfd,const void* buf,int length);
-    int write(int sockfd,const void* buf,int length);
-    int acceptOrDie(uint16_t port);
+	int read(int sockfd, const void* buf, int length);
+	int write(int sockfd, const void* buf, int length);
+	int acceptOrDie(uint16_t port);
 private:
 
 };

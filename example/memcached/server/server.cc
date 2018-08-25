@@ -1,15 +1,15 @@
 #include "server.h"
 
-Item::Item(std::string_view keyArg,uint32_t flagsArg,
-int exptimeArg,int valuelen,uint64_t casArg)
-:keyLen(keyArg.size()),
-flags(flagsArg),
-relExptime(exptimeArg),
-valueLen(valuelen),
-receivedBytes(0),
-cas(casArg),
-hash(dictGenHashFunction(keyArg.data(),keyArg.size())),
-data(static_cast<char*>(zmalloc(totalLen())))
+Item::Item(std::string_view keyArg, uint32_t flagsArg,
+	int exptimeArg, int valuelen, uint64_t casArg)
+	:keyLen(keyArg.size()),
+	flags(flagsArg),
+	relExptime(exptimeArg),
+	valueLen(valuelen),
+	receivedBytes(0),
+	cas(casArg),
+	hash(dictGenHashFunction(keyArg.data(), keyArg.size())),
+	data(static_cast<char*>(zmalloc(totalLen())))
 {
 	assert(valuelen >= 2);
 	assert(receivedBytes < totalLen());
@@ -21,27 +21,27 @@ size_t Item::neededBytes() const
 	return totalLen() - receivedBytes;
 }
 
-void Item::append(const char *data,size_t len)
+void Item::append(const char *data, size_t len)
 {
 	assert(len <= neededBytes());
-	memcpy(this->data + receivedBytes,data,len);
+	memcpy(this->data + receivedBytes, data, len);
 	receivedBytes += static_cast<int>(len);
 	assert(receivedBytes <= totalLen());
 }
 
-void Item::output(Buffer *out,bool needCas) const
-{	
+void Item::output(Buffer *out, bool needCas) const
+{
 	out->append("VALUE ");
 	out->append(data, keyLen);
 	xLogStream buf;
-	buf << ' ' << getFlags() << ' ' << valueLen-2;
+	buf << ' ' << getFlags() << ' ' << valueLen - 2;
 	if (needCas)
 	{
 		buf << ' ' << getCas();
 	}
-	
+
 	buf << "\r\n";
-	out->append(buf.getBuffer().getData(),buf.getBuffer().length());
+	out->append(buf.getBuffer().getData(), buf.getBuffer().length());
 	out->append(value(), valueLen);
 }
 
@@ -51,7 +51,7 @@ void Item::resetKey(std::string_view k)
 	keyLen = k.size();
 	receivedBytes = 0;
 	append(k.data(), k.size());
-	hash = dictGenHashFunction(k.data(),k.size());
+	hash = dictGenHashFunction(k.data(), k.size());
 }
 
 static bool isBinaryProtocol(uint8_t firstByte)
@@ -61,9 +61,9 @@ static bool isBinaryProtocol(uint8_t firstByte)
 
 struct Connect::Reader
 {
-	Reader(std::vector<std::string_view>::iterator &beg,std::vector<std::string_view>::iterator end)
-	  : first(beg),
-	    last(end)
+	Reader(std::vector<std::string_view>::iterator &beg, std::vector<std::string_view>::iterator end)
+		: first(beg),
+		last(end)
 	{
 
 	}
@@ -80,12 +80,12 @@ struct Connect::Reader
 			++first;
 			return true;
 		}
-		
+
 		return false;
 	}
 
- private:
- 	std::vector<std::string_view>::iterator first;
+private:
+	std::vector<std::string_view>::iterator first;
 	std::vector<std::string_view>::iterator last;
 };
 
@@ -94,7 +94,7 @@ void Connect::receiveValue(Buffer *buf)
 	assert(currItem.get());
 	assert(state == kReceiveValue);
 
-	const size_t avail = std::min(buf->readableBytes(),currItem->neededBytes());
+	const size_t avail = std::min(buf->readableBytes(), currItem->neededBytes());
 	assert(currItem.unique());
 	currItem->append(buf->peek(), avail);
 	buf->retrieve(avail);
@@ -122,7 +122,7 @@ void Connect::receiveValue(Buffer *buf)
 				}
 				else
 				{
-				   reply("NOT_STORED\r\n");
+					reply("NOT_STORED\r\n");
 				}
 			}
 		}
@@ -130,10 +130,10 @@ void Connect::receiveValue(Buffer *buf)
 		{
 			reply("CLIENT_ERROR bad data chunk\r\n");
 		}
-		
+
 		resetRequest();
 		state = kNewCommand;
-  	}
+	}
 }
 
 void Connect::discardValue(Buffer *buf)
@@ -148,7 +148,7 @@ void Connect::discardValue(Buffer *buf)
 	else
 	{
 		buf->retrieve(bytesToDiscard);
-		bytesToDiscard= 0;
+		bytesToDiscard = 0;
 		resetRequest();
 		state = kNewCommand;
 	}
@@ -162,7 +162,7 @@ bool Connect::processRequest(std::string_view request)
 	assert(!currItem);
 	assert(bytesToDiscard == 0);
 	++requestsProcessed;
-	
+
 	if (request.size() >= 8)
 	{
 		std::string_view end(request.end() - 8, 8);
@@ -176,11 +176,11 @@ bool Connect::processRequest(std::string_view request)
 	std::vector<std::string_view> tokenizers;
 	const char *next = request.begin();
 	const char *end = request.end();
-	
-	for(;;)
+
+	for (;;)
 	{
 		while (next != end && *next == ' ')
-		++next;
+			++next;
 		if (next == end)
 		{
 			break;
@@ -208,14 +208,14 @@ bool Connect::processRequest(std::string_view request)
 		reply("ERROR\r\n");
 		return true;
 	}
-	
+
 	(*beg).copyToString(&command);
 	++beg;
 	if (command == "set" || command == "add" || command == "replace"
-	  || command == "append" || command == "prepend" || command == "cas")
+		|| command == "append" || command == "prepend" || command == "cas")
 	{
-	
-		return doUpdate(beg,tokenizers.end());
+
+		return doUpdate(beg, tokenizers.end());
 	}
 	else if (command == "get" || command == "gets")
 	{
@@ -235,7 +235,7 @@ bool Connect::processRequest(std::string_view request)
 			++beg;
 			if (item)
 			{
-				item->output(&outputBuf,cas);
+				item->output(&outputBuf, cas);
 			}
 		}
 		outputBuf.append("END\r\n");
@@ -270,7 +270,7 @@ bool Connect::processRequest(std::string_view request)
 		reply("ERROR\r\n");
 		LOG_INFO << "Unknown command: " << command;
 	}
- 	return true;
+	return true;
 }
 
 void Connect::resetRequest()
@@ -292,7 +292,7 @@ void Connect::reply(std::string_view msg)
 }
 
 
-bool Connect::doUpdate(std::vector<std::string_view>::iterator &beg,std::vector<std::string_view>::iterator end)
+bool Connect::doUpdate(std::vector<std::string_view>::iterator &beg, std::vector<std::string_view>::iterator end)
 {
 	if (command == "set")
 		policy = Item::kSet;
@@ -307,7 +307,7 @@ bool Connect::doUpdate(std::vector<std::string_view>::iterator &beg,std::vector<
 	else if (command == "cas")
 		policy = Item::kCas;
 	else
-	assert(false);
+		assert(false);
 
 	std::string_view key = (*beg);
 	++beg;
@@ -322,7 +322,7 @@ bool Connect::doUpdate(std::vector<std::string_view>::iterator &beg,std::vector<
 	good = good && r.read(&flags) && r.read(&exptime) && r.read(&bytes);
 
 	int relExptime = static_cast<int>(exptime);
-	if (exptime > 60*60*24*30)
+	if (exptime > 60 * 60 * 24 * 30)
 	{
 		relExptime = static_cast<int>(exptime - owner->getStartTime());
 		if (relExptime < 1)
@@ -347,7 +347,7 @@ bool Connect::doUpdate(std::vector<std::string_view>::iterator &beg,std::vector<
 		return true;
 	}
 
-	if (bytes > 1024*1024)
+	if (bytes > 1024 * 1024)
 	{
 		reply("SERVER_ERROR object too large for cache\r\n");
 		needle->resetKey(key);
@@ -358,7 +358,7 @@ bool Connect::doUpdate(std::vector<std::string_view>::iterator &beg,std::vector<
 	}
 	else
 	{
-		currItem = Item::makeItem(key,flags,relExptime,bytes + 2,cas);
+		currItem = Item::makeItem(key, flags, relExptime, bytes + 2, cas);
 		state = kReceiveValue;
 		return false;
 	}
@@ -392,7 +392,7 @@ void Connect::doDelete(std::vector<std::string_view>::iterator &beg, std::vector
 	}
 }
 
-void Connect::onMessage(const TcpConnectionPtr &conn,Buffer *buf,void *data)
+void Connect::onMessage(const TcpConnectionPtr &conn, Buffer *buf, void *data)
 {
 	const size_t initialReadable = buf->readableBytes();
 
@@ -449,22 +449,22 @@ void Connect::onMessage(const TcpConnectionPtr &conn,Buffer *buf,void *data)
 	}
 }
 
-MemcacheServer::MemcacheServer(EventLoop *loop,const Options & op)
-:loop(loop),
-ops(op),
-startTime(time(0))
+MemcacheServer::MemcacheServer(EventLoop *loop, const Options & op)
+	:loop(loop),
+	ops(op),
+	startTime(time(0))
 {
-	server.setConnectionCallback(std::bind(&MemcacheServer::onConnection,this,std::placeholders::_1));
+	server.setConnectionCallback(std::bind(&MemcacheServer::onConnection, this, std::placeholders::_1));
 }
 
 MemcacheServer::~MemcacheServer()
 {
-	
+
 }
-	
+
 void MemcacheServer::init()
 {
-	server.init(loop,ops.ip,ops.port,nullptr);
+	server.init(loop, ops.ip, ops.port, nullptr);
 }
 
 void MemcacheServer::start()
@@ -479,10 +479,10 @@ void MemcacheServer::quit()
 
 void MemcacheServer::stop()
 {
-	loop->runAfter(3.0,nullptr,false,std::bind(&MemcacheServer::quit,this));
+	loop->runAfter(3.0, nullptr, false, std::bind(&MemcacheServer::quit, this));
 }
 
-bool MemcacheServer::storeItem(const ItemPtr &item,Item::UpdatePolicy policy,bool *exists)
+bool MemcacheServer::storeItem(const ItemPtr &item, Item::UpdatePolicy policy, bool *exists)
 {
 	assert(item->neededBytes() == 0);
 	std::mutex &mutex = shards[item->getHash() % kShards].mutex;
@@ -497,7 +497,7 @@ bool MemcacheServer::storeItem(const ItemPtr &item,Item::UpdatePolicy policy,boo
 		{
 			items.erase(it);
 		}
-		
+
 		items.insert(item);
 	}
 	else
@@ -534,19 +534,19 @@ bool MemcacheServer::storeItem(const ItemPtr &item,Item::UpdatePolicy policy,boo
 				const ConstItemPtr &oldItem = *it;
 				int newLen = static_cast<int>(item->valueLength() + oldItem->valueLength() - 2);
 				ItemPtr newItem(Item::makeItem(item->getKey(),
-								   oldItem->getFlags(),
-								   oldItem->getRelExptime(),
-								   newLen,
-								   cas++));
+					oldItem->getFlags(),
+					oldItem->getRelExptime(),
+					newLen,
+					cas++));
 				if (policy == Item::kAppend)
 				{
-					newItem->append(oldItem->value(),oldItem->valueLength() - 2);
-					newItem->append(item->value(),item->valueLength());
+					newItem->append(oldItem->value(), oldItem->valueLength() - 2);
+					newItem->append(item->value(), item->valueLength());
 				}
 				else
 				{
-					newItem->append(item->value(),item->valueLength() - 2);
-					newItem->append(oldItem->value(),oldItem->valueLength());
+					newItem->append(item->value(), item->valueLength() - 2);
+					newItem->append(oldItem->value(), oldItem->valueLength());
 				}
 				assert(newItem->neededBytes() == 0);
 				assert(newItem->endsWithCRLF());
@@ -573,7 +573,7 @@ bool MemcacheServer::storeItem(const ItemPtr &item,Item::UpdatePolicy policy,boo
 		}
 		else
 		{
-		  assert(false);
+			assert(false);
 		}
 	}
 	return true;
@@ -581,7 +581,7 @@ bool MemcacheServer::storeItem(const ItemPtr &item,Item::UpdatePolicy policy,boo
 
 ConstItemPtr MemcacheServer::getItem(const ConstItemPtr &key) const
 {
-	std::mutex & mutex  = shards[key->getHash() % kShards].mutex;
+	std::mutex & mutex = shards[key->getHash() % kShards].mutex;
 	const ItemMap& items = shards[key->getHash() % kShards].items;
 	std::unique_lock <std::mutex> lck(mutex);
 	ItemMap::const_iterator it = items.find(key);
@@ -590,7 +590,7 @@ ConstItemPtr MemcacheServer::getItem(const ConstItemPtr &key) const
 
 bool MemcacheServer::deleteItem(const ConstItemPtr &key)
 {
-	std::mutex & mutex= shards[key->getHash() % kShards].mutex;
+	std::mutex & mutex = shards[key->getHash() % kShards].mutex;
 	ItemMap& items = shards[key->getHash() % kShards].items;
 	std::unique_lock <std::mutex> lck(mutex);
 	return items.erase(key) == 1;
@@ -598,9 +598,9 @@ bool MemcacheServer::deleteItem(const ConstItemPtr &key)
 
 void MemcacheServer::onConnection(const TcpConnectionPtr &conn)
 {
-	if(conn->connected())
+	if (conn->connected())
 	{
-		SessionPtr session(new Connect(this,conn));
+		SessionPtr session(new Connect(this, conn));
 		std::unique_lock <std::mutex> lck(mtx);
 		assert(sessions.find(conn->getSockfd()) == sessions.end());
 		sessions[conn->getSockfd()] = session;
@@ -614,13 +614,13 @@ void MemcacheServer::onConnection(const TcpConnectionPtr &conn)
 }
 
 int main(int argc, char* argv[])
-{	
+{
 	MemcacheServer::Options options;
 	options.ip = "127.0.0.1";
 	options.port = 11211;
 
 	EventLoop loop;
-	MemcacheServer memcache(&loop,options);
+	MemcacheServer memcache(&loop, options);
 	memcache.init();
 	memcache.setThreadNum(4);
 	memcache.start();

@@ -1,36 +1,36 @@
 #include "webcontext.h"
 
-bool WebContext::processRequestLine(const char *begin,const char *end)
+bool WebContext::processRequestLine(const char *begin, const char *end)
 {
 	bool succeed = false;
 	const char *start = begin;
-	const  char *space = std::find(start,end,' ');
-	if(space != end && request.setMethod(start,space))
+	const  char *space = std::find(start, end, ' ');
+	if (space != end && request.setMethod(start, space))
 	{
-		start = space+1;
+		start = space + 1;
 		space = std::find(start, end, ' ');
 		if (space != end)
 		{
-			const char *question = std::find(start,space ,'?');
-			if(question != space)
+			const char *question = std::find(start, space, '?');
+			if (question != space)
 			{
-				request.setPath(start,question);
-				request.setQuery(question + 1,space);
+				request.setPath(start, question);
+				request.setQuery(question + 1, space);
 			}
 			else
 			{
-				request.setPath(start,space);
+				request.setPath(start, space);
 			}
 
 			start = space + 1;
-			succeed = end - start == 8 && std::equal(start,end - 1,"HTTP/1.");
-			if(succeed)
+			succeed = end - start == 8 && std::equal(start, end - 1, "HTTP/1.");
+			if (succeed)
 			{
-				if (*(end-1) == '1')
+				if (*(end - 1) == '1')
 				{
 					request.setVersion(WebRequest::kHttp11);
 				}
-				else if (*(end-1) == '0')
+				else if (*(end - 1) == '0')
 				{
 					request.setVersion(WebRequest::kHttp10);
 				}
@@ -46,9 +46,9 @@ bool WebContext::processRequestLine(const char *begin,const char *end)
 }
 
 bool WebContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,
-		const char *buf,const size_t bufferSize,size_t &size,bool &fin)
+	const char *buf, const size_t bufferSize, size_t &size, bool &fin)
 {
-	if(bufferSize < 2)
+	if (bufferSize < 2)
 	{
 		return false;
 	}
@@ -59,7 +59,7 @@ bool WebContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,
 	uint32_t len = buffer[1] & 0x7F;
 	uint32_t pos = 2;
 
-	if(len <= 125)
+	if (len <= 125)
 	{
 
 	}
@@ -73,7 +73,7 @@ bool WebContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,
 		len = (buffer[2] << 8) + buffer[3];
 		pos = 4;
 	}
-	else if(len == 127)
+	else if (len == 127)
 	{
 		if (bufferSize < 10)
 		{
@@ -133,7 +133,7 @@ bool WebContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,
 		conn->forceClose();
 	}
 
-	if(fin)
+	if (fin)
 	{
 		getRequest().setOpCodeType((WebRequest::WebSocketType)(buffer[0] & 0x0F));
 	}
@@ -146,27 +146,27 @@ bool WebContext::wsFrameExtractBuffer(const TcpConnectionPtr &conn,
 	return true;
 }
 
-bool WebContext::wsFrameBuild(Buffer *buffer,WebRequest::WebSocketType framType,bool ok,bool masking)
- {
-	 if (masking)
-	 {
-		 char *peek = buffer->data();
-		 peek[1] = ((uint8_t)peek[1]) | 0x80;
-		 uint8_t mask[4];
+bool WebContext::wsFrameBuild(Buffer *buffer, WebRequest::WebSocketType framType, bool ok, bool masking)
+{
+	if (masking)
+	{
+		char *peek = buffer->data();
+		peek[1] = ((uint8_t)peek[1]) | 0x80;
+		uint8_t mask[4];
 
-		 size_t size = sizeof(mask) / sizeof(mask[0]) - 1;
+		size_t size = sizeof(mask) / sizeof(mask[0]) - 1;
 
-		 for (size_t i = size ; i >=0; i--)
-		 {
-			 mask[i] = rand();
-			 buffer->prependInt8(mask[i]);
-		 }
+		for (size_t i = size; i >= 0; i--)
+		{
+			mask[i] = rand();
+			buffer->prependInt8(mask[i]);
+		}
 
-		 for (size_t i = 0; i < buffer->readableBytes(); i++)
-		 {
-			 peek[i] = peek[i] ^ mask[i % 4];
-		 }
-	 }
+		for (size_t i = 0; i < buffer->readableBytes(); i++)
+		{
+			peek[i] = peek[i] ^ mask[i % 4];
+		}
+	}
 
 	if (buffer->readableBytes() <= 125)
 	{
@@ -177,39 +177,39 @@ bool WebContext::wsFrameBuild(Buffer *buffer,WebRequest::WebSocketType framType,
 		buffer->prependInt8(buffer->readableBytes() & 0x00FF);
 		buffer->prependInt8((buffer->readableBytes() & 0xFF00) >> 8);
 		buffer->prependInt8(126);
-	 }
-	 else
-	 {
-		 buffer->prependInt8((buffer->readableBytes() & 0x000000FF) >> 0);
-		 buffer->prependInt8((buffer->readableBytes() & 0x0000FF00) >> 8);
-		 buffer->prependInt8((buffer->readableBytes() & 0x00FF0000) >> 16);
-		 buffer->prependInt8((buffer->readableBytes() & 0xFF000000) >> 24);
-		 buffer->prependInt8(0x00);
-		 buffer->prependInt8(0x00);
-		 buffer->prependInt8(0x00);
-		 buffer->prependInt8(0x00);
-		 buffer->prependInt8(127);
-	 }
+	}
+	else
+	{
+		buffer->prependInt8((buffer->readableBytes() & 0x000000FF) >> 0);
+		buffer->prependInt8((buffer->readableBytes() & 0x0000FF00) >> 8);
+		buffer->prependInt8((buffer->readableBytes() & 0x00FF0000) >> 16);
+		buffer->prependInt8((buffer->readableBytes() & 0xFF000000) >> 24);
+		buffer->prependInt8(0x00);
+		buffer->prependInt8(0x00);
+		buffer->prependInt8(0x00);
+		buffer->prependInt8(0x00);
+		buffer->prependInt8(127);
+	}
 
 	uint8_t head = (uint8_t)framType | (ok ? 0x80 : 0x00);
 	buffer->prependInt8(head);
 
 	return true;
- }
+}
 
 bool WebContext::parseRequest(Buffer *buffer)
 {
 	bool ok = true;
 	bool hasMore = true;
-	while(hasMore)
+	while (hasMore)
 	{
-		if(state == kExpectRequestLine)
+		if (state == kExpectRequestLine)
 		{
 			const char *crlf = buffer->findCRLF();
-			if(crlf)
+			if (crlf)
 			{
-				ok = processRequestLine(buffer->peek(),crlf);
-				if(ok)
+				ok = processRequestLine(buffer->peek(), crlf);
+				if (ok)
 				{
 					buffer->retrieveUntil(crlf + 2);
 					state = kExpectHeaders;
@@ -224,15 +224,15 @@ bool WebContext::parseRequest(Buffer *buffer)
 				hasMore = false;
 			}
 		}
-		else if(state == kExpectHeaders)
+		else if (state == kExpectHeaders)
 		{
 			const char *crlf = buffer->findCRLF();
-			if(crlf)
+			if (crlf)
 			{
 				const char *colon = std::find(buffer->peek(), crlf, ':');
-				if(colon != crlf)
+				if (colon != crlf)
 				{
-					request.addHeader(buffer->peek(),colon,crlf);
+					request.addHeader(buffer->peek(), colon, crlf);
 				}
 				else
 				{
@@ -246,7 +246,7 @@ bool WebContext::parseRequest(Buffer *buffer)
 				hasMore = false;
 			}
 		}
-		else if(state == kExpectBody)
+		else if (state == kExpectBody)
 		{
 
 		}

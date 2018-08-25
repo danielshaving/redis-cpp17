@@ -66,7 +66,7 @@ bool unlockFile()
 		fileLock.unlock();
 		return true;
 	}
-	catch  (const std::exception &e) 
+	catch (const std::exception &e)
 	{
 		return false;
 	}
@@ -84,7 +84,7 @@ int main()
 	char conn_error[MYSQLX_MAX_ERROR_LEN];
 	int conn_err_code;
 
-	sess = mysqlx_get_session("127.0.0.1",33060,"root","123456","game",conn_error, &conn_err_code);
+	sess = mysqlx_get_session("127.0.0.1", 33060, "root", "123456", "game", conn_error, &conn_err_code);
 	if (!sess)
 	{
 		printf("Error! %s. Error Code: %d\n", conn_error, conn_err_code);
@@ -98,8 +98,8 @@ int main()
 		TODO: Only working with server version 8
 		*/
 		res = mysqlx_sql(sess,
-						 "show variables like 'version'",
-						 MYSQLX_NULL_TERMINATED);
+			"show variables like 'version'",
+			MYSQLX_NULL_TERMINATED);
 
 		row = mysqlx_row_fetch_one(res);
 		size_t len = 1024;
@@ -120,7 +120,7 @@ int main()
 		}
 
 		std::string alter = "alter table log_item AUTO_INCREMENT = 1";
-		res = mysqlx_sql(sess,alter.c_str(),MYSQLX_NULL_TERMINATED);
+		res = mysqlx_sql(sess, alter.c_str(), MYSQLX_NULL_TERMINATED);
 		RESULT_CHECK(res, sess);
 	}
 
@@ -142,38 +142,38 @@ int main()
 				fileName += "log/";
 				auto fe = it.path();
 				fileName += fe.filename();
-				
-				if (!fs::exists( it.path()))
+
+				if (!fs::exists(it.path()))
 				{
-					printf("filename %s not found..........\n",fe.filename().c_str());
+					printf("filename %s not found..........\n", fe.filename().c_str());
 					continue;
 				}
-				
+
 				if (!lockFile(fileName))
 				{
 					printf("lock..........\n");
 					continue;
 				}
-				
-				FILE *fp = ::fopen(fileName.c_str(),"r");
+
+				FILE *fp = ::fopen(fileName.c_str(), "r");
 				assert(fp);
-				fseek(fp,0,0);
+				fseek(fp, 0, 0);
 				char buf[MAX_LINE];
-				while (fgets(buf,MAX_LINE,fp) != nullptr)
+				while (fgets(buf, MAX_LINE, fp) != nullptr)
 				{
 					char *start;
-					start = strchr(buf,'#');
+					start = strchr(buf, '#');
 					if (start != nullptr)
 					{
-						printf("%s\n",start);
+						printf("%s\n", start);
 						start = start + 3;
 						char *end;
-						end = strchr(start,'#');
+						end = strchr(start, '#');
 						assert(end != nullptr);
-						printf("length %d\n",int(end - start));
-						std::string ret(start,end);
-						printf("string %s\n",ret.c_str());
-						res = mysqlx_sql(sess,ret.c_str(),MYSQLX_NULL_TERMINATED);
+						printf("length %d\n", int(end - start));
+						std::string ret(start, end);
+						printf("string %s\n", ret.c_str());
+						res = mysqlx_sql(sess, ret.c_str(), MYSQLX_NULL_TERMINATED);
 						RESULT_CHECK(res, sess);
 					}
 				}

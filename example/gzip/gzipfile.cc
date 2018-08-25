@@ -9,7 +9,7 @@ int main()
 	const char data[] = "123456789012345678901234567890123456789012345678901234567890\n";
 	{
 		GzipFile writer = GzipFile::openForAppend(filename);
-		if(writer.valid())
+		if (writer.valid())
 		{
 			LOG_INFO << "tell " << writer.tell();
 			LOG_INFO << "wrote " << writer.write(data);
@@ -22,7 +22,7 @@ int main()
 
 	GzipFile reader = GzipFile::openForRead(filename);
 
-	if(reader.valid())
+	if (reader.valid())
 	{
 		char buf[256];
 		LOG_INFO << "tell " << reader.tell();
