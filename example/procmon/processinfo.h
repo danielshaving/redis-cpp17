@@ -2,9 +2,8 @@
 #include "timerqueue.h"
 #include "log.h"
 
-#ifndef _WIN32
 // read small file < 64KB
-class ReadSmallFile 
+class ReadSmallFile
 {
 public:
 	ReadSmallFile(const std::string_view &filename);
@@ -12,10 +11,10 @@ public:
 
 	// return errno
 	int32_t readToString(int32_t maxSize,
-			   std::string *content,
-			   int64_t *fileSize = nullptr,
-			   int64_t *modifyTime = nullptr,
-			   int64_t *createTime = nullptr);
+		std::string *content,
+		int64_t *fileSize = nullptr,
+		int64_t *modifyTime = nullptr,
+		int64_t *createTime = nullptr);
 
 	/// Read at maxium kBufferSize into buf_
 	// return errno
@@ -23,14 +22,13 @@ public:
 
 	const char *buffer() const { return buf; }
 
-	static const int32_t kBufferSize = 64*1024;
+	static const int32_t kBufferSize = 64 * 1024;
 
 private:
 	int32_t fd;
 	int32_t err;
 	char buf[kBufferSize];
 };
-#endif
 
 class ProcessInfo
 {

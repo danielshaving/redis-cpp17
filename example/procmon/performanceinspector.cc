@@ -8,7 +8,7 @@ void PerformanceInspector::registerCommands(Inspector* ins)
 	ins->add("pprof", "heap", PerformanceInspector::heap, "get heap information");
 	ins->add("pprof", "growth", PerformanceInspector::growth, "get heap growth information");
 	ins->add("pprof", "profile", PerformanceInspector::profile,
-		   "get cpu profiling information. CAUTION: blocking thread for 30 seconds!");
+		"get cpu profiling information. CAUTION: blocking thread for 30 seconds!");
 	ins->add("pprof", "cmdline", PerformanceInspector::cmdline, "get command line");
 	ins->add("pprof", "memstats", PerformanceInspector::memstats, "get memory stats");
 	ins->add("pprof", "memhistogram", PerformanceInspector::memhistogram, "get memory histogram");
@@ -42,10 +42,10 @@ string PerformanceInspector::profile(HttpRequest::Method, const Inspector::ArgLi
 	if (ProfilerStart(filename.c_str()))
 	{
 		// FIXME: async
-		std::this_thread::sleep_for(std::chrono::milliseconds(30 * 1000 ));
+		std::this_thread::sleep_for(std::chrono::milliseconds(30 * 1000));
 		ProfilerStop();
 		ReadSmallFile file(filename);
-		file.readToString(1024*1024, &profile, nullptr, nullptr);
+		file.readToString(1024 * 1024, &profile, nullptr, nullptr);
 		::unlink(filename.c_str());
 	}
 	return profile;
@@ -58,7 +58,7 @@ string PerformanceInspector::cmdline(HttpRequest::Method, const Inspector::ArgLi
 
 string PerformanceInspector::memstats(HttpRequest::Method, const Inspector::ArgList&)
 {
-	char buf[1024*64];
+	char buf[1024 * 64];
 	MallocExtension::instance()->GetStats(buf, sizeof buf);
 	return buf;
 }
@@ -73,7 +73,7 @@ string PerformanceInspector::memhistogram(HttpRequest::Method, const Inspector::
 	LogStream s;
 	s << "blocks " << blocks << "\ntotal " << total << "\n";
 	for (int i = 0; i < kMallocHistogramSize; ++i)
-	s << i << " " << histogram[i] << "\n";
+		s << i << " " << histogram[i] << "\n";
 	return s.buffer().toString();
 }
 
@@ -81,7 +81,7 @@ string PerformanceInspector::releaseFreeMemory(HttpRequest::Method, const Inspec
 {
 	char buf[256];
 	snprintf(buf, sizeof buf, "memory release rate: %f\nAll free memory released.\n",
-		   MallocExtension::instance()->GetMemoryReleaseRate());
+		MallocExtension::instance()->GetMemoryReleaseRate());
 	MallocExtension::instance()->ReleaseFreeMemory();
 	return buf;
 }

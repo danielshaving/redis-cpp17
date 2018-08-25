@@ -1,9 +1,8 @@
 #include "processPerformanceInspector::h"
 
-#ifndef _WIN32
 ReadSmallFile::ReadSmallFile(const std::string_view  &filename)
-  : fd(::open(filename.data(), O_RDONLY | O_CLOEXEC)),
-    err(0)
+	: fd(::open(filename.data(), O_RDONLY | O_CLOEXEC)),
+	err(0)
 {
 	buf[0] = '\0';
 	if (fd < 0)
@@ -22,10 +21,10 @@ ReadSmallFile::~ReadSmallFile()
 
 // return errno
 int32_t ReadSmallFile::readToString(int32_t maxSize,
-                                          std::string *content,
-                                          int64_t *fileSize,
-                                          int64_t *modifyTime,
-                                          int64_t *createTime)
+	std::string *content,
+	int64_t *fileSize,
+	int64_t *modifyTime,
+	int64_t *createTime)
 {
 	static_assert(sizeof(off_t) == 8, "_FILE_OFFSET_BITS = 64");
 	assert(content != NULL);
@@ -47,12 +46,12 @@ int32_t ReadSmallFile::readToString(int32_t maxSize,
 				{
 					err = EISDIR;
 				}
-				
+
 				if (modifyTime)
 				{
 					*modifyTime = statbuf.st_mtime;
 				}
-				
+
 				if (createTime)
 				{
 					*createTime = statbuf.st_ctime;
@@ -76,7 +75,7 @@ int32_t ReadSmallFile::readToString(int32_t maxSize,
 			{
 				if (n < 0)
 				{
-				  err = errno;
+					err = errno;
 				}
 				break;
 			}
@@ -89,7 +88,7 @@ int32_t ReadSmallFile::readToBuffer(int32_t *size)
 {
 	if (fd >= 0)
 	{
-		ssize_t n = ::pread(fd, buf, sizeof(buf)-1, 0);
+		ssize_t n = ::pread(fd, buf, sizeof(buf) - 1, 0);
 		if (n >= 0)
 		{
 			if (size)
@@ -105,7 +104,6 @@ int32_t ReadSmallFile::readToBuffer(int32_t *size)
 	}
 	return err;
 }
-#endif
 
 __thread int t_numOpenedFiles = 0;
 int fdDirFilter(const struct dirent* d)
@@ -127,7 +125,7 @@ int taskDirFilter(const struct dirent* d)
 	return 0;
 }
 
-int scanDir(const char *dirpath, int (*filter)(const struct dirent *))
+int scanDir(const char *dirpath, int(*filter)(const struct dirent *))
 {
 	struct dirent** namelist = nullptr;
 	int result = ::scandir(dirpath, &namelist, filter, alphasort);
@@ -208,7 +206,7 @@ std::string ProcessInfo::hostname()
 	char buf[256];
 	if (::gethostname(buf, sizeof buf) == 0)
 	{
-		buf[sizeof(buf)-1] = '\0';
+		buf[sizeof(buf) - 1] = '\0';
 		return buf;
 	}
 	else
@@ -219,8 +217,8 @@ std::string ProcessInfo::hostname()
 
 std::string ProcessInfo::procname()
 {
-	std::string_view view = procname(procStat());	
-	return std::string(view.data(),view.size());
+	std::string_view view = procname(procStat());
+	return std::string(view.data(), view.size());
 }
 
 std::string_view ProcessInfo::procname(const std::string& stat)
@@ -230,7 +228,7 @@ std::string_view ProcessInfo::procname(const std::string& stat)
 	size_t rp = stat.rfind(')');
 	if (lp != std::string::npos && rp != std::string::npos && lp < rp)
 	{
-		name = std::string_view(stat.data()+lp+1, rp-lp-1);
+		name = std::string_view(stat.data() + lp + 1, rp - lp - 1);
 	}
 	return name;
 }

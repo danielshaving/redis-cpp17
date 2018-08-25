@@ -13,20 +13,20 @@ class Inspector
 {
 public:
 	typedef std::vector<std::string> ArgList;
-	typedef std::function<std::string (HttpRequest::Method, const ArgList &args)> Callback;
+	typedef std::function<std::string(HttpRequest::Method, const ArgList &args)> Callback;
 	Inspector(EventLoop *loop,
-			const char *ip,uint16_t port,
-			const std::string &name);
+		const char *ip, uint16_t port,
+		const std::string &name);
 	~Inspector();
 
 	/// Add a Callback for handling the special uri : /mudule/command
 	void add(const std::string &module,
-		   const std::string &command,
-		   const Callback &cb,
-		   const std::string &help);
+		const std::string &command,
+		const Callback &cb,
+		const std::string &help);
 	void remove(const std::string &module, const std::string &command);
 
-	private:
+private:
 	typedef std::map<std::string, Callback> CommandList;
 	typedef std::map<std::string, std::string> HelpList;
 
