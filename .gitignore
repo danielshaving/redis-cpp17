@@ -1,0 +1,5 @@
+.xmake
+build
+obj
+*.swp
+*.swo
