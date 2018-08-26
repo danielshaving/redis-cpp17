@@ -27,6 +27,7 @@
     <ClCompile Include="epoll.cc" />
     <ClCompile Include="eventloop.cc" />
     <ClCompile Include="hiredis.cc" />
+    <ClCompile Include="hiredistest.cc" />
     <ClCompile Include="log.cc" />
     <ClCompile Include="main.cc" />
     <ClCompile Include="object.cc" />
@@ -59,6 +60,7 @@
     <ClInclude Include="epoll.h" />
     <ClInclude Include="eventloop.h" />
     <ClInclude Include="hiredis.h" />
+    <ClInclude Include="hiredistest.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="object.h" />
     <ClInclude Include="poll.h" />

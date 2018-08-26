@@ -1798,10 +1798,12 @@ int32_t RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
 	return status;
 }
 
-Hiredis::Hiredis(EventLoop *loop, int16_t sessionCount, bool clusterMode)
+Hiredis::Hiredis(EventLoop *loop, int16_t sessionCount, const char *ip, int16_t port, bool clusterMode)
 	:pool(loop),
 	clusterMode(true),
 	sessionCount(sessionCount),
+	ip(ip),
+	port(port),
 	pos(0)
 {
 
@@ -1895,11 +1897,6 @@ RedisAsyncContextPtr Hiredis::getRedisAsyncContext()
 		return nullptr;
 	}
 
-	//	if (pos >= sessionCount - 1)
-	//	{
-	//		pos = 0;
-	//	}
-
 	if (pos >= tcpClients.size() - 1)
 	{
 		pos = 0;
@@ -1940,7 +1937,6 @@ void Hiredis::clearTcpClient()
 
 void Hiredis::pushTcpClient(const TcpClientPtr &client)
 {
-	std::unique_lock<std::mutex> lk(mutex);
 	tcpClients.push_back(client);
 }
 
@@ -2076,34 +2072,33 @@ void Hiredis::redisAsyncDisconnect(const RedisAsyncContextPtr &ac)
 	ac->redisConn->forceCloseInLoop();
 }
 
-void Hiredis::connect(const char *ip, int16_t port, int32_t count)
-{
-	for (int i = 0; i < sessionCount - count; i++)
+void Hiredis::connect(EventLoop *loop,const char *ip, int16_t port, int32_t count)
+{	
+	TcpClientPtr client(new TcpClient(loop, ip, port, nullptr));
+	client->enableRetry();
+	client->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
+		this, std::placeholders::_1));
+	client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
+		this, std::placeholders::_1, std::placeholders::_2));
+	if (count > 0)
 	{
-		TcpClientPtr client(new TcpClient(pool.getNextLoop(), ip, port, nullptr));
-		client->enableRetry();
-		client->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
-			this, std::placeholders::_1));
-		client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
-			this, std::placeholders::_1, std::placeholders::_2));
-		if (count > 0)
-		{
-			client->connect(true);
-		}
-		else
-		{
-			client->connect();
-		}
-		pushTcpClient(client);
+		client->connect(true);
 	}
+	else
+	{
+		client->connect();
+	}
+	pushTcpClient(client);
 }
 
-void Hiredis::start(const char *ip, int16_t port)
+void Hiredis::start()
 {
 	pool.start();
-	connect(ip, port);
-	this->ip = ip;
-	this->port = port;
+	
+	for (int i = 0; i < sessionCount; i++)
+	{
+		connect(pool.getNextLoop(), ip, port);
+	}
 }
 
 void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
@@ -2193,14 +2188,15 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 			s = strrchr(p + 1, ':');
 			*s = '\0';
 
-			const char *ip = p + 1;
+			std::string ip = p + 1;
 			int16_t port = atoi(s + 1);
-			LOG_WARN << "-> Redirected to slot " << slot << " located at " << ip << " " << port;
-
+			//LOG_WARN << "-> Redirected to slot " << slot << " located at " << ip << " " << port;
+		
 			std::unique_lock<std::mutex> lk(mutex);
-			if (!redirectySlot(ip, port, ac, reply, repliesCb, lk))
+			TcpConnectionPtr clusterConn = nullptr;
+			if (!redirectySlot(ip.c_str(), port, ac, reply, repliesCb, clusterConn))
 			{
-				TcpClientPtr client(new TcpClient(conn->getLoop(), ip, port, repliesCb));
+				TcpClientPtr client(new TcpClient(conn->getLoop(), ip.c_str(), port, repliesCb));
 				client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
 					this, std::placeholders::_1, std::placeholders::_2));
 				if (!strncmp(reply->str, "MOVED", 5))
@@ -2216,7 +2212,30 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 
 				client->connect(true);
 				pushTcpClient(client);
-				connect(ip, port, 1);
+				
+				for (int i = 0; i < sessionCount - 1; i++)
+				{
+					connect(conn->getLoop(),ip.c_str(), port, 1);
+				}
+			}
+			else
+			{
+				lk.unlock();
+				if (clusterConn == nullptr)
+				{
+					LOG_WARN << "-> Cluster node disconnect " << ip << " " << port;
+					if (repliesCb->cb.fn)
+					{
+						repliesCb->cb.fn(ac, reply, repliesCb->cb.privdata);
+					}
+				}
+				else
+				{
+					assert(clusterConn->getContext().has_value());
+					RedisAsyncContextPtr acContext = std::any_cast<RedisAsyncContextPtr>(clusterConn->getContext());
+					clusterConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
+						acContext, repliesCb));
+				}
 			}
 		}
 		else
@@ -2242,10 +2261,9 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 
 bool Hiredis::redirectySlot(const char *ip, int16_t port,
 	const RedisAsyncContextPtr &ac, const RedisReplyPtr &reply,
-	const RedisAsyncCallbackPtr &repliesCb, std::unique_lock<std::mutex> &lk)
+	const RedisAsyncCallbackPtr &repliesCb, TcpConnectionPtr &conn)
 {
 	assert(repliesCb != nullptr);
-	TcpConnectionPtr conn = nullptr;
 	bool flag = true;
 
 	assert(!tcpClients.empty());
@@ -2273,25 +2291,6 @@ bool Hiredis::redirectySlot(const char *ip, int16_t port,
 	{
 		LOG_INFO << "-> Add new cluster client ip port " << ip << " " << port;
 		return false;
-	}
-
-	lk.unlock();
-
-	if (conn == nullptr)
-	{
-		LOG_WARN << "-> Cluster node disconnect " << ip << " " << port;
-		if (repliesCb->cb.fn)
-		{
-			reply->type = REDIS_REPLY_CLUSTER;
-			repliesCb->cb.fn(ac, reply, repliesCb->cb.privdata);
-		}
-	}
-	else
-	{
-		assert(conn->getContext().has_value());
-		RedisAsyncContextPtr acContext = std::any_cast<RedisAsyncContextPtr>(conn->getContext());
-		conn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
-			acContext, repliesCb));
 	}
 	return true;
 }

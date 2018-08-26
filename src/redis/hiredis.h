@@ -219,7 +219,7 @@ private:
 class Hiredis
 {
 public:
-	Hiredis(EventLoop *loop, int16_t sessionCount, bool clusterMode = false);
+	Hiredis(EventLoop *loop, int16_t sessionCount, const char *ip, int16_t port, bool clusterMode = false);
 	~Hiredis();
 
 	void redisAsyncDisconnect(const RedisAsyncContextPtr &ac);
@@ -240,14 +240,14 @@ public:
 		connectionCallback = std::move(cb);
 	}
 
-	void connect(const char *ip, int16_t port, int32_t count = 0);
+	void connect(EventLoop *loop,const char *ip, int16_t port,int32_t count = 0);
 	void pushTcpClient(const TcpClientPtr &client);
 	void clearTcpClient();
 	void diconnectTcpClient();
-	void start(const char *ip, int16_t port);
+	void start();
 	bool redirectySlot(const char *ip, int16_t port,
 		const RedisAsyncContextPtr &ac, const RedisReplyPtr &reply,
-		const RedisAsyncCallbackPtr &repliesCb, std::unique_lock<std::mutex> &lk);
+		const RedisAsyncCallbackPtr &repliesCb, TcpConnectionPtr &conn);
 
 	void setThreadNum(int16_t threadNum)
 	{

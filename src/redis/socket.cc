@@ -44,72 +44,29 @@ ssize_t Socket::write(int32_t sockfd, const void* buf, int32_t count)
 
 int32_t Socket::pipe(int32_t fildes[2])
 {
-	int32_t tcp1 = -1, tcp2 = 1;
+	int32_t tcp1 = -1, tcp2 = -1;
 	sockaddr_in name;
 	memset(&name, 0, sizeof(name));
 	name.sin_family = AF_INET;
 	name.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	socklen_t namelen = sizeof(name);
 	int32_t tcp = createSocket();
-
-	if (tcp == -1)
-	{
-		goto clean;
-	}
-
-	if (::bind(tcp, (sockaddr*)&name, namelen) == -1)
-	{
-		goto clean;
-	}
-
-	if (::listen(tcp, 5) == -1)
-	{
-		goto clean;
-	}
-
-	if (::getsockname(tcp, (sockaddr*)&name, &namelen) == -1)
-	{
-		goto clean;
-	}
+	assert(tcp != -1);
+	assert(::bind(tcp, (sockaddr*)&name, namelen) != -1);
+	assert(::listen(tcp, 5) != -1);
+	assert(::getsockname(tcp, (sockaddr*)&name, &namelen) != -1);
 
 	tcp1 = createSocket();
-	if (tcp1 == -1)
-	{
-		goto clean;
-	}
-
-	if (-1 == connect(tcp1, (sockaddr*)&name))
-	{
-		goto clean;
-	}
+	assert(tcp != -1);
+	assert(connect(tcp1, (sockaddr*)&name) != -1);
 
 	tcp2 = accept(tcp, (sockaddr*)&name, &namelen);
-	if (tcp2 == -1)
-	{
-		goto clean;
-	}
-
+	assert(tcp2 != -1);
 	close(tcp);
 
 	fildes[0] = tcp1;
 	fildes[1] = tcp2;
-	return 0;
-clean:
-	if (tcp != -1)
-	{
-		close(tcp);
-	}
-
-	if (tcp2 != -1)
-	{
-		close(tcp2);
-	}
-
-	if (tcp1 != -1)
-	{
-		close(tcp1);
-	}
-	return -1;
+	return 1;
 }
 
 uint64_t Socket::hostToNetwork64(uint64_t host64)
@@ -217,7 +174,7 @@ struct sockaddr_in6 Socket::getPeerAddr(int32_t sockfd)
 		LOG_WARN << "Socket::getPeerAddr";
 	}
 	return peeraddr;
-}
+	}
 
 bool Socket::isSelfConnect(int32_t sockfd)
 {
@@ -229,7 +186,7 @@ bool Socket::isSelfConnect(int32_t sockfd)
 		const struct sockaddr_in *raddr4 = reinterpret_cast<struct sockaddr_in*>(&peeraddr);
 		return laddr4->sin_port == raddr4->sin_port
 			&& laddr4->sin_addr.s_addr == raddr4->sin_addr.s_addr;
-	}
+}
 	else if (localaddr.sin6_family == AF_INET6)
 	{
 		return localaddr.sin6_port == peeraddr.sin6_port
@@ -310,7 +267,7 @@ void Socket::fromIpPort(const char *ip, uint16_t port, struct sockaddr_in *addr)
 	{
 		LOG_WARN << "Socket::fromIpPort";
 	}
-}
+	}
 
 void Socket::fromIpPort(const char *ip, uint16_t port, struct sockaddr_in6 *addr)
 {
@@ -546,7 +503,7 @@ bool Socket::setSocketBlock(int32_t sockfd)
 	{
 		LOG_WARN << "fcntl F_GETFL) failed! error" << strerror(errno);
 		return false;
-	}
+}
 
 	opt = opt & ~O_NONBLOCK;
 	if (::fcntl(sockfd, F_SETFL, opt) < 0)

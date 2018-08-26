@@ -172,12 +172,7 @@ void Connector::handleError()
 void Connector::connecting(bool sync)
 {
 	int32_t sockfd = Socket::createSocket();
-	if (sockfd < 0)
-	{
-		Socket::close(sockfd);
-		LOG_WARN << "create socket error " << errno << " " << ip << " " << port;
-		return;
-	}
+	assert(sockfd >= 0);
 
 	int32_t savedErrno = Socket::connect(sockfd, ip, port);
 	if (savedErrno < 0)

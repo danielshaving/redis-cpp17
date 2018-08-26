@@ -62,7 +62,7 @@ void Select::epollWait(ChannelList *activeChannels, int32_t msTime)
 		if (saveErrno != EINTR)
 		{
 			errno = saveErrno;
-			LOG_WARN << strerror(errno);
+			//LOG_WARN << strerror(errno);
 		}
 	}
 	loop->handlerTimerQueue();

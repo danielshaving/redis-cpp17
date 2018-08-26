@@ -2,7 +2,7 @@
 
 HiredisTest::HiredisTest(EventLoop *loop, int8_t threadCount,
 	int16_t sessionCount, int32_t messageCount, const char *ip, int16_t port)
-	:hiredis(loop, sessionCount),
+	:hiredis(loop, sessionCount,ip,port),
 	connectCount(0),
 	sessionCount(sessionCount),
 	loop(loop),
@@ -22,7 +22,7 @@ HiredisTest::HiredisTest(EventLoop *loop, int8_t threadCount,
 		this, std::placeholders::_1));
 
 	hiredis.setThreadNum(threadCount);
-	hiredis.start(ip, port);
+	hiredis.start();
 
 	std::unique_lock<std::mutex> lk(mutex);
 	while (connectCount < sessionCount)
@@ -274,16 +274,11 @@ void HiredisTest::string()
 		redis->redisAsyncCommand(std::bind(&HiredisTest::setCallback,
 			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
 			nullptr, "set string%d %d", k, k);
-	}
 
-	for (; k < messageCount; k++)
-	{
-		auto redis = hiredis.getRedisAsyncContext();
 		redis->redisAsyncCommand(std::bind(&HiredisTest::getCallback,
 			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-			k, "get string%d", k);
+			nullptr, "get string%d", k);
 	}
-
 }
 
 void HiredisTest::hash()
@@ -349,11 +344,20 @@ void HiredisTest::list()
 
 int main(int argc, char *argv[])
 {
-	const char *ip = "127.0.0.1";
-	uint16_t port = 6379;
-	int16_t sessionCount = 100;
+	#ifdef _WIN32
+		WSADATA wsaData;
+		int32_t iRet = WSAStartup(MAKEWORD(2, 2), &wsaData);
+		assert(iRet == 0);
+	#else
+		signal(SIGPIPE, SIG_IGN);
+		signal(SIGHUP, SIG_IGN);
+	#endif
+
+	const char *ip = "192.168.1.10";
+	uint16_t port = 7000;
+	int16_t sessionCount = 4;
 	int8_t threadCount = 4;
-	int32_t messageCount = 1000000;
+	int32_t messageCount = 100000;
 
 	EventLoop loop;
 	HiredisTest hiredis(&loop,
@@ -362,7 +366,7 @@ int main(int argc, char *argv[])
 	LOG_INFO << "all connect success";
 	// 		hiredis.monitor();
 	//		hiredis.subscribe();
-	//		hiredis.string();
+			hiredis.string();
 	//		hiredis.hash();
 	//		hiredis.list();
 	//hiredis.redlock("test","test",100000);
