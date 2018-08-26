@@ -149,7 +149,7 @@ void Inspector::onRequest(const HttpRequest &req, HttpResponse *resp)
 			if (commListI != modules.end())
 			{
 				std::string command = result[1];
-				const CommandList &ommList = commListI->second;
+				const CommandList &commList = commListI->second;
 				auto it = commList.find(command);
 				if (it != commList.end())
 				{
