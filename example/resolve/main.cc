@@ -44,50 +44,46 @@ namespace fs = std::experimental::filesystem;
 
 boost::interprocess::file_lock fileLock;
 
-bool lockFile(const std::string &fname)
+void lockFile(const std::string &fname)
 {
-	boost::interprocess::file_lock fl(fname.c_str());
-	fileLock = std::move(fl);
 	try
 	{
+		boost::interprocess::file_lock fl(fname.c_str());
+		fileLock = std::move(fl);
 		fileLock.lock();
-		return true;
 	}
 	catch (boost::interprocess::interprocess_exception &e)
 	{
-		return false;
+		std::cout << e.what() << std::endl;
 	}
 }
 
-bool unlockFile()
+void unlockFile()
 {
 	try
 	{
 		fileLock.unlock();
-		return true;
 	}
-	catch (const std::exception &e)
+	catch (boost::interprocess::interprocess_exception &e) 
 	{
-		return false;
+		std::cout << e.what() << std::endl;
 	}
 }
 
 int main()
 {
 	mysqlx_session_t  *sess;
-	mysqlx_stmt_t     *crud;
 	mysqlx_result_t   *res;
 	mysqlx_row_t      *row;
-	mysqlx_schema_t   *db;
-	mysqlx_table_t    *table;
 
 	char conn_error[MYSQLX_MAX_ERROR_LEN];
 	int conn_err_code;
 
-	sess = mysqlx_get_session("127.0.0.1", 33060, "root", "123456", "game", conn_error, &conn_err_code);
+	sess = mysqlx_get_session("10.128.2.117", 33060, "root", "123456", "game", conn_error, &conn_err_code);
 	if (!sess)
 	{
 		printf("Error! %s. Error Code: %d\n", conn_error, conn_err_code);
+		system("pause");
 		return -1;
 	}
 
@@ -116,6 +112,7 @@ int main()
 		{
 			printf("\nSession closed");
 			mysqlx_session_close(sess);
+			system("pause");
 			return 0;
 		}
 
@@ -124,36 +121,34 @@ int main()
 		RESULT_CHECK(res, sess);
 	}
 
-	const char *path = "log";
+	const char *path = "../../../runtime/bin/asynclog/";
 	std::string fileName;
 	std::string feName;
 
 	if (!fs::is_directory(path))
 	{
 		printf("path no exists\n");
+		system("pause");
 	}
 	else
 	{
 		const int MAX_LINE = 65536;
 		while (1)
 		{
+			std::this_thread::sleep_for(std::chrono::seconds(1));
 			for (auto &it : fs::directory_iterator(path))
 			{
-				fileName += "log/";
+				fileName += path;
 				auto fe = it.path();
-				fileName += fe.filename();
+				fileName += fe.filename().string();
 
-				if (!fs::exists(it.path()))
+				if (!fs::exists(fileName))
 				{
-					printf("filename %s not found..........\n", fe.filename().c_str());
-					continue;
+					printf("file no exists %s\n", fileName.c_str());
+					break;
 				}
 
-				if (!lockFile(fileName))
-				{
-					printf("lock..........\n");
-					continue;
-				}
+				lockFile(fileName);
 
 				FILE *fp = ::fopen(fileName.c_str(), "r");
 				assert(fp);
