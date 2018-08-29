@@ -30,6 +30,9 @@ public:
 
 	void run();
 	void connCallBack(const TcpConnectionPtr &conn);
+	void highWaterCallBack(const TcpConnectionPtr &conn, size_t bytesToSent);
+	void writeCompleteCallBack(const TcpConnectionPtr &conn);
+	
 	void replyCheck();
 	void loadDataFromDisk();
 	void flush();

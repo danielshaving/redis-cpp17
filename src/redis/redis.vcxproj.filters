@@ -99,9 +99,6 @@
     <ClCompile Include="rediscli.cc">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="hiredistest.cc">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="redlock.h">

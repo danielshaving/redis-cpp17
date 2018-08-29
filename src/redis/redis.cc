@@ -236,21 +236,36 @@ void Redis::setExpireTimeOut(const RedisObjectPtr &expire)
 	removeCommand(expire);
 }
 
+void Redis::writeCompleteCallBack(const TcpConnectionPtr &conn)
+{
+	conn->startRead();
+	conn->setWriteCompleteCallback(WriteCompleteCallback());
+}
+
+void Redis::highWaterCallBack(const TcpConnectionPtr &conn, size_t bytesToSent)
+{
+	LOG_INFO << " bytes " << bytesToSent;
+	if (conn->outputBuffer()->readableBytes() > 0)
+	{
+		conn->stopRead();
+		conn->setWriteCompleteCallback(
+			std::bind(&Redis::writeCompleteCallBack, this, std::placeholders::_1));
+	}
+}
+
 void Redis::connCallBack(const TcpConnectionPtr &conn)
 {
+	char buf[64] = "";
+	uint16_t port = 0;
+	auto addr = Socket::getPeerAddr(conn->getSockfd());
+	Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
+	Socket::toPort(&port, (const struct sockaddr *)&addr);
+
 	if (conn->connected())
 	{
-		//Socket::setTcpNoDelay(conn->getSockfd(),true);
-
-		char buf[64] = "";
-		uint16_t port = 0;
-		auto addr = Socket::getPeerAddr(conn->getSockfd());
-		Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
-		Socket::toPort(&port, (const struct sockaddr *)&addr);
-		conn->setip(buf);
-		conn->setport(port);
-
-		//printf("%s %d\n",buf,port);
+		conn->setHighWaterMarkCallback(
+			std::bind(&Redis::highWaterCallBack, this, std::placeholders::_1, std::placeholders::_2),
+			1024 * 1024);
 
 		SessionPtr session(new Session(this, conn));
 		std::unique_lock <std::mutex> lck(mtx);
@@ -258,7 +273,7 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 		assert(it == sessions.end());
 		sessions[conn->getSockfd()] = session;
 		sessionConns[conn->getSockfd()] = conn;
-		LOG_INFO << "Client connect success";
+		LOG_INFO << "Client connect success " << buf << " " << port;
 	}
 	else
 	{
@@ -267,7 +282,7 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 		clearMonitorState(conn->getSockfd());
 		clearSessionState(conn->getSockfd());
 
-		LOG_INFO << "Client disconnect";
+		LOG_INFO << "Client disconnect " << buf << " " << port;
 	}
 }
 
@@ -732,8 +747,14 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto &it : clusterConns)
 			{
-				if (port == it.second->getport() &&
-					!memcmp(it.second->getip(), obj[1]->ptr, sdslen(obj[1]->ptr)))
+				char buf[64] = "";
+				uint16_t p = 0;
+				auto addr = Socket::getPeerAddr(it.second->getSockfd());
+				Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
+				Socket::toPort(&p, (const struct sockaddr *)&addr);
+
+				if (port == p &&
+						!memcmp(buf, obj[1]->ptr, sdslen(obj[1]->ptr)))
 				{
 					LOG_WARN << "cluster meet already exists .";
 					addReplyErrorFormat(conn->outputBuffer(), "cluster meet already exists ");
@@ -764,8 +785,13 @@ bool Redis::clusterCommand(const std::deque<RedisObjectPtr> &obj,
 			std::unique_lock <std::mutex> lck(clusterMutex);
 			for (auto &it : clusterConns)
 			{
-				if (port == it.second->getport() &&
-					!memcmp(it.second->getip(), obj[1]->ptr, sdslen(obj[1]->ptr)))
+				char ip[64] = "";
+				uint16_t p = 0;
+				auto addr = Socket::getPeerAddr(conn->getSockfd());
+				Socket::toIp(ip, sizeof(ip), (const struct sockaddr *)&addr);
+				Socket::toPort(&p, (const struct sockaddr *)&addr);
+
+				if (port == p && !memcmp(ip, obj[1]->ptr, sdslen(obj[1]->ptr)))
 				{
 					return true;
 				}

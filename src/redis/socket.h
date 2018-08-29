@@ -47,7 +47,8 @@ public:
 	static bool setTimeOut(int32_t sockfd, const struct timeval tc);
 	static void setReuseAddr(int32_t sockfd, bool on);
 	static void setReusePort(int32_t sockfd, bool on);
-
+	static bool resolve(std::string_view hostname, struct sockaddr_in *out);
+	static bool resolve(std::string_view hostname, struct sockaddr_in6 *out);
 private:
 	Socket(const Socket&);
 	void operator=(const Socket&);

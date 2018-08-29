@@ -66,16 +66,22 @@ void Cluster::readCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 					sessionConns[conn->getSockfd()] = conn;
 				}
 
-				std::string ip = conn->getip();
-				std::string ipPort = ip + "::" + std::to_string(conn->getport());
+				char buf[64] = "";
+				uint16_t port = 0;
+				auto addr = Socket::getPeerAddr(conn->getSockfd());
+				Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
+				Socket::toPort(&port, (const struct sockaddr *)&addr);
+
+				std::string ip = buf;
+				std::string ipPort = ip + "::" + std::to_string(port);
 
 				for (auto &it : slotSets)
 				{
 					auto iter = clusterSlotNodes.find(it);
 					if (iter != clusterSlotNodes.end())
 					{
-						iter->second.ip = conn->getip();
-						iter->second.port = conn->getport();
+						iter->second.ip = ip;
+						iter->second.port = port;
 					}
 					else
 					{
@@ -101,13 +107,12 @@ void Cluster::readCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 				}
 				migratingSlosTos.erase(ipPort);
 				clear();
-				LOG_INFO << "cluster migrate success " << conn->getip() << " " << conn->getport();
+				LOG_INFO << "cluster migrate success " << ip << " " << port;
 			}
 		}
 		else
 		{
 			conn->forceClose();
-			LOG_INFO << "cluster migrate failure " << conn->getip() << " " << conn->getport();
 			break;
 		}
 		buffer->retrieve(sdslen(shared.ok->ptr));
@@ -259,7 +264,13 @@ bool Cluster::replicationToNode(const std::deque<RedisObjectPtr> &obj, const Ses
 		auto &clusterConn = redis->getClusterConn();
 		for (auto &it : clusterConn)
 		{
-			if (it.second->getip() == ip && it.second->getport() == port)
+			char buf[64] = "";
+			uint16_t p = 0;
+			auto addr = Socket::getPeerAddr(it.second->getSockfd());
+			Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
+			Socket::toPort(&p, (const struct sockaddr *)&addr);
+
+			if (memcmp(ip.c_str(),buf,ip.size()) == 0 && p == port)
 			{
 				conn = it.second;
 				count++;
@@ -350,21 +361,17 @@ void Cluster::connCallback(const TcpConnectionPtr &conn)
 			condition.notify_one();
 		}
 
-		char buf[64] = "";
-		uint16_t port = 0;
-		auto addr = Socket::getPeerAddr(conn->getSockfd());
-		Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
-		Socket::toPort(&port, (const struct sockaddr *)&addr);
-		conn->setip(buf);
-		conn->setport(port);
-
 		{
 			std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 			auto &clusterConn = redis->getClusterConn();
 			for (auto &it : clusterConn)
 			{
-				structureProtocolSetCluster(it.second->getip(),
-					it.second->getport(), buffer, conn);
+				char buf[64] = "";
+				uint16_t p = 0;
+				auto addr = Socket::getPeerAddr(it.second->getSockfd());
+				Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
+				Socket::toPort(&p, (const struct sockaddr *)&addr);
+				structureProtocolSetCluster(buf, p, buffer, conn);
 			}
 
 			structureProtocolSetCluster(redis->getIp(), redis->getPort(), buffer, conn);
@@ -380,22 +387,41 @@ void Cluster::connCallback(const TcpConnectionPtr &conn)
 			auto &sessionConns = redis->getSessionConn();
 			sessionConns[conn->getSockfd()] = conn;
 		}
-		LOG_INFO << "connect cluster success " << "ip:" << conn->getip() << " port:" << conn->getport();
+
+		char buf[64] = "";
+		uint16_t p = 0;
+		auto addr = Socket::getPeerAddr(conn->getSockfd());
+		Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
+		Socket::toPort(&p, (const struct sockaddr *)&addr);
+
+		LOG_INFO << "connect cluster success " << "ip:" << buf << " port:" << p;
 	}
 	else
 	{
+		char ip[64] = "";
+		uint16_t p = 0;
+		auto addr = Socket::getPeerAddr(conn->getSockfd());
+		Socket::toIp(ip, sizeof(ip), (const struct sockaddr *)&addr);
+		Socket::toPort(&p, (const struct sockaddr *)&addr);
+
 		redis->clearSessionState(conn->getSockfd());
 		{
 			std::unique_lock <std::mutex> lck(redis->getClusterMutex());
 			redis->getClusterConn().erase(conn->getSockfd());
-			eraseClusterNode(conn->getip(), conn->getport());
-			migratingSlosTos.erase(conn->getip() + std::to_string(conn->getport()));
-			importingSlotsFroms.erase(conn->getip() + std::to_string(conn->getport()));
+
+			eraseClusterNode(ip, p);
+			migratingSlosTos.erase(ip + std::to_string(p));
+			importingSlotsFroms.erase(ip + std::to_string(p));
 
 			for (auto it = clusterConns.begin(); it != clusterConns.end(); ++it)
 			{
-				if ((*it)->getConnection()->getip() ==
-					conn->getip() && (*it)->getConnection()->getport() == conn->getport())
+				char ipp[64] = "";
+				uint16_t pp = 0;
+				auto addr = Socket::getPeerAddr((*it)->getConnection()->getSockfd());
+				Socket::toIp(ipp, sizeof(ipp), (const struct sockaddr *)&addr);
+				Socket::toPort(&pp, (const struct sockaddr *)&addr);
+
+				if (strcmp(ipp, ipp) == 0 && p == pp)
 				{
 					it = clusterConns.erase(it);
 					break;
@@ -403,7 +429,7 @@ void Cluster::connCallback(const TcpConnectionPtr &conn)
 			}
 		}
 
-		LOG_INFO << "disconnect cluster " << "ip:" << conn->getip() << " port:" << conn->getport();
+		LOG_INFO << "disconnect cluster " << "ip:" << ip << " port:" << p;
 	}
 }
 

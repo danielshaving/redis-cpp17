@@ -12,7 +12,6 @@
 #include <functional>
 #include <algorithm>
 #include <memory>
-
 #include <boost/interprocess/sync/file_lock.hpp>
 
 /* Error processing macros */

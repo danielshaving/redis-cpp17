@@ -27,7 +27,6 @@
     <ClCompile Include="epoll.cc" />
     <ClCompile Include="eventloop.cc" />
     <ClCompile Include="hiredis.cc" />
-    <ClCompile Include="hiredistest.cc" />
     <ClCompile Include="log.cc" />
     <ClCompile Include="main.cc" />
     <ClCompile Include="object.cc" />

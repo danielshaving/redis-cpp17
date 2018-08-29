@@ -89,12 +89,6 @@ public:
 	Buffer *outputBuffer() { return &writeBuffer; }
 	Buffer *intputBuffer() { return &readBuffer; }
 
-	const char *getip() { return ip; }
-	uint16_t getport() { return port; }
-
-	void setip(const char *ip) { this->ip = ip; }
-	void setport(uint16_t port) { this->port = port; }
-
 private:
 	TcpConnection(const TcpConnection&);
 	void operator=(const TcpConnection&);
@@ -115,6 +109,4 @@ private:
 	StateE state;
 	ChannelPtr channel;
 	std::any context;
-	const char *ip;
-	uint16_t port;
 };

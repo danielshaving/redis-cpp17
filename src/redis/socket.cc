@@ -10,6 +10,64 @@ Socket::~Socket()
 {
 
 }
+ 
+bool Socket::resolve(std::string_view hostname, struct sockaddr_in6 *out)
+{
+#ifndef _WIN32
+	assert(out != nullptr);
+	struct hostent hent;
+	struct hostent *he = nullptr;
+	int32_t herrno = 0;
+	bzero(&hent, sizeof(hent));
+
+	char buffer[64 * 1024];
+	int32_t ret = ::gethostbyname_r(hostname.c_str(), &hent, buffer, sizeof buffer, &he, &herrno);
+	if (ret == 0 && he != nullptr)
+	{
+		assert(he->h_addrtype == AF_INET && he->h_length == sizeof(uint32_t));
+		out->addr_.sin_addr = *reinterpret_cast<struct in_addr*>(he->h_addr);
+		return true;
+	}
+	else
+	{
+		if (ret)
+		{
+			
+		}
+		return false;
+	}
+#endif
+	return true;
+}
+
+bool Socket::resolve(std::string_view hostname, struct sockaddr_in *out)
+{
+#ifndef _WIN32
+	assert(out != nullptr);
+	struct hostent hent;
+	struct hostent *he = nullptr;
+	int32_t herrno = 0;
+	bzero(&hent, sizeof(hent));
+
+	char buffer[64 * 1024];
+	int32_t ret = ::gethostbyname_r(hostname.c_str(), &hent, buffer, sizeof buffer, &he, &herrno);
+	if (ret == 0 && he != nullptr)
+	{
+		assert(he->h_addrtype == AF_INET && he->h_length == sizeof(uint32_t));
+		out->addr_.sin_addr = *reinterpret_cast<struct in_addr*>(he->h_addr);
+		return true;
+	}
+	else
+	{
+		if (ret)
+		{
+			
+		}
+		return false;
+	}
+#endif
+	return true;
+}
 
 ssize_t Socket::readv(int32_t sockfd, IOV_TYPE *iov, int32_t iovcnt)
 {
@@ -174,7 +232,7 @@ struct sockaddr_in6 Socket::getPeerAddr(int32_t sockfd)
 		LOG_WARN << "Socket::getPeerAddr";
 	}
 	return peeraddr;
-	}
+}
 
 bool Socket::isSelfConnect(int32_t sockfd)
 {
@@ -186,7 +244,7 @@ bool Socket::isSelfConnect(int32_t sockfd)
 		const struct sockaddr_in *raddr4 = reinterpret_cast<struct sockaddr_in*>(&peeraddr);
 		return laddr4->sin_port == raddr4->sin_port
 			&& laddr4->sin_addr.s_addr == raddr4->sin_addr.s_addr;
-}
+	}
 	else if (localaddr.sin6_family == AF_INET6)
 	{
 		return localaddr.sin6_port == peeraddr.sin6_port
@@ -218,11 +276,7 @@ void Socket::toIpPort(char *buf, size_t size, const struct sockaddr *addr)
 	toIp(buf, size, addr);
 	size_t end = ::strlen(buf);
 	const struct sockaddr_in *addr4 = (const struct sockaddr_in*)(addr);
-#ifdef _WIN32
 	uint16_t port = networkToHost16(addr4->sin_port);
-#else
-	uint16_t port = ntohs(addr4->sin_port);
-#endif
 	assert(size > end);
 	snprintf(buf + end, size - end, ":%u", port);
 }
@@ -230,12 +284,7 @@ void Socket::toIpPort(char *buf, size_t size, const struct sockaddr *addr)
 void Socket::toPort(uint16_t *port, const struct sockaddr *addr)
 {
 	const struct sockaddr_in *addr4 = (const struct sockaddr_in*)(addr);
-#ifdef __linux__
 	*port = networkToHost16(addr4->sin_port);
-#endif
-#ifdef __APPLE__
-	*port = ntohs(addr4->sin_port);
-#endif
 }
 
 void Socket::toIp(char *buf, size_t size, const struct sockaddr *addr)
@@ -257,27 +306,17 @@ void Socket::toIp(char *buf, size_t size, const struct sockaddr *addr)
 void Socket::fromIpPort(const char *ip, uint16_t port, struct sockaddr_in *addr)
 {
 	addr->sin_family = AF_INET;
-#ifdef __linux__
 	addr->sin_port = hostToNetwork16(port);
-#endif
-#ifdef __APPLE__
-	addr->sin_port = htons(port);
-#endif
 	if (::inet_pton(AF_INET, ip, &addr->sin_addr) <= 0)
 	{
 		LOG_WARN << "Socket::fromIpPort";
 	}
-	}
+}
 
 void Socket::fromIpPort(const char *ip, uint16_t port, struct sockaddr_in6 *addr)
 {
 	addr->sin6_family = AF_INET6;
-#ifdef __linux__
 	addr->sin6_port = hostToNetwork16(port);
-#endif
-#ifdef __APPLE__
-	addr->sin6_port = htons(port);
-#endif
 	if (::inet_pton(AF_INET6, ip, &addr->sin6_addr) <= 0)
 	{
 		LOG_WARN << "Socket::fromIpPort";
@@ -503,7 +542,7 @@ bool Socket::setSocketBlock(int32_t sockfd)
 	{
 		LOG_WARN << "fcntl F_GETFL) failed! error" << strerror(errno);
 		return false;
-}
+	}
 
 	opt = opt & ~O_NONBLOCK;
 	if (::fcntl(sockfd, F_SETFL, opt) < 0)

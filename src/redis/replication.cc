@@ -171,10 +171,11 @@ void Replication::connCallback(const TcpConnectionPtr &conn)
 		auto addr = Socket::getPeerAddr(conn->getSockfd());
 		Socket::toIp(buf, sizeof(buf), (const  struct sockaddr *)&addr);
 		Socket::toPort(&port, (const struct sockaddr *)&addr);
-		conn->setip(buf);
-		conn->setport(port);
-		redis->masterHost = conn->getip();
-		redis->masterPort = conn->getport();
+		//conn->setip(buf);
+		//conn->setport(port);
+
+		redis->masterHost = buf;
+		redis->masterPort = port;
 		redis->masterfd = conn->getSockfd();
 		redis->slaveEnabled = true;
 		redis->repliEnabled = true;
