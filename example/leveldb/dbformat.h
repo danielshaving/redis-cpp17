@@ -32,7 +32,7 @@ class InternalKey;
 // Value types encoded as the last component of internal keys.
 // DO NOT CHANGE THESE ENUM VALUES: they are embedded in the on-disk
 // data structures.
-enum ValueType 
+enum ValueType
 {
 	kTypeDeletion = 0x0,
 	kTypeValue = 0x1
@@ -50,17 +50,17 @@ static const ValueType kValueTypeForSeek = kTypeValue;
 // can be packed together into 64-bits.
 static const uint64_t kMaxSequenceNumber = ((0x1ull << 56) - 1);
 
-struct ParsedInternalKey 
+struct ParsedInternalKey
 {
 	std::string_view userKey;
 	uint64_t sequence;
 	ValueType type;
 
 	ParsedInternalKey() { }  // Intentionally left uninitialized (for speed)
-	ParsedInternalKey(const std::string_view &u,const uint64_t &seq,ValueType t)
-	  :userKey(u),
-	  sequence(seq), 
-	  type(t) { }
+	ParsedInternalKey(const std::string_view &u, const uint64_t &seq, ValueType t)
+		:userKey(u),
+		sequence(seq),
+		type(t) { }
 
 	std::string debugString() const;
 };
@@ -69,19 +69,19 @@ struct ParsedInternalKey
 inline size_t internalKeyEncodingLength(const ParsedInternalKey &key) { return key.userKey.size() + 8; }
 
 // Append the serialization of "key" to *result.
-void appendInternalKey(std::string *result,const ParsedInternalKey &key);
+void appendInternalKey(std::string *result, const ParsedInternalKey &key);
 
 // Attempt to parse an internal key from "internal_key".  On success,
 // stores the parsed data in "*result", and returns true.
 //
 // On error, returns false, leaves "*result" in an undefined state.
-bool parseInternalKey(const std::string_view &internalKey,ParsedInternalKey *result);
+bool parseInternalKey(const std::string_view &internalKey, ParsedInternalKey *result);
 
 // Returns the user key portion of an internal key.
-inline std::string_view extractUserKey(const std::string_view &internalKey) 
+inline std::string_view extractUserKey(const std::string_view &internalKey)
 {
 	assert(internalKey.size() >= 8);
-	return std::string_view(internalKey.data(),internalKey.size() - 8);
+	return std::string_view(internalKey.data(), internalKey.size() - 8);
 }
 
 class BytewiseComparatorImpl
@@ -89,8 +89,8 @@ class BytewiseComparatorImpl
 public:
 	BytewiseComparatorImpl() { }
 	const char *name() const { return "leveldb.BytewiseComparator"; }
-	int compare(const std::string_view &a,const std::string_view &b) const { return a.compare(b); }
-	void findShortestSeparator(std::string *start,const std::string_view &limit) const;
+	int compare(const std::string_view &a, const std::string_view &b) const { return a.compare(b); }
+	void findShortestSeparator(std::string *start, const std::string_view &limit) const;
 	void findShortSuccessor(std::string *key) const;
 };
 // A comparator for internal keys that uses a specified comparator for
@@ -103,10 +103,10 @@ public:
 	~InternalKeyComparator() { }
 
 	const char *name() const;
-	void findShortestSeparator(std::string *start,const std::string_view &limit) const;
+	void findShortestSeparator(std::string *start, const std::string_view &limit) const;
 	void findShortSuccessor(std::string *key) const;
-	int compare(const std::string_view &a,const std::string_view &b) const;
-	int compare(const InternalKey &a,const InternalKey &b) const;
+	int compare(const std::string_view &a, const std::string_view &b) const;
+	int compare(const InternalKey &a, const InternalKey &b) const;
 	const BytewiseComparatorImpl *getComparator() const { return &byteComparator; }
 
 private:
@@ -117,18 +117,18 @@ private:
 // the following class instead of plain strings so that we do not
 // incorrectly use string comparisons instead of an InternalKeyComparator.
 
-class InternalKey 
+class InternalKey
 {
 private:
 	std::string rep;
 public:
 	InternalKey() { }   // Leave rep_ as empty to indicate it is invalid
-	InternalKey(const std::string_view &userKey,uint64_t s,ValueType t)
+	InternalKey(const std::string_view &userKey, uint64_t s, ValueType t)
 	{
-		appendInternalKey(&rep,ParsedInternalKey(userKey,s,t));
+		appendInternalKey(&rep, ParsedInternalKey(userKey, s, t));
 	}
 
-	void decodeFrom(const std::string_view &s) { rep.assign(s.data(),s.size()); }
+	void decodeFrom(const std::string_view &s) { rep.assign(s.data(), s.size()); }
 	std::string_view encode() const
 	{
 		assert(!rep.empty());
@@ -140,16 +140,16 @@ public:
 	void setFrom(const ParsedInternalKey &p)
 	{
 		rep.clear();
-		appendInternalKey(&rep,p);
+		appendInternalKey(&rep, p);
 	}
 
 	std::string debugString() const;
-	void clear() { rep.clear(); }  
+	void clear() { rep.clear(); }
 };
 
-inline int InternalKeyComparator::compare(const InternalKey &a,const InternalKey &b) const 
+inline int InternalKeyComparator::compare(const InternalKey &a, const InternalKey &b) const
 {
-	return compare(a.encode(),b.encode());
+	return compare(a.encode(), b.encode());
 }
 
 // A helper class useful for DBImpl::Get()
@@ -158,18 +158,18 @@ class LookupKey
 public:
 	// Initialize *this for looking up user_key at a snapshot with
 	// the specified sequence number.
-	LookupKey(const std::string_view &userKey,uint64_t sequence);
+	LookupKey(const std::string_view &userKey, uint64_t sequence);
 
 	~LookupKey();
 
 	// Return a key suitable for lookup in a MemTable.
-	std::string_view memtableKey() const { return std::string_view(start,end - start); }
+	std::string_view memtableKey() const { return std::string_view(start, end - start); }
 
 	// Return an internal key (suitable for passing to an internal iterator)
-	std::string_view internalKey() const { return std::string_view(kstart,end - kstart); }
+	std::string_view internalKey() const { return std::string_view(kstart, end - kstart); }
 
 	// Return the user key
-	std::string_view userKey() const { return std::string_view(kstart,end - kstart - 8); }
+	std::string_view userKey() const { return std::string_view(kstart, end - kstart - 8); }
 
 private:
 	// We construct a char array of the form:

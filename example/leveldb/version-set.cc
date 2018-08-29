@@ -3,14 +3,14 @@
 #include "filename.h"
 #include "log-reader.h"
 
-static size_t targetFileSize(const Options *options) 
+static size_t targetFileSize(const Options *options)
 {
 	return options->maxFileSize;
 }
 
 // Maximum bytes of overlaps in grandparent (i.e., level+2) before we
 // stop building a single file in a level->level+1 compaction.
-static int64_t maxGrandParentOverlapBytes(const Options *options) 
+static int64_t maxGrandParentOverlapBytes(const Options *options)
 {
 	return 10 * targetFileSize(options);
 }
@@ -18,19 +18,19 @@ static int64_t maxGrandParentOverlapBytes(const Options *options)
 // Maximum number of bytes in all compacted files.  We avoid expanding
 // the lower level file set of a compaction if it would make the
 // total compaction cover more than this many bytes.
-static int64_t expandedCompactionByteSizeLimit(const Options *options) 
+static int64_t expandedCompactionByteSizeLimit(const Options *options)
 {
 	return 25 * targetFileSize(options);
 }
 
-static double maxBytesForLevel(const Options *options,int level) 
+static double maxBytesForLevel(const Options *options, int level)
 {
 	// Note: the result for level zero is not really used since we set
 	// the level-0 compaction threshold based on number of files.
 
 	// Result for both level-0 and level-1
 	double result = 10. * 1048576.0;
-	while (level > 1) 
+	while (level > 1)
 	{
 		result *= 10;
 		level--;
@@ -38,35 +38,35 @@ static double maxBytesForLevel(const Options *options,int level)
 	return result;
 }
 
-static uint64_t maxFileSizeForLevel(const Options *options,int level) 
+static uint64_t maxFileSizeForLevel(const Options *options, int level)
 {
 	// We could vary per level to reduce number of files?
 	return targetFileSize(options);
 }
 
-static int64_t totalFileSize(const std::vector<std::shared_ptr<FileMetaData>> &files) 
+static int64_t totalFileSize(const std::vector<std::shared_ptr<FileMetaData>> &files)
 {
 	int64_t sum = 0;
-	for (size_t i = 0; i < files.size(); i++) 
+	for (size_t i = 0; i < files.size(); i++)
 	{
 		sum += files[i]->fileSize;
 	}
 	return sum;
 }
 
-VersionSet::VersionSet(const std::string &dbname,const Options &options)
-:dbname(dbname),
- options(options),
- lastSequence(0),
- nextFileNumber(2),
- logNumber(0),
- prevLogNumber(0),
- manifestFileNumber(0),
- descriptorLog(nullptr),
- descriptorFile(nullptr)
+VersionSet::VersionSet(const std::string &dbname, const Options &options)
+	:dbname(dbname),
+	options(options),
+	lastSequence(0),
+	nextFileNumber(2),
+	logNumber(0),
+	prevLogNumber(0),
+	manifestFileNumber(0),
+	descriptorLog(nullptr),
+	descriptorFile(nullptr)
 {
 	std::shared_ptr<Version> v(new Version(this));
-    appendVersion(v);
+	appendVersion(v);
 }
 
 VersionSet::~VersionSet()
@@ -78,13 +78,13 @@ Status VersionSet::recover(bool *manifest)
 {
 	// Read "CURRENT" file, which contains a pointer to the current manifest file
 	std::string current;
-	Status s = readFileToString(options.env,currentFileName(dbname),&current);
-	if (!s.ok()) 
+	Status s = readFileToString(options.env, currentFileName(dbname), &current);
+	if (!s.ok())
 	{
 		return s;
 	}
 
-	if (current.empty() || current[current.size() - 1] != '\n') 
+	if (current.empty() || current[current.size() - 1] != '\n')
 	{
 		return Status::corruption("CURRENT file does not end with newline");
 	}
@@ -92,13 +92,13 @@ Status VersionSet::recover(bool *manifest)
 
 	std::string dscname = dbname + "/" + current;
 	std::shared_ptr<PosixSequentialFile> file;
-	s = options.env->newSequentialFile(dscname,file);
-	if (!s.ok()) 
+	s = options.env->newSequentialFile(dscname, file);
+	if (!s.ok())
 	{
 		if (s.isNotFound())
 		{
 			return Status::corruption(
-				"CURRENT points to a non-existent file",s.toString());
+				"CURRENT points to a non-existent file", s.toString());
 		}
 		return s;
 	}
@@ -113,109 +113,109 @@ Status VersionSet::recover(bool *manifest)
 	uint64_t logNumber = 0;
 	uint64_t prevLogNumber = 0;
 
-    Builder builder(this,versions.back().get());
+	Builder builder(this, versions.back().get());
 	LogReporter reporter;
-    reporter.status = &s;
+	reporter.status = &s;
 
-	LogReader reader(file.get(),&reporter,true/*checksum*/,0/*initial_offset*/);
-    std::string_view record;
+	LogReader reader(file.get(), &reporter, true/*checksum*/, 0/*initial_offset*/);
+	std::string_view record;
 	std::string scratch;
-	while (reader.readRecord(&record,&scratch) && s.ok())
+	while (reader.readRecord(&record, &scratch) && s.ok())
 	{
 		VersionEdit edit;
 		s = edit.decodeFrom(record);
-        if (s.ok())
-        {
-            builder.apply(&edit);
-        }
+		if (s.ok())
+		{
+			builder.apply(&edit);
+		}
 
-        if (edit.hasLogNumber)
-        {
-            logNumber = edit.logNumber;
-            haveLogNumber = true;
-        }
+		if (edit.hasLogNumber)
+		{
+			logNumber = edit.logNumber;
+			haveLogNumber = true;
+		}
 
-        if (edit.hasPrevLogNumber)
-        {
-            prevLogNumber = edit.prevLogNumber;
-            havePrevLogNumber = true;
-        }
+		if (edit.hasPrevLogNumber)
+		{
+			prevLogNumber = edit.prevLogNumber;
+			havePrevLogNumber = true;
+		}
 
-        if (edit.hasNextFileNumber)
-        {
-            nextFile = edit.nextFileNumber;
-            haveNextFile = true;
-        }
+		if (edit.hasNextFileNumber)
+		{
+			nextFile = edit.nextFileNumber;
+			haveNextFile = true;
+		}
 
-        if (edit.hasLastSequence)
-        {
-            lastSequence = edit.lastSequence;
-            haveLastSequence = true;
-        }
-    }
+		if (edit.hasLastSequence)
+		{
+			lastSequence = edit.lastSequence;
+			haveLastSequence = true;
+		}
+	}
 
-    if (s.ok())
-    {
-        if (!haveNextFile)
-        {
-            s = Status::corruption("no meta-nextfile entry in descriptor");
-        }
-        else if (!haveLogNumber)
-        {
-            s = Status::corruption("no meta-lognumber entry in descriptor");
-        }
-        else if (!haveLastSequence)
-        {
-            s = Status::corruption("no last-sequence-number entry in descriptor");
-        }
+	if (s.ok())
+	{
+		if (!haveNextFile)
+		{
+			s = Status::corruption("no meta-nextfile entry in descriptor");
+		}
+		else if (!haveLogNumber)
+		{
+			s = Status::corruption("no meta-lognumber entry in descriptor");
+		}
+		else if (!haveLastSequence)
+		{
+			s = Status::corruption("no last-sequence-number entry in descriptor");
+		}
 
-        if (!havePrevLogNumber)
-        {
-            prevLogNumber = 0;
-        }
+		if (!havePrevLogNumber)
+		{
+			prevLogNumber = 0;
+		}
 
-        markFileNumberUsed(prevLogNumber);
-        markFileNumberUsed(logNumber);
-    }
+		markFileNumberUsed(prevLogNumber);
+		markFileNumberUsed(logNumber);
+	}
 
-    if (s.ok()) 
-    {
-    	std::shared_ptr<Version> v(new Version(this));
-        builder.saveTo(v.get());
-        appendVersion(v); // Install recovered version
-        finalize(v.get());
+	if (s.ok())
+	{
+		std::shared_ptr<Version> v(new Version(this));
+		builder.saveTo(v.get());
+		appendVersion(v); // Install recovered version
+		finalize(v.get());
 
-        this->manifestFileNumber = nextFile;
-        this->nextFileNumber = nextFile + 1;
-        this->lastSequence = lastSequence;
-        this->logNumber = logNumber;
-        this->prevLogNumber = prevLogNumber;
-        //See if we can reuse the existing MANIFEST file.
-		if (reuseManifest(dscname,current))
+		this->manifestFileNumber = nextFile;
+		this->nextFileNumber = nextFile + 1;
+		this->lastSequence = lastSequence;
+		this->logNumber = logNumber;
+		this->prevLogNumber = prevLogNumber;
+		//See if we can reuse the existing MANIFEST file.
+		if (reuseManifest(dscname, current))
 		{
 			// No need to save new manifest
-		} 
-		else 
+		}
+		else
 		{
 			*manifest = true;
 		}
-    }
-    return s;
+	}
+	return s;
 }
 
 void VersionSet::addLiveFiles(std::set<uint64_t> *live)
 {
-    for(auto &iter : versions)
-    {
-        for (int level = 0; level < kNumLevels; level++)
-        {
-            auto files = iter->files[level];
-            for (size_t i = 0; i < files.size(); i++)
-            {
-                live->insert(files[i]->number);
-            }
-        }
-    }
+	for (auto &iter : versions)
+	{
+		for (int level = 0; level < kNumLevels; level++)
+		{
+			auto files = iter->files[level];
+			for (size_t i = 0; i < files.size(); i++)
+			{
+				live->insert(files[i]->number);
+			}
+		}
+	}
 }
 
 void VersionSet::finalize(Version *v)
@@ -241,13 +241,13 @@ void VersionSet::finalize(Version *v)
 			// setting, or very high compression ratios, or lots of
 			// overwrites/deletions).
 			score = v->files[level].size() /
-					static_cast<double>(kL0_CompactionTrigger);
+				static_cast<double>(kL0_CompactionTrigger);
 		}
 		else
 		{
 			// Compute the ratio of current size to size limit.
 			const uint64_t levelBytes = totalFileSize(v->files[level]);
-			score = static_cast<double>(levelBytes) / maxBytesForLevel(&options,level);
+			score = static_cast<double>(levelBytes) / maxBytesForLevel(&options, level);
 		}
 
 		if (score > bestScore)
@@ -261,45 +261,45 @@ void VersionSet::finalize(Version *v)
 	v->compactionScore = bestScore;
 }
 
-bool VersionSet::reuseManifest(const std::string &dscname,const std::string &dscbase) 
+bool VersionSet::reuseManifest(const std::string &dscname, const std::string &dscbase)
 {
-	if (!options.reuseLogs) 
+	if (!options.reuseLogs)
 	{
 		return false;
 	}
-	
+
 	FileType manifestType;
 	uint64_t manifestNumber;
 	uint64_t manifestSize;
-	if (!parseFileName(dscbase,&manifestNumber,&manifestType) ||
-	  manifestType != kDescriptorFile ||
-	  !options.env->getFileSize(dscname,&manifestSize).ok() ||
-	  // Make new compacted MANIFEST if old one is too big
-	  manifestSize >= targetFileSize(&options)) 
+	if (!parseFileName(dscbase, &manifestNumber, &manifestType) ||
+		manifestType != kDescriptorFile ||
+		!options.env->getFileSize(dscname, &manifestSize).ok() ||
+		// Make new compacted MANIFEST if old one is too big
+		manifestSize >= targetFileSize(&options))
 	{
 		return false;
 	}
 
 	assert(descriptorFile == nullptr);
 	assert(descriptorLog == nullptr);
-	Status r = options.env->newAppendableFile(dscname,descriptorFile);
-	if (!r.ok()) 
+	Status r = options.env->newAppendableFile(dscname, descriptorFile);
+	if (!r.ok())
 	{
 		assert(descriptorFile == nullptr);
 		return false;
 	}
 
-	descriptorLog.reset(new LogWriter(descriptorFile.get(),manifestSize));
+	descriptorLog.reset(new LogWriter(descriptorFile.get(), manifestSize));
 	manifestFileNumber = manifestNumber;
 	return true;
 }
 
 void VersionSet::markFileNumberUsed(uint64_t number)
 {
-    if (nextFileNumber <= number)
-    {
-        nextFileNumber = number + 1;
-    }
+	if (nextFileNumber <= number)
+	{
+		nextFileNumber = number + 1;
+	}
 }
 
 void VersionSet::appendVersion(const std::shared_ptr<Version> &v)
@@ -336,90 +336,90 @@ Status VersionSet::logAndApply(VersionEdit *edit)
 	edit->setNextFile(nextFileNumber);
 	edit->setLastSequence(lastSequence);
 
-    std::shared_ptr<Version> v(new Version(this));
-    {
-        Builder builder(this,versions.back().get());
-        builder.apply(edit);
-        builder.saveTo(v.get());
-    }
-    finalize(v.get());
+	std::shared_ptr<Version> v(new Version(this));
+	{
+		Builder builder(this, versions.back().get());
+		builder.apply(edit);
+		builder.saveTo(v.get());
+	}
+	finalize(v.get());
 
-    // Initialize new descriptor log file if necessary by creating
-    // a temporary file that contains a snapshot of the current version.
-    std::string newManifestFile;
-    Status s;
-    if (descriptorLog == nullptr)
-    {
-        // No reason to unlock *mu here since we only hit this path in the
-        // first call to LogAndApply (when opening the database).
-        assert(descriptorFile == nullptr);
-        newManifestFile = descriptorFileName(dbname,manifestFileNumber);
-        edit->setNextFile(nextFileNumber);
-        s = options.env->newWritableFile(newManifestFile,descriptorFile);
-        if (s.ok())
-        {
-            descriptorLog.reset(new LogWriter(descriptorFile.get()));
-            //s = WriteSnapshot(descriptor_log_);
-        }
-    }
+	// Initialize new descriptor log file if necessary by creating
+	// a temporary file that contains a snapshot of the current version.
+	std::string newManifestFile;
+	Status s;
+	if (descriptorLog == nullptr)
+	{
+		// No reason to unlock *mu here since we only hit this path in the
+		// first call to LogAndApply (when opening the database).
+		assert(descriptorFile == nullptr);
+		newManifestFile = descriptorFileName(dbname, manifestFileNumber);
+		edit->setNextFile(nextFileNumber);
+		s = options.env->newWritableFile(newManifestFile, descriptorFile);
+		if (s.ok())
+		{
+			descriptorLog.reset(new LogWriter(descriptorFile.get()));
+			//s = WriteSnapshot(descriptor_log_);
+		}
+	}
 
 
-    // Write new record to MANIFEST log
-    if (s.ok())
-    {
-        std::string record;
-        edit->encodeTo(&record);
-        s = descriptorLog->addRecord(record);
-        if (s.ok())
-        {
-            s = descriptorFile->sync();
-        }
+	// Write new record to MANIFEST log
+	if (s.ok())
+	{
+		std::string record;
+		edit->encodeTo(&record);
+		s = descriptorLog->addRecord(record);
+		if (s.ok())
+		{
+			s = descriptorFile->sync();
+		}
 
-        if (!s.ok())
-        {
-            printf("MANIFEST write: %s\n", s.toString().c_str());
-        }
-    }
+		if (!s.ok())
+		{
+			printf("MANIFEST write: %s\n", s.toString().c_str());
+		}
+	}
 
-    // If we just created a new descriptor file, install it by writing a
-    // new CURRENT file that points to it.
-    if (s.ok() && !newManifestFile.empty())
-    {
-        s = setCurrentFile(options.env,dbname,manifestFileNumber);
-    }
+	// If we just created a new descriptor file, install it by writing a
+	// new CURRENT file that points to it.
+	if (s.ok() && !newManifestFile.empty())
+	{
+		s = setCurrentFile(options.env, dbname, manifestFileNumber);
+	}
 
-    // Install the new version
-    if (s.ok())
-    {
-        appendVersion(v);
-        logNumber = edit->logNumber;
-        prevLogNumber = edit->prevLogNumber;
-    }
-    else
-    {
-        if (!newManifestFile.empty())
-        {
-            options.env->deleteFile(newManifestFile);
-        }
-    }
+	// Install the new version
+	if (s.ok())
+	{
+		appendVersion(v);
+		logNumber = edit->logNumber;
+		prevLogNumber = edit->prevLogNumber;
+	}
+	else
+	{
+		if (!newManifestFile.empty())
+		{
+			options.env->deleteFile(newManifestFile);
+		}
+	}
 
-    return s;
+	return s;
 }
 
 // Apply all of the edits in *edit to the current state.
 void Builder::apply(VersionEdit *edit)
 {
 	//Update compaction pointers
-	for (size_t i = 0; i < edit->compactPointers.size(); i++) 
+	for (size_t i = 0; i < edit->compactPointers.size(); i++)
 	{
 		const int level = edit->compactPointers[i].first;
 		std::string_view view = edit->compactPointers[i].second.encode();
-		vset->compactPointer[level] = std::string(view.data(),view.size());
+		vset->compactPointer[level] = std::string(view.data(), view.size());
 	}
 
 	// Delete files
 	const VersionEdit::DeletedFileSet &del = edit->deletedFiles;
-	for (auto iter = del.begin(); iter != del.end(); ++iter) 
+	for (auto iter = del.begin(); iter != del.end(); ++iter)
 	{
 		const int level = iter->first;
 		const uint64_t number = iter->second;
@@ -427,7 +427,7 @@ void Builder::apply(VersionEdit *edit)
 	}
 
 	// Add new files
-	for (size_t i = 0; i < edit->newFiles.size(); i++) 
+	for (size_t i = 0; i < edit->newFiles.size(); i++)
 	{
 		const int level = edit->newFiles[i].first;
 		std::shared_ptr<FileMetaData> f(new FileMetaData(edit->newFiles[i].second));
@@ -455,10 +455,10 @@ void Builder::apply(VersionEdit *edit)
 }
 
 // Save the current state in *v.
-void Builder::saveTo(Version *v) 
-{	
+void Builder::saveTo(Version *v)
+{
 	BySmallestKey cmp;
-	for (int level = 0; level < kNumLevels; level++) 
+	for (int level = 0; level < kNumLevels; level++)
 	{
 		// Merge the set of added files with the set of pre-existing files.
 		// Drop any deleted files.  Store the result in *v.
@@ -467,66 +467,66 @@ void Builder::saveTo(Version *v)
 		auto baseEnd = baseFiles.end();
 		auto added = levels[level].addedFiles;
 		v->files[level].reserve(baseFiles.size() + added->size());
-		for (auto addedIter = added->begin(); 
+		for (auto addedIter = added->begin();
 			addedIter != added->end();
-		   ++addedIter) 
+			++addedIter)
 		{
 			// Add all smaller files listed in base_
-			for (auto bpos = std::upper_bound(baseIter,baseEnd,*addedIter,cmp);
-				baseIter != bpos;++baseIter) 
+			for (auto bpos = std::upper_bound(baseIter, baseEnd, *addedIter, cmp);
+				baseIter != bpos; ++baseIter)
 			{
-				maybeAddFile(v,level,(*baseIter));
+				maybeAddFile(v, level, (*baseIter));
 			}
 
-			maybeAddFile(v,level,(*addedIter));
+			maybeAddFile(v, level, (*addedIter));
 		}
 
 		// Add remaining base files
-		for (; baseIter != baseEnd; ++baseIter) 
+		for (; baseIter != baseEnd; ++baseIter)
 		{
-			maybeAddFile(v,level,(*baseIter));
+			maybeAddFile(v, level, (*baseIter));
 		}
-		
+
 #ifndef NDEBUG
-      // Make sure there is no overlap in levels > 0
-      if (level > 0) 
-	  {
-		for (uint32_t i = 1; i < v->files[level].size(); i++) 
+		// Make sure there is no overlap in levels > 0
+		if (level > 0)
 		{
-			const InternalKey &prevEnd = v->files[level][i-1]->largest;
-			const InternalKey &thisBegin = v->files[level][i]->smallest;
-			if (vset->icmp.compare(prevEnd,thisBegin) >= 0) 
+			for (uint32_t i = 1; i < v->files[level].size(); i++)
 			{
-				fprintf(stderr, "overlapping ranges in same level %s vs. %s\n",
-					prevEnd.debugString().c_str(),
-					thisBegin.debugString().c_str());
-				abort();
+				const InternalKey &prevEnd = v->files[level][i - 1]->largest;
+				const InternalKey &thisBegin = v->files[level][i]->smallest;
+				if (vset->icmp.compare(prevEnd, thisBegin) >= 0)
+				{
+					fprintf(stderr, "overlapping ranges in same level %s vs. %s\n",
+						prevEnd.debugString().c_str(),
+						thisBegin.debugString().c_str());
+					abort();
+				}
 			}
 		}
-      }
 #endif
 	}
 }
 
-void Builder::maybeAddFile(Version *v,int level,const std::shared_ptr<FileMetaData> &f)
+void Builder::maybeAddFile(Version *v, int level, const std::shared_ptr<FileMetaData> &f)
 {
-	if (levels[level].deletedFiles.count(f->number) > 0) 
+	if (levels[level].deletedFiles.count(f->number) > 0)
 	{
 		// File is deleted: do nothing
-	} 
-	else 
+	}
+	else
 	{
 		auto files = v->files[level];
-		if (level > 0 && !files.empty()) 
+		if (level > 0 && !files.empty())
 		{
 			// Must not overlap
-			assert(vset->icmp.compare(files[files.size()-1]->largest,
-										f->smallest) < 0);
+			assert(vset->icmp.compare(files[files.size() - 1]->largest,
+				f->smallest) < 0);
 		}
 
 		f->refs++;
 		files.push_back(f);
 	}
 }
-		
+
 

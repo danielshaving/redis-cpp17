@@ -1,7 +1,7 @@
 #include "logging.h"
 #include "zmalloc.h"
 
-bool consumeDecimalNumber(std::string_view *in,uint64_t *val)
+bool consumeDecimalNumber(std::string_view *in, uint64_t *val)
 {
 	// Constants that will be optimized away.
 	constexpr const uint64_t kMaxUint64 = std::numeric_limits<uint64_t>::max();
@@ -38,22 +38,22 @@ bool consumeDecimalNumber(std::string_view *in,uint64_t *val)
 std::string numberToString(uint64_t num)
 {
 	std::string r;
-	appendNumberTo(&r,num);
+	appendNumberTo(&r, num);
 	return r;
 }
 
-void appendNumberTo(std::string *str,uint64_t num)
+void appendNumberTo(std::string *str, uint64_t num)
 {
 	char buf[30];
-	snprintf(buf, sizeof(buf),"%llu",(unsigned long long)num);
+	snprintf(buf, sizeof(buf), "%llu", (unsigned long long)num);
 	str->append(buf);
 }
 
-static Status doWriteStringToFile(PosixEnv *env,const std::string_view &data,
-		  const std::string &fname,bool shouldSync)
+static Status doWriteStringToFile(PosixEnv *env, const std::string_view &data,
+	const std::string &fname, bool shouldSync)
 {
 	std::shared_ptr<PosixWritableFile> file;
-	Status s = env->newWritableFile(fname,file);
+	Status s = env->newWritableFile(fname, file);
 	if (!s.ok())
 	{
 		return s;
@@ -78,22 +78,22 @@ static Status doWriteStringToFile(PosixEnv *env,const std::string_view &data,
 }
 
 // A utility routine: write "data" to the named file.
-Status writeStringToFile(PosixEnv *env,const std::string_view &data,const std::string &fname)
+Status writeStringToFile(PosixEnv *env, const std::string_view &data, const std::string &fname)
 {
-	return doWriteStringToFile(env,data,fname,false);
+	return doWriteStringToFile(env, data, fname, false);
 }
 
-Status writeStringToFileSync(PosixEnv *env,const std::string &data,const std::string &fname)
+Status writeStringToFileSync(PosixEnv *env, const std::string &data, const std::string &fname)
 {
-	return doWriteStringToFile(env,data,fname,true);
+	return doWriteStringToFile(env, data, fname, true);
 }
 
 // A utility routine: read contents of named file into *data
-Status readFileToString(PosixEnv *env,const std::string &fname,std::string *data)
+Status readFileToString(PosixEnv *env, const std::string &fname, std::string *data)
 {
 	data->clear();
 	std::shared_ptr<PosixSequentialFile> file;
-	Status s = env->newSequentialFile(fname,file);
+	Status s = env->newSequentialFile(fname, file);
 	if (!s.ok())
 	{
 		return s;
@@ -103,13 +103,13 @@ Status readFileToString(PosixEnv *env,const std::string &fname,std::string *data
 	while (true)
 	{
 		std::string_view fragment;
-		s = file->read(kBufferSize,&fragment,space);
+		s = file->read(kBufferSize, &fragment, space);
 		if (!s.ok())
 		{
 			break;
 		}
 
-		data->append(fragment.data(),fragment.size());
+		data->append(fragment.data(), fragment.size());
 		if (fragment.empty())
 		{
 			break;
@@ -119,7 +119,7 @@ Status readFileToString(PosixEnv *env,const std::string &fname,std::string *data
 	return s;
 }
 
-void appendEscapedStringTo(std::string *str,const std::string_view &value)
+void appendEscapedStringTo(std::string *str, const std::string_view &value)
 {
 	for (size_t i = 0; i < value.size(); i++)
 	{
@@ -131,8 +131,8 @@ void appendEscapedStringTo(std::string *str,const std::string_view &value)
 		else
 		{
 			char buf[10];
-			snprintf(buf,sizeof(buf), "\\x%02x",
-				   static_cast<unsigned int>(c) & 0xff);
+			snprintf(buf, sizeof(buf), "\\x%02x",
+				static_cast<unsigned int>(c) & 0xff);
 			str->append(buf);
 		}
 	}
@@ -141,6 +141,6 @@ void appendEscapedStringTo(std::string *str,const std::string_view &value)
 std::string escapeString(const std::string &value)
 {
 	std::string r;
-	appendEscapedStringTo(&r,value);
+	appendEscapedStringTo(&r, value);
 	return r;
 }

@@ -15,8 +15,8 @@ class Version
 {
 public:
 	Version(VersionSet *vset)
-	:vset(vset),
-	 refs(0)
+		:vset(vset),
+		refs(0)
 	{
 
 	}
@@ -66,65 +66,65 @@ class Builder
 {
 private:
 	// Helper to sort by v->files_[file_number].smallest
-	struct BySmallestKey 
+	struct BySmallestKey
 	{
 		const InternalKeyComparator *internalComparator;
 		bool operator()(const std::shared_ptr<FileMetaData> &f1,
-			const std::shared_ptr<FileMetaData> &f2) const 
+			const std::shared_ptr<FileMetaData> &f2) const
 		{
-			int r = internalComparator->compare(f1->smallest,f2->smallest);
-			if (r != 0) 
+			int r = internalComparator->compare(f1->smallest, f2->smallest);
+			if (r != 0)
 			{
 				return (r < 0);
-			} 
-			else 
+			}
+			else
 			{
-			// Break ties by file number
+				// Break ties by file number
 				return (f1->number < f2->number);
 			}
 		}
 	};
 
-	typedef std::set<std::shared_ptr<FileMetaData>,BySmallestKey> FileSet;
-	struct LevelState 
+	typedef std::set<std::shared_ptr<FileMetaData>, BySmallestKey> FileSet;
+	struct LevelState
 	{
-    	std::set<uint64_t> deletedFiles;
-    	std::shared_ptr<FileSet> addedFiles;
- 	};
+		std::set<uint64_t> deletedFiles;
+		std::shared_ptr<FileSet> addedFiles;
+	};
 
 	VersionSet *vset;
 	Version *base;
 	LevelState levels[kNumLevels];
 public:
-	Builder(VersionSet *vset,Version *base)
-	:vset(vset),
-	 base(base)
+	Builder(VersionSet *vset, Version *base)
+		:vset(vset),
+		base(base)
 	{
 		BySmallestKey cmp;
-		for (int level = 0; level < kNumLevels; level++) 
+		for (int level = 0; level < kNumLevels; level++)
 		{
 			levels[level].addedFiles.reset(new FileSet(cmp));
 		}
 	}
 
-	~Builder() 
+	~Builder()
 	{
-		
+
 	}
 	// Apply all of the edits in *edit to the current state.
 	void apply(VersionEdit *edit);
-	
+
 	// Save the current state in *v.
-	void saveTo(Version *v); 
-	
-	void maybeAddFile(Version *v,int level,const std::shared_ptr<FileMetaData> &f);
+	void saveTo(Version *v);
+
+	void maybeAddFile(Version *v, int level, const std::shared_ptr<FileMetaData> &f);
 
 };
 
 class VersionSet
 {
 public:
-	VersionSet(const std::string &dbname,const Options &options);
+	VersionSet(const std::string &dbname, const Options &options);
 	~VersionSet();
 
 	uint64_t getLastSequence() const { return lastSequence; }
@@ -150,17 +150,17 @@ public:
 	uint64_t getPrevLogNumber() { return prevLogNumber; }
 
 	const InternalKeyComparator icmp;
-	
+
 	uint64_t newFileNumber() { return nextFileNumber++; }
 	Status recover(bool *manifest);
 	void markFileNumberUsed(uint64_t number);
 	uint64_t getManifestFileNumber() { return manifestFileNumber; }
 	void appendVersion(const std::shared_ptr<Version> &v);
-	bool reuseManifest(const std::string &dscname,const std::string &dscbase);
+	bool reuseManifest(const std::string &dscname, const std::string &dscbase);
 
-    // Per-level key at which the next compaction at that level should start.
-    // Either an empty string, or a valid InternalKey.
-    std::string compactPointer[kNumLevels];
+	// Per-level key at which the next compaction at that level should start.
+	// Either an empty string, or a valid InternalKey.
+	std::string compactPointer[kNumLevels];
 
 private:
 	const std::string dbname;
@@ -170,7 +170,7 @@ private:
 	uint64_t lastSequence;
 	uint64_t logNumber;
 	uint64_t prevLogNumber;  // 0 or backing store for memtable being compacted
-    std::list<std::shared_ptr<Version>> versions;
+	std::list<std::shared_ptr<Version>> versions;
 	std::shared_ptr<LogWriter> descriptorLog;
 	std::shared_ptr<PosixWritableFile> descriptorFile;
 };

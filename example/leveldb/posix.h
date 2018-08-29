@@ -23,20 +23,20 @@
 
 static const size_t kBufSize = 65536;
 
-static bool startsWith(const std::string_view &x,const std::string_view &y)
+static bool startsWith(const std::string_view &x, const std::string_view &y)
 {
-	return ((x.size() >= y.size()) && (memcmp(x.data(),y.data(),y.size()) == 0));
+	return ((x.size() >= y.size()) && (memcmp(x.data(), y.data(), y.size()) == 0));
 }
 
-static Status posixError(const std::string &context,int err)
+static Status posixError(const std::string &context, int err)
 {
 	if (err == ENOENT)
 	{
-		return Status::notFound(context,strerror(err));
+		return Status::notFound(context, strerror(err));
 	}
 	else
 	{
-		return Status::ioError(context,strerror(err));
+		return Status::ioError(context, strerror(err));
 	}
 }
 
@@ -53,10 +53,10 @@ private:
 	char buf[kBufSize];
 	size_t pos;
 public:
-	PosixWritableFile(const std::string &fname,int fd);
+	PosixWritableFile(const std::string &fname, int fd);
 	~PosixWritableFile();
 
-    Status append(const std::string_view &data);
+	Status append(const std::string_view &data);
 	Status close();
 	Status flush();
 	Status syncDirIfManifest();
@@ -64,7 +64,7 @@ public:
 
 private:
 	Status flushBuffered();
-	Status writeRaw(const char *p,size_t n);
+	Status writeRaw(const char *p, size_t n);
 };
 
 // pread() based random-access
@@ -74,10 +74,10 @@ private:
 	std::string filename;
 	int fd;
 public:
-	PosixRandomAccessFile(const std::string &fname,int fd);
+	PosixRandomAccessFile(const std::string &fname, int fd);
 	~PosixRandomAccessFile();
-	Status read(uint64_t offset,size_t n,std::string_view *result,
-					char *scratch) const ;
+	Status read(uint64_t offset, size_t n, std::string_view *result,
+		char *scratch) const;
 };
 
 // mmap() based random-access
@@ -90,10 +90,10 @@ private:
 
 public:
 	// base[0,length-1] contains the mmapped contents of the file.
-	PosixMmapReadableFile(const std::string &fname,void *base,size_t length);
+	PosixMmapReadableFile(const std::string &fname, void *base, size_t length);
 	~PosixMmapReadableFile();
-	Status read(uint64_t offset,size_t n,std::string_view *result,
-						char *scratch) const ;
+	Status read(uint64_t offset, size_t n, std::string_view *result,
+		char *scratch) const;
 };
 
 class PosixSequentialFile
@@ -102,10 +102,10 @@ private:
 	std::string filename;
 	int fd;
 public:
-	PosixSequentialFile(const std::string &fname,int fd);
+	PosixSequentialFile(const std::string &fname, int fd);
 	~PosixSequentialFile();
 
-	Status read(size_t n,std::string_view *result,char *scratch);
+	Status read(size_t n, std::string_view *result, char *scratch);
 	Status skip(uint64_t n);
 };
 
@@ -122,7 +122,7 @@ public:
 	//
 	// The returned file will only be accessed by one thread at a time.
 
-	Status newWritableFile(const std::string &fname,std::shared_ptr<PosixWritableFile> &result);
+	Status newWritableFile(const std::string &fname, std::shared_ptr<PosixWritableFile> &result);
 	// Delete the named file.
 	Status deleteFile(const std::string &fname);
 	// Create the specified directory.
@@ -130,12 +130,12 @@ public:
 	// Delete the specified directory.
 	Status deleteDir(const std::string &name);
 	// Store the size of fname in *file_size.
-	Status getFileSize(const std::string &fname,uint64_t *size);
+	Status getFileSize(const std::string &fname, uint64_t *size);
 
 	// Store in *result the names of the children of the specified directory.
 	// The names are relative to "dir".
 	// Original contents of *results are dropped.
-	Status getChildren(const std::string &dir,std::vector<std::string> *result);
+	Status getChildren(const std::string &dir, std::vector<std::string> *result);
 	// Create a brand new sequentially-readable file with the specified name.
 	// On success, stores a pointer to the new file in *result and returns OK.
 	// On failure stores nullptr in *result and returns non-OK.  If the file does
@@ -145,10 +145,10 @@ public:
 	// The returned file will only be accessed by one thread at a time.
 
 	Status newSequentialFile(const std::string &fname,
-							 std::shared_ptr<PosixSequentialFile> &result);
+		std::shared_ptr<PosixSequentialFile> &result);
 	// Rename file src to target.
-	Status renameFile(const std::string &src,const std::string &target);
-	
+	Status renameFile(const std::string &src, const std::string &target);
+
 	// Create an object that either appends to an existing file, or
   // writes to a new file (if the file does not exist to begin with).
   // On success, stores a pointer to the new file in *result and
@@ -162,7 +162,7 @@ public:
   // the leveldb implementation) must be prepared to deal with
   // an Env that does not support appending.
 	Status newAppendableFile(const std::string &fname,
-                                   std::shared_ptr<PosixWritableFile> &result);
+		std::shared_ptr<PosixWritableFile> &result);
 
 	// Returns the number of micro-seconds since some fixed point in time. Only
 	// useful for computing deltas of time.

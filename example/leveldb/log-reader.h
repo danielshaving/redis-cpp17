@@ -12,7 +12,7 @@ public:
 
 	// Some corruption was detected.  "size" is the approximate number
 	// of bytes dropped due to the corruption.
-	void corruption(size_t bytes,const Status &status);
+	void corruption(size_t bytes, const Status &status);
 
 	PosixEnv *env;
 	//Logger *infoLog;
@@ -34,8 +34,8 @@ public:
 	//
 	// The Reader will start reading at the first record located at physical
 	// position >= initial_offset within the file.
-	LogReader(PosixSequentialFile *file,LogReporter *reporter,bool checksum,
-		 uint64_t initialOffset);
+	LogReader(PosixSequentialFile *file, LogReporter *reporter, bool checksum,
+		uint64_t initialOffset);
 
 	~LogReader();
 
@@ -44,7 +44,7 @@ public:
 	// "*scratch" as temporary storage.  The contents filled in *record
 	// will only be valid until the next mutating operation on this
 	// reader or the next mutation to *scratch.
-	bool readRecord(std::string_view *record,std::string *scratch);
+	bool readRecord(std::string_view *record, std::string *scratch);
 
 	// Returns the physical offset of the last record returned by ReadRecord.
 	//
@@ -52,7 +52,7 @@ public:
 	uint64_t getLastRecordOffset();
 
 private:
-	PosixSequentialFile *const file;
+	PosixSequentialFile * const file;
 	LogReporter *const reporter;
 	bool const checksum;
 	char *const backingStore;
@@ -94,8 +94,8 @@ private:
 
 	// Reports dropped bytes to the reporter.
 	// buffer_ must be updated to remove the dropped bytes prior to invocation.
-	void reportCorruption(uint64_t bytes,const char *reason);
-	void reportDrop(uint64_t bytes,const Status &reason);
+	void reportCorruption(uint64_t bytes, const char *reason);
+	void reportDrop(uint64_t bytes, const Status &reason);
 
 	// No copying allowed
 	LogReader(const LogReader&);

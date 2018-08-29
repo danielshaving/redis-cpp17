@@ -6,16 +6,16 @@
 // sequence of key,value pairs.  Each block may be compressed before
 // being stored in a file.  The following enum describes which
 // compression method (if any) is used to compress a block.
-enum CompressionType 
+enum CompressionType
 {
 	// NOTE: do not change the values of existing entries, as these are
 	// part of the persistent format on disk.
-	kNoCompression     = 0x0,
+	kNoCompression = 0x0,
 	kSnappyCompression = 0x1
 };
 
 // Options to control the behavior of a database (passed to DB::Open)
-struct Options 
+struct Options
 {
 	// -------------------
 	// Parameters that affect behavior
@@ -46,7 +46,7 @@ struct Options
 	// e.g. to read/write files, schedule background work, etc.
 	// Default: Env::Default()
 	PosixEnv *env;
-	  
+
 	// -------------------
 	// Parameters that affect performance
 
@@ -119,16 +119,16 @@ struct Options
 
 	// Create an Options object with default values for all fields.
 	Options()
-	:createIfMissing(false),
-	errorIfExists(false),
-	paranoidChecks(false),
-	writeBufferSize(4 << 20),
-	maxOpenFiles(1000),
-	blockSize(4096),
-	blockRestartInterval(16),
-	maxFileSize(2 << 20),
-	compression(kSnappyCompression),
-	reuseLogs(false)
+		:createIfMissing(false),
+		errorIfExists(false),
+		paranoidChecks(false),
+		writeBufferSize(4 << 20),
+		maxOpenFiles(1000),
+		blockSize(4096),
+		blockRestartInterval(16),
+		maxFileSize(2 << 20),
+		compression(kSnappyCompression),
+		reuseLogs(false)
 	{
 
 	}
@@ -136,7 +136,7 @@ struct Options
 
 
 // Options that control read operations
-struct ReadOptions 
+struct ReadOptions
 {
 	// If true, all data read from underlying storage will be
 	// verified against corresponding checksums.
@@ -149,8 +149,8 @@ struct ReadOptions
 	bool fillCache;
 
 	ReadOptions()
-	  : verifyChecksums(false),
-	    fillCache(true)
+		: verifyChecksums(false),
+		fillCache(true)
 	{
 
 	}
@@ -178,7 +178,7 @@ struct WriteOptions
 	bool sync;
 
 	WriteOptions()
-	  :sync(false)
+		:sync(false)
 	{
 
 	}

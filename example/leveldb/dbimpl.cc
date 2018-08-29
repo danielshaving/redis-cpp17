@@ -5,7 +5,7 @@
 const int kNumNonTableCacheFiles = 10;
 
 // Information kept for every waiting writer
-struct DBImpl::Writer 
+struct DBImpl::Writer
 {
 	Status status;
 	WriteBatch *batch;
@@ -13,13 +13,13 @@ struct DBImpl::Writer
 	bool done;
 };
 
-DBImpl::DBImpl(const Options &options,const std::string &dbname)
-:options(options),
- dbname(dbname)
+DBImpl::DBImpl(const Options &options, const std::string &dbname)
+	:options(options),
+	dbname(dbname)
 {
-    versions.reset(new VersionSet(dbname,options));
-    mem.reset(new MemTable);
-    imm.reset(new MemTable);
+	versions.reset(new VersionSet(dbname, options));
+	mem.reset(new MemTable);
+	imm.reset(new MemTable);
 }
 
 DBImpl::~DBImpl()
@@ -32,19 +32,19 @@ Status DBImpl::open()
 	Status s = options.env->createDir(dbname);
 	VersionEdit edit;
 	bool saveManifest = false;
-	s = recover(&edit,&saveManifest);
+	s = recover(&edit, &saveManifest);
 	if (s.ok() && imm->getMemoryUsage() == 0)
-    {
+	{
 		uint64_t newLogNumber = versions->newFileNumber();
-		s = options.env->newWritableFile(logFileName(dbname,newLogNumber),logfile);
+		s = options.env->newWritableFile(logFileName(dbname, newLogNumber), logfile);
 		if (s.ok())
 		{
 			log.reset(new LogWriter(logfile.get()));
 			logfileNumber = newLogNumber;
 		}
 	}
-	
-	if (s.ok() && saveManifest) 
+
+	if (s.ok() && saveManifest)
 	{
 		edit.setPrevLogNumber(0);  // No older logs needed after recovery.
 		edit.setLogNumber(logfileNumber);
@@ -69,38 +69,38 @@ void DBImpl::deleteObsoleteFiles()
 	versions->addLiveFiles(&live);
 
 	std::vector<std::string> filenames;
-	options.env->getChildren(dbname,&filenames);  // Ignoring errors on purpose
+	options.env->getChildren(dbname, &filenames);  // Ignoring errors on purpose
 	uint64_t number;
 	FileType type;
 	for (size_t i = 0; i < filenames.size(); i++)
 	{
-		if (parseFileName(filenames[i],&number,&type))
+		if (parseFileName(filenames[i], &number, &type))
 		{
 			bool keep = true;
 			switch (type)
 			{
-				case kLogFile:
-					keep = ((number >= versions->getLogNumber()) ||
-							(number == versions->getPrevLogNumber()));
-					break;
-				case kDescriptorFile:
-					// Keep my manifest file, and any newer incarnations'
-					// (in case there is a race that allows other incarnations)
-					keep = (number >= versions->getManifestFileNumber());
-					break;
-				case kTableFile:
-					keep = (live.find(number) != live.end());
-					break;
-				case kTempFile:
-					// Any temp files that are currently being written to must
-					// be recorded in pending_outputs_, which is inserted into "live"
-					keep = (live.find(number) != live.end());
-					break;
-				case kCurrentFile:
-				case kDBLockFile:
-				case kInfoLogFile:
-					keep = true;
-					break;
+			case kLogFile:
+				keep = ((number >= versions->getLogNumber()) ||
+					(number == versions->getPrevLogNumber()));
+				break;
+			case kDescriptorFile:
+				// Keep my manifest file, and any newer incarnations'
+				// (in case there is a race that allows other incarnations)
+				keep = (number >= versions->getManifestFileNumber());
+				break;
+			case kTableFile:
+				keep = (live.find(number) != live.end());
+				break;
+			case kTempFile:
+				// Any temp files that are currently being written to must
+				// be recorded in pending_outputs_, which is inserted into "live"
+				keep = (live.find(number) != live.end());
+				break;
+			case kCurrentFile:
+			case kDBLockFile:
+			case kInfoLogFile:
+				keep = true;
+				break;
 			}
 
 			if (!keep)
@@ -120,9 +120,9 @@ Status DBImpl::newDB()
 	newdb.setLogNumber(0);
 	newdb.setNextFile(2);
 	newdb.setLastSequence(0);
-	const std::string manifest = descriptorFileName(dbname,1);
+	const std::string manifest = descriptorFileName(dbname, 1);
 	std::shared_ptr<PosixWritableFile> file;
-	Status s = options.env->newWritableFile(manifest,file);
+	Status s = options.env->newWritableFile(manifest, file);
 	if (!s.ok())
 	{
 		return s;
@@ -140,7 +140,7 @@ Status DBImpl::newDB()
 	if (s.ok())
 	{
 		// Make "CURRENT" file that points to the new manifest file.
-		s = setCurrentFile(options.env,dbname,1);
+		s = setCurrentFile(options.env, dbname, 1);
 	}
 	else
 	{
@@ -149,7 +149,7 @@ Status DBImpl::newDB()
 	return s;
 }
 
-Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
+Status DBImpl::recover(VersionEdit *edit, bool *saveManifest)
 {
 	Status s;
 	options.env->createDir(dbname);
@@ -167,7 +167,7 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 		else
 		{
 			return Status::invalidArgument(
-					dbname,"does not exist (create_if_missing is false)");
+				dbname, "does not exist (create_if_missing is false)");
 		}
 	}
 	else
@@ -175,7 +175,7 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 		if (options.errorIfExists)
 		{
 			return Status::invalidArgument(
-					dbname,"exists (error_if_exists is true)");
+				dbname, "exists (error_if_exists is true)");
 		}
 	}
 
@@ -198,7 +198,7 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 	const uint64_t prevLog = versions->getPrevLogNumber();
 
 	std::vector<std::string> filenames;
-	s = options.env->getChildren(dbname,&filenames);
+	s = options.env->getChildren(dbname, &filenames);
 	if (!s.ok())
 	{
 		return s;
@@ -213,7 +213,7 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 	std::vector<uint64_t> logs;
 	for (size_t i = 0; i < filenames.size(); i++)
 	{
-		if (parseFileName(filenames[i],&number,&type))
+		if (parseFileName(filenames[i], &number, &type))
 		{
 			expected.erase(number);
 			if (type == kLogFile && ((number >= minLog) || (number == prevLog)))
@@ -223,10 +223,10 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 		}
 	}
 
-	std::sort(logs.begin(),logs.end());
+	std::sort(logs.begin(), logs.end());
 	for (size_t i = 0; i < logs.size(); i++)
 	{
-		s = recoverLogFile(logs[i],(i == logs.size() - 1),saveManifest,edit,&maxSequence);
+		s = recoverLogFile(logs[i], (i == logs.size() - 1), saveManifest, edit, &maxSequence);
 		if (!s.ok())
 		{
 			return s;
@@ -240,18 +240,18 @@ Status DBImpl::recover(VersionEdit *edit,bool *saveManifest)
 
 	if (versions->getLastSequence() < maxSequence)
 	{
-	    versions->setLastSequence(maxSequence);
+		versions->setLastSequence(maxSequence);
 	}
 	return s;
 }
 
-Status DBImpl::recoverLogFile(uint64_t logNumber,bool lastLog,
-		bool *saveManifest,VersionEdit *edit,uint64_t *maxSequence)
+Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
+	bool *saveManifest, VersionEdit *edit, uint64_t *maxSequence)
 {
 	// Open the log file
-	std::string fname = logFileName(dbname,logNumber);
+	std::string fname = logFileName(dbname, logNumber);
 	std::shared_ptr<PosixSequentialFile> file;
-	Status status = options.env->newSequentialFile(fname,file);
+	Status status = options.env->newSequentialFile(fname, file);
 	if (!status.ok())
 	{
 		//MaybeIgnoreError(&status);
@@ -263,68 +263,68 @@ Status DBImpl::recoverLogFile(uint64_t logNumber,bool lastLog,
 	// paranoid_checks==false so that corruptions cause entire commits
 	// to be skipped instead of propagating bad information (like overly
 	// large sequence numbers).
-	LogReader reader(file.get(),&reporter,true/*checksum*/,0/*initial_offset*/);
+	LogReader reader(file.get(), &reporter, true/*checksum*/, 0/*initial_offset*/);
 	std::string scratch;
 	std::string_view record;
 	WriteBatch batch;
 	int compactions = 0;
 
-	while (reader.readRecord(&record,&scratch) && status.ok())
+	while (reader.readRecord(&record, &scratch) && status.ok())
 	{
-	    if (record.size() < 12)
-	    {
-			reporter.corruption(record.size(),Status::corruption("log record too small"));
+		if (record.size() < 12)
+		{
+			reporter.corruption(record.size(), Status::corruption("log record too small"));
 			continue;
-	    }
+		}
 
-	    WriteBatchInternal::setContents(&batch,record);
-	    status = WriteBatchInternal::insertInto(&batch,mem);
-	    if (!status.ok())
-	    {
-	    	break;
-	    }
+		WriteBatchInternal::setContents(&batch, record);
+		status = WriteBatchInternal::insertInto(&batch, mem);
+		if (!status.ok())
+		{
+			break;
+		}
 
-	    const uint64_t lastSeq = WriteBatchInternal::getSequence(&batch) + WriteBatchInternal::count(&batch) - 1;
-	    if (lastSeq > *maxSequence)
-	    {
-	    	*maxSequence = lastSeq;
-	    }
+		const uint64_t lastSeq = WriteBatchInternal::getSequence(&batch) + WriteBatchInternal::count(&batch) - 1;
+		if (lastSeq > *maxSequence)
+		{
+			*maxSequence = lastSeq;
+		}
 	}
-	printf("logNumber %d# memtable:size %d\n",logNumber,mem->getTableSize());
+	printf("logNumber %d# memtable:size %d\n", logNumber, mem->getTableSize());
 	return status;
 }
 
-Status DBImpl::put(const WriteOptions &opt,const std::string_view &key,const std::string_view &value)
+Status DBImpl::put(const WriteOptions &opt, const std::string_view &key, const std::string_view &value)
 {
-    WriteBatch batch;
-    batch.put(key,value);
-    return write(opt,&batch);
+	WriteBatch batch;
+	batch.put(key, value);
+	return write(opt, &batch);
 }
 
-Status DBImpl::del(const WriteOptions &opt,const std::string_view &key)
+Status DBImpl::del(const WriteOptions &opt, const std::string_view &key)
 {
 	WriteBatch batch;
 	batch.del(key);
-	return write(opt,&batch);
+	return write(opt, &batch);
 }
 
 Status DBImpl::makeRoomForWrite(bool force)
 {
-    assert(!writers.empty());
-    bool allowDelay = !force;
-    Status s;
-    while(true)
-    {
-        if (!force && mem->getMemoryUsage() <= options.writeBufferSize)
-        {
-            break;
-        }
-        else if (imm != nullptr)
-        {
+	assert(!writers.empty());
+	bool allowDelay = !force;
+	Status s;
+	while (true)
+	{
+		if (!force && mem->getMemoryUsage() <= options.writeBufferSize)
+		{
+			break;
+		}
+		else if (imm != nullptr)
+		{
 
-        }
-    }
-    return s;
+		}
+	}
+	return s;
 }
 
 WriteBatch *DBImpl::buildBatchGroup(Writer **lastWriter)
@@ -335,9 +335,9 @@ WriteBatch *DBImpl::buildBatchGroup(Writer **lastWriter)
 	assert(result != nullptr);
 	size_t size = WriteBatchInternal::byteSize(first->batch);
 	size_t maxSize = 1 << 20;
-	if (size <= (128<<10))
+	if (size <= (128 << 10))
 	{
-		maxSize = size + (128<<10);
+		maxSize = size + (128 << 10);
 	}
 
 	*lastWriter = first;
@@ -368,30 +368,30 @@ WriteBatch *DBImpl::buildBatchGroup(Writer **lastWriter)
 				// Switch to temporary batch instead of disturbing caller's batch
 				result = tmpBatch.get();
 				assert(WriteBatchInternal::count(result) == 0);
-				WriteBatchInternal::append(result,first->batch);
+				WriteBatchInternal::append(result, first->batch);
 			}
-			WriteBatchInternal::append(result,w->batch);
+			WriteBatchInternal::append(result, w->batch);
 		}
 		*lastWriter = w;
 	}
 	return result;
 }
 
-Status DBImpl::write(const WriteOptions &opt,WriteBatch *myBatch)
+Status DBImpl::write(const WriteOptions &opt, WriteBatch *myBatch)
 {
-    Writer w;
-    w.batch = myBatch;
-    w.sync = opt.sync;
-    w.done = false;
-    writers.push_back(&w);
-    // May temporarily unlock and wait.
-    Status status = makeRoomForWrite(myBatch == nullptr);
-    uint64_t lastSequence = versions->getLastSequence();
-    Writer *lastWriter = &w;
-    if (status.ok() && myBatch != nullptr)
-    {
+	Writer w;
+	w.batch = myBatch;
+	w.sync = opt.sync;
+	w.done = false;
+	writers.push_back(&w);
+	// May temporarily unlock and wait.
+	Status status = makeRoomForWrite(myBatch == nullptr);
+	uint64_t lastSequence = versions->getLastSequence();
+	Writer *lastWriter = &w;
+	if (status.ok() && myBatch != nullptr)
+	{
 		WriteBatch *updates = buildBatchGroup(&lastWriter);
-		WriteBatchInternal::setSequence(updates,lastSequence + 1);
+		WriteBatchInternal::setSequence(updates, lastSequence + 1);
 		lastSequence += WriteBatchInternal::count(updates);
 		status = log->addRecord(WriteBatchInternal::contents(updates));
 		bool err = false;
@@ -406,40 +406,40 @@ Status DBImpl::write(const WriteOptions &opt,WriteBatch *myBatch)
 
 		if (status.ok())
 		{
-			status = WriteBatchInternal::insertInto(updates,mem);
+			status = WriteBatchInternal::insertInto(updates, mem);
 		}
 
 		if (updates == tmpBatch.get()) { tmpBatch->clear(); }
 		versions->setLastSequence(lastSequence);
-    }
+	}
 
-    writers.pop_back();
-    return status;
+	writers.pop_back();
+	return status;
 }
 
-Status DBImpl::get(const ReadOptions &opt,const std::string_view &key,std::string *value)
+Status DBImpl::get(const ReadOptions &opt, const std::string_view &key, std::string *value)
 {
 	Status s;
 	uint64_t snapshot = versions->getLastSequence();
-	LookupKey lkey(key,snapshot);
-	if (mem->get(lkey,value,&s))
+	LookupKey lkey(key, snapshot);
+	if (mem->get(lkey, value, &s))
 	{
-	  // Done
+		// Done
 	}
-	else if (imm != nullptr && imm->get(lkey,value,&s))
+	else if (imm != nullptr && imm->get(lkey, value, &s))
 	{
-	  // Done
+		// Done
 	}
 	else
 	{
-//	  s = current->Get(options, lkey, value, &stats);
-//	  have_stat_update = true;
-        s = Status::notFound(std::string_view());
+		//	  s = current->Get(options, lkey, value, &stats);
+		//	  have_stat_update = true;
+		s = Status::notFound(std::string_view());
 	}
 	return s;
 }
 
-Status DBImpl::writeLevel0Table(VersionEdit *edit,Version *base)
+Status DBImpl::writeLevel0Table(VersionEdit *edit, Version *base)
 {
 	const uint64_t startMicros = options.env->nowMicros();
 	FileMetaData meta;
@@ -460,11 +460,11 @@ Status DBImpl::writeLevel0Table(VersionEdit *edit,Version *base)
 Status DBImpl::buildTable(FileMetaData *meta)
 {
 	assert(mem->getMemoryUsage() > 0);
-    Status s;
-    meta->fileSize = 0;
-	std::string fname = tableFileName(dbname,meta->number);
+	Status s;
+	meta->fileSize = 0;
+	std::string fname = tableFileName(dbname, meta->number);
 	std::shared_ptr<PosixWritableFile> file;
-	s = options.env->newWritableFile(fname,file);
+	s = options.env->newWritableFile(fname, file);
 	if (!s.ok())
 	{
 		return s;

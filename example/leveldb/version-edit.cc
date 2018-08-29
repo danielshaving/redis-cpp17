@@ -5,20 +5,20 @@
 
 // Tag numbers for serialized VersionEdit.  These numbers are written to
 // disk and should not be changed.
-enum Tag 
+enum Tag
 {
-	kComparator           = 1,
-	kLogNumber            = 2,
-	kNextFileNumber       = 3,
-	kLastSequence         = 4,
-	kCompactPointer       = 5,
-	kDeletedFile          = 6,
-	kNewFile              = 7,
+	kComparator = 1,
+	kLogNumber = 2,
+	kNextFileNumber = 3,
+	kLastSequence = 4,
+	kCompactPointer = 5,
+	kDeletedFile = 6,
+	kNewFile = 7,
 	// 8 was used for large value refs
-	kPrevLogNumber        = 9
+	kPrevLogNumber = 9
 };
 
-void VersionEdit::clear() 
+void VersionEdit::clear()
 {
 	comparator.clear();
 	logNumber = 0;
@@ -38,64 +38,64 @@ void VersionEdit::encodeTo(std::string *dst) const
 {
 	if (hasComparator)
 	{
-		putVarint32(dst,kComparator);
-		putLengthPrefixedSlice(dst,comparator);
+		putVarint32(dst, kComparator);
+		putLengthPrefixedSlice(dst, comparator);
 	}
 
 	if (hasLogNumber)
 	{
-		putVarint32(dst,kLogNumber);
-		putVarint64(dst,logNumber);
+		putVarint32(dst, kLogNumber);
+		putVarint64(dst, logNumber);
 	}
 
 	if (hasPrevLogNumber)
 	{
-		putVarint32(dst,kPrevLogNumber);
-		putVarint64(dst,prevLogNumber);
+		putVarint32(dst, kPrevLogNumber);
+		putVarint64(dst, prevLogNumber);
 	}
 
 	if (hasNextFileNumber)
 	{
-		putVarint32(dst,kNextFileNumber);
-		putVarint64(dst,nextFileNumber);
+		putVarint32(dst, kNextFileNumber);
+		putVarint64(dst, nextFileNumber);
 	}
 
 	if (hasLastSequence)
 	{
-		putVarint32(dst,kLastSequence);
-		putVarint64(dst,lastSequence);
+		putVarint32(dst, kLastSequence);
+		putVarint64(dst, lastSequence);
 	}
 
 	for (size_t i = 0; i < compactPointers.size(); i++)
 	{
-		putVarint32(dst,kCompactPointer);
-		putVarint32(dst,compactPointers[i].first);  // level
-		putLengthPrefixedSlice(dst,compactPointers[i].second.encode());
+		putVarint32(dst, kCompactPointer);
+		putVarint32(dst, compactPointers[i].first);  // level
+		putLengthPrefixedSlice(dst, compactPointers[i].second.encode());
 	}
 
 	for (auto iter = deletedFiles.begin(); iter != deletedFiles.end(); ++iter)
 	{
-		putVarint32(dst,kDeletedFile);
-		putVarint32(dst,iter->first);   // level
-		putVarint64(dst,iter->second);  // file number
+		putVarint32(dst, kDeletedFile);
+		putVarint32(dst, iter->first);   // level
+		putVarint64(dst, iter->second);  // file number
 	}
 
 	for (size_t i = 0; i < newFiles.size(); i++)
 	{
 		const FileMetaData &f = newFiles[i].second;
-		putVarint32(dst,kNewFile);
-		putVarint32(dst,newFiles[i].first);  // level
-		putVarint64(dst,f.number);
-		putVarint64(dst,f.fileSize);
-		putLengthPrefixedSlice(dst,f.smallest.encode());
-		putLengthPrefixedSlice(dst,f.largest.encode());
+		putVarint32(dst, kNewFile);
+		putVarint32(dst, newFiles[i].first);  // level
+		putVarint64(dst, f.number);
+		putVarint64(dst, f.fileSize);
+		putLengthPrefixedSlice(dst, f.smallest.encode());
+		putLengthPrefixedSlice(dst, f.largest.encode());
 	}
 }
 
-static bool getInternalKey(std::string_view *input,InternalKey *dst)
+static bool getInternalKey(std::string_view *input, InternalKey *dst)
 {
 	std::string_view str;
-	if (getLengthPrefixedSlice(input,&str))
+	if (getLengthPrefixedSlice(input, &str))
 	{
 		dst->decodeFrom(str);
 		return true;
@@ -106,10 +106,10 @@ static bool getInternalKey(std::string_view *input,InternalKey *dst)
 	}
 }
 
-static bool getLevel(std::string_view *input,int *level)
+static bool getLevel(std::string_view *input, int *level)
 {
 	uint32_t v;
-	if (getVarint32(input,&v) && v < kNumLevels)
+	if (getVarint32(input, &v) && v < kNumLevels)
 	{
 		*level = v;
 		return true;
@@ -134,14 +134,14 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 	std::string_view str;
 	InternalKey key;
 
-	while (msg == nullptr && getVarint32(&input,&tag))
+	while (msg == nullptr && getVarint32(&input, &tag))
 	{
 		switch (tag)
 		{
-			case kComparator:
-			if (getLengthPrefixedSlice(&input,&str))
+		case kComparator:
+			if (getLengthPrefixedSlice(&input, &str))
 			{
-				comparator = std::string(str.data(),str.size());
+				comparator = std::string(str.data(), str.size());
 				hasComparator = true;
 			}
 			else
@@ -150,8 +150,8 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 			}
 			break;
 
-		  case kLogNumber:
-			if (getVarint64(&input,&logNumber))
+		case kLogNumber:
+			if (getVarint64(&input, &logNumber))
 			{
 				hasLogNumber = true;
 			}
@@ -161,8 +161,8 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 			}
 			break;
 
-		  case kPrevLogNumber:
-			if (getVarint64(&input,&prevLogNumber))
+		case kPrevLogNumber:
+			if (getVarint64(&input, &prevLogNumber))
 			{
 				hasPrevLogNumber = true;
 			}
@@ -172,8 +172,8 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 			}
 			break;
 
-		  case kNextFileNumber:
-			if (getVarint64(&input,&nextFileNumber))
+		case kNextFileNumber:
+			if (getVarint64(&input, &nextFileNumber))
 			{
 				hasNextFileNumber = true;
 			}
@@ -183,8 +183,8 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 			}
 			break;
 
-		  case kLastSequence:
-			if (getVarint64(&input,&lastSequence))
+		case kLastSequence:
+			if (getVarint64(&input, &lastSequence))
 			{
 				hasLastSequence = true;
 			}
@@ -194,10 +194,10 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 			}
 			break;
 
-		  case kCompactPointer:
-			if (getLevel(&input,&level) && getInternalKey(&input,&key))
+		case kCompactPointer:
+			if (getLevel(&input, &level) && getInternalKey(&input, &key))
 			{
-				compactPointers.push_back(std::make_pair(level,key));
+				compactPointers.push_back(std::make_pair(level, key));
 			}
 			else
 			{
@@ -205,10 +205,10 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 			}
 			break;
 
-		  case kDeletedFile:
-			if (getLevel(&input,&level) && getVarint64(&input,&number))
+		case kDeletedFile:
+			if (getLevel(&input, &level) && getVarint64(&input, &number))
 			{
-				deletedFiles.insert(std::make_pair(level,number));
+				deletedFiles.insert(std::make_pair(level, number));
 			}
 			else
 			{
@@ -216,14 +216,14 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 			}
 			break;
 
-		  case kNewFile:
-			if (getLevel(&input,&level) &&
-				getVarint64(&input,&f.number) &&
-				getVarint64(&input,&f.fileSize) &&
-				getInternalKey(&input,&f.smallest) &&
-				getInternalKey(&input,&f.largest))
+		case kNewFile:
+			if (getLevel(&input, &level) &&
+				getVarint64(&input, &f.number) &&
+				getVarint64(&input, &f.fileSize) &&
+				getInternalKey(&input, &f.smallest) &&
+				getInternalKey(&input, &f.largest))
 			{
-				newFiles.push_back(std::make_pair(level,f));
+				newFiles.push_back(std::make_pair(level, f));
 			}
 			else
 			{
@@ -231,7 +231,7 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 			}
 			break;
 
-		  default:
+		default:
 			msg = "unknown tag";
 			break;
 		}
@@ -245,7 +245,7 @@ Status VersionEdit::decodeFrom(const std::string_view &src)
 	Status result;
 	if (msg != nullptr)
 	{
-		result = Status::corruption("VersionEdit",msg);
+		result = Status::corruption("VersionEdit", msg);
 	}
 	return result;
 }
@@ -263,31 +263,31 @@ std::string VersionEdit::debugString() const
 	if (hasLogNumber)
 	{
 		r.append("\n  LogNumber: ");
-		appendNumberTo(&r,logNumber);
+		appendNumberTo(&r, logNumber);
 	}
 
 	if (hasPrevLogNumber)
 	{
 		r.append("\n  PrevLogNumber: ");
-		appendNumberTo(&r,prevLogNumber);
+		appendNumberTo(&r, prevLogNumber);
 	}
 
 	if (hasNextFileNumber)
 	{
 		r.append("\n  NextFile: ");
-		appendNumberTo(&r,nextFileNumber);
+		appendNumberTo(&r, nextFileNumber);
 	}
 
 	if (hasLastSequence)
 	{
 		r.append("\n  LastSeq: ");
-		appendNumberTo(&r,lastSequence);
+		appendNumberTo(&r, lastSequence);
 	}
 
 	for (size_t i = 0; i < compactPointers.size(); i++)
 	{
 		r.append("\n  CompactPointer: ");
-		appendNumberTo(&r,compactPointers[i].first);
+		appendNumberTo(&r, compactPointers[i].first);
 		r.append(" ");
 		r.append(compactPointers[i].second.debugString());
 	}
@@ -295,20 +295,20 @@ std::string VersionEdit::debugString() const
 	for (auto iter = deletedFiles.begin(); iter != deletedFiles.end(); ++iter)
 	{
 		r.append("\n  DeleteFile: ");
-		appendNumberTo(&r,iter->first);
+		appendNumberTo(&r, iter->first);
 		r.append(" ");
-		appendNumberTo(&r,iter->second);
+		appendNumberTo(&r, iter->second);
 	}
 
 	for (size_t i = 0; i < newFiles.size(); i++)
 	{
 		const FileMetaData &f = newFiles[i].second;
 		r.append("\n  AddFile: ");
-		appendNumberTo(&r,newFiles[i].first);
+		appendNumberTo(&r, newFiles[i].first);
 		r.append(" ");
-		appendNumberTo(&r,f.number);
+		appendNumberTo(&r, f.number);
 		r.append(" ");
-		appendNumberTo(&r,f.fileSize);
+		appendNumberTo(&r, f.fileSize);
 		r.append(" ");
 		r.append(f.smallest.debugString());
 		r.append(" .. ");

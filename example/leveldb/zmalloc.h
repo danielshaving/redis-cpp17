@@ -90,9 +90,9 @@
 #define rdb_fsync_range(fd,off,size) fsync(fd)
 #endif
 
-/* Check if we can use setproctitle().
- * BSD systems have support for it, we provide an implementation for
- * Linux and osx. */
+ /* Check if we can use setproctitle().
+  * BSD systems have support for it, we provide an implementation for
+  * Linux and osx. */
 #if (defined __NetBSD__ || defined __FreeBSD__ || defined __OpenBSD__)
 #define USE_SETPROCTITLE
 #endif
@@ -162,11 +162,11 @@ void setproctitle(const char *fmt, ...);
 
 #if !defined(BYTE_ORDER) || \
     (BYTE_ORDER != BIG_ENDIAN && BYTE_ORDER != LITTLE_ENDIAN)
-	/* you must determine what the correct bit order is for
-	 * your compiler - the next line is an intentional error
-	 * which will force your compiles to bomb until you fix
-	 * the above macros.
-	 */
+ /* you must determine what the correct bit order is for
+  * your compiler - the next line is an intentional error
+  * which will force your compiles to bomb until you fix
+  * the above macros.
+  */
 #error "Undefined or invalid BYTE_ORDER"
 #endif
 
@@ -183,7 +183,7 @@ void setproctitle(const char *fmt, ...);
 #endif
 
 
-/* Double expansion needed for stringification of macro values. */
+  /* Double expansion needed for stringification of macro values. */
 #define __xstr(s) __str(s)
 #define __str(s) #s
 
@@ -225,7 +225,7 @@ void zfree(void *ptr);
 char *zstrdup(const char *s);
 size_t zmalloc_used_memory(void);
 void zmalloc_enable_thread_safeness(void);
-void zmalloc_set_oom_handler(void (*oom_handler)(size_t));
+void zmalloc_set_oom_handler(void(*oom_handler)(size_t));
 float zmalloc_get_fragmentation_ratio(size_t rss);
 size_t zmalloc_get_rss(void);
 size_t zmalloc_get_private_dirty(void);

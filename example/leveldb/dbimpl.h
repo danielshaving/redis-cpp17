@@ -13,33 +13,33 @@
 class DBImpl
 {
 public:
-	DBImpl(const Options &options,const std::string &dbname);
+	DBImpl(const Options &options, const std::string &dbname);
 	~DBImpl();
 
 	Status open();
-	Status put(const WriteOptions&,const std::string_view &key,const std::string_view &value);
-	Status del(const WriteOptions&,const std::string_view &key);
-	Status write(const WriteOptions &options,WriteBatch *updates);
-	Status get(const ReadOptions &options,const std::string_view &key,std::string *value);
+	Status put(const WriteOptions&, const std::string_view &key, const std::string_view &value);
+	Status del(const WriteOptions&, const std::string_view &key);
+	Status write(const WriteOptions &options, WriteBatch *updates);
+	Status get(const ReadOptions &options, const std::string_view &key, std::string *value);
 	// Implementations of the DB interface
 
 	void deleteObsoleteFiles();
-	Status recover(VersionEdit *edit,bool *saveManifest);
+	Status recover(VersionEdit *edit, bool *saveManifest);
 	Status recoverLogFile(uint64_t logNumber, bool lastLog,
-			bool *saveManifest, VersionEdit *edit,uint64_t *maxSequence);
+		bool *saveManifest, VersionEdit *edit, uint64_t *maxSequence);
 	Status newDB();
-    Status writeLevel0Table(VersionEdit *edit,Version *base);
+	Status writeLevel0Table(VersionEdit *edit, Version *base);
 	Status buildTable(FileMetaData *meta);
 
 private:
 	struct Writer;
-	  // No copying allowed
+	// No copying allowed
 	DBImpl(const DBImpl&);
 	void operator=(const DBImpl&);
 
 	Status makeRoomForWrite(bool force /* compact even if there is room? */);
 	WriteBatch *buildBatchGroup(Writer **lastWriter);
-	 // Queue of writers.
+	// Queue of writers.
 	std::deque<Writer*> writers;
 	std::shared_ptr<WriteBatch>	tmpBatch;
 	std::shared_ptr<MemTable> mem;

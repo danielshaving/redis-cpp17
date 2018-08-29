@@ -10,7 +10,7 @@ public:
 	// Create a success status.
 	Status() noexcept : state(nullptr)
 	{
-	
+
 	}
 	~Status()
 	{
@@ -27,29 +27,29 @@ public:
 	Status &operator=(Status &&rhs) noexcept;
 
 	// Return error status of an appropriate type.
-	static Status notFound(const std::string_view &msg,const std::string_view &msg2 = std::string_view())
+	static Status notFound(const std::string_view &msg, const std::string_view &msg2 = std::string_view())
 	{
 		return Status(kNotFound, msg, msg2);
 	}
 
-	static Status corruption(const std::string_view &msg,const std::string_view &msg2 = std::string_view()) 
+	static Status corruption(const std::string_view &msg, const std::string_view &msg2 = std::string_view())
 	{
-		return Status(kCorruption,msg,msg2);
+		return Status(kCorruption, msg, msg2);
 	}
 
-	static Status notSupported(const std::string_view &msg,const std::string_view &msg2 = std::string_view()) 
+	static Status notSupported(const std::string_view &msg, const std::string_view &msg2 = std::string_view())
 	{
-		return Status(kNotSupported,msg,msg2);
+		return Status(kNotSupported, msg, msg2);
 	}
 
-	static Status invalidArgument(const std::string_view &msg,const std::string_view &msg2 = std::string_view()) 
+	static Status invalidArgument(const std::string_view &msg, const std::string_view &msg2 = std::string_view())
 	{
-		return Status(kInvalidArgument,msg,msg2);
+		return Status(kInvalidArgument, msg, msg2);
 	}
 
-	static Status ioError(const std::string_view &msg,const std::string_view &msg2 = std::string_view()) 
+	static Status ioError(const std::string_view &msg, const std::string_view &msg2 = std::string_view())
 	{
-		return Status(kIOError,msg,msg2);
+		return Status(kIOError, msg, msg2);
 	}
 
 	// Returns true iff the status indicates success.
@@ -77,7 +77,7 @@ public:
 private:
 	const char *state;
 
-	enum Code 
+	enum Code
 	{
 		kOk = 0,
 		kNotFound = 1,
@@ -92,7 +92,7 @@ private:
 		return (state == nullptr) ? kOk : static_cast<Code>(state[4]);
 	}
 
-	Status(Code code,const std::string_view &msg,const std::string_view &msg2);
+	Status(Code code, const std::string_view &msg, const std::string_view &msg2);
 	static const char *copyState(const char *s);
 };
 
@@ -115,7 +115,7 @@ inline Status& Status::operator=(const Status &rhs)
 
 inline Status& Status::operator=(Status &&rhs) noexcept
 {
-	std::swap(state,rhs.state);
+	std::swap(state, rhs.state);
 	return *this;
 }
 

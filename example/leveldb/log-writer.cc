@@ -7,20 +7,20 @@ static void initTypeCrc(uint32_t *typeCrc)
 	for (int i = 0; i <= kMaxRecordType; i++)
 	{
 		char t = static_cast<char>(i);
-		typeCrc[i] = crc32c::value(&t,1);
+		typeCrc[i] = crc32c::value(&t, 1);
 	}
 }
 
 LogWriter::LogWriter(PosixWritableFile *dest)
-:dest(dest),
- blockOffset(0)
+	:dest(dest),
+	blockOffset(0)
 {
 	initTypeCrc(typeCrc);
 }
 
-LogWriter::LogWriter(PosixWritableFile *dest,uint64_t destLength)
-:dest(dest),
- blockOffset(destLength % kBlockSize)
+LogWriter::LogWriter(PosixWritableFile *dest, uint64_t destLength)
+	:dest(dest),
+	blockOffset(destLength % kBlockSize)
 {
 	initTypeCrc(typeCrc);
 }
@@ -45,7 +45,7 @@ Status LogWriter::addRecord(const std::string_view &slice)
 			{
 				// Fill the trailer (literal below relies on kHeaderSize being 7)
 				assert(kHeaderSize == 7);
-				dest->append(std::string_view("\x00\x00\x00\x00\x00\x00",leftover));
+				dest->append(std::string_view("\x00\x00\x00\x00\x00\x00", leftover));
 			}
 			blockOffset = 0;
 		}
@@ -75,15 +75,15 @@ Status LogWriter::addRecord(const std::string_view &slice)
 			type = kMiddleType;
 		}
 
-		s = emitPhysicalRecord(type,ptr,fragmentLength);
+		s = emitPhysicalRecord(type, ptr, fragmentLength);
 		ptr += fragmentLength;
 		left -= fragmentLength;
 		begin = false;
-	}while(s.ok() && left > 0);
+	} while (s.ok() && left > 0);
 	return s;
 }
 
-Status LogWriter::emitPhysicalRecord(RecordType t,const char *ptr,size_t n)
+Status LogWriter::emitPhysicalRecord(RecordType t, const char *ptr, size_t n)
 {
 	assert(n <= 0xffff);  // Must fit in two bytes
 	assert(blockOffset + kHeaderSize + n <= kBlockSize);
@@ -95,15 +95,15 @@ Status LogWriter::emitPhysicalRecord(RecordType t,const char *ptr,size_t n)
 	buf[6] = static_cast<char>(t);
 
 	// Compute the crc of the record type and the payload.
-	uint32_t crc = crc32c::extend(typeCrc[t],ptr,n);
+	uint32_t crc = crc32c::extend(typeCrc[t], ptr, n);
 	crc = crc32c::mask(crc); // Adjust for storage
-	encodeFixed32(buf,crc);
+	encodeFixed32(buf, crc);
 
 	// Write the header and the payload
-	Status s = dest->append(std::string_view(buf,kHeaderSize));
+	Status s = dest->append(std::string_view(buf, kHeaderSize));
 	if (s.ok())
 	{
-		s = dest->append(std::string_view(ptr,n));
+		s = dest->append(std::string_view(ptr, n));
 		if (s.ok())
 		{
 			s = dest->flush();

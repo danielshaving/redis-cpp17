@@ -10,23 +10,23 @@ LogReporter::~LogReporter()
 
 }
 
-void LogReporter::corruption(size_t bytes,const Status &status)
+void LogReporter::corruption(size_t bytes, const Status &status)
 {
 
 }
 
-LogReader::LogReader(PosixSequentialFile *file,LogReporter *reporter,bool checksum,
-		 uint64_t initialOffset)
-:file(file),
-reporter(reporter),
-checksum(checksum),
-backingStore((char*)zmalloc(kBlockSize)),
-buffer(),
-eof(false),
-lastRecordOffset(0),
-endofBufferOffset(0),
-initialOffset(initialOffset),
-resyncing(initialOffset > 0)
+LogReader::LogReader(PosixSequentialFile *file, LogReporter *reporter, bool checksum,
+	uint64_t initialOffset)
+	:file(file),
+	reporter(reporter),
+	checksum(checksum),
+	backingStore((char*)zmalloc(kBlockSize)),
+	buffer(),
+	eof(false),
+	lastRecordOffset(0),
+	endofBufferOffset(0),
+	initialOffset(initialOffset),
+	resyncing(initialOffset > 0)
 {
 
 }
@@ -55,14 +55,14 @@ bool LogReader::skipToInitialBlock()
 		Status skipStatus = file->skip(blockStartLocation);
 		if (!skipStatus.ok())
 		{
-			reportDrop(blockStartLocation,skipStatus);
+			reportDrop(blockStartLocation, skipStatus);
 			return false;
 		}
 	}
 	return true;
 }
 
-bool LogReader::readRecord(std::string_view *record,std::string *scratch)
+bool LogReader::readRecord(std::string_view *record, std::string *scratch)
 {
 	if (lastRecordOffset < initialOffset)
 	{
@@ -108,94 +108,94 @@ bool LogReader::readRecord(std::string_view *record,std::string *scratch)
 
 		switch (recordType)
 		{
-			case kFullType:
-				if (inFragmentedRecord)
+		case kFullType:
+			if (inFragmentedRecord)
+			{
+				// Handle bug in earlier versions of log::Writer where
+				// it could emit an empty kFirstType record at the tail end
+				// of a block followed by a kFullType or kFirstType record
+				// at the beginning of the next block.
+				if (!scratch->empty())
 				{
-					// Handle bug in earlier versions of log::Writer where
-					// it could emit an empty kFirstType record at the tail end
-					// of a block followed by a kFullType or kFirstType record
-					// at the beginning of the next block.
-					if (!scratch->empty())
-					{
-						reportCorruption(scratch->size(), "partial record without end(1)");
-					}
+					reportCorruption(scratch->size(), "partial record without end(1)");
 				}
-				prospectiveRecordOffset = physicalRecordOffset;
-				scratch->clear();
-				*record = fragment;
+			}
+			prospectiveRecordOffset = physicalRecordOffset;
+			scratch->clear();
+			*record = fragment;
+			lastRecordOffset = prospectiveRecordOffset;
+			return true;
+
+		case kFirstType:
+			if (inFragmentedRecord)
+			{
+				// Handle bug in earlier versions of log::Writer where
+				// it could emit an empty kFirstType record at the tail end
+				// of a block followed by a kFullType or kFirstType record
+				// at the beginning of the next block.
+				if (!scratch->empty())
+				{
+					reportCorruption(scratch->size(), "partial record without end(2)");
+				}
+			}
+			prospectiveRecordOffset = physicalRecordOffset;
+			scratch->assign(fragment.data(), fragment.size());
+			inFragmentedRecord = true;
+			break;
+
+		case kMiddleType:
+			if (!inFragmentedRecord)
+			{
+				reportCorruption(fragment.size(), "missing start of fragmented record(1)");
+			}
+			else
+			{
+				scratch->append(fragment.data(), fragment.size());
+			}
+			break;
+
+		case kLastType:
+			if (!inFragmentedRecord)
+			{
+				reportCorruption(fragment.size(), "missing start of fragmented record(2)");
+			}
+			else
+			{
+				scratch->append(fragment.data(), fragment.size());
+				*record = std::string_view(*scratch);
 				lastRecordOffset = prospectiveRecordOffset;
 				return true;
+			}
+			break;
 
-			case kFirstType:
-				if (inFragmentedRecord)
-				{
-					// Handle bug in earlier versions of log::Writer where
-					// it could emit an empty kFirstType record at the tail end
-					// of a block followed by a kFullType or kFirstType record
-					// at the beginning of the next block.
-					if (!scratch->empty())
-					{
-						reportCorruption(scratch->size(),"partial record without end(2)");
-					}
-				}
-				prospectiveRecordOffset = physicalRecordOffset;
-				scratch->assign(fragment.data(),fragment.size());
-				inFragmentedRecord = true;
-				break;
-
-			case kMiddleType:
-				if (!inFragmentedRecord)
-				{
-					reportCorruption(fragment.size(),"missing start of fragmented record(1)");
-				}
-				else
-				{
-					scratch->append(fragment.data(),fragment.size());
-				}
-				break;
-
-			case kLastType:
-				if (!inFragmentedRecord)
-				{
-					reportCorruption(fragment.size(),"missing start of fragmented record(2)");
-				}
-				else
-				{
-					scratch->append(fragment.data(),fragment.size());
-					*record = std::string_view(*scratch);
-					lastRecordOffset = prospectiveRecordOffset;
-					return true;
-				}
-				break;
-
-			case kEof:
-				if (inFragmentedRecord)
-				{
-					// This can be caused by the writer dying immediately after
-					// writing a physical record but before completing the next; don't
-					// treat it as a corruption, just ignore the entire logical record.
-					scratch->clear();
-				}
-				return false;
-
-			case kBadRecord:
-				if (inFragmentedRecord)
-				{
-					reportCorruption(scratch->size(),"error in middle of record");
-					inFragmentedRecord = false;
-					scratch->clear();
-				}
-				break;
-
-			default:
+		case kEof:
+			if (inFragmentedRecord)
 			{
-				char buf[40];
-				snprintf(buf,sizeof(buf),"unknown record type %u",recordType);
-				reportCorruption((fragment.size() + (inFragmentedRecord ? scratch->size() : 0)),buf);
+				// This can be caused by the writer dying immediately after
+				// writing a physical record but before completing the next; don't
+				// treat it as a corruption, just ignore the entire logical record.
+				scratch->clear();
+			}
+			return false;
+
+		case kBadRecord:
+			if (inFragmentedRecord)
+			{
+				reportCorruption(scratch->size(), "error in middle of record");
 				inFragmentedRecord = false;
 				scratch->clear();
-				break;
 			}
+			break;
+
+		default:
+		{
+			char buf[40];
+			snprintf(buf, sizeof(buf), "unknown record type %u", recordType);
+			reportCorruption((fragment.size() + (inFragmentedRecord ? scratch->size() : 0)), buf);
+			inFragmentedRecord = false;
+			scratch->clear();
+			break;
+		}
 		}
 	}
 	return false;
@@ -206,17 +206,17 @@ uint64_t LogReader::getLastRecordOffset()
 	return lastRecordOffset;
 }
 
-void LogReader::reportCorruption(uint64_t bytes,const char *reason)
+void LogReader::reportCorruption(uint64_t bytes, const char *reason)
 {
-	reportDrop(bytes,Status::corruption(reason));
+	reportDrop(bytes, Status::corruption(reason));
 }
 
-void LogReader::reportDrop(uint64_t bytes,const Status &reason)
+void LogReader::reportDrop(uint64_t bytes, const Status &reason)
 {
 	if (reporter != nullptr &&
-	  endofBufferOffset - buffer.size() - bytes >= initialOffset)
+		endofBufferOffset - buffer.size() - bytes >= initialOffset)
 	{
-		reporter->corruption(static_cast<size_t>(bytes),reason);
+		reporter->corruption(static_cast<size_t>(bytes), reason);
 	}
 }
 
@@ -230,12 +230,12 @@ unsigned int LogReader::readPhysicalRecord(std::string_view *result)
 			{
 				// Last read was a full read, so this is a trailer to skip
 				buffer = "";
-				Status status = file->read(kBlockSize,&buffer,backingStore);
+				Status status = file->read(kBlockSize, &buffer, backingStore);
 				endofBufferOffset += buffer.size();
 				if (!status.ok())
 				{
 					buffer = "";
-					reportDrop(kBlockSize,status);
+					reportDrop(kBlockSize, status);
 					eof = true;
 					return kEof;
 				}
@@ -268,7 +268,7 @@ unsigned int LogReader::readPhysicalRecord(std::string_view *result)
 			buffer = "";
 			if (!eof)
 			{
-				reportCorruption(dropSize,"bad record length");
+				reportCorruption(dropSize, "bad record length");
 				return kBadRecord;
 			}
 			// If the end of the file has been reached without reading |length| bytes
@@ -290,7 +290,7 @@ unsigned int LogReader::readPhysicalRecord(std::string_view *result)
 		if (checksum)
 		{
 			uint32_t expectedCrc = crc32c::unmask(decodeFixed32(header));
-			uint32_t actualCrc = crc32c::value(header + 6,1 + length);
+			uint32_t actualCrc = crc32c::value(header + 6, 1 + length);
 			if (actualCrc != expectedCrc)
 			{
 				// Drop the rest of the buffer since "length" itself may have
@@ -299,7 +299,7 @@ unsigned int LogReader::readPhysicalRecord(std::string_view *result)
 				// like a valid log record.
 				size_t dropSize = buffer.size();
 				buffer = "";
-				reportCorruption(dropSize,"checksum mismatch");
+				reportCorruption(dropSize, "checksum mismatch");
 				return kBadRecord;
 			}
 		}
@@ -314,7 +314,7 @@ unsigned int LogReader::readPhysicalRecord(std::string_view *result)
 			return kBadRecord;
 		}
 
-		*result = std::string_view(header + kHeaderSize,length);
+		*result = std::string_view(header + kHeaderSize, length);
 		return type;
 	}
 }

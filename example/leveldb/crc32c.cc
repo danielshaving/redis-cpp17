@@ -51,7 +51,7 @@ namespace crc32c
 			0x88d28022, 0x7ab90321, 0xae7367ca, 0x5c18e4c9, 0x4f48173d, 0xbd23943e,
 			0xf36e6f75, 0x0105ec76, 0x12551f82, 0xe03e9c81, 0x34f4f86a, 0xc69f7b69,
 			0xd5cf889d, 0x27a40b9e, 0x79b737ba, 0x8bdcb4b9, 0x988c474d, 0x6ae7c44e,
-			0xbe2da0a5, 0x4c4623a6, 0x5f16d052, 0xad7d5351};
+			0xbe2da0a5, 0x4c4623a6, 0x5f16d052, 0xad7d5351 };
 
 		const uint32_t kStrideExtensionTable0[256] = {
 			0x00000000, 0x30d23865, 0x61a470ca, 0x517648af, 0xc348e194, 0xf39ad9f1,
@@ -96,7 +96,7 @@ namespace crc32c
 			0xf0136081, 0xc0c158e4, 0x52fff1df, 0x622dc9ba, 0x335b8115, 0x0389b970,
 			0x11ddb8d1, 0x210f80b4, 0x7079c81b, 0x40abf07e, 0xd2955945, 0xe2476120,
 			0xb331298f, 0x83e311ea, 0x92a00d08, 0xa272356d, 0xf3047dc2, 0xc3d645a7,
-			0x51e8ec9c, 0x613ad4f9, 0x304c9c56, 0x009ea433};
+			0x51e8ec9c, 0x613ad4f9, 0x304c9c56, 0x009ea433 };
 
 		const uint32_t kStrideExtensionTable1[256] = {
 			0x00000000, 0x54075546, 0xa80eaa8c, 0xfc09ffca, 0x55f123e9, 0x01f676af,
@@ -141,7 +141,7 @@ namespace crc32c
 			0x706dab1b, 0x246afe5d, 0x8d92227e, 0xd9957738, 0x259c88f2, 0x719bddb4,
 			0x21a9bf10, 0x75aeea56, 0x89a7159c, 0xdda040da, 0x74589cf9, 0x205fc9bf,
 			0xdc563675, 0x88516333, 0x8a4bf8c2, 0xde4cad84, 0x2245524e, 0x76420708,
-			0xdfbadb2b, 0x8bbd8e6d, 0x77b471a7, 0x23b324e1};
+			0xdfbadb2b, 0x8bbd8e6d, 0x77b471a7, 0x23b324e1 };
 
 		const uint32_t kStrideExtensionTable2[256] = {
 			0x00000000, 0x678efd01, 0xcf1dfa02, 0xa8930703, 0x9bd782f5, 0xfc597ff4,
@@ -186,7 +186,7 @@ namespace crc32c
 			0x89a701ff, 0xee29fcfe, 0xdd6d7908, 0xbae38409, 0x1270830a, 0x75fe7e0b,
 			0x107f6ed0, 0x77f193d1, 0xdf6294d2, 0xb8ec69d3, 0x8ba8ec25, 0xec261124,
 			0x44b51627, 0x233beb26, 0x223c1dcb, 0x45b2e0ca, 0xed21e7c9, 0x8aaf1ac8,
-			0xb9eb9f3e, 0xde65623f, 0x76f6653c, 0x1178983d};
+			0xb9eb9f3e, 0xde65623f, 0x76f6653c, 0x1178983d };
 
 		const uint32_t kStrideExtensionTable3[256] = {
 			0x00000000, 0xf20c0dfe, 0xe1f46d0d, 0x13f860f3, 0xc604aceb, 0x3408a115,
@@ -231,7 +231,7 @@ namespace crc32c
 			0xadf4f450, 0x5ff8f9ae, 0x8a0435b6, 0x78083848, 0x6bf058bb, 0x99fc5545,
 			0xd3c39ec5, 0x21cf933b, 0x3237f3c8, 0xc03bfe36, 0x15c7322e, 0xe7cb3fd0,
 			0xf4335f23, 0x063f52dd, 0x5a26b1e2, 0xa82abc1c, 0xbbd2dcef, 0x49ded111,
-			0x9c221d09, 0x6e2e10f7, 0x7dd67004, 0x8fda7dfa};
+			0x9c221d09, 0x6e2e10f7, 0x7dd67004, 0x8fda7dfa };
 
 		// CRCs are pre- and post- conditioned by xoring with all ones.
 		static constexpr const uint32_t kCRC32Xor = static_cast<uint32_t>(0xffffffffU);
@@ -249,27 +249,27 @@ namespace crc32c
 		constexpr inline const uint8_t *roundUp(const uint8_t *pointer)
 		{
 			return reinterpret_cast<uint8_t*>(
-			  (reinterpret_cast<uintptr_t>(pointer) + (N - 1))
-			  & ~static_cast<uintptr_t>(N - 1));
+				(reinterpret_cast<uintptr_t>(pointer) + (N - 1))
+				& ~static_cast<uintptr_t>(N - 1));
 		}
 
 	}  // namespace
 
-	uint32_t extend(uint32_t crc,const char *buf,size_t size)
+	uint32_t extend(uint32_t crc, const char *buf, size_t size)
 	{
 		const uint8_t *p = reinterpret_cast<const uint8_t*>(buf);
 		const uint8_t *e = p + size;
 		uint32_t l = crc ^ kCRC32Xor;
 
 		// Process one byte at a time.
-		#define STEP1                              \
+#define STEP1                              \
 		do {                                     \
 		int c = (l & 0xff) ^ *p++;             \
 		l = kByteExtensionTable[c] ^ (l >> 8); \
 		} while (0)
 
 		// Process one of the 4 strides of 4-byte data.
-		#define STEP4(s)                                                               \
+#define STEP4(s)                                                               \
 		do {                                                                         \
 		crc##s = readUint32LE(p + s * 4) ^ kStrideExtensionTable3[crc##s & 0xff] ^ \
 				 kStrideExtensionTable2[(crc##s >> 8) & 0xff] ^                    \
@@ -278,7 +278,7 @@ namespace crc32c
 		} while (0)
 
 		// Process a 16-byte swath of 4 strides, each of which has 4 bytes of data.
-		#define STEP16 \
+#define STEP16 \
 		do {         \
 		STEP4(0);  \
 		STEP4(1);  \
@@ -288,7 +288,7 @@ namespace crc32c
 		} while (0)
 
 		// Process 4 bytes that were already loaded into a word.
-		#define STEP4W(w)                                   \
+#define STEP4W(w)                                   \
 		do {                                              \
 		w ^= l;                                         \
 		for (size_t i = 0; i < 4; ++i) {                \
@@ -353,10 +353,10 @@ namespace crc32c
 		{
 			STEP1;
 		}
-		#undef STEP4W
-		#undef STEP16
-		#undef STEP4
-		#undef STEP1
+#undef STEP4W
+#undef STEP16
+#undef STEP4
+#undef STEP1
 		return l ^ kCRC32Xor;
 	}
 

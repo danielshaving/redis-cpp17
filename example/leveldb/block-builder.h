@@ -4,7 +4,7 @@
 #include <string_view>
 #include "option.h"
 
-class BlockBuilder 
+class BlockBuilder
 {
 public:
 	explicit BlockBuilder(const Options *options);
@@ -14,7 +14,7 @@ public:
 
 	// REQUIRES: Finish() has not been called since the last call to Reset().
 	// REQUIRES: key is larger than any previously added key
-	void add(const std::string_view &key,const std::string_view &value);
+	void add(const std::string_view &key, const std::string_view &value);
 
 	// Finish building the block and return a slice that refers to the
 	// block contents.  The returned slice will remain valid for the
@@ -26,7 +26,7 @@ public:
 	size_t currentSizeEstimate() const;
 
 	// Return true iff no entries have been added since the last Reset()
-	bool empty() const  { return buffer.empty(); }
+	bool empty() const { return buffer.empty(); }
 
 private:
 	const Options *options;
