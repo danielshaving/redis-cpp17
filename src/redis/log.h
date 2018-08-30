@@ -5,8 +5,8 @@
 #include <boost/interprocess/sync/file_lock.hpp>
 #endif
 
-const int32_t kSmallBuffer = 400;
-const int32_t kLargeBuffer = 400;
+const int32_t kSmallBuffer = 4000;
+const int32_t kLargeBuffer = 4000;
 
 template<int32_t SIZE>
 class FixedBuffer
