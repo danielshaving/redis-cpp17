@@ -13,7 +13,7 @@ Socket::~Socket()
  
 bool Socket::resolve(std::string_view hostname, struct sockaddr_in6 *out)
 {
-#ifndef _WIN32
+#ifdef __linux__
 	assert(out != nullptr);
 	struct hostent hent;
 	struct hostent *he = nullptr;
@@ -42,7 +42,7 @@ bool Socket::resolve(std::string_view hostname, struct sockaddr_in6 *out)
 
 bool Socket::resolve(std::string_view hostname, struct sockaddr_in *out)
 {
-#ifndef _WIN32
+#ifdef __linux__
 	assert(out != nullptr);
 	struct hostent hent;
 	struct hostent *he = nullptr;

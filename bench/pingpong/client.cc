@@ -50,7 +50,7 @@ private:
 	TcpClient cli;
 	const char *ip;
 	uint16_t port;
-	Client *owner;
+	Client * owner;
 	int64_t bytesRead;
 	int64_t bytesWritten;
 	int64_t messagesRead;
@@ -84,7 +84,7 @@ public:
 		{
 			std::shared_ptr<Connect> vsession (new Connect(threadPool.getNextLoop(),ip,port,this));
 			vsession->start();
-    		sessions.push_back(vsession);
+    			sessions.push_back(vsession);
 		}
 	}
 
@@ -110,7 +110,6 @@ public:
 				totalBytesRead += (*it)->getBytesRead();
 				totalMessagesRead += (*it)->getMessagesRead();
 			}
-
 			LOG_WARN << totalBytesRead << " total bytes read";
 			LOG_WARN << totalMessagesRead << " total messages read";
 			LOG_WARN << static_cast<double>(totalBytesRead) / static_cast<double>(totalMessagesRead)<< " average message size";
@@ -120,12 +119,7 @@ public:
 	}
 
 	const std::string &getMessage() const { return message;	}
-
-	void quit()
-	{
-		loop->queueInLoop(std::bind(&EventLoop::quit,loop));
-	}
-
+	void quit() { loop->queueInLoop(std::bind(&EventLoop::quit,loop)); }
 	void handlerTimeout()
 	{
 		 LOG_WARN << "stop";
@@ -165,7 +159,7 @@ int main(int argc,char *argv[])
 	else
 	{
 		LOG_INFO << "ping pong Client pid = " << getpid() << ", tid = " <<getpid();
-		const char *ip = argv[1];
+		const char* ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int threadCount = atoi(argv[3]);
 		int blockSize = atoi(argv[4]);

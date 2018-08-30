@@ -98,9 +98,6 @@ public:
 	bool rollFile();
 
 private:
-	LogFile(const LogFile&);
-	void operator=(const LogFile&);
-
 	void appendUnlocked(const char *logline, int32_t len);
 	void getLogFileName(time_t *now);
 	const std::string filePath;

@@ -51,6 +51,7 @@ AppendFile::AppendFile(const std::string &filename)
 	:filename(filename),
 	writtenBytes(0)
 {
+	printf("%s\n",filename.c_str());
 #ifdef _WIN64
 	fp = ::fopen(filename.c_str(), "at+");
 #else

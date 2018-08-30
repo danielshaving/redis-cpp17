@@ -507,21 +507,6 @@ bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,
 		ip.c_str(),
 		port,
 		threadCount);
-
-	{
-		std::unique_lock <std::mutex> lck(slaveMutex);
-		for (auto &it : slaveConns)
-		{
-			info = sdscat(info, "\r\n");
-			info = sdscatprintf(info,
-				"# SlaveInfo \r\n"
-				"slave_ip:%s\r\n"
-				"slave_port:%d\r\n",
-				it.second->getip(),
-				it.second->getport());
-		}
-	}
-
 	addReplyBulkSds(conn->outputBuffer(), info);
 #endif
 	return true;

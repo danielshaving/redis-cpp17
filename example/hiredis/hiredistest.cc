@@ -50,6 +50,8 @@ void HiredisTest::disConnectionCallback(const TcpConnectionPtr &conn)
 void HiredisTest::setCallback(const RedisAsyncContextPtr &c,
 	const RedisReplyPtr &reply, const std::any &privdata)
 {
+	printf("%d\n",reply->type);
+	printf("%s\n",reply->str);
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STATUS);
 	assert(strcmp(reply->str, "OK") == 0);
