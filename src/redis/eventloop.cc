@@ -27,7 +27,7 @@ EventLoop::EventLoop()
 	wakeupChannel(new Channel(this, wakeupFd[1])),
 	timerQueue(new TimerQueue(this)),
 #endif
-#ifdef _WIN32
+#ifdef _WIN64
 	epoller(new Select(this)),
 	op(Socket::pipe(wakeupFd)),
 	wakeupChannel(new Channel(this, wakeupFd[0])),
@@ -60,7 +60,7 @@ EventLoop::~EventLoop()
 	::close(wakeupFd[1]);
 #endif
 
-#ifdef _WIN32
+#ifdef _WIN64
 	::closesocket(wakeupFd[0]);
 	::closesocket(wakeupFd[1]);
 #endif
@@ -122,7 +122,7 @@ void  EventLoop::handleRead()
 	ssize_t n = ::read(wakeupFd[1], &one, sizeof one);
 #endif
 
-#ifdef _WIN32
+#ifdef _WIN64
 	ssize_t n = Socket::read(wakeupFd[0], &one, sizeof one);
 #endif
 	assert(n == sizeof one);
@@ -148,7 +148,7 @@ void EventLoop::wakeup()
 	ssize_t n = ::write(wakeupFd[0], &one, sizeof one);
 #endif
 
-#ifdef _WIN32
+#ifdef _WIN64
 	ssize_t n = Socket::write(wakeupFd[1], &one, sizeof(one));
 #endif
 	assert(n == sizeof one);

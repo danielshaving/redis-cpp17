@@ -1,4 +1,4 @@
-#ifdef _WIN32
+#ifdef _WIN64
 #include "select.h"
 #include "channel.h"
 #include "log.h"

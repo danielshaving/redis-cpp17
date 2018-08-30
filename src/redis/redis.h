@@ -150,7 +150,7 @@ public:
 	bool monitorCommand(const std::deque<RedisObjectPtr> &obj,
 		const SessionPtr &session, const TcpConnectionPtr &conn);
 public:
-#ifndef _WIN32
+#ifndef _WIN64
 	int32_t rdbSaveBackground(bool enabled = false);
 	bool bgsave(const SessionPtr &session,
 		const TcpConnectionPtr &conn, bool enabled = false);

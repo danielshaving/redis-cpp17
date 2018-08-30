@@ -53,14 +53,14 @@ void Redis::replyCheck()
 
 void Redis::bgsaveCron()
 {
-#ifndef _WIN32
+#ifndef _WIN64
 	rdbSaveBackground();
 #endif
 }
 
 void Redis::serverCron()
 {
-#ifndef _WIN32
+#ifndef _WIN64
 	if (rdbChildPid != -1)
 	{
 		pid_t pid;
@@ -295,7 +295,7 @@ void Redis::feedMonitor(const std::deque<RedisObjectPtr> &obj, int32_t sockfd)
 	int j = 0;
 	sds cmdrepr = sdsnew("+");
 	RedisObjectPtr cmdobj;
-#ifdef _WIN32
+#ifdef _WIN64
 	cmdrepr = sdscatprintf(cmdrepr, "%ld.%06ld ", time(0), 0);
 #else
 	struct timeval tv;
@@ -462,7 +462,7 @@ bool Redis::infoCommand(const std::deque<RedisObjectPtr> &obj,
 		return false;
 	}
 
-#ifndef _WIN32
+#ifndef _WIN64
 	struct rusage self_ru, c_ru;
 	getrusage(RUSAGE_SELF, &self_ru);
 	getrusage(RUSAGE_CHILDREN, &c_ru);
@@ -1194,7 +1194,7 @@ bool Redis::getClusterMap(const RedisObjectPtr &command)
 	return true;
 }
 
-#ifndef _WIN32
+#ifndef _WIN64
 bool Redis::bgsave(const SessionPtr &session, const TcpConnectionPtr &conn, bool enabled)
 {
 	if (rdbChildPid != -1)
@@ -1272,7 +1272,7 @@ void Redis::clearFork()
 
 	clusterConns.clear();
 }
-#ifndef _WIN32
+#ifndef _WIN64
 int32_t Redis::rdbSaveBackground(bool enabled)
 {
 	if (rdbChildPid != -1) return REDIS_ERR;
@@ -1321,7 +1321,7 @@ bool Redis::bgsaveCommand(const std::deque<RedisObjectPtr> &obj,
 		return false;
 	}
 
-#ifndef _WIN32
+#ifndef _WIN64
 	bgsave(session, conn);
 #endif
 	return true;
@@ -1795,7 +1795,7 @@ bool Redis::syncCommand(const std::deque<RedisObjectPtr> &obj, const SessionPtr 
 	conn->setMessageCallback(std::bind(&Replication::slaveCallback,
 		&repli, std::placeholders::_1, std::placeholders::_2));
 
-#ifndef _WIN32
+#ifndef _WIN64
 	if (!bgsave(session, conn, true))
 	{
 		{

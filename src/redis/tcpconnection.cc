@@ -59,7 +59,7 @@ void TcpConnection::shutdownInLoop()
 	loop->assertInLoopThread();
 	if (!channel->isWriting())
 	{
-#ifdef _WIN32
+#ifdef _WIN64
 		if (::shutdown(sockfd, SD_SEND) < 0)
 		{
 			LOG_WARN << "sockets::shutdownWrite";
@@ -82,7 +82,7 @@ void TcpConnection::handleRead()
 	{
 		messageCallback(shared_from_this(), &readBuffer);
 	}
-#ifdef _WIN32
+#ifdef _WIN64
 	else if (n == 0 || saveErrno == WSAECONNRESET)
 	{
 		handleClose();
@@ -114,7 +114,7 @@ void TcpConnection::handleWrite()
 	if (channel->isWriting())
 	{
 		assert(writeBuffer.readableBytes() != 0);
-#ifdef _WIN32
+#ifdef _WIN64
 		ssize_t n = ::send(channel->getfd(), writeBuffer.peek(), writeBuffer.readableBytes(), 0);
 #else
 		ssize_t n = ::write(channel->getfd(), writeBuffer.peek(), writeBuffer.readableBytes());
@@ -329,7 +329,7 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
 
 	if (!channel->isWriting() && writeBuffer.readableBytes() == 0)
 	{
-#ifdef _WIN32
+#ifdef _WIN64
 		nwrote = ::send(channel->getfd(), (const char *)data, len, 0);
 #else
 		nwrote = ::write(channel->getfd(), data, len);

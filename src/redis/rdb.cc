@@ -139,7 +139,7 @@ size_t Rdb::rioFileWrite(Rio *r, const void *buf, size_t len)
 
 off_t Rdb::rioFileTell(Rio *r)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	return ::ftell(r->io.file.fp);
 #else
 	return ::ftello(r->io.file.fp);
@@ -841,7 +841,7 @@ bool Rdb::rdbReplication(char *filename, const TcpConnectionPtr &conn)
 	buf.appendInt32(sendlen);
 	conn->send(&buf);
 
-#ifdef _WIN32
+#ifdef _WIN64
 	int32_t fd = ::_fileno(fp);
 #else
 	int32_t fd = ::fileno(fp);
@@ -1010,7 +1010,7 @@ int32_t Rdb::verifyDumpPayload(Rio *rdb, const RedisObjectPtr &obj)
 int32_t Rdb::rdbSyncClose(const char *fileName, FILE *fp)
 {
 	if (::fflush(fp) == EOF) return REDIS_ERR;
-#ifndef _WIN32
+#ifndef _WIN64
 	if (::fsync(fileno(fp)) == REDIS_ERR) return REDIS_ERR;
 #endif
 	if (::fclose(fp) == EOF) return REDIS_ERR;
@@ -1046,7 +1046,7 @@ int32_t Rdb::rdbWrite(char *filename, const char *buf, size_t len)
 		return REDIS_ERR;
 	}
 
-#ifndef _WIN32
+#ifndef _WIN64
 	if (::fsync(fileno(fp)) == REDIS_ERR)
 	{
 		return REDIS_ERR;
@@ -1069,7 +1069,7 @@ int32_t Rdb::rdbWrite(char *filename, const char *buf, size_t len)
 int32_t Rdb::startLoading(FILE *fp)
 {
 	struct stat sb;
-#ifdef _WIN32
+#ifdef _WIN64
 	if (::fstat(::_fileno(fp), &sb) == REDIS_ERR)
 #else
 	if (::fstat(::fileno(fp), &sb) == REDIS_ERR)
@@ -1830,14 +1830,14 @@ int32_t Rdb::rdbSave(const char *filename)
 	}
 
 	if (::fflush(fp) == EOF) goto werr;
-#ifndef _WIN32
+#ifndef _WIN64
 	if (::fsync(fileno(fp)) == REDIS_ERR) goto werr;
 #endif
 	if (::fclose(fp) == EOF) goto werr;
 	if (::rename(tmpfile, filename) == REDIS_ERR)
 	{
 		LOG_TRACE << "Error moving temp DB file on the final:" << strerror(errno);
-#ifdef _WIN32
+#ifdef _WIN64
 		_unlink(tmpfile);
 #else
 		unlink(tmpfile);
@@ -1848,7 +1848,7 @@ int32_t Rdb::rdbSave(const char *filename)
 werr:
 	LOG_WARN << "Write error saving DB on disk:" << strerror(errno);
 	::fclose(fp);
-#ifdef _WIN32
+#ifdef _WIN64
 	_unlink(tmpfile);
 #else
 	unlink(tmpfile);
@@ -1951,7 +1951,7 @@ int32_t Rdb::rdbSaveInfoAuxFields(Rio *rdb, int32_t flags)
 	int32_t aofPreamble = (flags & RDB_SAVE_AOF_PREAMBLE) != 0;
 	char version = REDIS_RDB_VERSION;
 
-#ifndef _WIN32
+#ifndef _WIN64
 	/* Add a few fields about the state when the RDB was created. */
 	if (rdbSaveAuxFieldStrStr(rdb, "redis-ver", &version) == REDIS_ERR)
 	{

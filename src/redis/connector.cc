@@ -102,7 +102,7 @@ void Connector::retry(int32_t sockfd)
 			<< " in " << retryDelayMs << " milliseconds. ";
 		loop->runAfter(retryDelayMs / 1000.0, false,
 			std::bind(&Connector::startInLoop, shared_from_this(), false));
-#ifdef _WIN32
+#ifdef _WIN64
 		retryDelayMs = (retryDelayMs * 2) < (kMaxRetryDelayMs) ? (retryDelayMs * 2) : (kMaxRetryDelayMs);
 #else
 		retryDelayMs = std::min(retryDelayMs * 2, kMaxRetryDelayMs);
@@ -177,7 +177,7 @@ void Connector::connecting(bool sync)
 	int32_t savedErrno = Socket::connect(sockfd, ip, port);
 	if (savedErrno < 0)
 	{
-#ifdef _WIN32
+#ifdef _WIN64
 		savedErrno = GetLastError();
 #else
 		savedErrno = errno;

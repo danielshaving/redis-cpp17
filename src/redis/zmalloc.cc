@@ -295,7 +295,7 @@ void setproctitle(const char *fmt, ...);
 #else
 /* Implementation using pthread mutex. */
 
-#ifdef _WIN32
+#ifdef _WIN64
 #define atomicIncr(var,count) do { \
     std::unique_lock <std::mutex> lck(mutex); \
     var += (count); \
@@ -362,7 +362,7 @@ void setproctitle(const char *fmt, ...);
 } while(0)
 
 static size_t used_memory = 0;
-#ifdef _WIN32
+#ifdef _WIN64
 std::mutex mutex;
 #else
 pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;

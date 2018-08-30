@@ -1084,7 +1084,7 @@ int32_t stringmatch(const char *pattern, const char *string, int32_t nocase)
 
 void getRandomHexChars(char *p, uint32_t len)
 {
-#ifndef _WIN32
+#ifndef _WIN64
 	char *charset = "0123456789abcdef";
 	uint32_t j;
 
@@ -1169,7 +1169,7 @@ void getRandomHexChars(char *p, uint32_t len)
 
 int64_t ustime(void)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	auto time_now = std::chrono::system_clock::now();
 	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(time_now.time_since_epoch());
 	return microseconds.count();

@@ -40,7 +40,7 @@ RedLock::RedLock()
 	retryCount = defaultRetryCount;
 	retryDelay = defaultRetryDelay;
 	quoRum = 0;
-#ifndef _WIN32
+#ifndef _WIN64
 	fd = ::open("/dev/urandom", O_RDONLY);
 	if (fd == -1)
 	{
@@ -59,7 +59,7 @@ RedLock::~RedLock()
 
 sds RedLock::getUniqueLockId()
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	char buffer[20];
 	if (::recv(fd, buffer, sizeof(buffer), 0) == sizeof(buffer))
 #else

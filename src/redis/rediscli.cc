@@ -223,7 +223,7 @@ sds RedisCli::readArgFromStdin(void)
 
 	while (1)
 	{
-#ifdef _WIN32
+#ifdef _WIN64
 		int nread = ::recv(_fileno(stdin), buf, 1024, 0);
 #else
 		int nread = ::read(fileno(stdin), buf, 1024);
@@ -311,7 +311,7 @@ sds RedisCli::sdscatcolor(sds o, char *s, size_t len, char *color)
 
 sds RedisCli::sdsCatColorizedLdbReply(sds o, char *s, size_t len)
 {
-#ifndef _WIN32
+#ifndef _WIN64
 	char *color = "white";
 	if (strstr(s, "<debug>")) color = "bold";
 	if (strstr(s, "<redis>")) color = "green";
@@ -904,7 +904,7 @@ int RedisCli::pollWait(int fd, int mask, int64_t milliseconds)
 	if (mask & AE_READABLE) pfd.events |= POLLIN;
 	if (mask & AE_WRITABLE) pfd.events |= POLLOUT;
 
-#ifdef _WIN32
+#ifdef _WIN64
 	struct timeval delay;
 	delay.tv_sec = 0;
 	delay.tv_usec = milliseconds * 1000;

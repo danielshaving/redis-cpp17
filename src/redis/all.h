@@ -46,12 +46,11 @@
 #include <ratio>
 #include <chrono>
 
-#ifdef _WIN32
+#ifdef _WIN64
 #include <WinSock2.h>
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#pragma comment(lib,"ws2_32.lib")
 typedef SSIZE_T ssize_t;
 #define IOV_TYPE WSABUF
 #else

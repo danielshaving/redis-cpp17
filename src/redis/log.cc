@@ -51,7 +51,7 @@ AppendFile::AppendFile(const std::string &filename)
 	:filename(filename),
 	writtenBytes(0)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	fp = ::fopen(filename.c_str(), "at+");
 #else
 	fp = ::fopen(filename.c_str(), "ae"); // 'e' for O_CLOEXEC
@@ -87,7 +87,7 @@ bool AppendFile::lockFile(const std::string &fname)
 	}
 #endif
 
-#ifndef _WIN32
+#ifndef _WIN64
 	int32_t fd = ::open(fname.c_str(), O_RDWR | O_CREAT, 0644);
 	if (fd < 0)
 	{
@@ -119,7 +119,7 @@ bool AppendFile::unlockFile()
 	}
 #endif
 
-#ifndef _WIN32
+#ifndef _WIN64
 	if (lockOrUnlock(fd, false) == -1)
 	{
 		return false;
@@ -131,7 +131,7 @@ bool AppendFile::unlockFile()
 
 int32_t AppendFile::lockOrUnlock(int32_t fd, bool lock)
 {
-#ifndef _WIN32
+#ifndef _WIN64
 	errno = 0;
 	struct flock f;
 	memset(&f, 0, sizeof(f));
@@ -499,7 +499,7 @@ LogStream &LogStream::operator<<(double v)
 
 Logger::LogLevel initLogLevel()
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	return Logger::INFO;
 #else
 	if (::getenv("TRACE"))

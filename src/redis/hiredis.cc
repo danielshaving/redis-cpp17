@@ -754,7 +754,7 @@ int32_t RedisContext::redisBufferWrite(int32_t *done)
 
 	if (sender.readableBytes() > 0)
 	{
-#ifdef _WIN32
+#ifdef _WIN64
 		nwritten = ::send(fd, sender.peek(), sender.readableBytes(), 0);
 #else
 		nwritten = ::write(fd, sender.peek(), sender.readableBytes());
@@ -1508,7 +1508,7 @@ int32_t RedisContext::redisContextWaitReady(int32_t msec)
 	if (errno == EINPROGRESS)
 	{
 		int32_t res;
-#ifdef _WIN32
+#ifdef _WIN64
 		if ((res = ::WSAPoll(wfd, 1, msec)) == -1)
 #else
 		if ((res = ::poll(wfd, 1, msec)) == -1)
@@ -1562,7 +1562,7 @@ static int32_t redisContextTimeoutMsec(const struct timeval *timeout, int32_t *r
 int32_t RedisContext::redisContextConnectUnix(const char *path,
 	const struct timeval *timeout)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 #else
 	int32_t blocking = (flags == REDIS_BLOCK);
 	struct sockaddr_un sa;

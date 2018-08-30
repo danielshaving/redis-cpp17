@@ -10,7 +10,7 @@ ssize_t Buffer::readFd(int32_t fd, int32_t *saveErrno)
 	char extrabuf[65536];
 	IOV_TYPE vec[2];
 	const size_t writable = writableBytes();
-#ifdef _WIN32
+#ifdef _WIN64
 	vec[0].buf = begin() + writerIndex;
 	vec[0].len = writable;
 	vec[1].buf = extrabuf;
@@ -25,7 +25,7 @@ ssize_t Buffer::readFd(int32_t fd, int32_t *saveErrno)
 	const ssize_t n = Socket::readv(fd, vec, iovcnt);
 	if (n < 0)
 	{
-#ifdef _WIN32
+#ifdef _WIN64
 		*saveErrno = GetLastError();
 #else
 		*saveErrno = errno;
