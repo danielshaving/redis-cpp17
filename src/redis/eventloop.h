@@ -10,7 +10,7 @@
 #include "epoll.h"
 #endif
 
-#ifdef _WIN64
+#ifdef _WIN32
 #include "select.h"
 #endif
 
@@ -37,11 +37,11 @@ public:
 	void assertInLoopThread();
 
 	TimerPtr runAfter(double when, bool repeat, TimerCallback &&cb);
-	TimerQueuePtr getTimerQueue() { return timerQueue; }
-	void handlerTimerQueue() { timerQueue->handleRead(); }
-	bool isInLoopThread() const { return threadId == std::this_thread::get_id(); }
-	bool geteventHandling() const { return eventHandling; }
-	std::thread::id getThreadId() const { return threadId; }
+	TimerQueuePtr getTimerQueue();
+	void handlerTimerQueue();
+	bool isInLoopThread() const;
+	bool geteventHandling() const;
+	std::thread::id getThreadId() const;
 
 private:
 	EventLoop(const EventLoop&);
@@ -63,7 +63,7 @@ private:
 	int32_t wakeupFd;
 #endif
 
-#ifdef _WIN64
+#ifdef _WIN32
 	SelectPtr epoller;
 	int32_t op;
 	int wakeupFd[2];

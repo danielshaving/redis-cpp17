@@ -27,7 +27,7 @@ EventLoop::EventLoop()
 	wakeupChannel(new Channel(this, wakeupFd[1])),
 	timerQueue(new TimerQueue(this)),
 #endif
-#ifdef _WIN64
+#ifdef _WIN32
 	epoller(new Select(this)),
 	op(Socket::pipe(wakeupFd)),
 	wakeupChannel(new Channel(this, wakeupFd[0])),
@@ -60,7 +60,7 @@ EventLoop::~EventLoop()
 	::close(wakeupFd[1]);
 #endif
 
-#ifdef _WIN64
+#ifdef _WIN32
 	::closesocket(wakeupFd[0]);
 	::closesocket(wakeupFd[1]);
 #endif
@@ -74,6 +74,31 @@ void EventLoop::assertInLoopThread()
 	}
 }
 
+TimerQueuePtr EventLoop::getTimerQueue() 
+{
+	return timerQueue; 
+}
+
+void EventLoop::handlerTimerQueue()
+{
+	timerQueue->handleRead();
+}
+
+bool EventLoop::isInLoopThread() const 
+{ 
+	return threadId == std::this_thread::get_id(); 
+}
+
+bool EventLoop::geteventHandling() const 
+{
+	return eventHandling; 
+}
+	
+std::thread::id EventLoop::getThreadId() const 
+{ 
+	return threadId;
+}
+	
 void EventLoop::updateChannel(Channel *channel)
 {
 	assert(channel->ownerLoop() == this);
@@ -122,7 +147,7 @@ void  EventLoop::handleRead()
 	ssize_t n = ::read(wakeupFd[1], &one, sizeof one);
 #endif
 
-#ifdef _WIN64
+#ifdef _WIN32
 	ssize_t n = Socket::read(wakeupFd[0], &one, sizeof one);
 #endif
 	assert(n == sizeof one);
@@ -148,7 +173,7 @@ void EventLoop::wakeup()
 	ssize_t n = ::write(wakeupFd[0], &one, sizeof one);
 #endif
 
-#ifdef _WIN64
+#ifdef _WIN32
 	ssize_t n = Socket::write(wakeupFd[1], &one, sizeof(one));
 #endif
 	assert(n == sizeof one);
