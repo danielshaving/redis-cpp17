@@ -2,14 +2,6 @@
 #include "coding.h"
 #include "zmalloc.h"
 
-static std::string_view getLengthPrefixedSlice(const char *data)
-{
-	uint32_t len;
-	const char *p = data;
-	p = getVarint32Ptr(p, p + 5, &len);  // +5: we assume "p" is not corrupted
-	return std::string_view(p, len);
-}
-
 MemTable::MemTable()
 	:memoryUsage(0),
 	refs(0)

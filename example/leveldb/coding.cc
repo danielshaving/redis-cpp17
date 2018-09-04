@@ -216,6 +216,14 @@ const char *getLengthPrefixedSlice(const char *p, const char *limit, std::string
 	return p + len;
 }
 
+std::string_view getLengthPrefixedSlice(const char *data)
+{
+	uint32_t len;
+	const char *p = data;
+	p = getVarint32Ptr(p, p + 5, &len);  // +5: we assume "p" is not corrupted
+	return std::string_view(p, len);
+}
+
 bool getLengthPrefixedSlice(std::string_view *input, std::string_view *result)
 {
 	uint32_t len;

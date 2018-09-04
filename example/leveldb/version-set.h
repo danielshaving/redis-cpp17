@@ -47,7 +47,26 @@ public:
 	// Next file to compact based on seek stats.
 	std::shared_ptr<FileMetaData> fileToCompact;
 	int fileToCompactLevel;
+	
+	// Return the level at which we should place a new memtable compaction
+	// result that covers the range [smallest_user_key,largest_user_key].
+	int pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
+							 const std::string_view &largestUserKey);
+	
+	void getOverlappingInputs(
+		int level,
+		const InternalKey *begin,         // nullptr means before all keys
+		const InternalKey *end,           // nullptr means after all keys
+		std::vector<std::shared_ptr<FileMetaData>> *inputs);
 
+	// Returns true iff some file in the specified level overlaps
+	// some part of [*smallest_user_key,*largest_user_key].
+	// smallest_user_key==nullptr represents a key smaller than all the DB's keys.
+	// largest_user_key==nullptr represents a key largest than all the DB's keys.
+  
+	bool overlapInLevel(int level, const std::string_view *smallestUserKey, 
+	const std::string_view *largestUserKey);
+	
 	// Level that should be compacted next and its compaction score.
 	// Score < 1 means compaction is not strictly needed.  These fields
 	// are initialized by Finalize().
@@ -95,6 +114,7 @@ private:
 	VersionSet *vset;
 	Version *base;
 	LevelState levels[kNumLevels];
+	
 public:
 	Builder(VersionSet *vset, Version *base)
 		:vset(vset),

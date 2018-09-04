@@ -1,4 +1,4 @@
-TARGET= ./leveldb-cpp17
+TARGET= ./leveldb
 CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated\
 -Wl,--no-as-needed -std=c++17
 ccfiles := $(shell ls *.cc)

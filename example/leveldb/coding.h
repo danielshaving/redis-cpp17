@@ -20,6 +20,8 @@ bool getVarint32(std::string_view *input, uint32_t *value);
 bool getVarint64(std::string_view *input, uint64_t *value);
 bool getLengthPrefixedSlice(std::string_view *input, std::string_view *result);
 
+std::string_view getLengthPrefixedSlice(const char *data);
+
 // Pointer-based variants of GetVarint...  These either store a value
 // in *v and return a pointer just past the parsed value, or return
 // nullptr on error.  These routines only look at bytes in the range

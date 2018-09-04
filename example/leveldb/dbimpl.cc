@@ -1,6 +1,8 @@
 #include "dbimpl.h"
 #include "filename.h"
 #include "log-reader.h"
+#include "table-builder.h"
+#include "coding.h"
 
 const int kNumNonTableCacheFiles = 10;
 
@@ -445,16 +447,33 @@ Status DBImpl::writeLevel0Table(VersionEdit *edit, Version *base)
 	FileMetaData meta;
 	meta.number = versions->newFileNumber();
 	pendingOutPuts.insert(meta.number);
-	//Iterator* iter = mem->NewIterator();
 	printf("Level-0 table #%llu: started",
 		(unsigned long long) meta.number);
 
-	Status s;
+	Status s = buildTable(&meta);
+	printf("Level-0 table #%llu: %lld bytes %s", (unsigned long long) meta.number,
+		(unsigned long long) meta.fileSize, s.toString().c_str());
+		
+	pendingOutPuts.erase(meta.number);
+	
+	// Note that if file_size is zero, the file has been deleted and
+	// should not be added to the manifest.
+	
+	int level = 0;
+	if (s.ok() && meta.fileSize > 0) 
 	{
-
-		//s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
-
+		const std::string_view minUserKey = meta.smallest.userKey();
+		const std::string_view maxUserKey = meta.largest.userKey();
+		if (base != nullptr) 
+		{
+			level = base->pickLevelForMemTableOutput(minUserKey, maxUserKey);
+		}
+		
+		edit->addFile(level, meta.number, meta.fileSize,
+				  meta.smallest, meta.largest);
 	}
+	
+	  
 }
 
 Status DBImpl::buildTable(FileMetaData *meta)
@@ -462,6 +481,7 @@ Status DBImpl::buildTable(FileMetaData *meta)
 	assert(mem->getMemoryUsage() > 0);
 	Status s;
 	meta->fileSize = 0;
+	
 	std::string fname = tableFileName(dbname, meta->number);
 	std::shared_ptr<PosixWritableFile> file;
 	s = options.env->newWritableFile(fname, file);
@@ -469,5 +489,55 @@ Status DBImpl::buildTable(FileMetaData *meta)
 	{
 		return s;
 	}
-
+	
+	auto &table = mem->getTable();
+	std::shared_ptr<TableBuilder> builder(new TableBuilder(options, file.get()));
+	auto iter = table.begin();
+	
+	const char *entry = *iter;
+	uint32_t keyLength;
+	const char *keyPtr = getVarint32Ptr(entry, entry + 5, &keyLength);
+	std::string_view key = std::string_view(keyPtr, keyLength - 8);
+	meta->smallest.decodeFrom(key);
+	
+	for (auto &it : table)
+	{
+		const char *entry = it;
+		const char *keyPtr = getVarint32Ptr(entry, entry + 5, &keyLength);
+		uint32_t keyLength;
+		std::string_view key = std::string_view(keyPtr, keyLength - 8);
+		meta->largest.decodeFrom(key);
+		
+		std::string_view value = getLengthPrefixedSlice(keyPtr + keyLength);
+		builder->add(key, value);
+	}
+	
+	 // Finish and check for builder errors
+    s = builder->finish();
+    if (s.ok()) 
+	{
+		meta->fileSize = builder->fileSize();
+		assert(meta->fileSize > 0);
+    }
+	
+	// Finish and check for file errors
+    if (s.ok()) 
+	{
+		s = file->sync();
+    }
+	
+    if (s.ok()) 
+	{
+		s = file->close();
+    }
+	
+	if (s.ok() && meta->fileSize > 0) 
+	{
+		// Keep it
+	} 
+	else 
+	{
+		options.env->deleteFile(fname);
+	}
+	return s;
 }
