@@ -1,5 +1,5 @@
 TARGET= ./resolve
-CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations  -Wl,--no-as-needed -std=c++17 -I /usr/local/mysql/connector-c++-8.0/include
+CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations  -Wl,--no-as-needed -std=c++17 -I /usr/local/mysql/connector-c++-8.0/include
 cppfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))

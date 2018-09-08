@@ -50,8 +50,6 @@ void HiredisTest::disConnectionCallback(const TcpConnectionPtr &conn)
 void HiredisTest::setCallback(const RedisAsyncContextPtr &c,
 	const RedisReplyPtr &reply, const std::any &privdata)
 {
-	printf("%d\n",reply->type);
-	printf("%s\n",reply->str);
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_STATUS);
 	assert(strcmp(reply->str, "OK") == 0);
@@ -346,7 +344,7 @@ void HiredisTest::list()
 
 int main(int argc, char *argv[])
 {
-	#ifdef _WIN32
+	#ifdef _WIN64
 		WSADATA wsaData;
 		int32_t iRet = WSAStartup(MAKEWORD(2, 2), &wsaData);
 		assert(iRet == 0);
@@ -355,9 +353,9 @@ int main(int argc, char *argv[])
 		signal(SIGHUP, SIG_IGN);
 	#endif
 
-	const char *ip = "192.168.1.10";
-	uint16_t port = 7000;
-	int16_t sessionCount = 4;
+	const char *ip = "127.0.0.1";
+	uint16_t port = 6379;
+	int16_t sessionCount = 100;
 	int8_t threadCount = 4;
 	int32_t messageCount = 100000;
 

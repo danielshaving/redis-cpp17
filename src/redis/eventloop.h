@@ -10,7 +10,7 @@
 #include "epoll.h"
 #endif
 
-#ifdef _WIN32
+#ifdef _WIN64
 #include "select.h"
 #endif
 
@@ -63,7 +63,7 @@ private:
 	int32_t wakeupFd;
 #endif
 
-#ifdef _WIN32
+#ifdef _WIN64
 	SelectPtr epoller;
 	int32_t op;
 	int wakeupFd[2];

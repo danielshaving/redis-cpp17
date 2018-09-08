@@ -58,7 +58,6 @@ private:
 	int32_t count;
 	int16_t sessionCount;
 	std::mutex mutex;
-	std::mutex rmutex;
 	std::condition_variable condition;
 	EventLoop *loop;
 	int32_t messageCount;

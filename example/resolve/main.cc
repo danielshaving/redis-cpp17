@@ -12,6 +12,9 @@
 #include <functional>
 #include <algorithm>
 #include <memory>
+#include <sstream>
+#include <fstream>
+
 #include <boost/interprocess/sync/file_lock.hpp>
 
 /* Error processing macros */
@@ -33,7 +36,7 @@
     return -1; \
   }
 
-#ifdef _WIN32
+#ifdef _WIN64
 #define format_64 "[%s: %I64d] "
 #else
 #define format_64 "[%s: %lld] "
@@ -120,7 +123,7 @@ int main()
 		RESULT_CHECK(res, sess);
 	}
 
-	const char *path = "../../../runtime/bin/asynclog/";
+	const char *path = "asynclog/";
 	std::string fileName;
 	std::string feName;
 
@@ -131,52 +134,60 @@ int main()
 	}
 	else
 	{
-		const int MAX_LINE = 65536;
-		while (1)
+		//fs::directory_iterator end_iter;
+		//for (fs::directory_iterator iter(path); iter != end_iter; ++iter)  
+		for (auto&iter : fs::directory_iterator(path))
 		{
-			std::this_thread::sleep_for(std::chrono::seconds(1));
-			for (auto &it : fs::directory_iterator(path))
+			auto fe = iter.path();
+				
+			fileName.clear();
+			fileName += path;
+			fileName += fe.filename().string();
+
+			printf("%s\n",fileName.c_str());
+			if (!fs::exists(fileName))
 			{
-				fileName += path;
-				auto fe = it.path();
-				fileName += fe.filename().string();
-
-				if (!fs::exists(fileName))
-				{
-					printf("file no exists %s\n", fileName.c_str());
-					break;
-				}
-
-				lockFile(fileName);
-
-				FILE *fp = ::fopen(fileName.c_str(), "r");
-				assert(fp);
-				fseek(fp, 0, 0);
-				char buf[MAX_LINE];
-				while (fgets(buf, MAX_LINE, fp) != nullptr)
-				{
-					char *start;
-					start = strchr(buf, '#');
-					if (start != nullptr)
-					{
-						printf("%s\n", start);
-						start = start + 3;
-						char *end;
-						end = strchr(start, '#');
-						assert(end != nullptr);
-						printf("length %d\n", int(end - start));
-						std::string ret(start, end);
-						printf("string %s\n", ret.c_str());
-						res = mysqlx_sql(sess, ret.c_str(), MYSQLX_NULL_TERMINATED);
-						RESULT_CHECK(res, sess);
-					}
-				}
-
-				fileName.clear();
-				unlockFile();
-				::fclose(fp);
-				fs::remove(it.path());
+				printf("file no exists %s\n", fileName.c_str());
+				assert(false);
 			}
+			//lockFile(fileName);
+		
+			std::ifstream fin(fileName.c_str()/*, ios::binary*/);
+			if (fin.eof())
+			{
+				std::cout << "file is empty."<< std::endl;
+				continue;
+			}
+		
+			int i = 0;
+			std::string line;
+			while(std::getline(fin,line,'\r'))
+			{
+				//printf("%s\n",line.c_str());
+				char *start = strchr(line.data(), '#');
+				if (start != nullptr)
+				{
+					//printf("%s\n", start);
+					start = start + 3;
+					char *end;
+					end = strchr(start, '#');
+					if (end == nullptr)
+					{
+						//printf("%s\n",start);
+						continue;
+					}
+
+					//printf("length %d\n", int(end - start));
+					std::string ret(start, end);
+					//printf("%s\n", ret.c_str());
+					res = mysqlx_sql(sess, ret.c_str(), MYSQLX_NULL_TERMINATED);
+					RESULT_CHECK(res, sess);
+				}
+			}
+			
+			fin.close();
+			unlockFile();
+			fs::remove(fe);
 		}
 	}
 	return 0;

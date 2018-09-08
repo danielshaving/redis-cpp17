@@ -154,6 +154,27 @@ public:
 		lastSequence = s;
 	}
 
+	// Returns true iff some level needs a compaction.
+	bool needsCompaction() const 
+	{
+		assert(!versions.empty());
+		auto v = versions.front();
+		return (v->compactionScore >= 1) || (v->fileToCompact != nullptr);
+	}
+
+	// Arrange to reuse "file_number" unless a newer file number has
+	// already been allocated.
+	// REQUIRES: "file_number" was returned by a call to NewFileNumber().
+	void reuseFileNumber(uint64_t fileNumber)
+	{
+		if (nextFileNumber == fileNumber + 1) 
+		{
+	    	nextFileNumber = fileNumber;
+	    }
+	}
+
+
+	std::shared_ptr<Version> current() const;
 	// Apply *edit to the current version to form a new descriptor that
 	// is both saved to persistent state and installed as the new
 	// current version.  Will release *mu while actually writing to the file.
@@ -172,19 +193,23 @@ public:
 	const InternalKeyComparator icmp;
 
 	uint64_t newFileNumber() { return nextFileNumber++; }
+
 	Status recover(bool *manifest);
 	void markFileNumberUsed(uint64_t number);
+
 	uint64_t getManifestFileNumber() { return manifestFileNumber; }
+
 	void appendVersion(const std::shared_ptr<Version> &v);
 	bool reuseManifest(const std::string &dscname, const std::string &dscbase);
+	int numLevelFiles(int level) const;
 
 	// Per-level key at which the next compaction at that level should start.
 	// Either an empty string, or a valid InternalKey.
 	std::string compactPointer[kNumLevels];
-
-private:
 	const std::string dbname;
 	const Options options;
+	
+private:
 	uint64_t nextFileNumber;
 	uint64_t manifestFileNumber;
 	uint64_t lastSequence;

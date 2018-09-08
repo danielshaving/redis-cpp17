@@ -30,6 +30,9 @@ public:
 	Status newDB();
 	Status writeLevel0Table(VersionEdit *edit, Version *base);
 	Status buildTable(FileMetaData *meta);
+	void maybeScheduleCompaction();
+	void backgroundCompaction();
+	void compactMemTable();
 
 private:
 	struct Writer;
@@ -54,4 +57,34 @@ private:
 	// Set of table files to protect from deletion because they are
 	// part of ongoing compactions.
 	std::set<uint64_t> pendingOutPuts;
+	
+	// Per level compaction stats.  stats_[level] stores the stats for
+	// compactions that produced data for the specified "level".
+	struct CompactionStats 
+	{
+		int64_t micros;
+		int64_t bytesRead;
+		int64_t bytesWritten;
+
+		CompactionStats() : micros(0), bytesRead(0), bytesWritten(0) { }
+
+		void add(const CompactionStats &c) 
+		{
+			this->micros += c.micros;
+			this->bytesRead += c.bytesRead;
+			this->bytesWritten += c.bytesWritten;
+		}
+	};
+	CompactionStats stats[kNumLevels];
+	
+	// Information for a manual compaction
+	struct ManualCompaction 
+	{
+		int level;
+		bool done;
+		const InternalKey *begin;   // null means beginning of key range
+		const InternalKey *end;     // null means end of key range
+		InternalKey tmpStorage;    // Used to keep track of compaction progress
+	};
+	ManualCompaction *manualCompaction;
 };

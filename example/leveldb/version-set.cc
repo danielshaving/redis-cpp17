@@ -176,11 +176,11 @@ void Version::getOverlappingInputs(
 		const std::string_view fileStart = f->smallest.userKey();
 		const std::string_view fileLimit = f->largest.userKey();
 		
-		if (begin != nullptr && cmp->compare(fileLimit, userBegin) < 0) 
+		if (begin != nullptr && cmp.compare(fileLimit, userBegin) < 0) 
 		{
 			// "f" is completely before specified range; skip it
 		} 
-		else if (end != nullptr && cmp->compare(fileStart, userEnd) > 0) 
+		else if (end != nullptr && cmp.compare(fileStart, userEnd) > 0) 
 		{
 			// "f" is completely after specified range; skip it
 		} 
@@ -191,13 +191,13 @@ void Version::getOverlappingInputs(
 			{
 				// Level-0 files may overlap each other.  So check if the newly
 				// added file has expanded the range.  If so, restart search.
-				if (begin != nullptr && cmp->compare(fileStart, userBegin) < 0) 
+				if (begin != nullptr && cmp.compare(fileStart, userBegin) < 0) 
 				{
 					userBegin = fileStart;
 					inputs->clear();
 					i = 0;
 				} 
-				else if (end != nullptr && cmp->compare(fileLimit, userEnd) > 0) 
+				else if (end != nullptr && cmp.compare(fileLimit, userEnd) > 0) 
 				{
 					userEnd = fileLimit;
 					inputs->clear();
@@ -230,14 +230,12 @@ int Version::pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
 			if (level + 2 < kNumLevels) 
 			{
 				// Check that file does not overlap too many grandparent bytes.
-				/*
-				GetOverlappingInputs(level + 2, &start, &limit, &overlaps);
-				const int64_t sum = TotalFileSize(overlaps);
-				if (sum > MaxGrandParentOverlapBytes(vset_->options_)) 
+				getOverlappingInputs(level + 2, &start, &limit, &overlaps);
+				const int64_t sum = totalFileSize(overlaps);
+				if (sum > maxGrandParentOverlapBytes(&vset->options)) 
 				{
 					break;
 				}
-				*/
 			}
 			level++;
 		}
@@ -263,6 +261,12 @@ VersionSet::VersionSet(const std::string &dbname, const Options &options)
 VersionSet::~VersionSet()
 {
 
+}
+
+std::shared_ptr<Version> VersionSet::current() const
+{
+	assert(!versions.empty());
+	return versions.front();
 }
 
 Status VersionSet::recover(bool *manifest)
@@ -493,6 +497,13 @@ void VersionSet::markFileNumberUsed(uint64_t number)
 	}
 }
 
+int VersionSet::numLevelFiles(int level) const 
+{
+	assert(level >= 0);
+	assert(level < kNumLevels);
+	return current()->files[level].size();
+}
+
 void VersionSet::appendVersion(const std::shared_ptr<Version> &v)
 {
 	assert(v->refs == 0);
@@ -503,6 +514,7 @@ void VersionSet::appendVersion(const std::shared_ptr<Version> &v)
 			versions.pop_back();
 		}
 	}
+	
 	v->ref();
 	versions.push_back(v);
 }
@@ -554,7 +566,6 @@ Status VersionSet::logAndApply(VersionEdit *edit)
 		}
 	}
 
-
 	// Write new record to MANIFEST log
 	if (s.ok())
 	{
@@ -593,7 +604,6 @@ Status VersionSet::logAndApply(VersionEdit *edit)
 			options.env->deleteFile(newManifestFile);
 		}
 	}
-
 	return s;
 }
 

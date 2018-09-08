@@ -71,7 +71,7 @@ bool Socket::resolve(std::string_view hostname, struct sockaddr_in *out)
 
 ssize_t Socket::readv(int32_t sockfd, IOV_TYPE *iov, int32_t iovcnt)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	DWORD bytesRead;
 	DWORD flags = 0;
 	if (::WSARecv(sockfd, iov, iovcnt, &bytesRead, &flags, nullptr, nullptr))
@@ -129,7 +129,7 @@ int32_t Socket::pipe(int32_t fildes[2])
 
 uint64_t Socket::hostToNetwork64(uint64_t host64)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	uint64_t ret = 0;
 	uint32_t high, low;
 
@@ -148,7 +148,7 @@ uint64_t Socket::hostToNetwork64(uint64_t host64)
 
 uint32_t Socket::hostToNetwork32(uint32_t host32)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	return htonl(host32);
 #else
 	return htobe32(host32);
@@ -157,7 +157,7 @@ uint32_t Socket::hostToNetwork32(uint32_t host32)
 
 uint16_t Socket::hostToNetwork16(uint16_t host16)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	return htons(host16);
 #else
 	return htobe16(host16);
@@ -166,7 +166,7 @@ uint16_t Socket::hostToNetwork16(uint16_t host16)
 
 uint64_t Socket::networkToHost64(uint64_t net64)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	uint64_t ret = 0;
 	uint32_t high, low;
 
@@ -186,7 +186,7 @@ uint64_t Socket::networkToHost64(uint64_t net64)
 
 uint32_t Socket::networkToHost32(uint32_t net32)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	return ntohl(net32);
 #else
 	return be32toh(net32);
@@ -195,7 +195,7 @@ uint32_t Socket::networkToHost32(uint32_t net32)
 
 uint16_t Socket::networkToHost16(uint16_t net16)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	return ntohs(net16);
 #else
 	return be16toh(net16);
@@ -204,7 +204,7 @@ uint16_t Socket::networkToHost16(uint16_t net16)
 
 void Socket::close(int32_t sockfd)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	::closesocket(sockfd);
 #else
 	::close(sockfd);
@@ -325,7 +325,7 @@ void Socket::fromIpPort(const char *ip, uint16_t port, struct sockaddr_in6 *addr
 
 int32_t Socket::createSocket()
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	return ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 #endif
 
@@ -341,7 +341,7 @@ int32_t Socket::createSocket()
 
 bool Socket::connectWaitReady(int32_t fd, int32_t msec)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 #else
 	struct pollfd wfd[1];
 	wfd[0].fd = fd;
@@ -473,7 +473,7 @@ int32_t Socket::createTcpSocket(const char *ip, int16_t port)
 	}
 
 	int32_t optval = 1;
-#ifdef _WIN32
+#ifdef _WIN64
 	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof(optval)) < 0)
 	{
 		LOG_WARN << "Set SO_REUSEPORT socket failed! error " << strerror(errno);
@@ -528,7 +528,7 @@ bool Socket::setTcpNoDelay(int32_t sockfd, bool on)
 
 bool Socket::setSocketBlock(int32_t sockfd)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	u_long nonblock = 0;
 	int32_t ret = ::ioctlsocket(sockfd, FIONBIO, &nonblock);
 	if (ret < 0)
@@ -557,7 +557,7 @@ bool Socket::setSocketBlock(int32_t sockfd)
 
 bool Socket::setSocketNonBlock(int32_t sockfd)
 {
-#ifdef _WIN32
+#ifdef _WIN64
 	u_long nonblock = 1;
 	int32_t ret = ::ioctlsocket(sockfd, FIONBIO, &nonblock);
 	if (ret < 0)

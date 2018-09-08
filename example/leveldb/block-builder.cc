@@ -5,10 +5,10 @@
 #include <assert.h>
 
 BlockBuilder::BlockBuilder(const Options *options)
-	: options(options),
-	restarts(),
-	counter(0),
-	finished(false)
+: options(options),
+restarts(),
+counter(0),
+finished(false)
 {
 	assert(options->blockRestartInterval >= 1);
 	restarts.push_back(0);       // First restart point is at offset 0
@@ -27,7 +27,7 @@ void BlockBuilder::reset()
 size_t BlockBuilder::currentSizeEstimate() const
 {
 	return (buffer.size() +                        // Raw data buffer
-		restarts.size() * sizeof(uint32_t) +   // Restart array
+		restarts.size() * sizeof(uint32_t)+   // Restart array
 		sizeof(uint32_t));                      // Restart array length
 }
 

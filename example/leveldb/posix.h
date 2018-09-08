@@ -42,8 +42,6 @@ static Status posixError(const std::string &context, int err)
 
 // Log the specified data to *info_log if info_log is non-null.
 //void Log(Logger *infoLog,const char *format,...);
-
-
 class PosixWritableFile
 {
 private:

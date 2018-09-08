@@ -92,7 +92,7 @@ int stringPrintf(std::string *out, const char *fmt, ...)
 	return ret;
 }
 
-std::string ProcessInspector::username_ = ProcessInfo::username();
+std::string ProcessInspector::username = ProcessInfo::username();
 
 void ProcessInspector::registerCommands(Inspector *ins)
 {
@@ -121,7 +121,7 @@ std::string ProcessInspector::overview(HttpRequest::Method, const Inspector::Arg
 	result += " (";
 	result += ProcessInfo::exePath();
 	result += ") running as ";
-	result += username_;
+	result += username;
 	result += " on ";
 	result += ProcessInfo::hostname(); // cache ?
 	result += "\n";

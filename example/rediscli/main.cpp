@@ -1,7 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
-
 #include "rediscli.h"
 
 int main(int argc,char **argv)
@@ -13,6 +9,6 @@ int main(int argc,char **argv)
     argv += firstarg;
 
     assert(cli.cliConnect(0) == REDIS_OK);
-/* Otherwise, we have some arguments to execute */
+	/* Otherwise, we have some arguments to execute */
     return cli.noninteractive(argc, cli.convertToSds(argc, argv));
 }

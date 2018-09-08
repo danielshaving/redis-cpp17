@@ -195,7 +195,6 @@ Status DBImpl::recover(VersionEdit *edit, bool *saveManifest)
 	// attention to it in case we are recovering a database
 	// produced by an older version of leveldb.
 
-
 	const uint64_t minLog = versions->getLogNumber();
 	const uint64_t prevLog = versions->getPrevLogNumber();
 
@@ -271,12 +270,19 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 	WriteBatch batch;
 	int compactions = 0;
 
+	std::shared_ptr<MemTable> mem = nullptr;
+	  
 	while (reader.readRecord(&record, &scratch) && status.ok())
 	{
 		if (record.size() < 12)
 		{
 			reporter.corruption(record.size(), Status::corruption("log record too small"));
 			continue;
+		}
+		
+		if (mem == nullptr)
+		{
+			mem.reset(new MemTable);
 		}
 
 		WriteBatchInternal::setContents(&batch, record);
@@ -291,8 +297,55 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 		{
 			*maxSequence = lastSeq;
 		}
+		
+		if (mem->getMemoryUsage() > options.writeBufferSize) 
+		{
+			compactions++;
+			*saveManifest = true;
+			status = writeLevel0Table(edit, nullptr);
+			mem.reset();
+			if (!status.ok()) 
+			{
+				// Reflect errors immediately so that conditions like full
+				// file-systems cause the DB::Open() to fail.
+				break;
+			}
+		}
 	}
 	printf("logNumber %d# memtable:size %d\n", logNumber, mem->getTableSize());
+	
+	// See if we should keep reusing the last log file.
+	if (status.ok() && lastLog && compactions == 0) 
+	{
+		 uint64_t lfileSize;
+		 
+		if (options.env->getFileSize(fname, &lfileSize).ok() &&
+			options.env->newAppendableFile(fname, logfile).ok()) 
+		{
+			printf("Reusing old log %s \n", fname.c_str());
+			logfileNumber = logNumber;
+			if (mem != nullptr) 
+			{
+				this->mem = mem;
+				mem.reset();
+			} 
+			else 
+			{
+				// mem can be nullptr if lognum exists but was empty
+			}
+		}
+	}
+	
+	if (mem != nullptr) 
+	{
+		// mem did not get reused; compact it.
+		if (status.ok()) 
+		{
+			*saveManifest = true;
+			status = writeLevel0Table(edit, nullptr);
+		}
+		mem.reset();
+	}	
 	return status;
 }
 
@@ -324,6 +377,32 @@ Status DBImpl::makeRoomForWrite(bool force)
 		else if (imm != nullptr)
 		{
 
+		}
+		else if (versions->numLevelFiles(0) >= kL0_StopWritesTrigger)
+		{	
+			
+		}
+		else
+		{
+			// Attempt to switch to a new memtable and trigger compaction of old
+   			assert(versions->getPrevLogNumber() == 0);
+   			uint64_t newLogNumber = versions->newFileNumber();	
+   			std::shared_ptr<PosixWritableFile> lfile;
+   			s = options.env->newWritableFile(logFileName(dbname, newLogNumber), lfile);
+			if (!s.ok()) 
+			{
+				// Avoid chewing through file number space in a tight loop.
+				versions->reuseFileNumber(newLogNumber);
+				break;
+			}
+
+			logfile = lfile;
+			logfileNumber = newLogNumber;
+			log.reset(new LogWriter(lfile.get()));
+			imm = mem;
+			mem.reset(new MemTable());
+			force = false;   // Do not force another compaction if have room
+			maybeScheduleCompaction();
 		}
 	}
 	return s;
@@ -473,7 +552,68 @@ Status DBImpl::writeLevel0Table(VersionEdit *edit, Version *base)
 				  meta.smallest, meta.largest);
 	}
 	
-	  
+	CompactionStats sta;
+	sta.micros = options.env->nowMicros() - startMicros;
+	sta.bytesWritten = meta.fileSize;
+	stats[level].add(sta);
+	return s;
+}
+
+void DBImpl::maybeScheduleCompaction()
+{
+	while (1)
+	{
+		if (imm == nullptr &&
+			 manualCompaction == nullptr &&
+			 !versions->needsCompaction()) 
+
+		{
+			 // No work to be done
+			break;
+		}
+		else
+		{
+			backgroundCompaction();
+		}
+	}			 
+}
+
+void DBImpl::backgroundCompaction() 
+{
+	if (imm != nullptr) 
+	{
+		compactMemTable();
+		return;
+	}
+}
+
+void DBImpl::compactMemTable() 
+{
+	assert(imm != nullptr);
+	// Save the contents of the memtable as a new Table
+	VersionEdit edit;
+	auto base = versions->current();
+	base->ref();
+	Status  s = writeLevel0Table(&edit, base.get());
+	base->unref();
+
+	// Replace immutable memtable with the generated Table
+	if (s.ok()) 
+	{
+		edit.setPrevLogNumber(0);
+		edit.setLogNumber(logfileNumber);  // Earlier logs no longer needed
+		s = versions->logAndApply(&edit);
+	}
+
+	if (s.ok()) 
+	{
+		imm.reset();
+		deleteObsoleteFiles();
+	}
+	else 
+	{
+		//RecordBackgroundError(s);
+	}
 }
 
 Status DBImpl::buildTable(FileMetaData *meta)
