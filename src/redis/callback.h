@@ -21,6 +21,8 @@ class RedisObject;
 class RedisReply;
 class Timer;
 class Select;
+struct RedLockCallback;
+class RedisAsyncCallback;
 
 typedef std::shared_ptr<Timer> TimerPtr;
 typedef std::weak_ptr<RedisReply> RedisReplyWeakPtr;
@@ -31,6 +33,12 @@ typedef std::shared_ptr<Buffer> BufferPtr;
 typedef std::shared_ptr<RedisReader> RedisReaderPtr;
 typedef std::shared_ptr<RedisContext> RedisContextPtr;
 typedef std::shared_ptr<RedisAsyncContext> RedisAsyncContextPtr;
+typedef std::shared_ptr<RedisAsyncCallback> RedisAsyncCallbackPtr;
+typedef std::list<RedisAsyncCallbackPtr> RedisAsyncCallbackList;
+typedef std::shared_ptr<RedLockCallback> RedLockCallbackPtr;
+typedef std::function<void(const RedisAsyncContextPtr &,
+		const RedisReplyPtr &, const std::any &)> RedisCallbackFn;
+
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 typedef std::shared_ptr<Connector> ConnectorPtr;
 typedef std::shared_ptr<TcpClient> TcpClientPtr;

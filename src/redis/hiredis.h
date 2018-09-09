@@ -18,7 +18,6 @@ struct RedisReply
 	char type;			/* REDIS_REPLY_* */
 	int64_t integer;	/* The integer when type is REDIS_REPLY_INTEGER */
 	int32_t len;	 	/* Length of string */
-	size_t elements;	/* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
 	sds str;	 		/* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
 	std::vector<RedisReplyPtr> element;	/* elements vector for REDIS_REPLY_ARRAY */
 };
@@ -144,9 +143,6 @@ public:
 	RedisReaderPtr reader;	/* Protocol reader */
 };
 
-
-typedef std::function<void(const RedisAsyncContextPtr &context,
-	const RedisReplyPtr &, const std::any &)> RedisCallbackFn;
 struct RedisCallback
 {
 	RedisCallbackFn fn;
@@ -162,9 +158,6 @@ struct RedisAsyncCallback
 	size_t len;
 	char *data;
 };
-
-typedef std::shared_ptr<RedisAsyncCallback> RedisAsyncCallbackPtr;
-typedef std::list<RedisAsyncCallbackPtr> RedisAsyncCallbackList;
 
 /* Subscription callbacks */
 struct SubCallback
@@ -185,7 +178,6 @@ struct RedLockCallback
 	std::function<void()> doingCallback;
 };
 
-typedef std::shared_ptr<RedLockCallback> RedLockCallbackPtr;
 class RedisAsyncContext : public std::enable_shared_from_this<RedisAsyncContext>
 {
 public:
@@ -211,6 +203,7 @@ public:
 	TcpConnectionPtr redisConn;
 	RedisAsyncCallbackList repliesCb;
 	SubCallback	subCb;
+
 private:
 	RedisAsyncContext(const RedisAsyncContext&);
 	void operator=(const RedisAsyncContext&);

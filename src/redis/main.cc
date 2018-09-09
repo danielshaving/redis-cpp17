@@ -21,7 +21,7 @@ const char *logo =
 std::unique_ptr<LogFile> logFile;
 void dummyOutput(const char *msg, int len)
 {
-	//printf("%s\n", msg);
+	printf("%s\n", msg);
 	logFile->append(msg, len);
 	logFile->flush();
 }
@@ -45,10 +45,3 @@ int main(int argc, char *argv[])
 	redis.run();
 	return 0;
 }
-
-
-
-
-
-
-

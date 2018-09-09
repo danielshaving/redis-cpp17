@@ -69,7 +69,7 @@ bool Socket::resolve(std::string_view hostname, struct sockaddr_in *out)
 	return true;
 }
 
-ssize_t Socket::readv(int32_t sockfd, IOV_TYPE *iov, int32_t iovcnt)
+ssize_t Socket::readv(int32_t sockfd, const IOV_TYPE *iov, int32_t iovcnt)
 {
 #ifdef _WIN64
 	DWORD bytesRead;
@@ -335,7 +335,6 @@ int32_t Socket::createSocket()
 
 #ifdef __APPLE__
 	return ::socket(AF_INET, SOCK_STREAM, 0);
-	//return ::socket(AF_UNIX, SOCK_STREAM, 0);
 #endif
 }
 
@@ -381,15 +380,13 @@ int32_t Socket::connect(int32_t sockfd, struct sockaddr *sin)
 
 bool Socket::setTimeOut(int32_t sockfd, const struct timeval tv)
 {
-	if (::setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(tv)) == -1)
+	if (::setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1)
 	{
-		LOG_WARN << "setsockopt(SO_RCVTIMEO)";
 		return false;
 	}
 
-	if (::setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (char*)&tv, sizeof(tv)) == -1)
+	if (::setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1)
 	{
-		LOG_WARN << "setsockopt(SO_SNDTIMEO)";
 		return false;
 	}
 	return true;
@@ -397,31 +394,36 @@ bool Socket::setTimeOut(int32_t sockfd, const struct timeval tv)
 
 void Socket::setkeepAlive(int32_t fd, int32_t idle)
 {
-#ifdef __linux__
 	int32_t keepalive = 1;
 	int32_t keepidle = idle;
 	int32_t keepintvl = 2;
 	int32_t keepcnt = 3;
 	int32_t err = 0;
 
-	if (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char*)&keepalive, sizeof(keepalive)) < 0)
+	if (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) < 0)
 	{
-		LOG_DEBUG << "SOL_SOCKET";
+		assert(false);
 	}
 
-	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, (char *)&keepidle, sizeof(keepidle)) < 0)
+#ifdef __linux__
+	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle)) < 0)
 	{
-		LOG_DEBUG << "TCP_KEEPIDLE";
+		assert(false);
 	}
 
-	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, (char *)&keepintvl, sizeof(keepintvl)) < 0)
+	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl)) < 0)
 	{
-		LOG_DEBUG << "TCP_KEEPINTVL";
+		assert(false);
 	}
 
-	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, (char *)&keepcnt, sizeof(keepcnt)) < 0)
+	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt)) < 0)
 	{
-		LOG_DEBUG << "TCP_KEEPCNT";
+		assert(false);
+	}
+#else
+	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &keepidle, sizeof(keepidle)) < 0)
+	{
+		assert(false);
 	}
 #endif
 }
@@ -473,22 +475,20 @@ int32_t Socket::createTcpSocket(const char *ip, int16_t port)
 	}
 
 	int32_t optval = 1;
-#ifdef _WIN64
-	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof(optval)) < 0)
+#ifndef _WIN64
+	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
 	{
 		LOG_WARN << "Set SO_REUSEPORT socket failed! error " << strerror(errno);
 		Socket::close(sockfd);
 		exit(1);
 	}
-#else
-	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&optval, sizeof(optval)) < 0)
+#endif
+	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
 	{
 		LOG_WARN << "Set SO_REUSEPORT socket failed! error " << strerror(errno);
 		Socket::close(sockfd);
-		assert(false);
+		exit(1);
 	}
-#endif
-
 	if (::bind(sockfd, (struct sockaddr*)&sa, sizeof(sa)) < 0)
 	{
 		LOG_WARN << "Bind bind socket failed! error " << strerror(errno);
@@ -515,7 +515,7 @@ int32_t Socket::createTcpSocket(const char *ip, int16_t port)
 
 bool Socket::setTcpNoDelay(int32_t sockfd, bool on)
 {
-#ifdef __linux__
+#ifndef _WIN64
 	int32_t optval = on ? 1 : 0;
 	int32_t opt = ::setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &optval, static_cast<socklen_t>(sizeof optval));
 	if (opt < 0)
@@ -540,19 +540,16 @@ bool Socket::setSocketBlock(int32_t sockfd)
 	int32_t opt = ::fcntl(sockfd, F_GETFL);
 	if (opt < 0)
 	{
-		LOG_WARN << "fcntl F_GETFL) failed! error" << strerror(errno);
 		return false;
 	}
 
 	opt = opt & ~O_NONBLOCK;
 	if (::fcntl(sockfd, F_SETFL, opt) < 0)
 	{
-		LOG_WARN << "fcntl F_GETFL) failed! error" << strerror(errno);
 		return false;
 	}
 	return true;
 #endif
-
 }
 
 bool Socket::setSocketNonBlock(int32_t sockfd)

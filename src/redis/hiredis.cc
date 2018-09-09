@@ -1,10 +1,9 @@
 #include "hiredis.h"
 RedisReply::RedisReply()
 	:str(nullptr),
-	elements(0),
 	len(0),
 	integer(0),
-	type(-1)
+	type(REDIS_ERR)
 {
 
 }
@@ -21,7 +20,7 @@ RedisReader::RedisReader(Buffer *buffer)
 	:buffer(buffer),
 	pos(0),
 	err(0),
-	ridx(-1)
+	ridx(REDIS_ERR)
 {
 	errstr[0] = '\0';
 }
@@ -29,7 +28,7 @@ RedisReader::RedisReader(Buffer *buffer)
 RedisReader::RedisReader()
 	:pos(0),
 	err(0),
-	ridx(-1)
+	ridx(REDIS_ERR)
 {
 	buffer = &buf;
 	errstr[0] = '\0';
@@ -45,7 +44,7 @@ void RedisReader::redisReaderSetError(int32_t type, const char *str)
 		pos = 0;
 	}
 	/* Reset task stack. */
-	ridx = -1;
+	ridx = REDIS_ERR;
 	/* Set error. */
 	err = type;
 	len = strlen(str);
@@ -124,7 +123,7 @@ int64_t RedisReader::readLongLong(const char *s)
 
 	if (*s == '-')
 	{
-		mult = -1;
+		mult = REDIS_ERR;
 		s++;
 	}
 	else if (*s == '+')
@@ -145,7 +144,7 @@ int64_t RedisReader::readLongLong(const char *s)
 		else
 		{
 			/* Should not happen... */
-			return -1;
+			return REDIS_ERR;
 		}
 	}
 	return mult * v;
@@ -156,7 +155,7 @@ static const char *seekNewline(const char *s, size_t len)
 {
 	int32_t pos = 0;
 	int32_t _len = len - 1;
-	/* Position should be < len-1 because the character at "pos" should be
+	/* Position should be < lenREDIS_ERR because the character at "pos" should be
 	 * followed by a \n. Note that strchr cannot be used because it doesn't
 	 * allow to search a limited length and the buffer that is being searched
 	 * might not have a trailing nullptr character. */
@@ -258,7 +257,7 @@ RedisReplyPtr createArray(const RedisReadTask *task, int32_t elements)
 		r->element.reserve(elements);
 	}
 
-	r->elements = elements;
+	//r->elements = elements;
 	if (task->parent)
 	{
 		parent = task->parent->obj.lock();
@@ -369,8 +368,8 @@ void RedisReader::moveToNextTask()
 		{
 			/* Reset the type because the next item can be anything */
 			assert(cur->idx < prv->elements);
-			cur->type = -1;
-			cur->elements = -1;
+			cur->type = REDIS_ERR;
+			cur->elements = REDIS_ERR;
 			cur->idx++;
 			return;
 		}
@@ -507,7 +506,7 @@ int32_t RedisReader::processMultiBulkItem()
 	RedisReplyPtr obj;
 	const char *p;
 	int32_t elements;
-	int32_t  root = 0;
+	int32_t root = 0;
 
 	/* Set error for nested multi bulks with depth > 7 */
 	if (ridx == 8)
@@ -520,7 +519,7 @@ int32_t RedisReader::processMultiBulkItem()
 	{
 		elements = readLongLong(p);
 		root = (ridx == 0);
-		if (elements == -1)
+		if (elements == REDIS_ERR)
 		{
 			if (fn.createNilFuc)
 			{
@@ -561,8 +560,8 @@ int32_t RedisReader::processMultiBulkItem()
 				cur->elements = elements;
 				cur->obj = obj;
 				ridx++;
-				rstack[ridx].type = -1;
-				rstack[ridx].elements = -1;
+				rstack[ridx].type = REDIS_ERR;
+				rstack[ridx].elements = REDIS_ERR;
 				rstack[ridx].idx = 0;
 				rstack[ridx].parent = cur;
 				rstack[ridx].privdata = privdata;
@@ -656,11 +655,11 @@ int32_t RedisReader::redisReaderGetReply(RedisReplyPtr &reply)
 		return REDIS_OK;
 	}
 
-	if (ridx == -1)
+	if (ridx == REDIS_ERR)
 	{
-		rstack[0].type = -1;
-		rstack[0].elements = -1;
-		rstack[0].idx = -1;
+		rstack[0].type = REDIS_ERR;
+		rstack[0].elements = REDIS_ERR;
+		rstack[0].idx = REDIS_ERR;
 		rstack[0].parent = nullptr;
 		rstack[0].privdata = privdata;
 		ridx = 0;
@@ -679,14 +678,11 @@ int32_t RedisReader::redisReaderGetReply(RedisReplyPtr &reply)
 		return REDIS_ERR;
 	}
 
-	if (pos >= 1024)
-	{
-		buffer->retrieve(pos);
-		pos = 0;
-	}
+	buffer->retrieve(pos);
+	pos = 0;
 
 	/* Emit a reply when there is one. */
-	if (ridx == -1)
+	if (ridx == REDIS_ERR)
 	{
 		reply = this->reply;
 		this->reply.reset();
@@ -706,7 +702,6 @@ RedisAsyncCallback::~RedisAsyncCallback()
 	if (data != nullptr)
 	{
 		zfree(data);
-		data = nullptr;
 	}
 }
 
@@ -731,7 +726,7 @@ void RedisContext::clear()
 
 RedisContext::~RedisContext()
 {
-
+	::close(fd);
 }
 
 /* Write the output buffer to the socket.
@@ -811,7 +806,7 @@ int32_t RedisContext::redisBufferRead()
 	}
 	else
 	{
-		if ((errno == EAGAIN) || (errno == EINTR))
+		if ((errno == EAGAIN && !(flags == REDIS_BLOCK)) || (errno == EINTR))
 		{
 			/* Try again later */
 		}
@@ -973,14 +968,14 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 	/* Abort if there is not target to set */
 	if (target == nullptr)
 	{
-		return -1;
+		return REDIS_ERR;
 	}
 
 	/* Build the command string accordingly to protocol */
 	curarg = sdsempty();
 	if (curarg == nullptr)
 	{
-		return -1;
+		return REDIS_ERR;
 	}
 
 	while (*c != '\0')
@@ -1236,7 +1231,7 @@ err:
 	{
 		zfree(cmd);
 	}
-	return -1;
+	return REDIS_ERR;
 }
 
 /* Format a command according to the Redis protocol. This function
@@ -1261,7 +1256,7 @@ int32_t redisFormatCommand(char **target, const char *format, ...)
 	va_end(ap);
 	if (len < 0)
 	{
-		len = -1;
+		len = REDIS_ERR;
 	}
 	return len;
 }
@@ -1286,7 +1281,7 @@ int32_t RedisContext::redisvAppendCommand(const char *format, va_list ap)
 	int32_t len;
 
 	len = redisvFormatCommand(&cmd, format, ap);
-	if (len == -1)
+	if (len == REDIS_ERR)
 	{
 		redisSetError(REDIS_ERR_OOM, "Out of memory");
 		return REDIS_ERR;
@@ -1346,7 +1341,7 @@ int32_t redisFormatCommandArgv(char **target, int32_t argc,
 	cmd = (char*)zmalloc(totlen + 1);
 	if (cmd == nullptr)
 	{
-		return -1;
+		return REDIS_ERR;
 	}
 
 	pos = sprintf(cmd, "*%d\r\n", argc);
@@ -1400,7 +1395,7 @@ int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc,
 	/* Abort on a nullptr target */
 	if (target == nullptr)
 	{
-		return -1;
+		return REDIS_ERR;
 	}
 
 	/* Calculate our total size */
@@ -1414,14 +1409,14 @@ int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc,
 	cmd = sdsempty();
 	if (cmd == nullptr)
 	{
-		return -1;
+		return REDIS_ERR;
 	}
 
 	/* We already know how much storage we need */
 	cmd = sdsMakeRoomFor(cmd, totlen);
 	if (cmd == nullptr)
 	{
-		return -1;
+		return REDIS_ERR;
 	}
 
 	/* Construct command */
@@ -1456,7 +1451,7 @@ int32_t RedisContext::redisAppendCommandArgv(int32_t argc,
 	int32_t len;
 	len = redisFormatCommandArgv(&cmd, argc, argv, argvlen);
 
-	if (len == -1)
+	if (len == REDIS_ERR)
 	{
 		redisSetError(REDIS_ERR_OOM, "Out of memory");
 		return REDIS_ERR;
@@ -1482,7 +1477,7 @@ int32_t RedisContext::redisCheckSocketError()
 	int32_t err = 0;
 	socklen_t errlen = sizeof(err);
 
-	if (::getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)&err, &errlen) == -1)
+	if (::getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)&err, &errlen) == REDIS_ERR)
 	{
 		redisSetError(REDIS_ERR_IO, "getsockopt(SO_ERROR)");
 		return REDIS_ERR;
@@ -1509,9 +1504,9 @@ int32_t RedisContext::redisContextWaitReady(int32_t msec)
 	{
 		int32_t res;
 #ifdef _WIN64
-		if ((res = ::WSAPoll(wfd, 1, msec)) == -1)
+		if ((res = ::WSAPoll(wfd, 1, msec)) == REDIS_ERR)
 #else
-		if ((res = ::poll(wfd, 1, msec)) == -1)
+		if ((res = ::poll(wfd, 1, msec)) == REDIS_ERR)
 #endif
 		{
 			redisSetError(REDIS_ERR_IO, "poll(2)");
@@ -1537,7 +1532,7 @@ int32_t RedisContext::redisContextWaitReady(int32_t msec)
 
 static int32_t redisContextTimeoutMsec(const struct timeval *timeout, int32_t *result)
 {
-	int32_t msec = -1;
+	int32_t msec = REDIS_ERR;
 
 	/* Only use timeout when not nullptr. */
 	if (timeout != nullptr)
@@ -1562,135 +1557,33 @@ static int32_t redisContextTimeoutMsec(const struct timeval *timeout, int32_t *r
 int32_t RedisContext::redisContextConnectUnix(const char *path,
 	const struct timeval *timeout)
 {
-#ifdef _WIN64
-#else
-	int32_t blocking = (flags == REDIS_BLOCK);
-	struct sockaddr_un sa;
-	int32_t timeoutMsec = -1;
-
-	Socket socket;
-	fd = socket.createSocket();
-	if (fd == -1)
-	{
-		return REDIS_ERR;
-	}
-
-	socket.setSocketNonBlock(fd);
-	if (this->path != path)
-	{
-		this->path = path;
-	}
-
-	if (redisContextTimeoutMsec(timeout, &timeoutMsec) != REDIS_OK)
-	{
-		return REDIS_ERR;
-	}
-
-	sa.sun_family = AF_LOCAL;
-	strncpy(sa.sun_path, path, sizeof(sa.sun_path) - 1);
-
-	if (socket.connect(fd, (struct sockaddr*)&sa) == -1)
-	{
-		if (errno == EINPROGRESS && !blocking)
-		{
-			/* This is ok. */
-		}
-		else
-		{
-			if (redisContextWaitReady(timeoutMsec) != REDIS_OK)
-			{
-				return REDIS_ERR;
-			}
-		}
-	}
-
-	if (socket.setSocketBlock(fd) == -1)
-	{
-		return REDIS_ERR;
-	}
-
-	if (socket.setTcpNoDelay(fd, true) == -1)
-	{
-		return REDIS_ERR;
-	}
-#endif
 	return REDIS_OK;
 }
 
-int32_t RedisContext::redisContextConnectTcp(const char *ip,
-	int16_t port, const struct timeval *timeout)
+int32_t RedisContext::redisContextConnectTcp(const char *addr,
+	int16_t p, const struct timeval *timeout)
 {
-	this->ip = ip;
-	this->port = port;
+	ip = addr;
+	port = p;
 
-	int32_t timeoutMsec = -1;
-	if (timeout != nullptr)
+	int32_t sockfd = Socket::createSocket();
+	if (sockfd == REDIS_ERR)
 	{
-		if (redisContextTimeoutMsec(timeout, &timeoutMsec) != REDIS_OK)
-		{
-			redisSetError(REDIS_ERR_IO, "Invalid timeout specified");
-			return REDIS_ERR;
-		}
-	}
-
-	int32_t blocking = (flags == REDIS_BLOCK);
-	int32_t reuseaddr = (flags == REDIS_REUSEADDR);
-	int32_t reuses = 0;
-
-	Socket socket;
-	fd = socket.createSocket();
-	if (fd == -1)
-	{
+		redisSetError(REDIS_ERR_OTHER, nullptr);
 		return REDIS_ERR;
 	}
 
-	if (!socket.setSocketNonBlock(fd))
+	int32_t ret = Socket::connect(sockfd, ip, port);
+	if (ret == REDIS_ERR)
 	{
+		redisSetError(REDIS_ERR_IO, nullptr);
 		return REDIS_ERR;
 	}
 
-	if (socket.connect(fd, ip, port) == -1)
-	{
-		if (errno == EHOSTUNREACH)
-		{
-			return REDIS_ERR;
-		}
-		else if (errno == EINPROGRESS && !blocking)
-		{
-
-		}
-		else if (errno == EADDRNOTAVAIL && reuseaddr)
-		{
-			if (++reuses >= REDIS_CONNECT_RETRIES)
-			{
-				return REDIS_ERR;
-			}
-			else
-			{
-				return REDIS_ERR;
-			}
-		}
-		else
-		{
-			if (redisContextWaitReady(timeoutMsec) != REDIS_OK)
-			{
-				return REDIS_ERR;
-			}
-		}
-	}
-
-	if (socket.setSocketBlock(fd) == -1)
-	{
-		return REDIS_ERR;
-	}
-
-	if (socket.setTcpNoDelay(fd, true) == -1)
-	{
-		return REDIS_ERR;
-	}
+	fd = sockfd;
+	flags = REDIS_BLOCK;
 	return REDIS_OK;
 }
-
 
 SubCallback::SubCallback()
 {
@@ -1951,7 +1844,7 @@ void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 	* very hard when they are used... */
 	if (reply->type == REDIS_REPLY_ARRAY)
 	{
-		assert(reply->elements >= 2);
+		assert(reply->element.size() >= 2);
 		assert(reply->element[0]->type == REDIS_REPLY_STRING);
 		stype = reply->element[0]->str;
 		pvariant = (tolower(stype[0]) == 'p') ? 1 : 0;
@@ -2308,33 +2201,13 @@ RedisContextPtr redisConnectUnix(const char *path)
 RedisContextPtr redisConnect(const char *ip, int16_t port)
 {
 	RedisContextPtr c(new RedisContext());
-	if (c->redisContextConnectTcp(ip, port, nullptr) == REDIS_ERR)
-	{
-		if (!c->err)
-		{
-			c->redisSetError(REDIS_ERR_IO, nullptr);
-		}
-	}
-	else
-	{
-		c->flags = REDIS_BLOCK;
-	}
+	c->redisContextConnectTcp(ip, port, nullptr);
 	return c;
 }
 
 RedisContextPtr redisConnectWithTimeout(const char *ip, int16_t port, const struct timeval tv)
 {
 	RedisContextPtr c(new RedisContext());
-	if (c->redisContextConnectTcp(ip, port, &tv) == REDIS_ERR)
-	{
-		if (!c->err)
-		{
-			c->redisSetError(REDIS_ERR_IO, nullptr);
-		}
-	}
-	else
-	{
-		c->flags = REDIS_BLOCK;
-	}
+	c->redisContextConnectTcp(ip, port, &tv);
 	return c;
 }

@@ -43,7 +43,7 @@ void testCommand(RedisContextPtr c)
 	reply = c->redisCommand("LRANGE mylist 0 -1");
 	if (reply->type == REDIS_REPLY_ARRAY)
 	{
-		for (int j = 0; j < reply->elements; j++)
+		for (int j = 0; j < reply->element.size(); j++)
 		{
 			printf("%u) %s\n", j, reply->element[j]->str);
 		}
@@ -177,7 +177,6 @@ void testBlockingConnectionTimeOuts()
 {
 	RedisContextPtr c = redisConnect(ip, port);
 	RedisReplyPtr reply;
-	Socket socket;
 	ssize_t s;
 	const char *cmd = "DEBUG SLEEP 3\r\n";
 	struct timeval tv;
@@ -186,7 +185,7 @@ void testBlockingConnectionTimeOuts()
 
 	tv.tv_sec = 0;
 	tv.tv_usec = 10000;
-	socket.setTimeOut(c->fd, tv);
+	Socket::setTimeOut(c->fd, tv);
 	reply = c->redisCommand("GET foo");
 	test_cond(reply != nullptr && reply->type == REDIS_REPLY_STRING && memcmp(reply->str, "fast", 4) == 0);
 
@@ -206,19 +205,18 @@ void testBlockingConnection()
 {
 	RedisContextPtr c;
 	RedisReplyPtr reply;
-	Socket socket;
 	c = redisConnect(ip, port);
 	test("Is able to deliver commands: ");
 	reply = c->redisCommand("PING");
 	test_cond(reply->type == REDIS_REPLY_STATUS &&
 		strcasecmp(reply->str, "pong") == 0)
 
-		test("Is a able to send commands verbatim: ");
+	test("Is a able to send commands verbatim: ");
 	reply = c->redisCommand("SET foo bar");
 	test_cond(reply->type == REDIS_REPLY_STATUS &&
 		strcasecmp(reply->str, "ok") == 0)
 
-		test("%%s String interpolation works: ");
+	test("%%s String interpolation works: ");
 	reply = c->redisCommand("SET %s %s", "foo", "hello world");
 	reply = c->redisCommand("GET foo");
 	test_cond(reply->type == REDIS_REPLY_STRING &&
@@ -230,40 +228,40 @@ void testBlockingConnection()
 	test_cond(reply->type == REDIS_REPLY_STRING &&
 		memcmp(reply->str, "hello\x00world", 11) == 0)
 
-		test("Binary reply length is correct: ");
+	test("Binary reply length is correct: ");
 	test_cond(reply->len == 11)
 
-		test("Can parse nil replies: ");
+	test("Can parse nil replies: ");
 	reply = c->redisCommand("GET nokey");
 	test_cond(reply->type == REDIS_REPLY_NIL)
 
 		/* test 7 */
-		test("Can parse integer replies: ");
+	test("Can parse integer replies: ");
 	reply = c->redisCommand("INCR mycounter");
 	test_cond(reply->type == REDIS_REPLY_INTEGER && reply->integer == 1)
-		test("Can parse multi bulk replies: ");
+	test("Can parse multi bulk replies: ");
 
-	c->redisCommand("LPUSH mylist foo");
-	c->redisCommand("LPUSH mylist bar");
+	c->redisCommand("LPUSH mylist1 foo");
+	c->redisCommand("LPUSH mylist1 bar");
 
-	reply = c->redisCommand("LRANGE mylist 0 -1");
+	reply = c->redisCommand("LRANGE mylist1 0 -1");
 	test_cond(reply->type == REDIS_REPLY_ARRAY &&
-		reply->elements == 2 &&
+		reply->element.size() == 2 &&
 		!memcmp(reply->element[0]->str, "bar", 3) &&
 		!memcmp(reply->element[1]->str, "foo", 3))
 
 		/* m/e with multi bulk reply *before* other reply.
 		* specifically test ordering of reply items to parse. */
-		test("Can handle nested multi bulk replies: ");
+	test("Can handle nested multi bulk replies: ");
 	c->redisCommand("MULTI");
-	c->redisCommand("LRANGE mylist 0 -1");
+	c->redisCommand("LRANGE mylist1 0 -1");
 	c->redisCommand("PING");
 
 	reply = (c->redisCommand("EXEC"));
 	test_cond(reply->type == REDIS_REPLY_ARRAY &&
-		reply->elements == 2 &&
+		reply->element.size() == 2 &&
 		reply->element[0]->type == REDIS_REPLY_ARRAY &&
-		reply->element[0]->elements == 2 &&
+		reply->element[0]->element.size() == 2 &&
 		!memcmp(reply->element[0]->element[0]->str, "bar", 3) &&
 		!memcmp(reply->element[0]->element[1]->str, "foo", 3) &&
 		reply->element[1]->type == REDIS_REPLY_STATUS &&
@@ -281,9 +279,10 @@ void testBlockingConecntionerros()
 			strcmp(c->errstr, "No address associated with hostname") == 0 ||
 			strcmp(c->errstr, "Temporary failure in name resolution") == 0 ||
 			strcmp(c->errstr, "hostname nor servname provided, or not known") == 0 ||
-			strcmp(c->errstr, "no address associated with name") == 0))
+			strcmp(c->errstr, "no address associated with name") == 0) ||
+			strcmp(c->errstr, "Permission denied") == 0);
 
-		c.reset();
+	c.reset();
 	test("Returns error when the port is not open: ");
 	c = redisConnect("127.0.0.1", 1);
 	test_cond(c->err == REDIS_ERR_IO && strcmp(c->errstr, "Connection refused") == 0);
@@ -291,61 +290,49 @@ void testBlockingConecntionerros()
 
 void testBlockIoerrors()
 {
-	RedisContextPtr c;
-	Socket socket;
-	RedisReplyPtr reply;
+	RedisContextPtr c = redisConnect(ip, port);
 	int major, minor;
-	c = redisConnect(ip, port);
+
 	{
 		const char *field = "redis_version:";
 		char *p, *eptr;
 
-		reply = c->redisCommand("INFO");
+		RedisReplyPtr reply = c->redisCommand("INFO");
+		assert(reply != nullptr);
+
 		p = strstr(reply->str, field);
-		major = strtol(p + strlen(field), &eptr, 10);
+		major = strtol(p+strlen(field), &eptr, 10);
 		p = eptr + 1; /* char next to the first "." */
 		minor = strtol(p, &eptr, 10);
 	}
 
 	test("Returns I/O error when the connection is lost: ");
-	reply = c->redisCommand("QUIT");
+	RedisReplyPtr reply = c->redisCommand("QUIT");
+	assert(reply != nullptr);
+
 	if (major > 2 || (major == 2 && minor > 0))
 	{
 		/* > 2.0 returns OK on QUIT and read() should be issued once more
 		 * to know the descriptor is at EOF. */
-		test_cond(strcasecmp(reply->str, "OK") == 0 && c->redisGetReply(reply) == REDIS_ERR);
+		test_cond(strcasecmp(reply->str, "OK") == 0
+				&& c->redisGetReply(reply) == REDIS_ERR);
 	}
 	else
 	{
 		test_cond(reply == nullptr);
 	}
 
-	assert(c->err == REDIS_ERR_EOF && strcmp(c->errstr, "Server closed the connection") == 0);
+	assert(c->err == REDIS_ERR_EOF &&
+			strcmp(c->errstr, "Server closed the connection") == 0);
+
 	c.reset();
 	c = redisConnect(ip, port);
+
 	test("Returns I/O error on socket timeout: ");
-	struct timeval tv = { 0, 1000 };
-	assert(socket.setTimeOut(c->fd, tv));
+	struct timeval tv = { 1, 1000 };
+	assert(Socket::setTimeOut(c->fd, tv));
 	test_cond(c->redisGetReply(reply) == REDIS_ERR &&
 		c->err == REDIS_ERR_IO && errno == EAGAIN);
-
-}
-
-void testInvalidTimeOuterros()
-{
-	test("Set error when an invalid timeout usec value is given to redisConnectWithTimeout: ");
-	{
-		struct timeval timeout = { 0, 10000001 };
-		RedisContextPtr c = redisConnectWithTimeout(ip, port, timeout);
-		test_cond(c->err == REDIS_ERR_IO && strcmp(c->errstr, "Invalid timeout specified") == 0);
-	}
-
-	test("Set error when an invalid timeout sec value is given to redisConnectWithTimeout: ");
-	{
-		struct timeval timeout = { (((LONG_MAX)-999) / 1000) + 1, 0 };
-		RedisContextPtr c = redisConnectWithTimeout(ip, port, timeout);
-		test_cond(c->err == REDIS_ERR_IO && strcmp(c->errstr, "Invalid timeout specified") == 0);
-	}
 }
 
 void testAppendFormateedCommands()
@@ -358,130 +345,111 @@ void testAppendFormateedCommands()
 	test("Append format command: ");
 	len = redisFormatCommand(&cmd, "SET foo bar");
 	c->redisAppendFormattedCommand(cmd, len);
-	assert(c->redisGetReply(reply) == REDIS_OK);
+	test_cond(c->redisGetReply(reply) == REDIS_OK);
 	zfree(cmd);
 }
 
 void testThroughPut()
 {
 	RedisContextPtr c = redisConnect(ip, port);
-	std::vector<RedisReplyPtr> replies;
 	int i, num;
 	int64_t t1, t2;
 
 	test("Throughput:\n");
+	num = 1000;
+
+	t1 = ustime();
+	for (i = 0; i < num; i++)
+	{
+		RedisReplyPtr reply = c->redisCommand("PING");
+		assert(reply != nullptr && reply->type == REDIS_REPLY_STATUS);
+	}
+
+	t2 = ustime();
+	printf("\t(%dx PING: %.3fs)\n", num, (t2 - t1) / 1000000.0);
+
+	t1 = ustime();
 	for (i = 0; i < 500; i++)
 	{
 		c->redisCommand("LPUSH mylist foo");
 	}
 
-	num = 1000;
-	t1 = ustime();
-	for (i = 0; i < num; i++)
+	for (i = 0; i < 500; i++)
 	{
-		replies.push_back(c->redisCommand("PING"));
-		assert(replies[i] != nullptr && replies[i]->type == REDIS_REPLY_STATUS);
+		RedisReplyPtr reply = c->redisCommand("LRANGE mylist 0 499");
+		assert(reply != nullptr && reply->type == REDIS_REPLY_ARRAY);
+		assert(reply != nullptr && reply->element.size() == 500);
 	}
 
 	t2 = ustime();
-	replies.clear();
-
-	printf("\t(%dx PING: %.3fs)\n", num, (t2 - t1) / 1000000.0);
+	printf("\t(%dx LRANGE with 500 element.size(): %.3fs)\n", num, (t2 - t1) / 1000000.0);
 
 	t1 = ustime();
-	replies.reserve(num);
-	for (i = 0; i < num; i++)
-	{
-		replies.push_back(c->redisCommand("LRANGE mylist 0 499"));
-		assert(replies[i] != nullptr && replies[i]->type == REDIS_REPLY_ARRAY);
-		assert(replies[i] != nullptr && replies[i]->elements == 500);
-	}
-
-	t2 = ustime();
-	replies.clear();
-	printf("\t(%dx LRANGE with 500 elements: %.3fs)\n", num, (t2 - t1) / 1000000.0);
-
 	for (i = 0; i < num; i++)
 	{
 		c->redisAppendCommand("PING");
 	}
 
-	t1 = ustime();
-
 	for (i = 0; i < num; i++)
 	{
-		assert(c->redisGetReply(replies[i]) == REDIS_OK);
-		assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_STATUS);
+		RedisReplyPtr reply;
+		assert(c->redisGetReply(reply) == REDIS_OK);
+		assert(reply != nullptr && reply->type == REDIS_REPLY_STATUS);
 	}
 
 	t2 = ustime();
-	replies.clear();
-
 	printf("\t(%dx PING (pipelined): %.3fs)\n", num, (t2 - t1) / 1000000.0);
+
+	t1 = ustime();
 	for (i = 0; i < num; i++)
 	{
 		c->redisAppendCommand("LRANGE mylist 0 499");
 	}
 
-	t1 = ustime();
 	for (i = 0; i < num; i++)
 	{
-		assert(c->redisGetReply(replies[i]) == REDIS_OK);
-		assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_ARRAY);
-		assert(replies[i] != NULL && replies[i]->elements == 500);
+		RedisReplyPtr reply;
+		assert(c->redisGetReply(reply) == REDIS_OK);
+		assert(reply != nullptr && reply->type == REDIS_REPLY_ARRAY);
+		assert(reply != nullptr && reply->element.size() == 500);
 	}
 
 	t2 = ustime();
-	replies.clear();
-	printf("\t(%dx LRANGE with 500 elements (pipelined): %.3fs)\n", num, (t2 - t1) / 1000000.0);
+	printf("\t(%dx LRANGE with 500 element.size() (pipelined): %.3fs)\n", num, (t2 - t1) / 1000000.0);
 }
 
 int main(int argc, char* argv[])
 {
-	if (argc != 3)
-	{
-		fprintf(stderr, "Usage: client <host_ip> <port> \n ");
-	}
-	else
-	{
-		ip = argv[1];
-		port = static_cast<uint16_t>(atoi(argv[2]));
-		struct timeval timeout = { 1, 500000 }; // 1.5 seconds
+	struct timeval timeout = { 1, 500000 }; // 1.5 seconds
 
-		RedisContextPtr c;
-		RedisReplyPtr reply;
+	RedisContextPtr c;
+	RedisReplyPtr reply;
 
-		c = redisConnectWithTimeout(ip, port, timeout);
-		if (c == nullptr || c->err)
+	ip = "127.0.0.1";
+	port = 6379;
+
+	c = redisConnectWithTimeout(ip, port, timeout);
+	if (c == nullptr || c->err)
+	{
+		if (c)
 		{
-			if (c)
-			{
-				printf("Connection error: %s\n", c->errstr);
-			}
-			else
-			{
-				printf("Connection error: can't allocate redis context\n");
-			}
-
-			exit(1);
+			printf("Connection error: %s\n", c->errstr);
 		}
-
-		testThroughPut();
-		testCommand(c);
-		testBlockIoerrors();
-		testBlockingConecntionerros();
-		testAppendFormateedCommands();
-		testInvalidTimeOuterros();
-		testBlockingConnection();
-		testFormatCommand();
-		testReplyReader();
-		testBlockingConnectionTimeOuts();
+		else
+		{
+			printf("Connection error: can't allocate redis context\n");
+		}
+		exit(1);
 	}
+
+	testThroughPut();
+	testCommand(c);
+	testBlockIoerrors();
+	testBlockingConecntionerros();
+	testAppendFormateedCommands();
+	testBlockingConnection();
+	testFormatCommand();
+	testReplyReader();
+	testBlockingConnectionTimeOuts();
 	return 0;
 }
-
-
-
-
-
-

@@ -13,6 +13,8 @@ public:
 	void string();
 	void hash();
 	void list();
+	void info();
+	void lrange();
 	void subscribe();
 	void publish();
 	void monitor();
@@ -21,6 +23,11 @@ public:
 	void connectionCallback(const TcpConnectionPtr &conn);
 	void disConnectionCallback(const TcpConnectionPtr &conn);
 
+	void infoCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply, const std::any &privdata);
+
+	void lrangeCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply, const std::any &privdata);
 	void setCallback(const RedisAsyncContextPtr &c,
 			const RedisReplyPtr &reply,const std::any &privdata);
 	void getCallback(const RedisAsyncContextPtr &c,

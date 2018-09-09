@@ -594,7 +594,7 @@ void DBImpl::compactMemTable()
 	VersionEdit edit;
 	auto base = versions->current();
 	base->ref();
-	Status  s = writeLevel0Table(&edit, base.get());
+	Status s = writeLevel0Table(&edit, base.get());
 	base->unref();
 
 	// Replace immutable memtable with the generated Table

@@ -375,7 +375,7 @@ sds RedisCli::cliFormatReplyRaw(RedisReplyPtr &r)
 		out = sdscatprintf(out, "%lld", r->integer);
 		break;
 	case REDIS_REPLY_ARRAY:
-		for (i = 0; i < r->elements; i++)
+		for (i = 0; i < r->element.size(); i++)
 		{
 			if (i > 0) out = sdscat(out, config.mbDelim);
 			tmp = cliFormatReplyRaw(r->element[i]);
@@ -413,11 +413,11 @@ sds RedisCli::cliFormatReplyCSV(RedisReplyPtr &r)
 		out = sdscat(out, "NIL");
 		break;
 	case REDIS_REPLY_ARRAY:
-		for (i = 0; i < r->elements; i++)
+		for (i = 0; i < r->element.size(); i++)
 		{
 			sds tmp = cliFormatReplyCSV(r->element[i]);
 			out = sdscatlen(out, tmp, sdslen(tmp));
-			if (i != r->elements - 1) { out = sdscat(out, ","); }
+			if (i != r->element.size() - 1) { out = sdscat(out, ","); }
 			sdsfree(tmp);
 		}
 		break;
@@ -461,7 +461,7 @@ sds RedisCli::cliFormatReplyTTY(RedisReplyPtr &r, const char *prefix)
 		out = sdscat(out, "(nil)\n");
 		break;
 	case REDIS_REPLY_ARRAY:
-		if (r->elements == 0)
+		if (r->element.size() == 0)
 		{
 			out = sdscat(out, "(empty list or set)\n");
 		}
@@ -474,7 +474,7 @@ sds RedisCli::cliFormatReplyTTY(RedisReplyPtr &r, const char *prefix)
 			sds tmp;
 
 			/* Calculate chars needed to represent the largest index */
-			i = r->elements;
+			i = r->element.size();
 			do
 			{
 				idxlen++;
@@ -489,7 +489,7 @@ sds RedisCli::cliFormatReplyTTY(RedisReplyPtr &r, const char *prefix)
 			/* Setup prefix format for every entry */
 			snprintf(_prefixfmt, sizeof(_prefixfmt), "%%s%%%ud) ", idxlen);
 
-			for (i = 0; i < r->elements; i++)
+			for (i = 0; i < r->element.size(); i++)
 			{
 				/* Don't use the prefix for the first element, as the parent
 				 * caller already prepended the index number. */
