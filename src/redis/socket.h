@@ -17,7 +17,7 @@ public:
 	static int32_t pipe(int32_t fildes[2]);
 
 	static ssize_t read(int32_t sockfd, void *buf, int32_t count);
-	static ssize_t readv(int32_t sockfd, const IOV_TYPE *iov, int32_t iovcnt);
+	static ssize_t readv(int32_t sockfd, IOV_TYPE *iov, int32_t iovcnt);
 	static ssize_t write(int32_t sockfd, const void* buf, int32_t count);
 
 	static void close(int32_t sockfd);

@@ -156,7 +156,7 @@ struct RedisAsyncCallback
 
 	RedisCallback cb;
 	size_t len;
-	char *data;
+	const char *data;
 };
 
 /* Subscription callbacks */
@@ -190,9 +190,14 @@ public:
 	int32_t redisAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata, const char *format, ...);
 
+	int32_t proxyCommand(const RedisAsyncCallbackPtr &asyncCallback);
+	int32_t setCommand(const RedisCallbackFn &fn,
+			const std::any &privdata, RedisObjectPtr &key, RedisObjectPtr &value);
+	int32_t getCommand(const RedisCallbackFn &fn,
+				const std::any &privdata, RedisObjectPtr &key);
+
 	std::function<void()> getRedisAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata, const char *format, ...);
-
 	std::function<void()> getRedisvAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata, const char *format, va_list ap);
 

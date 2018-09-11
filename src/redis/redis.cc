@@ -1156,7 +1156,6 @@ void Redis::structureRedisProtocol(Buffer &buffer, std::deque<RedisObjectPtr> &r
 	buf[len++] = '\r';
 	buf[len++] = '\n';
 	buffer.append(buf, len);
-
 	for (int32_t i = 0; i < robjs.size(); i++)
 	{
 		buf[0] = '$';

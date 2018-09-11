@@ -69,7 +69,7 @@ bool Socket::resolve(std::string_view hostname, struct sockaddr_in *out)
 	return true;
 }
 
-ssize_t Socket::readv(int32_t sockfd, const IOV_TYPE *iov, int32_t iovcnt)
+ssize_t Socket::readv(int32_t sockfd,  IOV_TYPE *iov, int32_t iovcnt)
 {
 #ifdef _WIN64
 	DWORD bytesRead;
@@ -380,12 +380,12 @@ int32_t Socket::connect(int32_t sockfd, struct sockaddr *sin)
 
 bool Socket::setTimeOut(int32_t sockfd, const struct timeval tv)
 {
-	if (::setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1)
+	if (::setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv)) == -1)
 	{
 		return false;
 	}
 
-	if (::setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1)
+	if (::setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char *)&tv, sizeof(tv)) == -1)
 	{
 		return false;
 	}
@@ -400,7 +400,7 @@ void Socket::setkeepAlive(int32_t fd, int32_t idle)
 	int32_t keepcnt = 3;
 	int32_t err = 0;
 
-	if (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) < 0)
+	if (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (const char *)&keepalive, sizeof(keepalive)) < 0)
 	{
 		assert(false);
 	}
@@ -421,7 +421,7 @@ void Socket::setkeepAlive(int32_t fd, int32_t idle)
 		assert(false);
 	}
 #else
-	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &keepidle, sizeof(keepidle)) < 0)
+	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, (const char *)&keepidle, sizeof(keepidle)) < 0)
 	{
 		assert(false);
 	}
@@ -475,20 +475,22 @@ int32_t Socket::createTcpSocket(const char *ip, int16_t port)
 	}
 
 	int32_t optval = 1;
-#ifndef _WIN64
+#ifdef _WIN64
+	
+#else
 	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
 	{
 		LOG_WARN << "Set SO_REUSEPORT socket failed! error " << strerror(errno);
 		Socket::close(sockfd);
 		exit(1);
 	}
-#endif
 	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
 	{
 		LOG_WARN << "Set SO_REUSEPORT socket failed! error " << strerror(errno);
 		Socket::close(sockfd);
 		exit(1);
 	}
+#endif
 	if (::bind(sockfd, (struct sockaddr*)&sa, sizeof(sa)) < 0)
 	{
 		LOG_WARN << "Bind bind socket failed! error " << strerror(errno);
