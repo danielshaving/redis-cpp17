@@ -27,6 +27,7 @@ HiredisAsync::HiredisAsync(EventLoop *loop,
 		this, std::placeholders::_1));
 
 	hiredis.setThreadNum(threadCount);
+	hiredis.poolStart();
 	hiredis.start();
 
 	std::unique_lock<std::mutex> lk(mutex);

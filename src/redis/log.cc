@@ -1,11 +1,11 @@
 #include "log.h"
 #include "timerqueue.h"
 
-
 namespace fs = std::experimental::filesystem;
 const char digits[] = "9876543210123456789";
 const char digitsHex[] = "0123456789ABCDEF";
 const char *zero = digits + 9;
+char ttime[32];
 
 template<typename T>
 size_t convert(char buf[], T value)
@@ -51,7 +51,6 @@ AppendFile::AppendFile(const std::string &filename)
 	:filename(filename),
 	writtenBytes(0)
 {
-	printf("%s\n",filename.c_str());
 #ifdef _WIN64
 	fp = ::fopen(filename.c_str(), "at+");
 #else
@@ -163,6 +162,7 @@ void AppendFile::append(const char *logline, const size_t len)
 			}
 			break;
 		}
+		
 		n += x;
 		remain = len - n;
 	}
@@ -550,21 +550,20 @@ Logger::Impl::Impl(LogLevel level, int32_t savedErrno, const SourceFile &file, i
 
 void Logger::Impl::formatTime()
 {
-	char ttime[32];
 	struct tm tmtime;
 	time_t now = time(0);
 	tmtime = *(localtime(&now));
-	int32_t len = snprintf(ttime, sizeof(ttime), "%4d-%02d-%02d %02d:%02d:%02d",
+	int32_t len = snprintf(ttime, sizeof(ttime), "%4d%02d%02d %02d:%02d:%02d",
 		tmtime.tm_year + 1900, tmtime.tm_mon + 1, tmtime.tm_mday,
-		tmtime.tm_hour + 8, tmtime.tm_min, tmtime.tm_sec);
-	assert(len == 19); (void)len;
+		tmtime.tm_hour, tmtime.tm_min, tmtime.tm_sec);
+	assert(len == 17); (void)len;
 	stream << T(ttime, 17);
 	stream << "  ";
 }
 
 void Logger::Impl::finish()
 {
-	stream << "  " << T(baseName.data, baseName.size) << ':' << line << "\r";
+	stream << "  " << T(baseName.data, baseName.size) << ':' << line << '\n';
 }
 
 Logger::Logger(SourceFile file, int32_t line)

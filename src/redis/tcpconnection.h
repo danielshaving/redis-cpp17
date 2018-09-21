@@ -14,7 +14,7 @@ public:
 
 	EventLoop *getLoop() { return loop; }
 	int32_t getSockfd() { return sockfd; }
-	void setState(StateE s) { state = s; }
+	void setState(StateE s);
 
 	void setConnectionCallback(const ConnectionCallback &&cb)
 	{
@@ -49,6 +49,7 @@ public:
 	static void bindSendInLoop(TcpConnection *conn, const std::string_view &message);
 	static void bindSendPipeInLoop(TcpConnection *conn, const std::string_view &message);
 
+	void sendInLoopPipe();
 	void sendPipe();
 	void sendPipe(const std::string_view &message);
 	void sendPipe(Buffer *message);

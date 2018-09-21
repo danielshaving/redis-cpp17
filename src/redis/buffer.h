@@ -7,7 +7,7 @@ class Buffer
 {
 public:
 	static const size_t kCheapPrepend = 16;
-	static const size_t kInitialSize = 1024;
+	static const size_t kInitialSize = 65536;
 
 	explicit Buffer(size_t initialSize = kInitialSize)
 		: buffer(kCheapPrepend + initialSize),
@@ -46,6 +46,11 @@ public:
 		return begin() + readerIndex;
 	}
 
+	const char *start()
+	{
+		return begin() + kCheapPrepend;
+	}
+	
 	char *data()
 	{
 		return begin() + readerIndex;
@@ -175,7 +180,7 @@ public:
 
 	void appendInt16(int16_t x)
 	{
-		int32_t be16 = Socket::hostToNetwork16(x);
+		int16_t be16 = Socket::hostToNetwork16(x);
 		append(&be16, sizeof be16);
 	}
 
@@ -192,19 +197,19 @@ public:
 
 	void prependInt32(int32_t x)
 	{
-		int64_t be32 = Socket::hostToNetwork32(x);
+		int32_t be32 = Socket::hostToNetwork32(x);
 		prepend(&be32, sizeof be32);
 	}
 
 	void prependInt16(int16_t x)
 	{
-		int64_t be16 = Socket::hostToNetwork16(x);
+		int16_t be16 = Socket::hostToNetwork16(x);
 		prepend(&be16, sizeof be16);
 	}
 
 	void prependInt8(int8_t x)
 	{
-		int64_t be8 = x;
+		int8_t be8 = x;
 		prepend(&be8, sizeof be8);
 	}
 

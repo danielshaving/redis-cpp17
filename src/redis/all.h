@@ -53,8 +53,10 @@
 #include <ws2tcpip.h>
 typedef SSIZE_T ssize_t;
 #define IOV_TYPE WSABUF
+#define STRCMP stricmp
 #else
 #define IOV_TYPE struct iovec
+#define STRCMP strcasecmp
 #include <unistd.h>
 #include <sys/time.h>
 #include <arpa/inet.h>

@@ -19,6 +19,7 @@ struct RedisReply
 	int64_t integer;	/* The integer when type is REDIS_REPLY_INTEGER */
 	int32_t len;	 	/* Length of string */
 	sds str;	 		/* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
+	std::string_view view;
 	std::vector<RedisReplyPtr> element;	/* elements vector for REDIS_REPLY_ARRAY */
 };
 
@@ -28,7 +29,7 @@ struct RedisReadTask
 	int32_t elements;
 	int32_t idx;
 	std::any privdata;
-	RedisReplyWeakPtr obj;
+	RedisReplyWeakPtr weakObj;
 	struct RedisReadTask *parent;
 };
 
@@ -77,6 +78,8 @@ public:
 	int64_t readLongLong(const char *s);
 	const char *readBytes(uint32_t bytes);
 	const char *readLine(int32_t *_len);
+	std::string_view getProxyBuffer()
+	{ return std::string_view(start, end); }
 
 private:
 	RedisReader(const EventLoop&);
@@ -85,9 +88,11 @@ private:
 public:
 	RedisReadTask rstack[9];
 	char errstr[128];
+	const char *start;
 	int32_t ridx;
 	int32_t err;
 	size_t pos;
+	size_t end;
 	RedisFunc fn;
 	Buffer *buffer;
 	Buffer buf;
@@ -189,8 +194,10 @@ public:
 		const std::any &privdata, const char *format, va_list ap);
 	int32_t redisAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata, const char *format, ...);
+	int32_t proxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data,
+		size_t len, const std::any &privdata);
 
-	int32_t proxyCommand(const RedisAsyncCallbackPtr &asyncCallback);
+	int32_t proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback);
 	int32_t setCommand(const RedisCallbackFn &fn,
 			const std::any &privdata, RedisObjectPtr &key, RedisObjectPtr &value);
 	int32_t getCommand(const RedisCallbackFn &fn,
@@ -201,9 +208,14 @@ public:
 	std::function<void()> getRedisvAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata, const char *format, va_list ap);
 
+	std::any *getMutableContext() { return &context; }
+	const std::any &getContext() const { return context; }
+	void resetContext() { context.reset(); }
+	void setContext(const std::any &context) { this->context = context; }
+
 	int32_t err;
 	char *errstr;
-	std::any data;
+	std::any context;
 	RedisContextPtr redisContext;
 	TcpConnectionPtr redisConn;
 	RedisAsyncCallbackList repliesCb;
@@ -217,7 +229,8 @@ private:
 class Hiredis
 {
 public:
-	Hiredis(EventLoop *loop, int16_t sessionCount, const char *ip, int16_t port, bool clusterMode = false);
+	Hiredis(EventLoop *loop, int16_t sessionCount,
+			const char *ip, int16_t port, bool proxyMode = false);
 	~Hiredis();
 
 	void redisAsyncDisconnect(const RedisAsyncContextPtr &ac);
@@ -242,6 +255,7 @@ public:
 	void pushTcpClient(const TcpClientPtr &client);
 	void clearTcpClient();
 	void diconnectTcpClient();
+	void poolStart();
 	void start();
 	bool redirectySlot(const char *ip, int16_t port,
 		const RedisAsyncContextPtr &ac, const RedisReplyPtr &reply,
@@ -249,27 +263,33 @@ public:
 
 	void setThreadNum(int16_t threadNum)
 	{
-		pool.setThreadNum(threadNum);
+		pool->setThreadNum(threadNum);
 	}
 
-	auto &getPool() { return pool; }
+	ThreadPoolPtr getPool() { return pool; }
+	void setPool(ThreadPoolPtr pool) { this->pool = pool; }
 	auto &getTcpClient() { return tcpClients; }
 
+	RedisAsyncContextPtr getRedisAsyncContext(std::thread::id threadId, int32_t sockfd);
+	RedisAsyncContextPtr getRedisAsyncContext(int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext();
+
 private:
 	Hiredis(const Hiredis&);
 	void operator=(const Hiredis&);
 
-	ThreadPool pool;
-	bool clusterMode;
-	std::mutex mutex;
 	ConnectionCallback connectionCallback;
 	DisConnectionCallback disConnectionCallback;
+
+	ThreadPoolPtr pool;
+	std::mutex mutex;
 	std::vector<TcpClientPtr> tcpClients;
+	std::unordered_map<std::thread::id, std::vector<TcpClientPtr>> tcpClientMaps;
 	int32_t pos;
 	int32_t sessionCount;
 	const char *ip;
 	int16_t port;
+	bool proxyMode;
 };
 
 int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc,

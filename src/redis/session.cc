@@ -72,6 +72,8 @@ void Session::readCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 		processCommand(conn);
 		reset();
 	}
+	
+	reqtype = 0;
 
 	/* If there already are entries in the reply list, we cannot
 	 * add anything more to the static buffer. */
@@ -112,7 +114,7 @@ int32_t Session::processCommand(const TcpConnectionPtr &conn)
 	{
 		if (!authEnabled)
 		{
-			if (strcmp(redisCommands[0]->ptr, "auth") != 0)
+			if (STRCMP(redisCommands[0]->ptr, "auth") != 0)
 			{
 				addReplyErrorFormat(conn->outputBuffer(), "NOAUTH Authentication required");
 				return REDIS_ERR;
@@ -266,7 +268,7 @@ void Session::reset()
 	multibulklen = 0;
 	bulklen = -1;
 	redisCommands.clear();
-
+	
 	if (replyBuffer)
 	{
 		replyBuffer = false;

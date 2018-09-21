@@ -22,6 +22,7 @@ RedisReader::RedisReader(Buffer *buffer)
 	:buffer(buffer),
 	pos(0),
 	err(0),
+	start(nullptr),
 	ridx(REDIS_ERR)
 {
 	errstr[0] = '\0';
@@ -30,6 +31,7 @@ RedisReader::RedisReader(Buffer *buffer)
 RedisReader::RedisReader()
 	:pos(0),
 	err(0),
+	start(nullptr),
 	ridx(REDIS_ERR)
 {
 	buffer = &buf;
@@ -88,6 +90,7 @@ void RedisReader::redisReaderSetErrorProtocolByte(char byte)
 	chrtos(cbuf, sizeof(cbuf), byte);
 	snprintf(sbuf, sizeof(sbuf), "Protocol error, got %s as reply type byte", cbuf);
 	redisReaderSetError(REDIS_ERR_PROTOCOL, sbuf);
+	assert(false);
 }
 
 static int32_t intlen(int32_t i)
@@ -240,10 +243,11 @@ RedisReplyPtr createString(const RedisReadTask *task, const char *str, size_t le
 
 	if (task->parent)
 	{
-		parent = task->parent->obj.lock();
+		parent = task->parent->weakObj.lock();
 		assert(parent != nullptr);
 		assert(parent->type == REDIS_REPLY_ARRAY);
 		parent->element.push_back(r);
+		//parent->element[task->idx] = r;
 	}
 	return r;
 }
@@ -259,13 +263,13 @@ RedisReplyPtr createArray(const RedisReadTask *task, int32_t elements)
 		r->element.reserve(elements);
 	}
 
-	//r->elements = elements;
 	if (task->parent)
 	{
-		parent = task->parent->obj.lock();
+		parent = task->parent->weakObj.lock();
 		assert(parent != nullptr);
 		assert(parent->type == REDIS_REPLY_ARRAY);
 		parent->element.push_back(r);
+		//parent->element[task->idx] = r;
 	}
 	return r;
 }
@@ -279,10 +283,11 @@ RedisReplyPtr createInteger(const RedisReadTask *task, int64_t value)
 	r->integer = value;
 	if (task->parent)
 	{
-		parent = task->parent->obj.lock();
+		parent = task->parent->weakObj.lock();
 		assert(parent != nullptr);
 		assert(parent->type == REDIS_REPLY_ARRAY);
 		parent->element.push_back(r);
+		//parent->element[task->idx] = r;
 	}
 	return r;
 }
@@ -295,10 +300,11 @@ RedisReplyPtr createNil(const RedisReadTask *task)
 
 	if (task->parent)
 	{
-		parent = task->parent->obj.lock();
+		parent = task->parent->weakObj.lock();
 		assert(parent != nullptr);
 		assert(parent->type == REDIS_REPLY_ARRAY);
 		parent->element.push_back(r);
+		//parent->element[task->idx] = r;
 	}
 	return r;
 }
@@ -330,7 +336,7 @@ static const char *nextArgument(const char *start, const char **str, size_t *len
 
 void RedisContext::redisSetError(int32_t type, const char *str)
 {
-	size_t	len;
+	size_t len;
 	err = type;
 	if (str != nullptr)
 	{
@@ -559,7 +565,7 @@ int32_t RedisReader::processMultiBulkItem()
 			if (elements > 0)
 			{
 				cur->elements = elements;
-				cur->obj = obj;
+				cur->weakObj = obj;
 				ridx++;
 				rstack[ridx].type = REDIS_ERR;
 				rstack[ridx].elements = REDIS_ERR;
@@ -641,6 +647,7 @@ int32_t RedisReader::processItem()
 
 void RedisReader::redisReaderSetErrorOOM()
 {
+	assert(false);
 	redisReaderSetError(REDIS_ERR_OOM, "Out of memory");
 }
 
@@ -648,7 +655,7 @@ int32_t RedisReader::redisReaderGetReply(RedisReplyPtr &reply)
 {
 	if (err)
 	{
-		assert(false);
+		return REDIS_ERR;
 	}
 
 	if (buffer->readableBytes() == 0)
@@ -663,6 +670,7 @@ int32_t RedisReader::redisReaderGetReply(RedisReplyPtr &reply)
 		rstack[0].idx = REDIS_ERR;
 		rstack[0].parent = nullptr;
 		rstack[0].privdata = privdata;
+		rstack[0].weakObj.reset();
 		ridx = 0;
 	}
 
@@ -678,15 +686,17 @@ int32_t RedisReader::redisReaderGetReply(RedisReplyPtr &reply)
 	{
 		return REDIS_ERR;
 	}
-
-	buffer->retrieve(pos);
-	pos = 0;
-
+	
 	/* Emit a reply when there is one. */
 	if (ridx == REDIS_ERR)
 	{
+		start = buffer->peek();
+		end = pos;
+
 		reply = this->reply;
 		this->reply.reset();
+		buffer->retrieve(pos);
+		pos = 0;
 	}
 	return REDIS_OK;
 }
@@ -876,7 +886,7 @@ int32_t RedisContext::redisAppendCommand(const char *format, ...)
 	return ret;
 }
 
-int32_t RedisAsyncContext::proxyCommand(const RedisAsyncCallbackPtr &asyncCallback)
+int32_t RedisAsyncContext::proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback)
 {
 	redisConn->getLoop()->assertInLoopThread();
 	if (redisContext->flags == REDIS_DISCONNECTING)
@@ -973,57 +983,63 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
 
 	/* Find out which command will be appended. */
 	p = nextArgument(cmd, &cstr, &clen);
-	assert(p != nullptr);
-	hasnext = (p[0] == '$');
-	pvariant = (tolower(cstr[0]) == 'p') ? 1 : 0;
-	cstr += pvariant;
-	clen -= pvariant;
-
-	if (hasnext && memcmp(cstr, "subscribe\r\n", 11) == 0)
+	if (p != nullptr)
 	{
-		redisContext->flags = REDIS_SUBSCRIBED;
-		/* Add every channel/pattern to the list of subscription callbacks. */
-		while ((p = nextArgument(p, &astr, &alen)) != nullptr)
+		hasnext = (p[0] == '$');
+		pvariant = (tolower(cstr[0]) == 'p') ? 1 : 0;
+		cstr += pvariant;
+		clen -= pvariant;
+
+		if (hasnext && memcmp(cstr, "subscribe\r\n", 11) == 0)
 		{
-			sname = sdsnewlen(astr, alen);
-			if (pvariant)
+			redisContext->flags = REDIS_SUBSCRIBED;
+			/* Add every channel/pattern to the list of subscription callbacks. */
+			while ((p = nextArgument(p, &astr, &alen)) != nullptr)
 			{
-				subCb.patternCb.insert(std::make_pair(createObject(REDIS_STRING, sname), asyncCallback));
-			}
-			else
-			{
-				subCb.channelCb.insert(std::make_pair(createObject(REDIS_STRING, sname), asyncCallback));
+				sname = sdsnewlen(astr, alen);
+				if (pvariant)
+				{
+					subCb.patternCb.insert(std::make_pair(createObject(REDIS_STRING, sname), asyncCallback));
+				}
+				else
+				{
+					subCb.channelCb.insert(std::make_pair(createObject(REDIS_STRING, sname), asyncCallback));
+				}
 			}
 		}
-	}
-	else if (memcmp(cstr, "unsubscribe\r\n", 13) == 0)
-	{
-		/* It is only useful to call (P)UNSUBSCRIBE when the context is
-		* subscribed to one or more channels or patterns. */
-		if (!(redisContext->flags == REDIS_SUBSCRIBED)) return REDIS_ERR;
-
-		/* (P)UNSUBSCRIBE does not have its own response: every channel or
-		* pattern that is unsubscribed will receive a message. This means we
-		* should not append a callback function for this command. */
-	}
-	else if (memcmp(cstr, "monitor\r\n", 9) == 0)
-	{
-		/* Set monitor flag and push callback */
-		redisContext->flags = REDIS_MONITORING;
-		repliesCb.push_back(asyncCallback);
-	}
-	else
-	{
-		if (redisContext->flags == REDIS_SUBSCRIBED)
+		else if (memcmp(cstr, "unsubscribe\r\n", 13) == 0)
 		{
-			/* This will likely result in an error reply, but it needs to be
-			* received and passed to the callback. */
-			subCb.invalidCb.push_back(asyncCallback);
+			/* It is only useful to call (P)UNSUBSCRIBE when the context is
+			* subscribed to one or more channels or patterns. */
+			if (!(redisContext->flags == REDIS_SUBSCRIBED)) return REDIS_ERR;
+
+			/* (P)UNSUBSCRIBE does not have its own response: every channel or
+			* pattern that is unsubscribed will receive a message. This means we
+			* should not append a callback function for this command. */
+		}
+		else if (memcmp(cstr, "monitor\r\n", 9) == 0)
+		{
+			/* Set monitor flag and push callback */
+			redisContext->flags = REDIS_MONITORING;
+			repliesCb.push_back(asyncCallback);
 		}
 		else
 		{
-			repliesCb.push_back(asyncCallback);
+			if (redisContext->flags == REDIS_SUBSCRIBED)
+			{
+				/* This will likely result in an error reply, but it needs to be
+				* received and passed to the callback. */
+				subCb.invalidCb.push_back(asyncCallback);
+			}
+			else
+			{
+				repliesCb.push_back(asyncCallback);
+			}
 		}
+	}
+	else
+	{
+		repliesCb.push_back(asyncCallback);
 	}
 
 	redisConn->sendPipe(cmd, len);
@@ -1677,8 +1693,7 @@ RedisAsyncContext::RedisAsyncContext(Buffer *buffer, const TcpConnectionPtr &con
 	:redisContext(new RedisContext(buffer, conn->getSockfd())),
 	redisConn(conn),
 	err(0),
-	errstr(nullptr),
-	data(nullptr)
+	errstr(nullptr)
 {
 
 }
@@ -1774,7 +1789,7 @@ int32_t RedisAsyncContext::setCommand(const RedisCallbackFn &fn,
 	asyncCallback->len = buffer->readableBytes();
 	asyncCallback->cb = std::move(cb);
 
-	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::proxyCommand,
+	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::proxyAsyncCommand,
 		shared_from_this(), asyncCallback));
 	return REDIS_OK;
 }
@@ -1817,7 +1832,30 @@ int32_t RedisAsyncContext::getCommand(const RedisCallbackFn &fn,
 	asyncCallback->len = buffer->readableBytes();
 	asyncCallback->cb = std::move(cb);
 
-	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::proxyCommand,
+	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::proxyAsyncCommand,
+		shared_from_this(), asyncCallback));
+	return REDIS_OK;
+}
+
+int32_t RedisAsyncContext::proxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data,
+	size_t len, const std::any &privdata)
+{
+	redisConn->getLoop()->assertInLoopThread();
+	if (redisContext->flags == REDIS_DISCONNECTING)
+	{
+		return REDIS_ERR;
+	}
+
+	RedisCallback cb;
+	cb.fn = std::move(fn);
+	cb.privdata = std::move(privdata);
+
+	RedisAsyncCallbackPtr asyncCallback(new RedisAsyncCallback());
+	asyncCallback->data = data;
+	asyncCallback->len = len;
+	asyncCallback->cb = std::move(cb);
+
+	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
 		shared_from_this(), asyncCallback));
 	return REDIS_OK;
 }
@@ -1862,13 +1900,14 @@ int32_t RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
 	return status;
 }
 
-Hiredis::Hiredis(EventLoop *loop, int16_t sessionCount, const char *ip, int16_t port, bool clusterMode)
-	:pool(loop),
-	clusterMode(true),
+Hiredis::Hiredis(EventLoop *loop, int16_t sessionCount,
+		const char *ip, int16_t port, bool proxyMode)
+	:pool(new ThreadPool(loop)),
 	sessionCount(sessionCount),
 	ip(ip),
 	port(port),
-	pos(0)
+	pos(0),
+	proxyMode(proxyMode)
 {
 
 }
@@ -1882,13 +1921,25 @@ void Hiredis::clusterMoveConnCallback(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{
-		assert(conn->getContext().has_value());
 		const RedisAsyncCallbackPtr &asyncCallback =
 			std::any_cast<RedisAsyncCallbackPtr>(conn->getContext());
 		RedisAsyncContextPtr ac(new RedisAsyncContext(conn->intputBuffer(), conn));
 		conn->setContext(ac);
 		conn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
 			ac, asyncCallback));
+
+		{
+			std::unique_lock<std::mutex> lk(mutex);
+			for (auto &it : tcpClients)
+			{
+				if (conn->getSockfd() == it->getConnection()->getSockfd())
+				{
+					it->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
+							this, std::placeholders::_1));
+					break;
+				}
+			}
+		}
 
 		if (connectionCallback)
 		{
@@ -1908,14 +1959,27 @@ void Hiredis::clusterAskConnCallback(const TcpConnectionPtr &conn)
 {
 	if (conn->connected())
 	{
-		assert(conn->getContext().has_value());
 		const RedisAsyncCallbackPtr &asyncCallback =
 			std::any_cast<RedisAsyncCallbackPtr>(conn->getContext());
 		RedisAsyncContextPtr ac(new RedisAsyncContext(conn->intputBuffer(), conn));
 		conn->setContext(ac);
+		conn->resetContext();
 		ac->repliesCb.push_back(asyncCallback);
 		conn->sendPipe("*1\r\n$6\r\nASKING\r\n");
 		conn->sendPipe(asyncCallback->data, asyncCallback->len);
+
+		{
+			std::unique_lock<std::mutex> lk(mutex);
+			for (auto &it : tcpClients)
+			{
+				if (conn->getSockfd() == it->getConnection()->getSockfd())
+				{
+					it->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
+							this, std::placeholders::_1));
+					break;
+				}
+			}
+		}
 
 		if (connectionCallback)
 		{
@@ -1950,6 +2014,53 @@ void Hiredis::redisConnCallback(const TcpConnectionPtr &conn)
 		{
 			disConnectionCallback(conn);
 		}
+	}
+}
+
+RedisAsyncContextPtr Hiredis::getRedisAsyncContext(std::thread::id threadId, int32_t sockfd)
+{
+	std::unique_lock<std::mutex> lk(mutex);
+	if (tcpClients.empty())
+	{
+		return nullptr;
+	}
+
+	auto it = tcpClientMaps.find(threadId);
+	assert(it != tcpClientMaps.end());
+
+	TcpConnectionPtr conn = it->second[(it->second.size() % sockfd) - 1]->getConnection();
+	if (conn == nullptr)
+	{
+		return nullptr;
+	}
+	else
+	{
+		assert(conn->getContext().has_value());
+		const RedisAsyncContextPtr &ac =
+			std::any_cast<RedisAsyncContextPtr>(conn->getContext());
+		return ac;
+	}
+}
+
+RedisAsyncContextPtr Hiredis::getRedisAsyncContext(int32_t sockfd)
+{
+	std::unique_lock<std::mutex> lk(mutex);
+	if (tcpClients.empty())
+	{
+		return nullptr;
+	}
+
+	TcpConnectionPtr conn = tcpClients[(tcpClients.size() % sockfd) - 1]->getConnection();
+	if (conn == nullptr)
+	{
+		return nullptr;
+	}
+	else
+	{
+		assert(conn->getContext().has_value());
+		const RedisAsyncContextPtr &ac =
+			std::any_cast<RedisAsyncContextPtr>(conn->getContext());
+		return ac;
 	}
 }
 
@@ -1997,6 +2108,7 @@ void Hiredis::clearTcpClient()
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	tcpClients.clear();
+	tcpClientMaps.clear();
 }
 
 void Hiredis::pushTcpClient(const TcpClientPtr &client)
@@ -2031,7 +2143,7 @@ void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 			{
 				callback = iter->second;
 				/* If this is an unsubscribe message, remove it. */
-				if (strcmp(stype + pvariant, "unsubscribe") == 0)
+				if (STRCMP(stype + pvariant, "unsubscribe") == 0)
 				{
 					ac->subCb.patternCb.erase(iter);
 
@@ -2050,7 +2162,7 @@ void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 			{
 				callback = iter->second;
 				/* If this is an unsubscribe message, remove it. */
-				if (strcmp(stype + pvariant, "unsubscribe") == 0)
+				if (STRCMP(stype + pvariant, "unsubscribe") == 0)
 				{
 					ac->subCb.channelCb.erase(iter);
 
@@ -2152,16 +2264,31 @@ void Hiredis::connect(EventLoop *loop, const char *ip, int16_t port, int32_t cou
 	{
 		client->connect();
 	}
+
 	pushTcpClient(client);
+	auto it = tcpClientMaps.find(loop->getThreadId());
+	if (it == tcpClientMaps.end())
+	{
+		std::vector<TcpClientPtr> clients;
+		clients.push_back(client);
+		tcpClientMaps[loop->getThreadId()] =  std::move(clients);
+	}
+	else
+	{
+		it->second.push_back(client);
+	}
+}
+
+void Hiredis::poolStart()
+{
+	pool->start();
 }
 
 void Hiredis::start()
 {
-	pool.start();
-
 	for (int i = 0; i < sessionCount; i++)
 	{
-		connect(pool.getNextLoop(), ip, port);
+		connect(pool->getNextLoop(), ip, port);
 	}
 }
 
@@ -2172,7 +2299,7 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 		std::any_cast<RedisAsyncContextPtr>(conn->getContext());
 	RedisReplyPtr reply;
 	int32_t status;
-
+	
 	while ((status = ac->redisContext->redisGetReply(reply)) == REDIS_OK)
 	{
 		if (reply == nullptr)
@@ -2240,7 +2367,7 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 			ac->repliesCb.pop_front();
 		}
 
-		if (clusterMode && reply->type == REDIS_REPLY_ERROR &&
+		if (reply->type == REDIS_REPLY_ERROR &&
 			(!strncmp(reply->str, "MOVED", 5) || (!strncmp(reply->str, "ASK", 3))))
 		{
 			char *p = reply->str, *s;
@@ -2290,8 +2417,10 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 					LOG_WARN << "-> Cluster node disconnect " << ip << " " << port;
 					if (repliesCb->cb.fn)
 					{
-						assert(ac->err == 0);
-						assert(ac->errstr == nullptr);
+						if (proxyMode)
+						{
+							reply->view = ac->redisContext->reader->getProxyBuffer();
+						}
 						repliesCb->cb.fn(ac, reply, repliesCb->cb.privdata);
 					}
 				}
@@ -2313,8 +2442,10 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 
 			if (repliesCb->cb.fn)
 			{
-				assert(ac->err == 0);
-				assert(ac->errstr == nullptr);
+				if (proxyMode)
+				{
+					reply->view = ac->redisContext->reader->getProxyBuffer();
+				}
 				repliesCb->cb.fn(ac, reply, repliesCb->cb.privdata);
 			}
 		}

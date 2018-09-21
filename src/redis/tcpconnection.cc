@@ -35,6 +35,11 @@ void TcpConnection::shutdown()
 	}
 }
 
+void TcpConnection::setState(StateE s)
+{
+	state = s;
+}
+
 void TcpConnection::forceClose()
 {
 	if (state == kConnected || state == kDisconnecting)
@@ -111,9 +116,13 @@ void TcpConnection::handleRead()
 void TcpConnection::handleWrite()
 {
 	loop->assertInLoopThread();
+	if (state == kDisconnected)
+	{
+		return;
+	}
+
 	if (channel->isWriting())
 	{
-		assert(writeBuffer.readableBytes() != 0);
 #ifdef _WIN64
 		ssize_t n = ::send(channel->getfd(), writeBuffer.peek(), writeBuffer.readableBytes(), 0);
 #else
@@ -140,7 +149,6 @@ void TcpConnection::handleWrite()
 		{
 
 		}
-
 	}
 	else
 	{
@@ -208,11 +216,31 @@ void TcpConnection::handleError()
 
 }
 
+void TcpConnection::sendInLoopPipe()
+{
+	if (state == kConnected)
+	{
+		if (loop->isInLoopThread())
+		{
+			sendPipe();
+		}
+		else
+		{
+			void (TcpConnection::*fp)() = &TcpConnection::sendPipe;
+			loop->runInLoop(std::bind(fp, shared_from_this()));
+		}
+	}
+}
+
 void TcpConnection::sendPipe()
 {
-	if (!channel->isWriting())
+	loop->assertInLoopThread();
+	if (!channel->isNoneEvent())
 	{
-		channel->enableWriting();
+		if (!channel->isWriting())
+		{
+			channel->enableWriting();
+		}
 	}
 }
 
@@ -227,7 +255,7 @@ void TcpConnection::sendPipe(Buffer *buf)
 		else
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendPipeInLoop;
-			loop->runInLoop(std::bind(fp, this, buf->retrieveAllAsString()));
+			loop->runInLoop(std::bind(fp, shared_from_this(), buf->retrieveAllAsString()));
 		}
 	}
 }
@@ -248,7 +276,7 @@ void TcpConnection::sendPipe(const std::string_view &message)
 		else
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendPipeInLoop;
-			loop->runInLoop(std::bind(fp, this, std::string(message)));
+			loop->runInLoop(std::bind(fp, shared_from_this(), std::string(message)));
 		}
 	}
 }
@@ -269,7 +297,7 @@ void TcpConnection::send(const std::string_view &message)
 		else
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendInLoop;
-			loop->runInLoop(std::bind(fp, this, std::string(message)));
+			loop->runInLoop(std::bind(fp, shared_from_this(), std::string(message)));
 			//loop->runInLoop(std::bind(&bindSendInLoop,this,std::string(message)));
 		}
 	}
@@ -283,9 +311,12 @@ void TcpConnection::sendPipeInLoop(const std::string_view &message)
 void TcpConnection::sendPipeInLoop(const void *message, size_t len)
 {
 	writeBuffer.append(message, len);
-	if (!channel->isWriting())
+	if (!channel->isNoneEvent())
 	{
-		channel->enableWriting();
+		if (!channel->isWriting())
+		{
+			channel->enableWriting();
+		}
 	}
 }
 
@@ -325,7 +356,12 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
 	ssize_t nwrote = 0;
 	size_t remaining = len;
 	bool faultError = false;
-	assert(state != kDisconnected);
+
+	if (state == kDisconnected)
+	{
+		LOG_WARN << "disconnected, give up writing";
+		return;
+	}
 
 	if (!channel->isWriting() && writeBuffer.readableBytes() == 0)
 	{
