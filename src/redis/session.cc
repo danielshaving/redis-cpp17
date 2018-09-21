@@ -294,9 +294,10 @@ int32_t Session::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *buffe
 {
 	const char *newline;
 	const char *queryBuf = buffer->peek();
-	int32_t j;
+	int32_t j,linefeedChars = 1;
 	size_t queryLen;
 	sds *argv, aux;
+
 
 	/* Search for end of line */
 	newline = strchr(queryBuf, '\n');
@@ -306,7 +307,6 @@ int32_t Session::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *buffe
 	{
 		if (buffer->readableBytes() > PROTO_INLINE_MAX_SIZE)
 		{
-			LOG_WARN << "Protocol error";
 			addReplyError(conn->outputBuffer(), "Protocol error: too big inline request");
 			buffer->retrieveAll();
 		}
@@ -315,16 +315,22 @@ int32_t Session::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *buffe
 
 	/* Handle the \r\n case. */
 	if (newline && newline != queryBuf && *(newline - 1) == '\r')
-		newline--;
+		newline--, linefeedChars++;
 
 	/* Split the input buffer up to the \r\n */
 	queryLen = newline - (queryBuf);
+	if (queryLen + linefeedChars > buffer->readableBytes())
+	{
+		return REDIS_ERR;
+	}
+
 	aux = sdsnewlen(queryBuf, queryLen);
 	argv = sdssplitargs(aux, &argc);
 	sdsfree(aux);
 
-	/* retrieve cuurent buffer index */
-	buffer->retrieve(queryLen + 2);
+	/* Leave data after the first line of the query in the buffer */
+	size_t size = queryLen + linefeedChars;
+	buffer->retrieve(size);
 
 	if (argv == nullptr)
 	{

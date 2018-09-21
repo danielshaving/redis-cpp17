@@ -62,7 +62,14 @@ void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffe
 		}
 		reset();
 	}
+
 	reqtype = 0;
+	/* If there already are entries in the reply list, we cannot
+		 * add anything more to the static buffer. */
+	if (conn->outputBuffer()->readableBytes() > 0)
+	{
+		conn->sendPipe();
+	}
 }
 
 void ProxySession::reset()
@@ -84,9 +91,10 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 {
 	const char *newline;
 	const char *queryBuf = buffer->peek();
-	int32_t j;
+	int32_t j,linefeedChars = 1;
 	size_t queryLen;
 	sds *argv, aux;
+
 
 	/* Search for end of line */
 	newline = strchr(queryBuf, '\n');
@@ -104,16 +112,22 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 
 	/* Handle the \r\n case. */
 	if (newline && newline != queryBuf && *(newline - 1) == '\r')
-		newline--;
+		newline--, linefeedChars++;
 
 	/* Split the input buffer up to the \r\n */
 	queryLen = newline - (queryBuf);
+	if (queryLen + linefeedChars  > buffer->readableBytes())
+	{
+		return REDIS_ERR;
+	}
+
 	aux = sdsnewlen(queryBuf, queryLen);
 	argv = sdssplitargs(aux, &argc);
 	sdsfree(aux);
 
-	/* retrieve cuurent buffer index */
-	buffer->retrieve(queryLen + 2);
+	/* Leave data after the first line of the query in the buffer */
+	size_t size = queryLen + linefeedChars;
+	buffer->retrieve(size);
 
 	if (argv == nullptr)
 	{
@@ -122,18 +136,18 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 		return REDIS_ERR;
 	}
 
-	redis->processCommand(conn, std::string_view(queryBuf, queryLen + 2));
 	/* Create redis objects for all arguments. */
 	for (j = 0; j < argc; j++)
 	{
 		if (j == 0)
 		{
-			command->ptr = sdscpylen(command->ptr, queryBuf + queryLen + 2, bulklen);
+			command->ptr = sdscpylen(command->ptr, argv[j], sdslen(argv[j]));
 			command->calHash();
 		}
 		sdsfree(argv[j]);
 	}
 
+	redis->processCommand(conn, std::string_view(queryBuf, size));
 	zfree(argv);
 	return REDIS_OK;
 }

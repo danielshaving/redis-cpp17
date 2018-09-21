@@ -19,7 +19,7 @@ struct RedisReply
 	int64_t integer;	/* The integer when type is REDIS_REPLY_INTEGER */
 	int32_t len;	 	/* Length of string */
 	sds str;	 		/* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
-	std::string_view view;
+	std::string_view view; /* Proxy reply client buffer */
 	std::vector<RedisReplyPtr> element;	/* elements vector for REDIS_REPLY_ARRAY */
 };
 
@@ -273,6 +273,7 @@ public:
 	RedisAsyncContextPtr getRedisAsyncContext(std::thread::id threadId, int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext(int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext();
+	std::string getTcpClientInfo(std::thread::id threadId, int32_t sockfd);
 
 private:
 	Hiredis(const Hiredis&);
@@ -290,6 +291,7 @@ private:
 	const char *ip;
 	int16_t port;
 	bool proxyMode;
+	std::string result;
 };
 
 int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc,

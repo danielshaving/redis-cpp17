@@ -2017,6 +2017,30 @@ void Hiredis::redisConnCallback(const TcpConnectionPtr &conn)
 	}
 }
 
+std::string Hiredis::getTcpClientInfo(std::thread::id threadId, int32_t sockfd)
+{
+	std::unique_lock<std::mutex> lk(mutex);
+	if (tcpClients.empty())
+	{
+		return "-Error Could not connect to Redis server empty Connection refused \r\n";
+	}
+	else
+	{
+		result.clear();
+		auto it = tcpClientMaps.find(threadId);
+		assert(it != tcpClientMaps.end());
+		auto tcpclient = it->second[(it->second.size() % sockfd) - 1];
+
+		result += "-Error Could not connect to Redis server ";
+		result += tcpclient->getIp();
+		std::string port = std::to_string(tcpclient->getPort());
+		result += " :";
+		result += port;
+		result += " Connection refused \r\n";
+		return result;
+	}
+}
+
 RedisAsyncContextPtr Hiredis::getRedisAsyncContext(std::thread::id threadId, int32_t sockfd)
 {
 	std::unique_lock<std::mutex> lk(mutex);

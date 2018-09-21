@@ -29,6 +29,4 @@ private:
 	std::mutex mutex;
 	std::map<int32_t, ProxySessionPtr> sessions;
 	sds unlockScript;
-	std::string reply;
-	
 };

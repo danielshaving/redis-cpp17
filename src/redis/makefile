@@ -1,5 +1,5 @@
-TARGET= ./proxy-server
-CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17  #-I /usr/local/include #-D_BOOST_FILE_LOCK  # -I /usr/local/include/  #-DUSE_JEMALLOC
+TARGET= ./redis-server
+CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17 #-D_BOOST_FILE_LOCK  # -I /usr/local/include/  #-DUSE_JEMALLOC
 cppfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))
@@ -8,7 +8,7 @@ CXXOBJS=${patsubst %.cc,./%.o,$(cppfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB= #/usr/local/lib/libprotobuf.a  #/usr/local/lib/libprofiler.a /usr/local/lib/libtcmalloc.a  #./libjemalloc.a # ./libhiredis.a    /usr/lib64/libprofiler.so.0 #-ltcmalloc
+LIB=  #/usr/local/lib/libprofiler.a /usr/local/lib/libtcmalloc.a #/usr/local/lib/libprotobuf.a #./libjemalloc.a # ./libhiredis.a    /usr/lib64/libprofiler.so.0 #-ltcmalloc
 
 SO_LIB= 
 

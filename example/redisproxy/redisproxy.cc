@@ -4,7 +4,7 @@
 RedisProxy::RedisProxy(const char *ip, int16_t port, int16_t redisPort,
 		int16_t threadCount, int16_t sessionCount)
 :server(&loop, ip, port, nullptr),
- hiredis(&loop, sessionCount, ip, 6379, true)
+ hiredis(&loop, sessionCount, ip, redisPort, true)
 {
 	unlockScript = sdsnew("if redis.call('get', KEYS[1]) == ARGV[1] \
 				 then return redis.call('del', KEYS[1]) else return 0 end");
@@ -21,12 +21,6 @@ RedisProxy::RedisProxy(const char *ip, int16_t port, int16_t redisPort,
 	server.start();
 	hiredis.setPool(server.getThreadPool());
 	hiredis.start();
-	std::string p = std::to_string(redisPort);
-	reply = "-Error Could not connect to ";
-	reply += ip;
-	reply += ":";
-	reply += p;
-	reply += " Connection refused \r\n";
 }
 
 RedisProxy::~RedisProxy()
@@ -57,6 +51,7 @@ void RedisProxy::processCommand(const TcpConnectionPtr &conn, const std::string_
 	if (redis == nullptr)
 	{
 		Buffer *buffer = conn->outputBuffer();
+		std::string reply = hiredis.getTcpClientInfo(conn->getLoop()->getThreadId(), conn->getSockfd());
 		buffer->append(reply.c_str(), reply.size());
 		conn->sendPipe();
 	}
@@ -104,7 +99,6 @@ void RedisProxy::proxyConnCallback(const TcpConnectionPtr &conn)
 		auto it = sessions.find(conn->getSockfd());
 		assert(it == sessions.end());
 		sessions[conn->getSockfd()] = session;
-
 		LOG_INFO << "Client connect success " << buf << " " << port << " "<< conn->getSockfd();
 	}
 	else
