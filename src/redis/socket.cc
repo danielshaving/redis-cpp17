@@ -392,7 +392,7 @@ bool Socket::setTimeOut(int32_t sockfd, const struct timeval tv)
 	return true;
 }
 
-void Socket::setkeepAlive(int32_t fd, int32_t idle)
+bool Socket::setkeepAlive(int32_t fd, int32_t idle)
 {
 	int32_t keepalive = 1;
 	int32_t keepidle = idle;
@@ -402,30 +402,31 @@ void Socket::setkeepAlive(int32_t fd, int32_t idle)
 
 	if (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (const char *)&keepalive, sizeof(keepalive)) < 0)
 	{
-		assert(false);
+		return false;
 	}
 
 #ifdef __linux__
 	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle)) < 0)
 	{
-		assert(false);
+		return false;
 	}
 
 	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl)) < 0)
 	{
-		assert(false);
+		return false;
 	}
 
 	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt)) < 0)
 	{
-		assert(false);
+		return false;
 	}
 #else
 	if (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, (const char *)&keepidle, sizeof(keepidle)) < 0)
 	{
-		assert(false);
+		return false;
 	}
 #endif
+	return true;
 }
 
 void Socket::setReuseAddr(int32_t sockfd, bool on)

@@ -107,12 +107,14 @@ void RedisProxy::writeCompleteCallBack(const TcpConnectionPtr &conn)
 
 void RedisProxy::proxyConnCallback(const TcpConnectionPtr &conn)
 {
+	conn->getLoop()->assertInLoopThread();
 	if (conn->connected())
 	{
+		Socket::setkeepAlive(conn->getSockfd(), kHeart);
 		conn->setHighWaterMarkCallback(
 				std::bind(&RedisProxy::highWaterCallBack,
 				this, std::placeholders::_1, std::placeholders::_2),
-				1024 * 1024 * 64);
+				kHighWaterBytes);
 
 		char buf[64] = "";
 		uint16_t port = 0;

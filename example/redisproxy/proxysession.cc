@@ -37,6 +37,7 @@ ProxySession::Entry::Entry(const WeakTcpConnectionPtr &weakConn)
 
 ProxySession::Entry::~Entry()
 {
+	conn->getLoop()->assertInLoopThread();
 	TcpConnectionPtr conn = weakConn.lock();
 	if (conn)
 	{
@@ -82,6 +83,7 @@ void ProxySession::timeWheelTimer()
 
 void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 {
+	conn->getLoop()->assertInLoopThread();
 	WeakEntryPtr weakEntry(std::any_cast<WeakEntryPtr>(conn->getContext()));
 	EntryPtr entry(weakEntry.lock());
 	if (entry)

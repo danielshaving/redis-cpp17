@@ -899,7 +899,7 @@ int32_t RedisAsyncContext::proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncC
 	size_t clen, alen;
 	const char *p;
 	sds sname;
-	int ret;
+	int32_t ret;
 
 	size_t len = asyncCallback->len;
 	const char *cmd = asyncCallback->data;
@@ -976,7 +976,7 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
 	size_t clen, alen;
 	const char *p;
 	sds sname;
-	int ret;
+	int32_t ret;
 
 	size_t len = asyncCallback->len;
 	const char *cmd = asyncCallback->data;
@@ -1046,93 +1046,86 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
 	return REDIS_OK;
 }
 
-int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
+/* Return the number of digits of 'v' when converted to string in radix 10.
+* Implementation borrowed from link in redis/src/util.c:string2ll(). */
+static uint32_t countDigits(uint64_t v)
+{
+	uint32_t result = 1;
+	for (;;)
+	{
+		if (v < 10) return result;
+		if (v < 100) return result + 1;
+		if (v < 1000) return result + 2;
+		if (v < 10000) return result + 3;
+		v /= 10000U;
+		result += 4;
+	}
+}
+
+int32_t redisvFormatCommand(char **target, const char *format, va_list ap) 
 {
 	const char *c = format;
-	char *cmd = nullptr; 					/* final command */
-	int32_t pos;							/* position in final command */
-	sds curarg, newarg; 				/* current argument */
-	int32_t touched = 0;					/* was the current argument touched? */
-	char **curargv = nullptr;
-	char **newargv = nullptr;
+	char *cmd = nullptr; /* final command */
+	int32_t pos; /* position in final command */
+	sds curarg, newarg; /* current argument */
+	int32_t touched = 0; /* was the current argument touched? */
+	char **curargv = nullptr, **newargv = nullptr;
 	int32_t argc = 0;
 	int32_t totlen = 0;
+	int32_t errorType = 0; /* 0 = no error; -1 = memory error; -2 = format error */
 	int32_t j;
 
 	/* Abort if there is not target to set */
 	if (target == nullptr)
-	{
-		return REDIS_ERR;
-	}
+		return -1;
 
 	/* Build the command string accordingly to protocol */
 	curarg = sdsempty();
 	if (curarg == nullptr)
-	{
-		return REDIS_ERR;
-	}
+		return -1;
 
-	while (*c != '\0')
-	{
-		if (*c != '%' || c[1] == '\0')
-		{
-			if (*c == ' ')
-			{
-				if (touched)
-				{
-					newargv = (char**)zrealloc(curargv, sizeof(char *)* (argc + 1));
-					if (newargv == nullptr)
-					{
-						goto err;
-					}
-
+	while (*c != '\0') {
+		if (*c != '%' || c[1] == '\0') {
+			if (*c == ' ') {
+				if (touched) {
+					newargv = (char **)realloc(curargv, sizeof(char*)*(argc + 1));
+					if (newargv == nullptr) goto memoryErr;
 					curargv = newargv;
 					curargv[argc++] = curarg;
 					totlen += bulklen(sdslen(curarg));
+
 					/* curarg is put in argv so it can be overwritten. */
 					curarg = sdsempty();
-					if (curarg == nullptr)
-					{
-						goto err;
-					}
+					if (curarg == nullptr) goto memoryErr;
 					touched = 0;
 				}
 			}
-			else
-			{
+			else {
 				newarg = sdscatlen(curarg, c, 1);
-				if (newarg == nullptr)
-				{
-					goto err;
-				}
-
+				if (newarg == nullptr) goto memoryErr;
 				curarg = newarg;
 				touched = 1;
 			}
 		}
-		else
-		{
+		else {
 			char *arg;
 			size_t size;
+
 			/* Set newarg so it can be checked even if it is not touched. */
 			newarg = curarg;
-			switch (c[1])
-			{
+
+			switch (c[1]) {
 			case 's':
-				arg = va_arg(ap, char *);
+				arg = va_arg(ap, char*);
 				size = strlen(arg);
 				if (size > 0)
-				{
 					newarg = sdscatlen(curarg, arg, size);
-				}
 				break;
 			case 'b':
-				arg = va_arg(ap, char *);
+				arg = va_arg(ap, char*);
 				size = va_arg(ap, size_t);
 				if (size > 0)
-				{
 					newarg = sdscatlen(curarg, arg, size);
-				}
 				break;
 			case '%':
 				newarg = sdscat(curarg, "%");
@@ -1141,104 +1134,86 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 				/* Try to detect printf format */
 			{
 				static const char intfmts[] = "diouxX";
+				static const char flags[] = "#0-+ ";
 				char _format[16];
 				const char *_p = c + 1;
 				size_t _l = 0;
 				va_list _cpy;
 
 				/* Flags */
-				if (*_p != '\0' && *_p == '#')
-					_p++;
-
-				if (*_p != '\0' && *_p == '0')
-					_p++;
-
-				if (*_p != '\0' && *_p == '-')
-					_p++;
-
-				if (*_p != '\0' && *_p == ' ')
-					_p++;
-
-				if (*_p != '\0' && *_p == '+')
-					_p++;
+				while (*_p != '\0' && strchr(flags, *_p) != nullptr) _p++;
 
 				/* Field width */
-				while (*_p != '\0' && isdigit(*_p))
-					_p++;
+				while (*_p != '\0' && isdigit(*_p)) _p++;
 
 				/* Precision */
-				if (*_p == '.')
-				{
+				if (*_p == '.') {
 					_p++;
-					while (*_p != '\0' && isdigit(*_p))
-						_p++;
+					while (*_p != '\0' && isdigit(*_p)) _p++;
 				}
+
 				/* Copy va_list before consuming with va_arg */
 				va_copy(_cpy, ap);
-				/* Integer conversion (without modifiers) */
-				if (strchr(intfmts, *_p) != nullptr)
-				{
-					va_arg(ap, int32_t);
-					goto fmt_valid;
-				}
-				/* Double conversion (without modifiers) */
-				if (strchr("eEfFgGaA", *_p) != nullptr)
-				{
-					va_arg(ap, double);
-					goto fmt_valid;
-				}
-				/* Size: char */
-				if (_p[0] == 'h' && _p[1] == 'h')
-				{
-					_p += 2;
-					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
-					{
-						va_arg(ap, int32_t);	/* char gets promoted to int32_t */
-						goto fmt_valid;
-					}
-					goto fmt_invalid;
-				}
-				/* Size: short */
-				if (_p[0] == 'h')
-				{
-					_p += 1;
-					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
-					{
-						va_arg(ap, int32_t);	/* short gets promoted to int32_t */
-						goto fmt_valid;
-					}
-					goto fmt_invalid;
-				}
-				/* Size: long long */
-				if (_p[0] == 'l' && _p[1] == 'l')
-				{
-					_p += 2;
-					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
-					{
-						va_arg(ap, long long);
-						goto fmt_valid;
-					}
 
-					goto fmt_invalid;
+				/* Integer conversion (without modifiers) */
+				if (strchr(intfmts, *_p) != nullptr) {
+					va_arg(ap, int32_t);
+					goto fmtValid;
 				}
-				/* Size: long */
-				if (_p[0] == 'l')
-				{
-					_p += 1;
-					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
-					{
-						va_arg(ap, long);
-						goto fmt_valid;
+
+				/* Double conversion (without modifiers) */
+				if (strchr("eEfFgGaA", *_p) != nullptr) {
+					va_arg(ap, double);
+					goto fmtValid;
+				}
+
+				/* Size: char */
+				if (_p[0] == 'h' && _p[1] == 'h') {
+					_p += 2;
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr) {
+						va_arg(ap, int32_t); /* char gets promoted to int32_t */
+						goto fmtValid;
 					}
-					goto fmt_invalid;
+					goto fmtInvalid;
 				}
-			fmt_invalid:
+
+				/* Size: short */
+				if (_p[0] == 'h') {
+					_p += 1;
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr) {
+						va_arg(ap, int32_t); /* short gets promoted to int32_t */
+						goto fmtValid;
+					}
+					goto fmtInvalid;
+				}
+
+				/* Size: long long */
+				if (_p[0] == 'l' && _p[1] == 'l') {
+					_p += 2;
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr) {
+						va_arg(ap, long long);
+						goto fmtValid;
+					}
+					goto fmtInvalid;
+				}
+
+				/* Size: long */
+				if (_p[0] == 'l') {
+					_p += 1;
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr) {
+						va_arg(ap, long);
+						goto fmtValid;
+					}
+					goto fmtInvalid;
+				}
+
+			fmtInvalid:
 				va_end(_cpy);
-				goto err;
-			fmt_valid:
+				goto formatErr;
+
+			fmtValid:
 				_l = (_p + 1) - c;
-				if (_l < sizeof(_format) - 2)
-				{
+				if (_l < sizeof(_format) - 2) {
 					memcpy(_format, c, _l);
 					_format[_l] = '\0';
 					newarg = sdscatvprintf(curarg, _format, _cpy);
@@ -1247,55 +1222,45 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 					 * increment c twice so compensate here) */
 					c = _p - 1;
 				}
+
 				va_end(_cpy);
 				break;
-
 			}
 			}
 
-			if (newarg == nullptr)
-			{
-				goto err;
-			}
-
+			if (newarg == nullptr) goto memoryErr;
 			curarg = newarg;
+
 			touched = 1;
 			c++;
 		}
 		c++;
 	}
-	/* Add the last argument if needed */
-	if (touched)
-	{
-		newargv = (char **)zrealloc(curargv, sizeof(char *)* (argc + 1));
-		if (newargv == nullptr)
-		{
-			goto err;
-		}
 
+	/* Add the last argument if needed */
+	if (touched) {
+		newargv = (char **)realloc(curargv, sizeof(char*)*(argc + 1));
+		if (newargv == nullptr) goto memoryErr;
 		curargv = newargv;
 		curargv[argc++] = curarg;
 		totlen += bulklen(sdslen(curarg));
 	}
-	else
-	{
+	else {
 		sdsfree(curarg);
 	}
 
-	/* Clear curarg because it was put in curargv or was free'd. */
+	/* Clear curarg because it was put in curargv or was zfree'd. */
 	curarg = nullptr;
+
 	/* Add bytes needed to hold multi bulk count */
-	totlen += 1 + intlen(argc) + 2;
+	totlen += 1 + countDigits(argc) + 2;
+
 	/* Build the command at protocol level */
 	cmd = (char *)zmalloc(totlen + 1);
-	if (cmd == nullptr)
-	{
-		goto err;
-	}
+	if (cmd == nullptr) goto memoryErr;
 
 	pos = sprintf(cmd, "*%d\r\n", argc);
-	for (j = 0; j < argc; j++)
-	{
+	for (j = 0; j < argc; j++) {
 		pos += sprintf(cmd + pos, "$%zu\r\n", sdslen(curargv[j]));
 		memcpy(cmd + pos, curargv[j], sdslen(curargv[j]));
 		pos += sdslen(curargv[j]);
@@ -1303,31 +1268,37 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 		cmd[pos++] = '\r';
 		cmd[pos++] = '\n';
 	}
-
 	assert(pos == totlen);
 	cmd[pos] = '\0';
+
 	zfree(curargv);
 	*target = cmd;
 	return totlen;
-err:
-	while (argc--)
-	{
-		sdsfree(curargv[argc]);
+
+formatErr:
+	errorType = -2;
+	goto cleanup;
+
+memoryErr:
+	errorType = -1;
+	goto cleanup;
+
+cleanup:
+	if (curargv) {
+		while (argc--)
+			sdsfree(curargv[argc]);
+		zfree(curargv);
 	}
 
-	zfree(curargv);
-	if (curarg != nullptr)
-	{
-		sdsfree(curarg);
-	}
+	sdsfree(curarg);
 
+	/* No need to check cmd since it is the last statement that can fail,
+	 * but do it anyway to be as defensive as possible. */
 	if (cmd != nullptr)
-	{
 		zfree(cmd);
-	}
-	return REDIS_ERR;
-}
 
+	return errorType;
+}
 /* Format a command according to the Redis protocol. This function
  * takes a format similar to printf:
  *
@@ -1358,15 +1329,11 @@ int32_t redisFormatCommand(char **target, const char *format, ...)
 RedisReplyPtr RedisContext::redisBlockForReply()
 {
 	RedisReplyPtr reply;
-	if (flags == REDIS_BLOCK)
+	if (redisGetReply(reply) != REDIS_OK)
 	{
-		if (redisGetReply(reply) != REDIS_OK)
-		{
-			return nullptr;
-		}
-		return reply;
+		return nullptr;
 	}
-	return nullptr;
+	return reply;
 }
 
 int32_t RedisContext::redisvAppendCommand(const char *format, va_list ap)
@@ -1375,7 +1342,7 @@ int32_t RedisContext::redisvAppendCommand(const char *format, va_list ap)
 	int32_t len;
 
 	len = redisvFormatCommand(&cmd, format, ap);
-	if (len == REDIS_ERR)
+	if (len == -1)
 	{
 		redisSetError(REDIS_ERR_OOM, "Out of memory");
 		return REDIS_ERR;
@@ -1412,10 +1379,9 @@ RedisReplyPtr RedisContext::redisvCommand(const char *format, va_list ap)
 
 /* Format a command according to the Redis protocol. This function takes the
  * number of arguments, an array with arguments and an array with their
- * lengths. If the latter is set to NULL, strlen will be used to compute the
+ * lengths. If the latter is set to nullptr, strlen will be used to compute the
  * argument lengths.
  */
-
 int32_t redisFormatCommandArgv(char **target, int32_t argc,
 	const char **argv, const size_t *argvlen)
 {
@@ -1456,26 +1422,10 @@ int32_t redisFormatCommandArgv(char **target, int32_t argc,
 	return totlen;
 }
 
-/* Return the number of digits of 'v' when converted to string in radix 10.
- * Implementation borrowed from link in redis/src/util.c:string2ll(). */
-static uint32_t countDigits(uint64_t v)
-{
-	uint32_t result = 1;
-	for (;;)
-	{
-		if (v < 10) return result;
-		if (v < 100) return result + 1;
-		if (v < 1000) return result + 2;
-		if (v < 10000) return result + 3;
-		v /= 10000U;
-		result += 4;
-	}
-}
-
 /* Format a command according to the Redis protocol using an sds string and
  * sdscatfmt for the processing of arguments. This function takes the
  * number of arguments, an array with arguments and an array with their
- * lengths. If the latter is set to NULL, strlen will be used to compute the
+ * lengths. If the latter is set to nullptr, strlen will be used to compute the
  * argument lengths.
  */
 int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc,
@@ -1896,7 +1846,7 @@ int32_t RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
 {
 	va_list ap;
 	va_start(ap, format);
-	int status = redisvAsyncCommand(fn, privdata, format, ap);
+	int32_t status = redisvAsyncCommand(fn, privdata, format, ap);
 	va_end(ap);
 	return status;
 }
@@ -2130,7 +2080,7 @@ void Hiredis::pushTcpClient(const TcpClientPtr &client)
 void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 	const RedisReplyPtr &reply, RedisAsyncCallbackPtr &callback)
 {
-	int pvariant;
+	int32_t pvariant;
 	char *stype;
 	sds sname;
 
@@ -2298,9 +2248,9 @@ void Hiredis::poolStart()
 void Hiredis::start()
 {
 	auto vectors = pool->getAllLoops();
-	for (int i = 0; i < vectors.size(); i++)
+	for (int32_t i = 0; i < vectors.size(); i++)
 	{
-		for (int j = 0; j < sessionCount; j++)
+		for (int32_t j = 0; j < sessionCount; j++)
 		{
 			connect(vectors[i], ip, port);
 		}
@@ -2435,7 +2385,7 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 					it->second.push_back(client);
 				}
 
-				for (int i = 0; i < sessionCount - 1; i++)
+				for (int32_t i = 0; i < sessionCount - 1; i++)
 				{
 					connect(conn->getLoop(), ip, port, 1);
 				}
@@ -2500,13 +2450,18 @@ TcpConnectionPtr Hiredis::redirectySlot(int32_t sockfd, EventLoop *loop, const c
 	{
 		if (iter->getPort() == port)
 		{
-			conn = iter->getConnection();
+			moveAskClients.push_back(iter->getConnection());
 		}
 	}
 
-	if (conn == nullptr)
+	if (moveAskClients.empty())
 	{
 		LOG_INFO << "-> Add new cluster client ip port " << ip << " " << port;
+	}
+	else
+	{
+		conn = moveAskClients[(moveAskClients.size() % sockfd) - 1];
+		moveAskClients.clear();
 	}
 	return conn;
 }

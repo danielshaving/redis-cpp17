@@ -31,4 +31,6 @@ private:
 	sds unlockScript;
 	std::mutex mutex;
 	std::unordered_map<int32_t, ProxySessionPtr> sessions;
+	static const int32_t kHeart = 10;
+	static const int32_t kHighWaterBytes = 1024 * 1024 * 64;
 };

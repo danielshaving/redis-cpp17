@@ -40,7 +40,7 @@ public:
 	static bool connectWaitReady(int32_t fd, int32_t msec);
 
 	static bool isSelfConnect(int32_t sockfd);
-	static void setkeepAlive(int32_t fd, int32_t idle);
+	static bool setkeepAlive(int32_t fd, int32_t idle);
 	static bool setSocketNonBlock(int32_t sockfd);
 	static bool setSocketBlock(int32_t sockfd);
 	static bool setTcpNoDelay(int32_t sockfd, bool on);

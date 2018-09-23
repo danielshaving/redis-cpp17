@@ -897,7 +897,6 @@ int redisGetReply(redisContext *c, void **reply) {
     return REDIS_OK;
 }
 
-
 /* Helper function for the redisAppendCommand* family of functions.
  *
  * Write a formatted command to the output buffer. When this family

@@ -287,7 +287,7 @@ private:
 	std::mutex mutex;
 	std::vector<TcpClientPtr> tcpClients;
 	std::unordered_map<std::thread::id, std::vector<TcpClientPtr>> threadClientMaps;
-	std::vector<TcpConnectionPtr> moveClients;
+	std::vector<TcpConnectionPtr> moveAskClients;
 	int32_t pos;
 	int32_t sessionCount;
 	const char *ip;
