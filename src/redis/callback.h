@@ -41,6 +41,7 @@ typedef std::function<void(const RedisAsyncContextPtr &,
 		const RedisReplyPtr &, const std::any &)> RedisCallbackFn;
 
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
+typedef std::weak_ptr<TcpConnection> WeakTcpConnectionPtr;
 typedef std::shared_ptr<Connector> ConnectorPtr;
 typedef std::shared_ptr<TcpClient> TcpClientPtr;
 typedef std::shared_ptr<Session> SessionPtr;

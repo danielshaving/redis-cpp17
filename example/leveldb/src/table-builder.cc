@@ -106,13 +106,13 @@ void TableBuilder::flush()
 }
 
 void TableBuilder::writeRawBlock(const std::string_view &blockContents,
-    CompressionType type, BlockHandle *handle)
+	CompressionType type, BlockHandle *handle)
 {
 	std::shared_ptr<Rep> r = rep;
 	handle->setOffset(r->offset);
 	handle->setSize(blockContents.size());
 	r->status = r->file->append(blockContents);
-	if (r->status.ok()) 
+	if (r->status.ok())
 	{
 		char trailer[kBlockTrailerSize];
 		trailer[0] = type;
@@ -120,7 +120,7 @@ void TableBuilder::writeRawBlock(const std::string_view &blockContents,
 		crc = crc32c::extend(crc, trailer, 1);  // Extend crc to cover block type
 		encodeFixed32(trailer + 1, crc32c::mask(crc));
 		r->status = r->file->append(std::string_view(trailer, kBlockTrailerSize));
-		if (r->status.ok()) 
+		if (r->status.ok())
 		{
 			r->offset += blockContents.size() + kBlockTrailerSize;
 		}
@@ -139,35 +139,35 @@ void TableBuilder::writeBlock(BlockBuilder *block, BlockHandle *handle)
 	std::string_view blockContents;
 	CompressionType type = r->options.compression;
 	// TODO(postrelease): Support more compression options: zlib?
-	switch (type) 
+	switch (type)
 	{
-		case kNoCompression:
-		  blockContents = raw;
-		  break;
+	case kNoCompression:
+		blockContents = raw;
+		break;
 
-		case kSnappyCompression: 
-		{
-			
-		}
+	case kSnappyCompression:
+	{
+
 	}
-	
+	}
+
 	writeRawBlock(blockContents, type, handle);
 	r->compressedOutPut.clear();
 	block->reset();
 }
 
-void TableBuilder::abandon() 
+void TableBuilder::abandon()
 {
 	assert(!rep->closed);
 	rep->closed = true;
 }
 
-uint64_t TableBuilder::numEntries() const 
+uint64_t TableBuilder::numEntries() const
 {
 	return rep->numEntries;
 }
 
-uint64_t TableBuilder::fileSize() const 
+uint64_t TableBuilder::fileSize() const
 {
 	return rep->offset;
 }

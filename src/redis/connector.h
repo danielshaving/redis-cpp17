@@ -24,7 +24,7 @@ public:
 		errorConnectionCallback = std::move(cb);
 	}
 
-	void start(bool sync);
+	void start(bool s);
 	void restart();
 	void stop();
 
@@ -32,11 +32,11 @@ private:
 	Connector(const Connector&);
 	void operator=(const Connector&);
 
-	void startInLoop(bool sync);
+	void startInLoop(bool s);
 	void stopInLoop();
 
-	void connecting(bool sync);
-	void connecting(bool sync, int32_t sockfd);
+	void connecting(bool s);
+	void connecting(bool s, int32_t sockfd);
 	void resetChannel();
 	void retry(int32_t sockfd);
 
@@ -51,7 +51,7 @@ private:
 	static const int kInitRetryDelayMs = 1000;
 
 	EventLoop *loop;
-	const char *ip;
+	std::string ip;
 	int16_t port;
 	bool connect;
 	int32_t retryDelayMs;

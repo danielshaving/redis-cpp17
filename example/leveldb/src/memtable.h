@@ -21,7 +21,7 @@ public:
 	bool get(const LookupKey &key, std::string *value, Status *s);
 	size_t getTableSize() { return table.size(); }
 	void clearTable();
-	
+
 private:
 	struct KeyComparator
 	{
@@ -35,5 +35,5 @@ private:
 	size_t memoryUsage;
 	int refs;
 public:
-	Table &getTable() { return table; }
+	Table & getTable() { return table; }
 };

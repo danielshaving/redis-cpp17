@@ -8,6 +8,8 @@ void dummyOutput(const char *msg, int len)
 	logFile->flush();
 }
 
+//./redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 --cluster-replicas 1
+
 int main(int argc, char *argv[])
 {
 #ifdef _WIN64
@@ -19,7 +21,7 @@ int main(int argc, char *argv[])
 #endif
 	logFile.reset(new LogFile("log", "proxy", 65536, false));
 	Logger::setOutput(dummyOutput);
-	RedisProxy proxy("127.0.0.1", 6378, 6379, 4, 4);
+	RedisProxy proxy("127.0.0.1", 6378, 7000, 4, 1);
 	proxy.run();
 	return 0;
 }

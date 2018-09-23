@@ -10,7 +10,7 @@ public:
 		int16_t port, const std::any &context);
 	~TcpClient();
 
-	void connect(bool sync = false);
+	void connect(bool s = false);
 	void disConnect();
 	void stop();
 

@@ -112,7 +112,6 @@ EventLoop *ThreadPool::getLoopForHash(size_t hashCode)
 
 std::vector<EventLoop*> ThreadPool::getAllLoops()
 {
-	baseLoop->assertInLoopThread();
 	assert(started);
 	if (loops.empty())
 	{

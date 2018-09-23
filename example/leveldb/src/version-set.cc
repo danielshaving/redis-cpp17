@@ -4,19 +4,19 @@
 #include "log-reader.h"
 
 static bool afterFile(const InternalKeyComparator *ucmp,
-                      const std::string_view *userKey, const FileMetaData *f) 
+	const std::string_view *userKey, const FileMetaData *f)
 {
 	// null user_key occurs before all keys and is therefore never after *f
 	return (userKey != nullptr &&
-		  ucmp->compare(*userKey, f->largest.userKey()) > 0);
+		ucmp->compare(*userKey, f->largest.userKey()) > 0);
 }
 
 static bool beforeFile(const InternalKeyComparator *ucmp,
-                       const std::string_view *userKey, const FileMetaData *f) 
+	const std::string_view *userKey, const FileMetaData *f)
 {
 	// null user_key occurs after all keys and is therefore never before *f
 	return (userKey != nullptr &&
-		  ucmp->compare(*userKey, f->smallest.userKey()) < 0);
+		ucmp->compare(*userKey, f->smallest.userKey()) < 0);
 }
 
 static size_t targetFileSize(const Options *options)
@@ -71,22 +71,22 @@ static int64_t totalFileSize(const std::vector<std::shared_ptr<FileMetaData>> &f
 }
 
 int findFile(const InternalKeyComparator &icmp,
-             const std::vector<std::shared_ptr<FileMetaData>> &files,
-             const std::string_view &key) 
+	const std::vector<std::shared_ptr<FileMetaData>> &files,
+	const std::string_view &key)
 {
 	uint32_t left = 0;
 	uint32_t right = files.size();
-	while (left < right) 
+	while (left < right)
 	{
 		uint32_t mid = (left + right) / 2;
 		std::shared_ptr<FileMetaData> f = files[mid];
-		if (icmp.compare(f->largest.encode(), key) < 0) 
-		{	
+		if (icmp.compare(f->largest.encode(), key) < 0)
+		{
 			// Key at "mid.largest" is < "target".  Therefore all
 			// files at or before "mid" are uninteresting.
 			left = mid + 1;
-		} 
-		else 
+		}
+		else
 		{
 			// Key at "mid.largest" is >= "target".  Therefore all files
 			// after "mid" are uninteresting.
@@ -97,40 +97,40 @@ int findFile(const InternalKeyComparator &icmp,
 }
 
 bool someFileOverlapsRange(bool disjointSortedFiles,
-	const std::vector<std::shared_ptr<FileMetaData>> &files, 
+	const std::vector<std::shared_ptr<FileMetaData>> &files,
 	const std::string_view *smallestUserKey,
-	const std::string_view *largestUserKey) 
+	const std::string_view *largestUserKey)
 {
 	InternalKeyComparator cmp;
-	if (!disjointSortedFiles) 
+	if (!disjointSortedFiles)
 	{
 		// Need to check against all files
-		for (size_t i = 0; i < files.size(); i++) 
+		for (size_t i = 0; i < files.size(); i++)
 		{
 			std::shared_ptr<FileMetaData> f = files[i];
 			if (afterFile(&cmp, smallestUserKey, f.get()) ||
-			  beforeFile(&cmp, largestUserKey, f.get())) 
+				beforeFile(&cmp, largestUserKey, f.get()))
 			{
 				// No overlap
-			} 
-			else 
-			{	
+			}
+			else
+			{
 				return true;  // Overlap
 			}
 		}
 		return false;
 	}
-	
+
 	// Binary search over file list
 	uint32_t index = 0;
-	if (smallestUserKey != nullptr) 
+	if (smallestUserKey != nullptr)
 	{
 		// Find the earliest possible internal key for smallest_user_key
-		InternalKey small(*smallestUserKey, kMaxSequenceNumber,kValueTypeForSeek);
+		InternalKey small(*smallestUserKey, kMaxSequenceNumber, kValueTypeForSeek);
 		index = findFile(cmp, files, small.encode());
 	}
 
-	if (index >= files.size()) 
+	if (index >= files.size())
 	{
 		// beginning of range is after all files, so no overlap.
 		return false;
@@ -138,11 +138,11 @@ bool someFileOverlapsRange(bool disjointSortedFiles,
 	return !beforeFile(&cmp, largestUserKey, files[index].get());
 }
 
-bool Version::overlapInLevel(int level, const std::string_view *smallestUserKey, 
-	const std::string_view *largestUserKey) 
+bool Version::overlapInLevel(int level, const std::string_view *smallestUserKey,
+	const std::string_view *largestUserKey)
 {
 	return someFileOverlapsRange(level > 0, files[level],
-                               smallestUserKey, largestUserKey); 
+		smallestUserKey, largestUserKey);
 }
 
 Status Version::get(const ReadOptions&, const LookupKey &key, std::string *val, GetStats *stats)
@@ -156,7 +156,7 @@ Status Version::get(const ReadOptions&, const LookupKey &key, std::string *val, 
 	std::shared_ptr<FileMetaData> lastFileRead = nullptr;
 	int lastFileReadLevel = -1;
 }
-			 
+
 // Store in "*inputs" all files in "level" that overlap [begin,end]
 void Version::getOverlappingInputs(
 	int level,
@@ -166,50 +166,50 @@ void Version::getOverlappingInputs(
 {
 	assert(level >= 0);
 	assert(level < kNumLevels);
-  
+
 	inputs->clear();
 	std::string_view userBegin, userEnd;
-	
-	if (begin != nullptr) 
+
+	if (begin != nullptr)
 	{
 		userBegin = begin->userKey();
 	}
-	
+
 	if (userEnd != nullptr)
 	{
 		userEnd = end->userKey();
 	}
-	
+
 	InternalKeyComparator cmp;
-	
-	for (size_t i = 0; i < files[level].size(); ) 
+
+	for (size_t i = 0; i < files[level].size(); )
 	{
 		std::shared_ptr<FileMetaData> f = files[level][i++];
 		const std::string_view fileStart = f->smallest.userKey();
 		const std::string_view fileLimit = f->largest.userKey();
-		
-		if (begin != nullptr && cmp.compare(fileLimit, userBegin) < 0) 
+
+		if (begin != nullptr && cmp.compare(fileLimit, userBegin) < 0)
 		{
 			// "f" is completely before specified range; skip it
-		} 
-		else if (end != nullptr && cmp.compare(fileStart, userEnd) > 0) 
+		}
+		else if (end != nullptr && cmp.compare(fileStart, userEnd) > 0)
 		{
 			// "f" is completely after specified range; skip it
-		} 
-		else 
+		}
+		else
 		{
 			inputs->push_back(f);
-			if (level == 0) 
+			if (level == 0)
 			{
 				// Level-0 files may overlap each other.  So check if the newly
 				// added file has expanded the range.  If so, restart search.
-				if (begin != nullptr && cmp.compare(fileStart, userBegin) < 0) 
+				if (begin != nullptr && cmp.compare(fileStart, userBegin) < 0)
 				{
 					userBegin = fileStart;
 					inputs->clear();
 					i = 0;
-				} 
-				else if (end != nullptr && cmp.compare(fileLimit, userEnd) > 0) 
+				}
+				else if (end != nullptr && cmp.compare(fileLimit, userEnd) > 0)
 				{
 					userEnd = fileLimit;
 					inputs->clear();
@@ -219,7 +219,7 @@ void Version::getOverlappingInputs(
 		}
 	}
 }
-		
+
 int Version::pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
 	const std::string_view &largestUserKey)
 {
@@ -231,20 +231,20 @@ int Version::pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
 		InternalKey start(smallestUserKey, kMaxSequenceNumber, kValueTypeForSeek);
 		InternalKey limit(largestUserKey, 0, static_cast<ValueType>(0));
 		std::vector<std::shared_ptr<FileMetaData>> overlaps;
-		
-		while (level < kMaxMemCompactLevel) 
+
+		while (level < kMaxMemCompactLevel)
 		{
-			if (overlapInLevel(level + 1, &smallestUserKey, &largestUserKey)) 
+			if (overlapInLevel(level + 1, &smallestUserKey, &largestUserKey))
 			{
 				break;
 			}
-			
-			if (level + 2 < kNumLevels) 
+
+			if (level + 2 < kNumLevels)
 			{
 				// Check that file does not overlap too many grandparent bytes.
 				getOverlappingInputs(level + 2, &start, &limit, &overlaps);
 				const int64_t sum = totalFileSize(overlaps);
-				if (sum > maxGrandParentOverlapBytes(&vset->options)) 
+				if (sum > maxGrandParentOverlapBytes(&vset->options))
 				{
 					break;
 				}
@@ -509,7 +509,7 @@ void VersionSet::markFileNumberUsed(uint64_t number)
 	}
 }
 
-int VersionSet::numLevelFiles(int level) const 
+int VersionSet::numLevelFiles(int level) const
 {
 	assert(level >= 0);
 	assert(level < kNumLevels);
@@ -526,7 +526,7 @@ void VersionSet::appendVersion(const std::shared_ptr<Version> &v)
 			versions.pop_back();
 		}
 	}
-	
+
 	v->ref();
 	versions.push_back(v);
 }

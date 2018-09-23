@@ -79,7 +79,9 @@ public:
 	const char *readBytes(uint32_t bytes);
 	const char *readLine(int32_t *_len);
 	std::string_view getProxyBuffer()
-	{ return std::string_view(start, end); }
+	{
+		return std::string_view(start, end);
+	}
 
 private:
 	RedisReader(const EventLoop&);
@@ -139,8 +141,8 @@ private:
 public:
 	char errstr[128];	/* String representation of error when applicable */
 	const char *ip;
-	int16_t port;
 	const char *path;
+	int16_t port;
 	int32_t err;	/* Error flags, 0 when there is no error */
 	int32_t fd;
 	int8_t flags;
@@ -199,9 +201,9 @@ public:
 
 	int32_t proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback);
 	int32_t setCommand(const RedisCallbackFn &fn,
-			const std::any &privdata, RedisObjectPtr &key, RedisObjectPtr &value);
+		const std::any &privdata, RedisObjectPtr &key, RedisObjectPtr &value);
 	int32_t getCommand(const RedisCallbackFn &fn,
-				const std::any &privdata, RedisObjectPtr &key);
+		const std::any &privdata, RedisObjectPtr &key);
 
 	std::function<void()> getRedisAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata, const char *format, ...);
@@ -230,7 +232,7 @@ class Hiredis
 {
 public:
 	Hiredis(EventLoop *loop, int16_t sessionCount,
-			const char *ip, int16_t port, bool proxyMode = false);
+		const char *ip, int16_t port, bool proxyMode = false);
 	~Hiredis();
 
 	void redisAsyncDisconnect(const RedisAsyncContextPtr &ac);
@@ -251,15 +253,13 @@ public:
 		connectionCallback = std::move(cb);
 	}
 
-	void connect(EventLoop *loop,const char *ip, int16_t port,int32_t count = 0);
+	void connect(EventLoop *loop, const char *ip, int16_t port, int32_t count = 0);
 	void pushTcpClient(const TcpClientPtr &client);
 	void clearTcpClient();
 	void diconnectTcpClient();
 	void poolStart();
 	void start();
-	bool redirectySlot(const char *ip, int16_t port,
-		const RedisAsyncContextPtr &ac, const RedisReplyPtr &reply,
-		const RedisAsyncCallbackPtr &repliesCb, TcpConnectionPtr &conn);
+	TcpConnectionPtr redirectySlot(int32_t sockfd, EventLoop *loop, const char *ip, int16_t port);
 
 	void setThreadNum(int16_t threadNum)
 	{
@@ -274,6 +274,7 @@ public:
 	RedisAsyncContextPtr getRedisAsyncContext(int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext();
 	std::string getTcpClientInfo(std::thread::id threadId, int32_t sockfd);
+	std::string setTcpClientInfo(const char *ip, int16_t port);
 
 private:
 	Hiredis(const Hiredis&);
@@ -285,7 +286,8 @@ private:
 	ThreadPoolPtr pool;
 	std::mutex mutex;
 	std::vector<TcpClientPtr> tcpClients;
-	std::unordered_map<std::thread::id, std::vector<TcpClientPtr>> tcpClientMaps;
+	std::unordered_map<std::thread::id, std::vector<TcpClientPtr>> threadClientMaps;
+	std::vector<TcpConnectionPtr> moveClients;
 	int32_t pos;
 	int32_t sessionCount;
 	const char *ip;

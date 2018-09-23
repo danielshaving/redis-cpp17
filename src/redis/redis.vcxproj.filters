@@ -188,9 +188,6 @@
     <ClInclude Include="rediscli.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="hiredistest.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="makefile" />

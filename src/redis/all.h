@@ -53,7 +53,7 @@
 #include <ws2tcpip.h>
 typedef SSIZE_T ssize_t;
 #define IOV_TYPE WSABUF
-#define STRCMP stricmp
+#define STRCMP _stricmp
 #else
 #define IOV_TYPE struct iovec
 #define STRCMP strcasecmp
@@ -134,11 +134,11 @@ typedef SSIZE_T ssize_t;
 #define REDIS_REQ_INLINE 1
 #define REDIS_REQ_MULTIBULK 2
 /* Error codes */
-#define REDIS_OK                1
-#define REDIS_ERR               -1
-#define REDIS_INLINE_MAX_SIZE   (4096 * 64 *10 * 10) /* Max size of inline reads */
+#define REDIS_OK 1
+#define REDIS_ERR -1
+#define REDIS_INLINE_MAX_SIZE (4096 * 64 * 10 * 10) /* Max size of inline reads */
 #define REDIS_LRU_BITS 24
-#define REDIS_MBULK_BIG_ARG     (4096 * 11 * 10 * 10)
+#define REDIS_MBULK_BIG_ARG (4096 * 11 * 10 * 10)
 #define REDIS_NULL -1
 #define REDIS_STRING 0
 #define REDIS_LIST 1

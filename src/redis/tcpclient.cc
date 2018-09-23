@@ -58,10 +58,10 @@ TcpClient::~TcpClient()
 	}
 }
 
-void TcpClient::connect(bool sync)
+void TcpClient::connect(bool s)
 {
 	connecting = true;
-	connector->start(sync);
+	connector->start(s);
 }
 
 void TcpClient::disConnect()

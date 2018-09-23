@@ -162,7 +162,7 @@ void AppendFile::append(const char *logline, const size_t len)
 			}
 			break;
 		}
-		
+
 		n += x;
 		remain = len - n;
 	}
@@ -226,9 +226,9 @@ void LogFile::appendUnlocked(const char *logline, int32_t len)
 	if (info.free <= rollSize * interval)
 	{
 		std::cout << ".        Capacity       Free      Available\n"
-			              << ":   " << info.capacity << "   "
-			              << info.free << "   " << info.available  << '\n';
-		return ;
+			<< ":   " << info.capacity << "   "
+			<< info.free << "   " << info.available << '\n';
+		return;
 	}
 
 	if (!file->exists())

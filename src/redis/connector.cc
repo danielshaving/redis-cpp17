@@ -17,19 +17,19 @@ Connector::~Connector()
 	assert(!channel);
 }
 
-void Connector::start(bool sync)
+void Connector::start(bool s)
 {
 	connect = true;
-	loop->runInLoop(std::bind(&Connector::startInLoop, this, sync));
+	loop->runInLoop(std::bind(&Connector::startInLoop, this, s));
 }
 
-void Connector::startInLoop(bool sync)
+void Connector::startInLoop(bool s)
 {
 	loop->assertInLoopThread();
 	assert(state == kDisconnected);
 	if (connect)
 	{
-		connecting(sync);
+		connecting(s);
 	}
 	else
 	{
@@ -67,9 +67,9 @@ int32_t Connector::removeAndResetChannel()
 	return sockfd;
 }
 
-void Connector::connecting(bool sync, int32_t sockfd)
+void Connector::connecting(bool s, int32_t sockfd)
 {
-	if (sync)
+	if (s)
 	{
 		setState(kConnected);
 		if (connect)
@@ -90,7 +90,6 @@ void Connector::connecting(bool sync, int32_t sockfd)
 		channel->enableWriting();
 	}
 }
-
 
 void Connector::retry(int32_t sockfd)
 {
@@ -169,12 +168,12 @@ void Connector::handleError()
 	}
 }
 
-void Connector::connecting(bool sync)
+void Connector::connecting(bool s)
 {
 	int32_t sockfd = Socket::createSocket();
 	assert(sockfd >= 0);
 
-	int32_t savedErrno = Socket::connect(sockfd, ip, port);
+	int32_t savedErrno = Socket::connect(sockfd, ip.c_str(), port);
 	if (savedErrno < 0)
 	{
 #ifdef _WIN64
@@ -192,7 +191,7 @@ void Connector::connecting(bool sync)
 	case EISCONN:
 		Socket::setSocketNonBlock(sockfd);
 		setState(kConnecting);
-		connecting(sync, sockfd);
+		connecting(s, sockfd);
 		break;
 
 	case EAGAIN:

@@ -3,20 +3,76 @@
 #include "socket.h"
 
 ProxySession::ProxySession(RedisProxy *redis, const TcpConnectionPtr &conn)
-:redis(redis),
- reqtype(0),
- multibulklen(0),
- bulklen(-1),
- argc(0)
+	:redis(redis),
+	 conn(conn),
+	reqtype(0),
+	multibulklen(0),
+	bulklen(-1),
+	argc(0)
 {
 	command = createStringObject(nullptr, REDIS_COMMAND_LENGTH);
 	conn->setMessageCallback(std::bind(&ProxySession::proxyReadCallback,
-			this, std::placeholders::_1, std::placeholders::_2));
+		this, std::placeholders::_1, std::placeholders::_2));
+
+	connectionBuckets.resize(kBucketSize);
+	timer = conn->getLoop()->runAfter(1.0, true, std::bind(&ProxySession::timeWheelTimer, this));
+
+	EntryPtr entry(new Entry(conn));
+	connectionBuckets.back().insert(entry);
+	dumpConnectionBuckets();
+	WeakEntryPtr weakEntry(entry);
+	conn->setContext(weakEntry);
 }
 
 ProxySession::~ProxySession()
 {
+	conn->getLoop()->cancelAfter(timer);
+}
 
+ProxySession::Entry::Entry(const WeakTcpConnectionPtr &weakConn)
+: weakConn(weakConn)
+{
+
+}
+
+ProxySession::Entry::~Entry()
+{
+	TcpConnectionPtr conn = weakConn.lock();
+	if (conn)
+	{
+		conn->shutdown();
+	}
+}
+
+void ProxySession::dumpConnectionBuckets() const
+{
+	return ;
+	LOG_INFO << "size = " << connectionBuckets.size();
+	int idx = 0;
+	for (auto  bucketI = connectionBuckets.begin();
+		bucketI != connectionBuckets.end();
+		++bucketI, ++idx)
+	{
+		const Bucket &bucket = *bucketI;
+		printf("[%d] len = %zd : ", idx, bucket.size());
+		for (auto it = bucket.begin(); it != bucket.end(); ++it)
+		{
+			bool connectionDead = (*it)->weakConn.expired();
+			printf("%p(%ld)%s, ", (*it).get(), it->use_count(), connectionDead ? " DEAD" : "");
+		}
+		puts("");
+	}
+}
+
+void ProxySession::timeWheelTimer()
+{
+	if (connectionBuckets.size() > kBucketSize)
+	{
+		connectionBuckets.pop_front();
+	}
+
+	connectionBuckets.push_back(Bucket());
+	dumpConnectionBuckets();
 }
 
 /* This function is called every time, in the client structure 'c', there is
@@ -26,6 +82,14 @@ ProxySession::~ProxySession()
 
 void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 {
+	WeakEntryPtr weakEntry(std::any_cast<WeakEntryPtr>(conn->getContext()));
+	EntryPtr entry(weakEntry.lock());
+	if (entry)
+	{
+		connectionBuckets.back().insert(entry);
+		dumpConnectionBuckets();
+	}
+
 	/* Keep processing while there is something in the input buffer */
 	while (buffer->readableBytes() > 0)
 	{
@@ -91,7 +155,7 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 {
 	const char *newline;
 	const char *queryBuf = buffer->peek();
-	int32_t j,linefeedChars = 1;
+	int32_t j, linefeedChars = 1;
 	size_t queryLen;
 	sds *argv, aux;
 
@@ -115,8 +179,8 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 		newline--, linefeedChars++;
 
 	/* Split the input buffer up to the \r\n */
-	queryLen = newline - (queryBuf);
-	if (queryLen + linefeedChars  > buffer->readableBytes())
+	queryLen = newline - queryBuf;
+	if (queryLen + linefeedChars > buffer->readableBytes())
 	{
 		return REDIS_ERR;
 	}

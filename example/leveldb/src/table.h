@@ -16,7 +16,7 @@ class TableCache;
 // A Table is a sorted map from strings to strings.  Tables are
 // immutable and persistent.  A Table may be safely accessed from
 // multiple threads without external synchronization.
-class Table 
+class Table
 {
 public:
 	// Attempt to open the table that is stored in bytes [0..file_size)
@@ -32,9 +32,9 @@ public:
 	//
 	// *file must remain live while this Table is in use.
 	static Status open(const Options &options,
-					 PosixRandomAccessFile *file,
-					 uint64_t fileSize,
-					 Table **table);
+		PosixRandomAccessFile *file,
+		uint64_t fileSize,
+		Table **table);
 
 	Table(const Table&) = delete;
 	void operator=(const Table&) = delete;
@@ -59,9 +59,9 @@ private:
 	// to Seek(key).  May not make such a call if filter policy says
 	// that key is not present.
 	Status internalGet(
-	  const ReadOptions&, const std::string_view &key,
-	  std::any *arg,
-	  std::function<void(std::any *arg, const std::string_view &k, const std::string_view &v)> handleResult);
+		const ReadOptions&, const std::string_view &key,
+		std::any *arg,
+		std::function<void(std::any *arg, const std::string_view &k, const std::string_view &v)> handleResult);
 
 
 	void readMeta(const Footer &footer);

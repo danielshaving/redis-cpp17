@@ -40,30 +40,30 @@ public:
 		}
 		return false;
 	}
-	
+
 	// Lookup the value for key.  If found, store it in *val and
 	// return OK.  Else return a non-OK status.  Fills *stats.
 	// REQUIRES: lock is not held
-	struct GetStats 
+	struct GetStats
 	{
 		std::shared_ptr<FileMetaData> seekFile;
 		int seekFileLevel;
 	};
-  
-	 Status get(const ReadOptions&, const LookupKey &key, std::string *val,
-             GetStats *stats); 
+
+	Status get(const ReadOptions&, const LookupKey &key, std::string *val,
+		GetStats *stats);
 	// List of files per level
 	std::vector<std::shared_ptr<FileMetaData>> files[kNumLevels];
 
 	// Next file to compact based on seek stats.
 	std::shared_ptr<FileMetaData> fileToCompact;
 	int fileToCompactLevel;
-	
+
 	// Return the level at which we should place a new memtable compaction
 	// result that covers the range [smallest_user_key,largest_user_key].
 	int pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
-							 const std::string_view &largestUserKey);
-	
+		const std::string_view &largestUserKey);
+
 	void getOverlappingInputs(
 		int level,
 		const InternalKey *begin,         // nullptr means before all keys
@@ -74,10 +74,10 @@ public:
 	// some part of [*smallest_user_key,*largest_user_key].
 	// smallest_user_key==nullptr represents a key smaller than all the DB's keys.
 	// largest_user_key==nullptr represents a key largest than all the DB's keys.
-  
-	bool overlapInLevel(int level, const std::string_view *smallestUserKey, 
-	const std::string_view *largestUserKey);
-	
+
+	bool overlapInLevel(int level, const std::string_view *smallestUserKey,
+		const std::string_view *largestUserKey);
+
 	// Level that should be compacted next and its compaction score.
 	// Score < 1 means compaction is not strictly needed.  These fields
 	// are initialized by Finalize().
@@ -125,7 +125,7 @@ private:
 	VersionSet *vset;
 	Version *base;
 	LevelState levels[kNumLevels];
-	
+
 public:
 	Builder(VersionSet *vset, Version *base)
 		:vset(vset),
@@ -166,7 +166,7 @@ public:
 	}
 
 	// Returns true iff some level needs a compaction.
-	bool needsCompaction() const 
+	bool needsCompaction() const
 	{
 		assert(!versions.empty());
 		auto v = versions.front();
@@ -178,10 +178,10 @@ public:
 	// REQUIRES: "file_number" was returned by a call to NewFileNumber().
 	void reuseFileNumber(uint64_t fileNumber)
 	{
-		if (nextFileNumber == fileNumber + 1) 
+		if (nextFileNumber == fileNumber + 1)
 		{
-	    	nextFileNumber = fileNumber;
-	    }
+			nextFileNumber = fileNumber;
+		}
 	}
 
 
@@ -219,7 +219,7 @@ public:
 	std::string compactPointer[kNumLevels];
 	const std::string dbname;
 	const Options options;
-	
+
 private:
 	uint64_t nextFileNumber;
 	uint64_t manifestFileNumber;

@@ -35,23 +35,23 @@ public:
 	// Can be used to ensure that two adjacent entries never live in
 	// the same data block.  Most clients should not need to use this method.
 	// REQUIRES: Finish(), Abandon() have not been called
-	void flush();	
-	
-	 // Indicate that the contents of this builder should be abandoned.  Stops
-	// using the file passed to the constructor after this function returns.
-	// If the caller is not going to call Finish(), it must call Abandon()
-	// before destroying this builder.
-	// REQUIRES: Finish(), Abandon() have not been called
-	
-	void abandon() ;
-	
-	 // Number of calls to Add() so far.
-	uint64_t numEntries() const ;
-	
+	void flush();
+
+	// Indicate that the contents of this builder should be abandoned.  Stops
+   // using the file passed to the constructor after this function returns.
+   // If the caller is not going to call Finish(), it must call Abandon()
+   // before destroying this builder.
+   // REQUIRES: Finish(), Abandon() have not been called
+
+	void abandon();
+
+	// Number of calls to Add() so far.
+	uint64_t numEntries() const;
+
 	// Size of the file generated so far.  If invoked after a successful
 	// Finish() call, returns the size of the final generated file.
-  
-	uint64_t fileSize() const ;
+
+	uint64_t fileSize() const;
 
 private:
 	void writeBlock(BlockBuilder *block, BlockHandle *handle);

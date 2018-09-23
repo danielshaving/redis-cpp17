@@ -3,11 +3,11 @@
 #include "coding.h"
 #include "option.h"
 
-struct Table::Rep 
+struct Table::Rep
 {
-	~Rep() 
+	~Rep()
 	{
-	  
+
 	}
 
 	Options options;
@@ -21,13 +21,13 @@ struct Table::Rep
 };
 
 Status Table::open(const Options &options,
-					 PosixRandomAccessFile *file,
-					 uint64_t fileSize,
-					 Table **table)
+	PosixRandomAccessFile *file,
+	uint64_t fileSize,
+	Table **table)
 {
 	*table = nullptr;
-	if (fileSize < Footer::kEncodedLength) 
+	if (fileSize < Footer::kEncodedLength)
 	{
 		return Status::corruption("file is too short to be an sstable");
-	}	
+	}
 }

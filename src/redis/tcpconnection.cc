@@ -227,7 +227,7 @@ void TcpConnection::sendInLoopPipe()
 		else
 		{
 			void (TcpConnection::*fp)() = &TcpConnection::sendPipe;
-			loop->runInLoop(std::bind(fp, shared_from_this()));
+			loop->runInLoop(std::bind(fp, this));
 		}
 	}
 }
@@ -255,7 +255,7 @@ void TcpConnection::sendPipe(Buffer *buf)
 		else
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendPipeInLoop;
-			loop->runInLoop(std::bind(fp, shared_from_this(), buf->retrieveAllAsString()));
+			loop->runInLoop(std::bind(fp, this, buf->retrieveAllAsString()));
 		}
 	}
 }
@@ -276,7 +276,7 @@ void TcpConnection::sendPipe(const std::string_view &message)
 		else
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendPipeInLoop;
-			loop->runInLoop(std::bind(fp, shared_from_this(), std::string(message)));
+			loop->runInLoop(std::bind(fp, this, std::string(message)));
 		}
 	}
 }
@@ -297,7 +297,7 @@ void TcpConnection::send(const std::string_view &message)
 		else
 		{
 			void (TcpConnection::*fp)(const std::string_view &message) = &TcpConnection::sendInLoop;
-			loop->runInLoop(std::bind(fp, shared_from_this(), std::string(message)));
+			loop->runInLoop(std::bind(fp, this, std::string(message)));
 			//loop->runInLoop(std::bind(&bindSendInLoop,this,std::string(message)));
 		}
 	}
