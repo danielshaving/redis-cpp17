@@ -15,29 +15,13 @@ public:
 	int32_t processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *buffer);
 	int32_t processInlineBuffer(const TcpConnectionPtr &conn, Buffer *buffer);
 	void reset();
-
-	void timeWheelTimer();
-	void dumpConnectionBuckets() const;
-
-	struct Entry
-	{
-		Entry(const WeakTcpConnectionPtr &weakConn);
-		~Entry();
-		WeakTcpConnectionPtr weakConn;
-	};
-
+	
 private:
 	RedisProxy *redis;
 	RedisObjectPtr command;
-	TcpConnectionPtr conn;
-	TimerPtr timer;
-	typedef std::shared_ptr<Entry> EntryPtr;
-	typedef std::weak_ptr<Entry> WeakEntryPtr;
-	typedef std::unordered_set<EntryPtr> Bucket;
-	typedef std::list<Bucket> WeakConnectionList;
-	WeakConnectionList connectionBuckets;
-	static const int32_t kBucketSize = 60;
-
+	std::deque<RedisObjectPtr> redisCommands;
+	const char *buf;
+	size_t len;
 	int32_t reqtype;
 	int32_t multibulklen;
 	int64_t bulklen;

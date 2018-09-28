@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 #endif
 	logFile.reset(new LogFile("log", "proxy", 65536, false));
 	Logger::setOutput(dummyOutput);
-	RedisProxy proxy("127.0.0.1", 6378, 7000, 4, 1);
+	RedisProxy proxy("127.0.0.1", 6378, "127.0.0.1", 7000, 4, 10);
 	proxy.run();
 	return 0;
 }

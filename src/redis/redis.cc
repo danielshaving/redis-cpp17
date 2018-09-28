@@ -255,14 +255,14 @@ void Redis::highWaterCallBack(const TcpConnectionPtr &conn, size_t bytesToSent)
 
 void Redis::connCallBack(const TcpConnectionPtr &conn)
 {
-	char buf[64] = "";
-	uint16_t port = 0;
-	auto addr = Socket::getPeerAddr(conn->getSockfd());
-	Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
-	Socket::toPort(&port, (const struct sockaddr *)&addr);
-
 	if (conn->connected())
 	{
+		char buf[64] = "";
+		uint16_t port = 0;
+		auto addr = Socket::getPeerAddr(conn->getSockfd());
+		Socket::toIp(buf, sizeof(buf), (const struct sockaddr *)&addr);
+		Socket::toPort(&port, (const struct sockaddr *)&addr);
+	
 		conn->setHighWaterMarkCallback(
 			std::bind(&Redis::highWaterCallBack, this, std::placeholders::_1, std::placeholders::_2),
 			1024 * 1024);
@@ -282,7 +282,7 @@ void Redis::connCallBack(const TcpConnectionPtr &conn)
 		clearMonitorState(conn->getSockfd());
 		clearSessionState(conn->getSockfd());
 
-		LOG_INFO << "Client disconnect " << buf << " " << port;
+		LOG_INFO << "Client disconnect ";
 	}
 }
 

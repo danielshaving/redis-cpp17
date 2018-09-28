@@ -90,7 +90,6 @@ void RedisReader::redisReaderSetErrorProtocolByte(char byte)
 	chrtos(cbuf, sizeof(cbuf), byte);
 	snprintf(sbuf, sizeof(sbuf), "Protocol error, got %s as reply type byte", cbuf);
 	redisReaderSetError(REDIS_ERR_PROTOCOL, sbuf);
-	assert(false);
 }
 
 static int32_t intlen(int32_t i)
@@ -647,7 +646,6 @@ int32_t RedisReader::processItem()
 
 void RedisReader::redisReaderSetErrorOOM()
 {
-	assert(false);
 	redisReaderSetError(REDIS_ERR_OOM, "Out of memory");
 }
 
@@ -1604,6 +1602,31 @@ int32_t RedisContext::redisContextConnectUnix(const char *path,
 	return REDIS_OK;
 }
 
+int32_t RedisContext::redisReconnect()
+{
+	err = 0;
+	sender.retrieveAll();
+	reader.reset(new RedisReader());
+	
+	int32_t sockfd = Socket::createSocket();
+	if (sockfd == REDIS_ERR)
+	{
+		redisSetError(REDIS_ERR_OTHER, nullptr);
+		return REDIS_ERR;
+	}
+
+	int32_t ret = Socket::connect(sockfd, ip, port);
+	if (ret == REDIS_ERR)
+	{
+		redisSetError(REDIS_ERR_IO, nullptr);
+		return REDIS_ERR;
+	}
+
+	fd = sockfd;
+	flags = REDIS_BLOCK;
+	return REDIS_OK;
+}
+
 int32_t RedisContext::redisContextConnectTcp(const char *addr,
 	int16_t p, const struct timeval *timeout)
 {
@@ -1853,7 +1876,8 @@ int32_t RedisAsyncContext::redisAsyncCommand(const RedisCallbackFn &fn,
 
 Hiredis::Hiredis(EventLoop *loop, int16_t sessionCount,
 	const char *ip, int16_t port, bool proxyMode)
-	:pool(new ThreadPool(loop)),
+	:loop(loop),
+	pool(new ThreadPool(loop)),
 	sessionCount(sessionCount),
 	ip(ip),
 	port(port),
@@ -1954,7 +1978,147 @@ std::string Hiredis::setTcpClientInfo(const char *ip, int16_t port)
 	return result;
 }
 
-std::string Hiredis::getTcpClientInfo(std::thread::id threadId, int32_t sockfd)
+RedisAsyncContextPtr Hiredis::getClusterRedisAsyncContext(const std::thread::id &threadId)
+{
+	std::unique_lock<std::mutex> lk(mutex);
+	assert(!tcpClients.empty());
+	/*auto it = threadMaps.find(threadId);
+	assert(it != threadMaps.end());
+	auto conn = it->second[0]->getConnection();
+	conn->getLoop()->assertInLoopThread();
+	assert(conn->getContext().has_value());
+	const RedisAsyncContextPtr &ac =
+		std::any_cast<RedisAsyncContextPtr>(conn->getContext());
+	return ac;
+	*/
+	
+	for (auto &it : tcpClients)
+	{
+		auto conn = it->getConnection();
+		if (conn== nullptr)
+		{
+			continue;
+		}
+		else
+		{
+			conn->getLoop()->assertInLoopThread();
+			assert(conn->getContext().has_value());
+			const RedisAsyncContextPtr &ac =
+				std::any_cast<RedisAsyncContextPtr>(conn->getContext());
+			return ac;
+		}
+	}
+	return nullptr;
+}
+
+void Hiredis::clusterNodeTimer()
+{
+	loop->assertInLoopThread();
+	auto redis = getClusterRedisAsyncContext(loop->getThreadId());
+	if (redis != nullptr)
+	{	
+		assert(redis->redisAsyncCommand(std::bind(&Hiredis::clusterNodeCallback,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+			nullptr, "cluster nodes") == REDIS_OK);
+	}
+}
+
+void Hiredis::clusterNodeCallback(const RedisAsyncContextPtr &c,
+			const RedisReplyPtr &reply, const std::any &privdata)
+{
+	loop->assertInLoopThread();
+	std::unique_lock<std::mutex> lk(mutex);
+	if (reply != nullptr && reply->type != REDIS_REPLY_ERROR)
+	{
+		clusterNodes.clear();
+		size_t index = 0;
+		while (index < reply->len)
+		{
+			std::shared_ptr<ClusterNode> node(new ClusterNode);
+			const char *id = strchr(reply->str + index, ' ');
+			if (id == nullptr)
+			{
+				break;
+			}
+			
+			node->id = std::string(reply->str + index, id - (reply->str + index));
+			const char *ip = strchr(id + 1, ':');
+			if (ip == nullptr)
+			{
+				break;
+			}
+			
+			node->ip = std::string(id + 1, ip - id - 1);
+			const char *port = strchr(ip + 1, '@');
+			if (port == nullptr)
+			{
+				break;
+			}
+			
+			int16_t p = atoi(ip + 1);
+			node->port = p;
+			const char *p1 = strchr(port + 1, ' ');
+			if (p1 == nullptr)
+			{
+				break;
+			}
+			
+			const char *myself = strchr(p1 + 1, ' ');
+			std::string m = std::string(p1 + 1, myself - p1 - 1);
+			if (m == "myself,master" ||  m == "master")
+			{
+				node->master = "master";
+				const char *p1 = strchr(myself + 1, ' ');
+				if (p1 == nullptr)
+				{
+					break;
+				}
+				
+				const char *p2 = strchr(p1 + 1, ' ');
+				const char *p3 = strchr(p2 + 1, ' ');
+				const char *p4 = strchr(p3 + 1, ' ');
+				const char *p5 = strchr(p4 + 1, ' ');
+				std::string str = std::string(p4 + 1, p5 - p4 - 1);
+				
+				if (str == "connected")
+				{
+					node->status = 1;
+				}
+				else
+				{
+					node->status = 0;
+				}
+				
+				int16_t startSlot = atoi(p5 + 1);
+				node->startSlot = startSlot;
+				const char *p6 = strchr(p5 + 1, '-');
+				const char *p7 = strchr(p6 + 1, '\n');
+				int16_t endSlot = atoi(p6 + 1);
+				node->endSlot = endSlot;
+				index = p7 + 1 - reply->str;
+			}
+			else 
+			{
+				node->slave = "slave";
+				const char *p1 = strchr(myself + 1, ' ');
+				if (p1 == nullptr)
+				{
+					break;
+				}
+				
+				std::string master = std::string(myself + 1, p1 - myself - 1);
+				const char *p2 = strchr(p1 + 1, ' ');
+				const char *p3 = strchr(p2 + 1, ' ');
+				const char *p4 = strchr(p3 + 1, ' ');
+				const char *p5 = strchr(p4 + 1, '\n');
+				index = p5 + 1 - reply->str;
+			}
+			clusterNodes.push_back(node);
+		}
+	}
+}
+
+std::string Hiredis::getTcpClientInfo(const std::thread::id &threadId, int32_t sockfd)
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	if (tcpClients.empty())
@@ -1964,8 +2128,8 @@ std::string Hiredis::getTcpClientInfo(std::thread::id threadId, int32_t sockfd)
 	else
 	{
 		std::string result;
-		auto it = threadClientMaps.find(threadId);
-		assert(it != threadClientMaps.end());
+		auto it = threadMaps.find(threadId);
+		assert(it != threadMaps.end());
 		auto tcpclient = it->second[(it->second.size() % sockfd) - 1];
 
 		result += "-Error Could not connect to Redis server ";
@@ -1978,7 +2142,7 @@ std::string Hiredis::getTcpClientInfo(std::thread::id threadId, int32_t sockfd)
 	}
 }
 
-RedisAsyncContextPtr Hiredis::getRedisAsyncContext(std::thread::id threadId, int32_t sockfd)
+RedisAsyncContextPtr Hiredis::getRedisAsyncContext(const std::thread::id &threadId, int32_t sockfd)
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	if (tcpClients.empty())
@@ -1986,8 +2150,8 @@ RedisAsyncContextPtr Hiredis::getRedisAsyncContext(std::thread::id threadId, int
 		return nullptr;
 	}
 
-	auto it = threadClientMaps.find(threadId);
-	assert(it != threadClientMaps.end());
+	auto it = threadMaps.find(threadId);
+	assert(it != threadMaps.end());
 
 	TcpConnectionPtr conn = it->second[(it->second.size() % sockfd) - 1]->getConnection();
 	if (conn == nullptr)
@@ -2069,7 +2233,7 @@ void Hiredis::clearTcpClient()
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	tcpClients.clear();
-	threadClientMaps.clear();
+	threadMaps.clear();
 }
 
 void Hiredis::pushTcpClient(const TcpClientPtr &client)
@@ -2209,14 +2373,8 @@ void Hiredis::redisAsyncDisconnect(const RedisAsyncContextPtr &ac)
 	ac->redisConn->forceCloseInLoop();
 }
 
-void Hiredis::connect(EventLoop *loop, const char *ip, int16_t port, int32_t count)
+void Hiredis::connect(EventLoop *loop, const TcpClientPtr &client, int32_t count)
 {
-	TcpClientPtr client(new TcpClient(loop, ip, port, nullptr));
-	client->enableRetry();
-	client->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
-		this, std::placeholders::_1));
-	client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
-		this, std::placeholders::_1, std::placeholders::_2));
 	if (count > 0)
 	{
 		client->connect(true);
@@ -2226,18 +2384,19 @@ void Hiredis::connect(EventLoop *loop, const char *ip, int16_t port, int32_t cou
 		client->connect();
 	}
 
-	pushTcpClient(client);
-	auto it = threadClientMaps.find(loop->getThreadId());
-	if (it == threadClientMaps.end())
+	std::unique_lock<std::mutex> lk(mutex);
+	auto it = threadMaps.find(loop->getThreadId());
+	if (it == threadMaps.end())
 	{
 		std::vector<TcpClientPtr> clients;
 		clients.push_back(client);
-		threadClientMaps[loop->getThreadId()] = std::move(clients);
+		threadMaps[loop->getThreadId()] = std::move(clients);
 	}
 	else
 	{
 		it->second.push_back(client);
 	}
+	pushTcpClient(client);
 }
 
 void Hiredis::poolStart()
@@ -2250,12 +2409,23 @@ void Hiredis::start()
 	auto vectors = pool->getAllLoops();
 	for (int32_t i = 0; i < vectors.size(); i++)
 	{
-		for (int32_t j = 0; j < sessionCount; j++)
-		{
-			connect(vectors[i], ip, port);
-		}
-	}
+		start(vectors[i], 0);
+	}	
 }
+
+void Hiredis::start(EventLoop *loop, int32_t count)
+{
+	for (int32_t j = 0; j < sessionCount - count; j++)
+	{
+		TcpClientPtr client(new TcpClient(loop, ip, port, nullptr));
+		client->enableRetry();
+		client->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
+			this, std::placeholders::_1));
+		client->setMessageCallback(std::bind(&Hiredis::redisReadCallback,
+			this, std::placeholders::_1, std::placeholders::_2));
+		connect(loop, client);
+	}
+}		
 
 void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 {
@@ -2349,7 +2519,6 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 			const char *ip = p + 1;
 			int16_t port = atoi(s + 1);
 
-			std::unique_lock<std::mutex> lk(mutex);
 			TcpConnectionPtr redirectConn = redirectySlot(conn->getSockfd(), conn->getLoop(), ip, port);
 			if (redirectConn == nullptr)
 			{
@@ -2367,32 +2536,14 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 						this, std::placeholders::_1));
 				}
 
-				client->enableRetry();
-				client->connect(true);
+				client->enableRetry();		
+				connect(conn->getLoop(), client, 1);
 				client->setConnectionCallback(std::bind(&Hiredis::redisConnCallback,
-					this, std::placeholders::_1));
-				pushTcpClient(client);
-
-				auto it = threadClientMaps.find(conn->getLoop()->getThreadId());
-				if (it == threadClientMaps.end())
-				{
-					std::vector<TcpClientPtr> clients;
-					clients.push_back(client);
-					threadClientMaps[conn->getLoop()->getThreadId()] = std::move(clients);
-				}
-				else
-				{
-					it->second.push_back(client);
-				}
-
-				for (int32_t i = 0; i < sessionCount - 1; i++)
-				{
-					connect(conn->getLoop(), ip, port, 1);
-				}
+					this, std::placeholders::_1));	
+				start(conn->getLoop(), 1);
 			}
 			else
 			{
-				lk.unlock();
 				if (redirectConn == nullptr)
 				{
 					LOG_WARN << "-> Cluster node disconnect " << ip << " " << port;
@@ -2441,9 +2592,10 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 
 TcpConnectionPtr Hiredis::redirectySlot(int32_t sockfd, EventLoop *loop, const char *ip, int16_t port)
 {
+	std::unique_lock<std::mutex> lk(mutex);
 	assert(!tcpClients.empty());
-	auto it = threadClientMaps.find(loop->getThreadId());
-	assert(it != threadClientMaps.end());
+	auto it = threadMaps.find(loop->getThreadId());
+	assert(it != threadMaps.end());
 
 	TcpConnectionPtr conn = nullptr;
 	for (auto &iter : it->second)

@@ -4,7 +4,6 @@
 
 ProxySession::ProxySession(RedisProxy *redis, const TcpConnectionPtr &conn)
 	:redis(redis),
-	 conn(conn),
 	reqtype(0),
 	multibulklen(0),
 	bulklen(-1),
@@ -13,67 +12,11 @@ ProxySession::ProxySession(RedisProxy *redis, const TcpConnectionPtr &conn)
 	command = createStringObject(nullptr, REDIS_COMMAND_LENGTH);
 	conn->setMessageCallback(std::bind(&ProxySession::proxyReadCallback,
 		this, std::placeholders::_1, std::placeholders::_2));
-
-	connectionBuckets.resize(kBucketSize);
-	timer = conn->getLoop()->runAfter(1.0, true, std::bind(&ProxySession::timeWheelTimer, this));
-
-	EntryPtr entry(new Entry(conn));
-	connectionBuckets.back().insert(entry);
-	dumpConnectionBuckets();
-	WeakEntryPtr weakEntry(entry);
-	conn->setContext(weakEntry);
 }
 
 ProxySession::~ProxySession()
 {
-	conn->getLoop()->cancelAfter(timer);
-}
-
-ProxySession::Entry::Entry(const WeakTcpConnectionPtr &weakConn)
-: weakConn(weakConn)
-{
-
-}
-
-ProxySession::Entry::~Entry()
-{
-	conn->getLoop()->assertInLoopThread();
-	TcpConnectionPtr conn = weakConn.lock();
-	if (conn)
-	{
-		conn->shutdown();
-	}
-}
-
-void ProxySession::dumpConnectionBuckets() const
-{
-	return ;
-	LOG_INFO << "size = " << connectionBuckets.size();
-	int idx = 0;
-	for (auto  bucketI = connectionBuckets.begin();
-		bucketI != connectionBuckets.end();
-		++bucketI, ++idx)
-	{
-		const Bucket &bucket = *bucketI;
-		printf("[%d] len = %zd : ", idx, bucket.size());
-		for (auto it = bucket.begin(); it != bucket.end(); ++it)
-		{
-			bool connectionDead = (*it)->weakConn.expired();
-			printf("%p(%ld)%s, ", (*it).get(), it->use_count(), connectionDead ? " DEAD" : "");
-		}
-		puts("");
-	}
-}
-
-void ProxySession::timeWheelTimer()
-{
-	if (connectionBuckets.size() > kBucketSize)
-	{
-		connectionBuckets.pop_front();
-	}
-
-	connectionBuckets.push_back(Bucket());
-	dumpConnectionBuckets();
+	
 }
 
 /* This function is called every time, in the client structure 'c', there is
@@ -83,15 +26,6 @@ void ProxySession::timeWheelTimer()
 
 void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 {
-	conn->getLoop()->assertInLoopThread();
-	WeakEntryPtr weakEntry(std::any_cast<WeakEntryPtr>(conn->getContext()));
-	EntryPtr entry(weakEntry.lock());
-	if (entry)
-	{
-		connectionBuckets.back().insert(entry);
-		dumpConnectionBuckets();
-	}
-
 	/* Keep processing while there is something in the input buffer */
 	while (buffer->readableBytes() > 0)
 	{
@@ -126,9 +60,22 @@ void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffe
 		{
 			LOG_WARN << "Unknown request type";
 		}
+		
+		if (redisCommands.empty())
+		{
+			redis->processCommand(conn, buf, len);
+		}
+		else
+		{
+			if (!redis->handleRedisCommand(command, shared_from_this(), redisCommands))
+			{
+				addReplyErrorFormat(conn->outputBuffer(),
+					"wrong number of arguments`%s`, for command", command->ptr);
+			}
+		}
 		reset();
 	}
-
+	
 	reqtype = 0;
 	/* If there already are entries in the reply list, we cannot
 		 * add anything more to the static buffer. */
@@ -143,6 +90,7 @@ void ProxySession::reset()
 	argc = 0;
 	multibulklen = 0;
 	bulklen = -1;
+	redisCommands.clear();
 }
 
 /* Like processMultibulkBuffer(), but for the inline protocol instead of RESP,
@@ -161,7 +109,6 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 	size_t queryLen;
 	sds *argv, aux;
 
-
 	/* Search for end of line */
 	newline = strchr(queryBuf, '\n');
 
@@ -171,7 +118,7 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 		if (buffer->readableBytes() > PROTO_INLINE_MAX_SIZE)
 		{
 			addReplyError(conn->outputBuffer(), "Protocol error: too big inline request");
-			buffer->retrieveAll();
+			conn->shutdown();
 		}
 		return REDIS_ERR;
 	}
@@ -198,10 +145,11 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 	if (argv == nullptr)
 	{
 		addReplyError(conn->outputBuffer(), "Protocol error: unbalanced quotes in request");
-		buffer->retrieveAll();
+		conn->shutdown();
 		return REDIS_ERR;
 	}
 
+	bool get = false;
 	/* Create redis objects for all arguments. */
 	for (j = 0; j < argc; j++)
 	{
@@ -209,11 +157,25 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 		{
 			command->ptr = sdscpylen(command->ptr, argv[j], sdslen(argv[j]));
 			command->calHash();
+			
+			if (redis->getRedisCommand(command))
+			{
+				get = true;
+			}
+		}
+		else
+		{
+			if (get)
+			{
+				RedisObjectPtr obj = createStringObject(argv[j], sdslen(argv[j]));
+				redisCommands.push_back(obj);
+			}
 		}
 		sdsfree(argv[j]);
 	}
 
-	redis->processCommand(conn, std::string_view(queryBuf, size));
+	buf = queryBuf;
+	len = size;
 	zfree(argv);
 	return REDIS_OK;
 }
@@ -245,20 +207,21 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 			if (buffer->readableBytes() > REDIS_INLINE_MAX_SIZE)
 			{
 				addReplyError(conn->outputBuffer(), "Protocol error: too big mbulk count string");
-				buffer->retrieveAll();
+				conn->shutdown();
 			}
 			return REDIS_ERR;
 		}
 
 		/* Buffer should also contain \n */
-		if (newline - (queryBuf) > ((signed)buffer->readableBytes() - 2))
+		if ((newline - queryBuf) > (buffer->readableBytes() - 2))
 		{
 			return REDIS_ERR;
 		}
 
 		if (queryBuf[0] != '*')
 		{
-			buffer->retrieveAll();
+			addReplyError(conn->outputBuffer(), "Protocol error: *");
+			conn->shutdown();
 			return REDIS_ERR;
 		}
 
@@ -268,7 +231,7 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 		if (!ok || ll > 1024 * 1024)
 		{
 			addReplyError(conn->outputBuffer(), "Protocol error: invalid multibulk length");
-			buffer->retrieveAll();
+			conn->shutdown();
 			return REDIS_ERR;
 		}
 
@@ -281,6 +244,7 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 		multibulklen = ll;
 	}
 
+	bool get = false;
 	while (multibulklen)
 	{
 		/* Read bulk length if unknown */
@@ -292,14 +256,14 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 				if (buffer->readableBytes() > REDIS_INLINE_MAX_SIZE)
 				{
 					addReplyError(conn->outputBuffer(), "Protocol error: too big bulk count string");
-					buffer->retrieveAll();
+					conn->shutdown();
 					return REDIS_ERR;
 				}
 				break;
 			}
 
 			/* Buffer should also contain \n */
-			if ((newline - queryBuf) > ((signed)buffer->readableBytes() - 2))
+			if ((newline - queryBuf) > (buffer->readableBytes() - 2))
 			{
 				break;
 			}
@@ -307,7 +271,7 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 			if (queryBuf[pos] != '$')
 			{
 				addReplyErrorFormat(conn->outputBuffer(), "Protocol error: expected '$',got '%c'", queryBuf[pos]);
-				buffer->retrieveAll();
+				conn->shutdown();
 				return REDIS_ERR;
 			}
 
@@ -315,7 +279,7 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 			if (!ok || ll < 0 || ll > 512 * 1024 * 1024)
 			{
 				addReplyError(conn->outputBuffer(), "Protocol error: invalid bulk length");
-				buffer->retrieveAll();
+				conn->shutdown();
 				return REDIS_ERR;
 			}
 
@@ -341,10 +305,19 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 			{
 				command->ptr = sdscpylen(command->ptr, queryBuf + pos, bulklen);
 				command->calHash();
+				
+				if (redis->getRedisCommand(command))
+				{
+					get = true;
+				}
 			}
 			else
-			{
-
+			{	
+				if (get)
+				{
+					RedisObjectPtr obj = createStringObject((char*)queryBuf + pos, bulklen);
+					redisCommands.push_back(obj);
+				}
 			}
 
 			pos += bulklen + 2;
@@ -362,7 +335,8 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 	/* We're done when c->multibulk == 0 */
 	if (multibulklen == 0)
 	{
-		redis->processCommand(conn, std::string_view(queryBuf, pos));
+		buf = queryBuf;
+		len = pos;
 		return REDIS_OK;
 	}
 
