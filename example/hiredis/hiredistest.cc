@@ -101,13 +101,13 @@ void HiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,
 
 		{
 			int64_t value = 0;
-			string2ll(reply->element[i]->str, reply->element[i]->len, &value);
+			string2ll(reply->element[i]->str, sdslen(reply->element[i]->str), &value);
 			assert(value == i);
 		}
 
 		{
 			int64_t value = 0;
-			string2ll(reply->element[i + 1]->str, reply->element[i + 1]->len, &value);
+			string2ll(reply->element[i + 1]->str, sdslen(reply->element[i + 1]->str), &value);
 			assert(value == i);
 		}
 	}

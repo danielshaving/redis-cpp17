@@ -274,6 +274,15 @@ void RedisProxy::proxyCallback(const RedisAsyncContextPtr &c,
 			{
 				if (beginProxyCount++ == iterr->first)
 				{
+					{
+						auto it = proxySends.find(conn->getLoop()->getThreadId());
+						assert(it != proxySends.end());
+
+						auto iter = it->second.find(conn->getSockfd());
+						assert (iter != it->second.end());
+						iter->second.erase(iterr->first);
+					}
+					
 					const RedisReplyPtr &r = iterr->second;
 					buffer->append(r->buffer, sdslen(r->buffer));
 					iter->second.erase(iterr++);
