@@ -24,9 +24,9 @@ public:
 	bool getRedisCommand(const RedisObjectPtr &command);
 	bool handleRedisCommand(const RedisObjectPtr &command, 
 		const ProxySessionPtr &session, const std::deque<RedisObjectPtr> &objs);
-	bool hgetallCommand(const std::deque<RedisObjectPtr> &obj, const ProxySessionPtr &session);
+	bool hgetallCommand(const std::deque<RedisObjectPtr> &obj,
+		const ProxySessionPtr &session);
 	
-	void redisContextTimer();
 	void highWaterCallBack(const TcpConnectionPtr &conn, size_t bytesToSent);
 	void writeCompleteCallBack(const TcpConnectionPtr &conn);
 
@@ -36,9 +36,11 @@ public:
 	void proxyCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply, const std::any &privdata);
 		
-	void clearProxyReply(const TcpConnectionPtr &conn);
-	void clearProxyCount(const TcpConnectionPtr &conn);
-	void clearProxySend(const TcpConnectionPtr &conn);
+	void clearProxyReply(const std::thread::id &threadId, const int32_t sockfd);
+	void clearProxyCount(const std::thread::id &threadId, const int32_t sockfd);
+	void clearProxySend(const std::thread::id &threadId, const int32_t sockfd);
+	void clearProxyRedis(const std::thread::id &threadId, const int32_t sockfd);
+	void clearProxyRedisClient(const std::thread::id &threadId, const int32_t sockfd);
 	
 private:
 	EventLoop loop;
@@ -60,6 +62,7 @@ private:
 	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::map<int64_t, RedisReplyPtr>>> proxyReplys;
 	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::set<int64_t>>> proxySends;
 	std::unordered_map<std::thread::id, std::unordered_map<int32_t, int64_t>> proxyCounts;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::unordered_set<int32_t>>> proxyRedis;
 	typedef std::function<bool(const std::deque<RedisObjectPtr> &, const ProxySessionPtr &)> CommandFunc;
 	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> redisCommands;
 };

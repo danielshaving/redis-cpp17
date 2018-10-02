@@ -847,7 +847,9 @@ int32_t RedisContext::redisAppendCommand(const char *format, ...)
 
 int32_t RedisAsyncContext::proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback)
 {
-	redisConn->getLoop()->assertInLoopThread();
+	TcpConnectionPtr conn = weakRedisConn.lock();
+	assert(conn != nullptr);
+	conn->getLoop()->assertInLoopThread();
 	if (redisContext->flags == REDIS_DISCONNECTING)
 	{
 		return REDIS_ERR;
@@ -918,13 +920,15 @@ int32_t RedisAsyncContext::proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncC
 		}
 	}
 
-	redisConn->sendPipe();
+	conn->sendPipe();
 	return REDIS_OK;
 }
 
 int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback)
 {
-	redisConn->getLoop()->assertInLoopThread();
+	TcpConnectionPtr conn = weakRedisConn.lock();
+	assert(conn != nullptr);
+	conn->getLoop()->assertInLoopThread();
 	if (redisContext->flags == REDIS_DISCONNECTING)
 	{
 		return REDIS_ERR;
@@ -1000,8 +1004,8 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
 	{
 		repliesCb.push_back(asyncCallback);
 	}
-
-	redisConn->sendPipe(cmd, len);
+	
+	conn->sendPipe(cmd, len);
 	return REDIS_OK;
 }
 
@@ -1628,7 +1632,7 @@ SubCallback::~SubCallback()
 
 RedisAsyncContext::RedisAsyncContext(Buffer *buffer, const TcpConnectionPtr &conn)
 	:redisContext(new RedisContext(buffer, conn->getSockfd())),
-	redisConn(conn),
+	weakRedisConn(conn),
 	err(0)
 {
 
@@ -1686,8 +1690,10 @@ int32_t RedisAsyncContext::setCommand(const RedisCallbackFn &fn,
 	{
 		return REDIS_ERR;
 	}
-
-	auto buffer = redisConn->outputBuffer();
+	
+	TcpConnectionPtr conn = weakRedisConn.lock();
+	assert(conn != nullptr);
+	auto buffer = conn->outputBuffer();
 	int32_t len;
 	char buf[32];
 	buf[0] = '*';
@@ -1724,7 +1730,7 @@ int32_t RedisAsyncContext::setCommand(const RedisCallbackFn &fn,
 	asyncCallback->len = buffer->readableBytes();
 	asyncCallback->cb = std::move(cb);
 
-	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::proxyAsyncCommand,
+	conn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::proxyAsyncCommand,
 		shared_from_this(), asyncCallback));
 	return REDIS_OK;
 }
@@ -1737,7 +1743,10 @@ int32_t RedisAsyncContext::getCommand(const RedisCallbackFn &fn,
 		return REDIS_ERR;
 	}
 
-	auto buffer = redisConn->outputBuffer();
+	TcpConnectionPtr conn = weakRedisConn.lock();
+	assert(conn != nullptr);
+	
+	auto buffer = conn->outputBuffer();
 	int32_t len;
 	char buf[32];
 	buf[0] = '*';
@@ -1765,8 +1774,7 @@ int32_t RedisAsyncContext::getCommand(const RedisCallbackFn &fn,
 	asyncCallback->data = data;
 	asyncCallback->len = buffer->readableBytes();
 	asyncCallback->cb = std::move(cb);
-
-	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::proxyAsyncCommand,
+	conn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::proxyAsyncCommand,
 		shared_from_this(), asyncCallback));
 	return REDIS_OK;
 }
@@ -1774,7 +1782,9 @@ int32_t RedisAsyncContext::getCommand(const RedisCallbackFn &fn,
 int32_t RedisAsyncContext::proxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data,
 	size_t len, const std::any &privdata)
 {
-	redisConn->getLoop()->assertInLoopThread();
+	TcpConnectionPtr conn = weakRedisConn.lock();
+	assert(conn != nullptr);
+	conn->getLoop()->assertInLoopThread();
 	if (redisContext->flags == REDIS_DISCONNECTING)
 	{
 		return REDIS_ERR;
@@ -1792,7 +1802,7 @@ int32_t RedisAsyncContext::proxyRedisvAsyncCommand(const RedisCallbackFn &fn, co
 	asyncCallback->len = len;
 	asyncCallback->cb = std::move(cb);
 
-	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
+	conn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
 		shared_from_this(), asyncCallback));
 	return REDIS_OK;
 }
@@ -1822,7 +1832,9 @@ int32_t RedisAsyncContext::redisvAsyncCommand(const RedisCallbackFn &fn,
 	asyncCallback->len = len;
 	asyncCallback->cb = std::move(cb);
 
-	redisConn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
+	TcpConnectionPtr conn = weakRedisConn.lock();
+	assert(conn != nullptr);
+	conn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
 		shared_from_this(), asyncCallback));
 	return REDIS_OK;
 }
@@ -1975,7 +1987,6 @@ RedisAsyncContextPtr Hiredis::getClusterRedisAsyncContext(const std::thread::id 
 
 void Hiredis::clusterNodeTimer()
 {
-	return ;
 	loop->assertInLoopThread();
 	auto redis = getClusterRedisAsyncContext(loop->getThreadId());
 	if (redis != nullptr)
@@ -2325,7 +2336,10 @@ void Hiredis::redisAsyncDisconnect(const RedisAsyncContextPtr &ac)
 		}
 		ac->subCb.channelCb.clear();
 	}
-	ac->redisConn->forceCloseInLoop();
+	
+	TcpConnectionPtr conn = ac->getTcpConnection().lock();
+	assert(conn != nullptr);
+	conn->forceCloseInLoop();
 }
 
 void Hiredis::connect(EventLoop *loop, const TcpClientPtr &client, int32_t count)

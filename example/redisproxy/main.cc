@@ -10,6 +10,7 @@ void dummyOutput(const char *msg, int len)
 
 //./redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 --cluster-replicas 1
 //./redis-benchmark -r 1000000 -n 2000000 -t get,set,lpush,lpop -q -P 16
+//ulimit -c unlimited
 int main(int argc, char *argv[])
 {
 #ifdef _WIN64

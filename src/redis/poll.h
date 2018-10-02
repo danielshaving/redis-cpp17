@@ -30,5 +30,4 @@ private:
 	EventList events;
 	EventLoop *loop;
 };
-
 #endif

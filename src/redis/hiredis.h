@@ -220,12 +220,13 @@ public:
 	const std::any &getContext() const { return context; }
 	void resetContext() { context.reset(); }
 	void setContext(const std::any &context) { this->context = context; }
-
+	WeakTcpConnectionPtr getTcpConnection() { return weakRedisConn; }
+	
 	int32_t err;
 	std::string errstr;
 	std::any context;
 	RedisContextPtr redisContext;
-	TcpConnectionPtr redisConn;
+	WeakTcpConnectionPtr weakRedisConn;
 	RedisAsyncCallbackList repliesCb;
 	SubCallback	subCb;
 
