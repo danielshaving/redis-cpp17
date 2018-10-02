@@ -341,7 +341,7 @@ sds RedisCli::cliFormatReplyRaw(RedisReplyPtr &r)
 		/* Nothing... */
 		break;
 	case REDIS_REPLY_ERROR:
-		out = sdscatlen(out, r->str, r->len);
+		out = sdscatlen(out, r->str, sdslen(r->str));
 		out = sdscatlen(out, "\n", 1);
 		break;
 	case REDIS_REPLY_STATUS:
@@ -363,12 +363,12 @@ sds RedisCli::cliFormatReplyRaw(RedisReplyPtr &r)
 			}
 			else
 			{
-				out = sdsCatColorizedLdbReply(out, r->str, r->len);
+				out = sdsCatColorizedLdbReply(out, r->str, sdslen(r->str));
 			}
 		}
 		else
 		{
-			out = sdscatlen(out, r->str, r->len);
+			out = sdscatlen(out, r->str, sdslen(r->str));
 		}
 		break;
 	case REDIS_REPLY_INTEGER:
@@ -401,13 +401,13 @@ sds RedisCli::cliFormatReplyCSV(RedisReplyPtr &r)
 		out = sdscatrepr(out, r->str, strlen(r->str));
 		break;
 	case REDIS_REPLY_STATUS:
-		out = sdscatrepr(out, r->str, r->len);
+		out = sdscatrepr(out, r->str, sdslen(r->str));
 		break;
 	case REDIS_REPLY_INTEGER:
 		out = sdscatprintf(out, "%lld", r->integer);
 		break;
 	case REDIS_REPLY_STRING:
-		out = sdscatrepr(out, r->str, r->len);
+		out = sdscatrepr(out, r->str, sdslen(r->str));
 		break;
 	case REDIS_REPLY_NIL:
 		out = sdscat(out, "NIL");
@@ -454,7 +454,7 @@ sds RedisCli::cliFormatReplyTTY(RedisReplyPtr &r, const char *prefix)
 	case REDIS_REPLY_STRING:
 		/* If you are producing output for the standard output we want
 		* a more interesting output with quoted characters and so forth */
-		out = sdscatrepr(out, r->str, r->len);
+		out = sdscatrepr(out, r->str, sdslen(r->str));
 		out = sdscat(out, "\n");
 		break;
 	case REDIS_REPLY_NIL:

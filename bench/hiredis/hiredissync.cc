@@ -234,7 +234,7 @@ void testBlockingConnection()
 		memcmp(reply->str, "hello\x00world", 11) == 0)
 
 	test("Binary reply length is correct: ");
-	testCond(reply->len == 11)
+	testCond(sdslen(reply->str) == 11)
 
 	test("Can parse nil replies: ");
 	reply = c->redisCommand("GET nokey");

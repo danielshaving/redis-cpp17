@@ -26,7 +26,7 @@ HiredisTest::HiredisTest(EventLoop *loop, int8_t threadCount,
 	hiredis.start();
 
 	std::unique_lock<std::mutex> lk(mutex);
-	while (connectCount < sessionCount)
+	while (connectCount < (sessionCount * threadCount))
 	{
 		condition.wait(lk);
 	}
@@ -68,7 +68,7 @@ void HiredisTest::hsetCallback(const RedisAsyncContextPtr &c,
 {
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_INTEGER);
-	assert(reply->len == 0);
+	assert(sdslen(reply->str) == 0);
 	assert(reply->str == nullptr);
 	assert(reply->integer == 1);
 }
@@ -80,7 +80,7 @@ void HiredisTest::hgetCallback(const RedisAsyncContextPtr &c,
 	assert(reply->type == REDIS_REPLY_ARRAY);
 	int32_t count = std::any_cast<int32_t>(privdata);
 	int64_t replyCount = 0;
-	string2ll(reply->str, reply->len, &replyCount);
+	string2ll(reply->str, sdslen(reply->str), &replyCount);
 	assert(count == replyCount);
 }
 
@@ -90,9 +90,9 @@ void HiredisTest::hgetallCallback(const RedisAsyncContextPtr &c,
 	assert(reply != nullptr);
 	assert(reply->type == REDIS_REPLY_ARRAY);
 	int32_t count = std::any_cast<int32_t>(privdata);
-	assert(reply->len == count);
+	assert(sdslen(reply->str) == count);
 
-	for (int i = 0; i < reply->len; i += 2)
+	for (int i = 0; i < sdslen(reply->str); i += 2)
 	{
 		assert(reply->element[i]);
 		assert(reply->element[i]->type == REDIS_REPLY_STRING);

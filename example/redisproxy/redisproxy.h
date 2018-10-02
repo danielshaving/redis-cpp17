@@ -18,7 +18,6 @@ public:
 	
 	void initRedisPorxy();
 	void initRedisAsync();
-	void initRedisSync();
 	void initRedisCommand();
 	void initRedisTimer();
 	
@@ -36,6 +35,11 @@ public:
 
 	void proxyCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply, const std::any &privdata);
+		
+	void clearProxyReply(const TcpConnectionPtr &conn);
+	void clearProxyCount(const TcpConnectionPtr &conn);
+	void clearProxySend(const TcpConnectionPtr &conn);
+	
 private:
 	EventLoop loop;
 	TcpServer server;
@@ -53,6 +57,9 @@ private:
 	std::unordered_map<int32_t, ProxySessionPtr> sessions;
 	std::unordered_map<std::thread::id, std::shared_ptr<Hiredis>> threadHiredis;
 	std::unordered_map<std::thread::id, std::vector<RedisContextPtr>> threadRedisContexts;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::map<int64_t, RedisReplyPtr>>> proxyReplys;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::set<int64_t>>> proxySends;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, int64_t>> proxyCounts;
 	typedef std::function<bool(const std::deque<RedisObjectPtr> &, const ProxySessionPtr &)> CommandFunc;
 	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> redisCommands;
 };

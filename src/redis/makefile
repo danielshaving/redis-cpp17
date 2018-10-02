@@ -1,5 +1,5 @@
-TARGET= ./redis-server
-CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17 #-D_BOOST_FILE_LOCK  # -I /usr/local/include/  #-DUSE_JEMALLOC
+TARGET= ./proxy-server
+CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17 #-D_BOOST_FILE_LOCK  # -I /usr/local/include/  #-DUSE_JEMALLOC
 cppfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))

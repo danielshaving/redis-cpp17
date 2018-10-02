@@ -34,6 +34,7 @@ private:
 	int32_t multibulklen;
 	int64_t bulklen;
 	int32_t argc;
+	size_t pos;
 
 	Buffer slaveBuffer;
 	Buffer pubsubBuffer;

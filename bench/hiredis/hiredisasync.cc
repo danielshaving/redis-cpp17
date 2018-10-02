@@ -31,7 +31,7 @@ HiredisAsync::HiredisAsync(EventLoop *loop,
 	hiredis.start();
 
 	std::unique_lock<std::mutex> lk(mutex);
-	while (connectCount < sessionCount)
+	while (connectCount < (sessionCount * threadCount))
 	{
 		condition.wait(lk);
 	}
@@ -67,7 +67,7 @@ void HiredisAsync::setCallback(const RedisAsyncContextPtr &c,
 	const RedisReplyPtr &reply, const std::any &privdata)
 {
 	assert(reply->type == REDIS_REPLY_STATUS);
-	assert(reply->len == 2);
+	assert(sdslen(reply->str) == 2);
 	assert(strcmp(reply->str, "OK") == 0);
 
 	std::thread::id threadId = std::any_cast<std::thread::id>(privdata);

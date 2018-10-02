@@ -17,9 +17,8 @@ struct RedisReply
 
 	char type;			/* REDIS_REPLY_* */
 	int64_t integer;	/* The integer when type is REDIS_REPLY_INTEGER */
-	int32_t len;	 	/* Length of string */
 	sds str;	 		/* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
-	std::string_view view; /* Proxy reply client buffer */
+	sds buffer;			/* Proxy reply client buffer */
 	std::vector<RedisReplyPtr> element;	/* elements vector for REDIS_REPLY_ARRAY */
 };
 
@@ -78,10 +77,6 @@ public:
 	int64_t readLongLong(const char *s);
 	const char *readBytes(uint32_t bytes);
 	const char *readLine(int32_t *_len);
-	std::string_view getProxyBuffer()
-	{
-		return std::string_view(start, end);
-	}
 
 private:
 	RedisReader(const EventLoop&);
@@ -89,12 +84,10 @@ private:
 
 public:
 	RedisReadTask rstack[9];
-	char errstr[128];
-	const char *start;
+	std::string errstr;
 	int32_t ridx;
 	int32_t err;
 	size_t pos;
-	size_t end;
 	RedisFunc fn;
 	Buffer *buffer;
 	Buffer buf;
@@ -140,7 +133,7 @@ private:
 	void operator=(const RedisContext&);
 
 public:
-	char errstr[128];	/* String representation of error when applicable */
+	std::string errstr; /* String representation of error when applicable */
 	const char *ip;
 	const char *path;
 	int16_t port;
@@ -164,7 +157,7 @@ struct RedisAsyncCallback
 
 	RedisCallback cb;
 	size_t len;
-	const char *data;
+	char *data;
 };
 
 /* Subscription callbacks */
@@ -184,6 +177,18 @@ struct RedLockCallback
 	const char *val;
 	std::function<void()> wasCallback;
 	std::function<void()> doingCallback;
+};
+
+struct ClusterNode
+{
+	std::string id; 
+	std::string ip;
+	std::string master;
+	std::string slave;
+	int8_t status; //disconnected connected;
+	int16_t startSlot;
+	int16_t endSlot;
+	int16_t port;
 };
 
 class RedisAsyncContext : public std::enable_shared_from_this<RedisAsyncContext>
@@ -217,7 +222,7 @@ public:
 	void setContext(const std::any &context) { this->context = context; }
 
 	int32_t err;
-	char *errstr;
+	std::string errstr;
 	std::any context;
 	RedisContextPtr redisContext;
 	TcpConnectionPtr redisConn;
@@ -227,19 +232,6 @@ public:
 private:
 	RedisAsyncContext(const RedisAsyncContext&);
 	void operator=(const RedisAsyncContext&);
-};
-
-class ClusterNode
-{
-public:
-	std::string id; 
-	std::string ip;
-	std::string master;
-	std::string slave;
-	int8_t status; //disconnected connected;
-	int16_t startSlot;
-	int16_t endSlot;
-	int16_t port;
 };
 	
 class Hiredis
@@ -260,41 +252,34 @@ public:
 			const RedisReplyPtr &reply, const std::any &privdata);
 
 	void setDisconnectionCallback(const DisConnectionCallback &&cb)
-	{
-		disConnectionCallback = std::move(cb);
-	}
+	{ disConnectionCallback = std::move(cb); }
 
 	void setConnectionCallback(const ConnectionCallback &&cb)
-	{
-		connectionCallback = std::move(cb);
-	}
+	{ connectionCallback = std::move(cb); }
 
 	void clusterNodeTimer();
 	void connect(EventLoop *loop, const TcpClientPtr &client, int32_t count = 0);
 	void pushTcpClient(const TcpClientPtr &client);
 	void clearTcpClient();
+	auto &getTcpClient() { return tcpClients; }
 	void diconnectTcpClient();
+	
 	void poolStart();
 	void start();
 	void start(EventLoop *loop, int32_t count);
-	TcpConnectionPtr redirectySlot(int32_t sockfd, EventLoop *loop, const char *ip, int16_t port);
-
-	void setThreadNum(int16_t threadNum)
-	{
-		pool->setThreadNum(threadNum);
-	}
-
-	ThreadPoolPtr getPool() { return pool; }
+	void setThreadNum(int16_t threadNum) 
+	{ pool->setThreadNum(threadNum); }
+	
 	void setPool(ThreadPoolPtr pool) { this->pool = pool; }
-	auto &getTcpClient() { return tcpClients; }
+	ThreadPoolPtr getPool() { return pool; }
 
+	TcpConnectionPtr redirectySlot(int32_t sockfd, EventLoop *loop, const char *ip, int16_t port);
 	RedisAsyncContextPtr getRedisAsyncContext(const std::thread::id &threadId, int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext(int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext();
 	RedisAsyncContextPtr getClusterRedisAsyncContext(const std::thread::id &threadId);
 	std::string getTcpClientInfo(const std::thread::id &threadId, int32_t sockfd);
 	std::string setTcpClientInfo(const char *ip, int16_t port);
-
 private:
 	Hiredis(const Hiredis&);
 	void operator=(const Hiredis&);
@@ -313,7 +298,6 @@ private:
 	const char *ip;
 	int16_t port;
 	bool proxyMode;
-	std::string result;
 };
 
 int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc,

@@ -115,19 +115,19 @@ typedef SSIZE_T ssize_t;
 
 /* Flag specific to the async API which means that the context should be clean
  * up as soon as possible. */
-#define REDIS_FREEING 0x8
+#define REDIS_FREEING	10
 
  /* Flag that is set when an async callback is executed. */
-#define REDIS_IN_CALLBACK 0x10
+#define REDIS_IN_CALLBACK 20
 
 /* Flag that is set when the async context has one or more subscriptions. */
-#define REDIS_SUBSCRIBED 0x20
+#define REDIS_SUBSCRIBED 30
 
 /* Flag that is set when monitor mode is active */
-#define REDIS_MONITORING 0x40
+#define REDIS_MONITORING 40
 
 /* Flag that is set when we should set SO_REUSEADDR before calling bind() */
-#define REDIS_REUSEADDR 0x80
+#define REDIS_REUSEADDR 5
 
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
 /* Client request types */
@@ -326,6 +326,7 @@ typedef SSIZE_T ssize_t;
 #define REDIS_REPLY_STATUS 5
 #define REDIS_REPLY_ERROR 6
 #define REDIS_REPLY_CLUSTER 7
+#define REDIS_REPLY_PROXY 8
 
 #define REPLI_TIME_OUT	60
 
