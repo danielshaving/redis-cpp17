@@ -89,7 +89,7 @@ void Session::readCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 
 	if (redis->repliEnabled)
 	{
-		std::unique_lock <std::mutex> lck(redis->getSlaveMutex());
+		std::unique_lock<std::mutex> lck(redis->getSlaveMutex());
 		auto &slaveConns = redis->getSlaveConn();
 		for (auto &it : slaveConns)
 		{
@@ -324,7 +324,6 @@ int32_t Session::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *buffe
 
 	if (argv == nullptr)
 	{
-		assert(false);
 		addReplyError(conn->outputBuffer(), "Protocol error: unbalanced quotes in request");
 		conn->shutdown();
 		return REDIS_ERR;
@@ -389,19 +388,13 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *bu
 		}
 
 		/* Buffer should also contain \n */
-		if ((newline - queryBuf + pos) > buffer->readableBytes() - pos)
-		{
-			return REDIS_ERR;
-		}
-
-		if ((newline - queryBuf + pos) > (buffer->readableBytes() - pos - 2))
+		if ((newline - (queryBuf + pos)) > (buffer->readableBytes() - pos - 2))
 		{
 			return REDIS_ERR;
 		}
 
 		if (queryBuf[0] != '*')
 		{
-			assert(false);
 			addReplyError(conn->outputBuffer(), "Protocol error: *");
 			conn->shutdown();
 			return REDIS_ERR;
@@ -410,20 +403,17 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *bu
 		/* We know for sure there is a whole line since newline != NULL,
 		 * so go ahead and find out the multi bulk length. */
 		ok = string2ll(queryBuf + pos + 1, newline - (queryBuf + pos + 1), &ll);
-		if (!ok || ll > 1024 * 1024 || ll <= 0)
+		if (!ok || ll > REDIS_MBULK_BIG_ARG || ll <= 0)
 		{
-			assert(false);
 			addReplyError(conn->outputBuffer(), "Protocol error: invalid multibulk length");
 			conn->shutdown();
 			return REDIS_ERR;
 		}
 
-		pos = (newline - queryBuf) + 2;
+		pos += (newline - queryBuf) + 2;
 		multibulklen = ll;
 	}
 
-	assert(multibulklen > 0);
-	bool get = false;
 	while (multibulklen)
 	{
 		/* Read bulk length if unknown */
@@ -435,35 +425,28 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *bu
 				break;
 			}
 
-			/* Buffer should also contain \n */
-			if (newline - (queryBuf + pos) > (buffer->readableBytes() - pos))
+		/* Buffer should also contain \n */
+			if ((newline - (queryBuf + pos)) > (buffer->readableBytes() - pos - 2))
 			{
-				break;
+				return REDIS_ERR;
 			}
-
-			if (newline - (queryBuf + pos) > (buffer->readableBytes() - pos - 2))
-			{
-				break;
-			}
-
+			
 			if (queryBuf[pos] != '$')
 			{
-				assert(false);
 				addReplyErrorFormat(conn->outputBuffer(), "Protocol error: expected '$',got '%c'", queryBuf[pos]);
 				conn->shutdown();
 				return REDIS_ERR;
 			}
 
 			ok = string2ll(queryBuf + pos + 1, newline - (queryBuf + pos + 1), &ll);
-			if (!ok || ll < 0 || ll > 512 * 1024 * 1024)
+			if (!ok || ll < 0 || ll > REDIS_MBULK_BIG_ARG)
 			{
-				assert(false);
 				addReplyError(conn->outputBuffer(), "Protocol error: invalid bulk length");
 				conn->shutdown();
 				return REDIS_ERR;
 			}
 
-			pos = newline - queryBuf + 2;
+			pos += (newline - queryBuf) + 2;
 			bulklen = ll;
 		}
 

@@ -193,7 +193,6 @@ void Connector::connecting(bool s)
 		setState(kConnecting);
 		connecting(s, sockfd);
 		break;
-
 	case EAGAIN:
 	case EADDRINUSE:
 	case EADDRNOTAVAIL:
@@ -201,7 +200,6 @@ void Connector::connecting(bool s)
 	case ENETUNREACH:
 		retry(sockfd);
 		break;
-
 	case EACCES:
 	case EPERM:
 	case EAFNOSUPPORT:
@@ -209,13 +207,12 @@ void Connector::connecting(bool s)
 	case EBADF:
 	case EFAULT:
 	case ENOTSOCK:
-		LOG_WARN << "connect error " << savedErrno << " " << ip << " " << port;
 		Socket::close(sockfd);
+		retry(sockfd);
 		break;
-
 	default:
-		LOG_WARN << "Unexpected error " << savedErrno << " " << ip << " " << port;
 		Socket::close(sockfd);
+		retry(sockfd);
 		break;
 	}
 }

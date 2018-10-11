@@ -202,6 +202,7 @@ public:
 	auto &pubSubMutex() { return pubsubMutex; }
 
 public:
+	const static int32_t kShards = 1024;
 	typedef std::function<bool(const std::deque<RedisObjectPtr> &,
 		const SessionPtr &, const TcpConnectionPtr &)> CommandFunc;
 	typedef std::unordered_map<RedisObjectPtr,
@@ -217,14 +218,7 @@ public:
 	typedef std::unordered_map<RedisObjectPtr,
 		std::unordered_set<RedisObjectPtr, Hash, Equal>, Hash, Equal> SetMap;
 	typedef std::unordered_set<RedisObjectPtr, Hash, Equal> RedisMap;
-
-	std::unordered_set<RedisObjectPtr, Hash, Equal> checkCommands;
-	std::unordered_set<RedisObjectPtr, Hash, Equal> stopReplis;
-	std::unordered_set<RedisObjectPtr, Hash, Equal> replyCommands;
-	std::unordered_set<RedisObjectPtr, Hash, Equal> cluterCommands;
-	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> handlerCommands;
-
-	const static int32_t kShards = 1024;
+	typedef std::unordered_set<RedisObjectPtr, Hash, Equal> Command;
 
 private:
 	Redis(const Redis&);
@@ -239,6 +233,12 @@ private:
 	std::unordered_map<RedisObjectPtr,
 		std::unordered_map<int32_t, TcpConnectionPtr>, Hash, Equal> pubSubs;
 	std::unordered_map<int32_t, TcpConnectionPtr> monitorConns;
+	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> handlerCommands;
+
+	Command checkCommands;
+	Command stopReplis;
+	Command replyCommands;
+	Command cluterCommands;
 
 	struct RedisMapLock
 	{

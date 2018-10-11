@@ -1,4 +1,23 @@
 #include "redisproxy.h"
+const char *logo =
+"                _._                                                  \n"
+"           _.-``__ ''-._                                             \n"
+"      _.-``    `.  `_.  ''-._           redis-proxy 1.0	    	  \n"
+"  .-`` .-```.  ```\\/    _.,_ ''-._                                  \n"
+" (    '      ,       .-`  | `,    )								  \n"
+" |`-._`-...-` __...-.``-._|'` _.-'|								  \n"
+" |    `-._   `._    /     _.-'    |  								  \n"
+"  `-._    `-._  `-./  _.-'    _.-'                                   \n"
+" |`-._`-._    `-.__.-'    _.-'_.-'|                                  \n"
+" |    `-._`-._        _.-'_.-'    |                   				  \n"
+"  `-._    `-._`-.__.-'_.-'    _.-'                                   \n"
+" |`-._`-._    `-.__.-'    _.-'_.-'|                                  \n"
+" |    `-._`-._        _.-'_.-'    |                                  \n"
+"  `-._    `-._`-.__.-'_.-'    _.-'                                   \n"
+"      `-._    `-.__.-'    _.-'                                       \n"
+"          `-._        _.-'                                           \n"
+"              `-.__.-'                                               \n";
+
 
 std::unique_ptr<LogFile> logFile;
 void dummyOutput(const char *msg, int len)
@@ -13,6 +32,7 @@ void dummyOutput(const char *msg, int len)
 //ulimit -c unlimited
 int main(int argc, char *argv[])
 {
+	printf("%s\n", logo);
 #ifdef _WIN64
 	WSADATA wsaData;
 	int32_t iRet = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -22,7 +42,7 @@ int main(int argc, char *argv[])
 #endif
 	logFile.reset(new LogFile("log", "proxy", 65536, false));
 	Logger::setOutput(dummyOutput);
-	RedisProxy proxy("127.0.0.1", 6378, "127.0.0.1", 7000, 4, 1);
+	RedisProxy proxy("127.0.0.1", 6378, "127.0.0.1", 7000, 0, 1);
 	proxy.run();
 	return 0;
 }

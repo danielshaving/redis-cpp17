@@ -1157,11 +1157,11 @@ public:
 	void cliPrintContextError();
 	void cliRefreshPrompt();
 	sds cliFormatReplyRaw(RedisReplyPtr &r);
-	sds sdsCatColorizedLdbReply(sds o, char *s, size_t len);
+	sds sdsCatColorizedLdbReply(sds o, char *s, int32_t len);
 	sds cliFormatReplyTTY(RedisReplyPtr &r, const char *prefix);
 	sds cliFormatReplyCSV(RedisReplyPtr &r);
 
-	sds sdscatcolor(sds o, char *s, size_t len, char *color);
+	sds sdscatcolor(sds o, char *s, int32_t len, char *color);
 	int isColorTerm();
 	char **convertToSds(int count, char** args);
 	Config *getConfig() { return &config; }

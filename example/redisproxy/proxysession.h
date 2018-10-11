@@ -19,12 +19,12 @@ public:
 private:
 	RedisProxy *redis;
 	RedisObjectPtr command;
-	std::deque<RedisObjectPtr> redisCommands;
+	std::vector<RedisObjectPtr> redisCommands;
 	const char *buf;
 	size_t len;
 	int32_t pos;
 	int32_t reqtype;
 	int32_t multibulklen;
-	int64_t bulklen;
+	int32_t bulklen;
 	int32_t argc;
 };

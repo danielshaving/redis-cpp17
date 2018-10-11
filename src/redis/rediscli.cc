@@ -288,7 +288,7 @@ int RedisCli::isColorTerm()
 	return t != nullptr && strstr(t, "xterm") != nullptr;
 }
 
-sds RedisCli::sdscatcolor(sds o, char *s, size_t len, char *color)
+sds RedisCli::sdscatcolor(sds o, char *s, int32_t len, char *color)
 {
 	if (!isColorTerm()) return sdscatlen(o, s, len);
 
@@ -309,7 +309,7 @@ sds RedisCli::sdscatcolor(sds o, char *s, size_t len, char *color)
 }
 
 
-sds RedisCli::sdsCatColorizedLdbReply(sds o, char *s, size_t len)
+sds RedisCli::sdsCatColorizedLdbReply(sds o, char *s, int32_t len)
 {
 #ifndef _WIN64
 	char *color = "white";
@@ -333,7 +333,7 @@ sds RedisCli::sdsCatColorizedLdbReply(sds o, char *s, size_t len)
 sds RedisCli::cliFormatReplyRaw(RedisReplyPtr &r)
 {
 	sds out = sdsempty(), tmp;
-	size_t i;
+	int32_t i;
 
 	switch (r->type)
 	{
@@ -610,7 +610,7 @@ int RedisCli::cliReadReply(int outputRawString)
 int RedisCli::cliSendCommand(int argc, char **argv, int repeat)
 {
 	char *command = argv[0];
-	size_t *argvlen;
+	int32_t *argvlen;
 	int j, outputRaw;
 
 	if (!config.evalLdb && /* In debugging mode, let's pass "help" to Redis. */
@@ -676,7 +676,7 @@ int RedisCli::cliSendCommand(int argc, char **argv, int repeat)
 	}
 
 	/* Setup argument length */
-	argvlen = (size_t*)zmalloc(argc * sizeof(size_t));
+	argvlen = (int32_t*)zmalloc(argc * sizeof(int32_t));
 	for (j = 0; j < argc; j++)
 	{
 		argvlen[j] = sdslen(argv[j]);

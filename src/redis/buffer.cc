@@ -2,14 +2,14 @@
 
 const char Buffer::kCRLF[] = "\r\n";
 const char Buffer::CONTENT[] = "Content-Length";
-const size_t Buffer::kCheapPrepend;
-const size_t Buffer::kInitialSize;
+const int32_t Buffer::kCheapPrepend;
+const int32_t Buffer::kInitialSize;
 
 ssize_t Buffer::readFd(int32_t fd, int32_t *saveErrno)
 {
 	char extrabuf[65536];
 	IOV_TYPE vec[2];
-	const size_t writable = writableBytes();
+	const int32_t writable = writableBytes();
 #ifdef _WIN64
 	vec[0].buf = begin() + writerIndex;
 	vec[0].len = writable;

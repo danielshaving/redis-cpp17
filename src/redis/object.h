@@ -52,7 +52,7 @@ struct SharedObjectsStruct
 		dbsize, asking, hset, hget, hgetall, save, slaveof, command, config, auth,
 		info, echo, client, hkeys, hlen, keys, bgsave, memory, cluster, migrate, debug,
 		ttl, lrange, llen, sadd, scard, addsync, setslot, node, clusterconnect, delsync,
-		zadd, zrange, zrevrange, zcard, dump, restore, incr, decr, monitor,
+		zadd, zrange, zrevrange, zcard, dump, restore, incr, decr, monitor, mget,
 		integers[REDIS_SHARED_INTEGERS],
 		mbulkhdr[REDIS_SHARED_BULKHDR_LEN],
 		bulkhdr[REDIS_SHARED_BULKHDR_LEN];

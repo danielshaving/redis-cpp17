@@ -103,8 +103,8 @@ bool RedLock::lockInstance(const RedisContextPtr &c,
 RedisReplyPtr RedLock::commandArgv(const RedisContextPtr &c, int32_t argc, char **inargv)
 {
 	char **argv = convertToSds(argc, inargv);
-	size_t *argvlen;
-	argvlen = (size_t *)zmalloc(argc * sizeof(size_t));
+	int32_t *argvlen;
+	argvlen = (int32_t *)zmalloc(argc * sizeof(int32_t));
 	for (int j = 0; j < argc; j++)
 	{
 		argvlen[j] = sdslen(argv[j]);
