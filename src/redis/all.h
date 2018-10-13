@@ -27,7 +27,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <string>
-#include <iosfwd>    // for ostream forward-declaration
+#include <iosfwd> 
 #include <string>
 #include <set>
 #include <errno.h>
@@ -36,7 +36,6 @@
 #include <limits.h>
 #include <stdint.h>
 #include <sys/stat.h>
-#include <stdio.h>
 #include <atomic>
 #include <stdarg.h>
 #include <limits.h>
@@ -54,9 +53,11 @@
 typedef SSIZE_T ssize_t;
 #define IOV_TYPE WSABUF
 #define STRCMP _stricmp
+#define MEMCMP _strnicmp
 #else
 #define IOV_TYPE struct iovec
 #define STRCMP strcasecmp
+#define MEMCMP strncasecmp
 #include <unistd.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
@@ -348,11 +349,11 @@ typedef SSIZE_T ssize_t;
 	* error that occured. REDIS_ERR_IO means there was an I/O error and you
 	* should use the "errno" variable to find out what is wrong.
 	* For other values, the "errstr" field will hold a description. */
-#define REDIS_ERR_IO 1 /* Error in read or write */
-#define REDIS_ERR_EOF 3 /* End of file */
-#define REDIS_ERR_PROTOCOL 4 /* Protocol error */
-#define REDIS_ERR_OOM 5 /* Out of memory */
-#define REDIS_ERR_OTHER 2 /* Everything else... */
+#define REDIS_ERR_IO 21 /* Error in read or write */
+#define REDIS_ERR_OTHER 22 /* Everything else... */
+#define REDIS_ERR_EOF 23 /* End of file */
+#define REDIS_ERR_PROTOCOL 24 /* Protocol error */
+#define REDIS_ERR_OOM 25 /* Out of memory */
 
 
 #define REDIS_SLAVE_SYNC_SIZE  65536 

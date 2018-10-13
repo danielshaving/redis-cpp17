@@ -277,8 +277,7 @@ public:
 	void poolStart();
 	void start();
 	void start(EventLoop *loop, int32_t count);
-	void setThreadNum(int16_t threadNum) 
-	{ pool->setThreadNum(threadNum); }
+	void setThreadNum(int16_t threadNum) { pool->setThreadNum(threadNum); }
 	
 	void setPool(ThreadPoolPtr pool) { this->pool = pool; }
 	ThreadPoolPtr getPool() { return pool; }

@@ -311,6 +311,7 @@ void createSharedObjects()
 	shared.decr = createObject(REDIS_STRING, sdsnew("decr"));
 	shared.monitor = createObject(REDIS_STRING, sdsnew("monitor"));
 	shared.mget = createObject(REDIS_STRING, sdsnew("mget"));
+	shared.subscribe = createObject(REDIS_STRING, sdsnew("subscribe"));
 
 	for (j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{

@@ -12,7 +12,7 @@ public:
 	~RedisProxy();
 
 	void proxyConnCallback(const TcpConnectionPtr &conn);
-	void processCommand(const TcpConnectionPtr &conn, const char *buf, size_t len);
+	void processCommand(const RedisObjectPtr &command, const TcpConnectionPtr &conn, const char *buf, size_t len);
 	void run();
 
 	void initRedisPorxy();
@@ -37,7 +37,12 @@ public:
 	void redisDisconnCallback(const TcpConnectionPtr &conn);
 	void proxyCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply, const std::any &privdata);
+	void mgetCallback(const std::thread::id &threadId, const int32_t sockfd,
+		const TcpConnectionPtr &conn);
+	void subscribeCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply, const std::any &privdata);
 
+	void clearSubscribe(const TcpConnectionPtr &conn, const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxy(const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxyReply(const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxyCount(const std::thread::id &threadId, const int32_t sockfd);
@@ -53,7 +58,8 @@ public:
 	void insertCommandReply(const std::thread::id &threadId, const int32_t sockfd, const RedisReplyPtr &reply);
 	void clearCommandReply(const std::thread::id &threadId, const int32_t sockfd);
 	int32_t getCommandReplyCount(const std::thread::id &threadId, const int32_t sockfd);
-	void processCommandReply(const std::thread::id &threadId, const int32_t sockfd, const TcpConnectionPtr &conn);
+	void processCommandReply(const RedisObjectPtr &command,
+		const std::thread::id &threadId, const int32_t sockfd, const TcpConnectionPtr &conn);
 
 private:
 	EventLoop loop;
@@ -82,4 +88,8 @@ private:
 	typedef std::function<bool(const std::vector<RedisObjectPtr> &,
 		const ProxySessionPtr &, const TcpConnectionPtr &)> CommandFunc;
 	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> redisCommands;
+	typedef std::function<void(const std::thread::id &,
+			const int32_t, const TcpConnectionPtr &)> CommandReplyFuc;
+	std::unordered_map<RedisObjectPtr, CommandReplyFuc, Hash, Equal> redisReplyCommands;
+	std::unordered_set<RedisObjectPtr, Hash, Equal> pubSubCommands;
 };

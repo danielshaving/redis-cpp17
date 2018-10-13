@@ -2,8 +2,8 @@
 
 RedisCluster::RedisCluster()
 	:proxyCount(-1),
-	 commandCount(-1),
-	 command(nullptr)
+	commandCount(-1),
+	command(nullptr)
 {
 
 }
@@ -887,7 +887,7 @@ int32_t RedisAsyncContext::proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncC
 	cstr += pvariant;
 	clen -= pvariant;
 
-	if (hasnext && memcmp(cstr, "subscribe\r\n", 11) == 0)
+	if (hasnext && MEMCMP(cstr, "subscribe\r\n", 11) == 0)
 	{
 		redisContext->flags = REDIS_SUBSCRIBED;
 		/* Add every channel/pattern to the list of subscription callbacks. */
@@ -904,17 +904,20 @@ int32_t RedisAsyncContext::proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncC
 			}
 		}
 	}
-	else if (memcmp(cstr, "unsubscribe\r\n", 13) == 0)
+	else if (MEMCMP(cstr, "unsubscribe\r\n", 13) == 0)
 	{
 		/* It is only useful to call (P)UNSUBSCRIBE when the context is
 		* subscribed to one or more channels or patterns. */
-		if (!(redisContext->flags == REDIS_SUBSCRIBED)) return REDIS_ERR;
-
+		if (redisContext->flags != REDIS_SUBSCRIBED)
+		{
+			return REDIS_ERR;
+		}
+		redisContext->flags = REDIS_CONNECTED;
 		/* (P)UNSUBSCRIBE does not have its own response: every channel or
 		* pattern that is unsubscribed will receive a message. This means we
 		* should not append a callback function for this command. */
 	}
-	else if (memcmp(cstr, "monitor\r\n", 9) == 0)
+	else if (MEMCMP(cstr, "monitor\r\n", 9) == 0)
 	{
 		/* Set monitor flag and push callback */
 		redisContext->flags = REDIS_MONITORING;
@@ -967,7 +970,7 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
 		cstr += pvariant;
 		clen -= pvariant;
 
-		if (hasnext && memcmp(cstr, "subscribe\r\n", 11) == 0)
+		if (hasnext && MEMCMP(cstr, "subscribe\r\n", 11) == 0)
 		{
 			redisContext->flags = REDIS_SUBSCRIBED;
 			/* Add every channel/pattern to the list of subscription callbacks. */
@@ -984,17 +987,21 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
 				}
 			}
 		}
-		else if (memcmp(cstr, "unsubscribe\r\n", 13) == 0)
+		else if (MEMCMP(cstr, "unsubscribe\r\n", 13) == 0)
 		{
 			/* It is only useful to call (P)UNSUBSCRIBE when the context is
 			* subscribed to one or more channels or patterns. */
-			if (!(redisContext->flags == REDIS_SUBSCRIBED)) return REDIS_ERR;
+			if (redisContext->flags != REDIS_SUBSCRIBED)
+			{
+				return REDIS_ERR;
+			}
 
+			redisContext->flags = REDIS_CONNECTED;
 			/* (P)UNSUBSCRIBE does not have its own response: every channel or
 			* pattern that is unsubscribed will receive a message. This means we
 			* should not append a callback function for this command. */
 		}
-		else if (memcmp(cstr, "monitor\r\n", 9) == 0)
+		else if (MEMCMP(cstr, "monitor\r\n", 9) == 0)
 		{
 			/* Set monitor flag and push callback */
 			redisContext->flags = REDIS_MONITORING;
@@ -1061,10 +1068,14 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 	if (curarg == nullptr)
 		return -1;
 
-	while (*c != '\0') {
-		if (*c != '%' || c[1] == '\0') {
-			if (*c == ' ') {
-				if (touched) {
+	while (*c != '\0')
+	{
+		if (*c != '%' || c[1] == '\0')
+		{
+			if (*c == ' ')
+			{
+				if (touched)
+				{
 					newargv = (char **)zrealloc(curargv, sizeof(char*)*(argc + 1));
 					if (newargv == nullptr) goto memoryErr;
 					curargv = newargv;
@@ -1077,21 +1088,24 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 					touched = 0;
 				}
 			}
-			else {
+			else
+			{
 				newarg = sdscatlen(curarg, c, 1);
 				if (newarg == nullptr) goto memoryErr;
 				curarg = newarg;
 				touched = 1;
 			}
 		}
-		else {
+		else
+		{
 			char *arg;
 			int32_t size;
 
 			/* Set newarg so it can be checked even if it is not touched. */
 			newarg = curarg;
 
-			switch (c[1]) {
+			switch (c[1])
+			{
 			case 's':
 				arg = va_arg(ap, char*);
 				size = strlen(arg);
@@ -1124,7 +1138,8 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 				while (*_p != '\0' && isdigit(*_p)) _p++;
 
 				/* Precision */
-				if (*_p == '.') {
+				if (*_p == '.')
+				{
 					_p++;
 					while (*_p != '\0' && isdigit(*_p)) _p++;
 				}
@@ -1133,21 +1148,25 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 				va_copy(_cpy, ap);
 
 				/* Integer conversion (without modifiers) */
-				if (strchr(intfmts, *_p) != nullptr) {
+				if (strchr(intfmts, *_p) != nullptr)
+				{
 					va_arg(ap, int32_t);
 					goto fmtValid;
 				}
 
 				/* Double conversion (without modifiers) */
-				if (strchr("eEfFgGaA", *_p) != nullptr) {
+				if (strchr("eEfFgGaA", *_p) != nullptr)
+				{
 					va_arg(ap, double);
 					goto fmtValid;
 				}
 
 				/* Size: char */
-				if (_p[0] == 'h' && _p[1] == 'h') {
+				if (_p[0] == 'h' && _p[1] == 'h')
+				{
 					_p += 2;
-					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr) {
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+					{
 						va_arg(ap, int32_t); /* char gets promoted to int32_t */
 						goto fmtValid;
 					}
@@ -1155,9 +1174,11 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 				}
 
 				/* Size: short */
-				if (_p[0] == 'h') {
+				if (_p[0] == 'h')
+				{
 					_p += 1;
-					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr) {
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+					{
 						va_arg(ap, int32_t); /* short gets promoted to int32_t */
 						goto fmtValid;
 					}
@@ -1165,9 +1186,11 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 				}
 
 				/* Size: long long */
-				if (_p[0] == 'l' && _p[1] == 'l') {
+				if (_p[0] == 'l' && _p[1] == 'l')
+				{
 					_p += 2;
-					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr) {
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+					{
 						va_arg(ap, long long);
 						goto fmtValid;
 					}
@@ -1175,9 +1198,11 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 				}
 
 				/* Size: long */
-				if (_p[0] == 'l') {
+				if (_p[0] == 'l')
+				{
 					_p += 1;
-					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr) {
+					if (*_p != '\0' && strchr(intfmts, *_p) != nullptr)
+					{
 						va_arg(ap, long);
 						goto fmtValid;
 					}
@@ -1190,7 +1215,8 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 
 			fmtValid:
 				_l = (_p + 1) - c;
-				if (_l < sizeof(_format) - 2) {
+				if (_l < sizeof(_format) - 2)
+				{
 					memcpy(_format, c, _l);
 					_format[_l] = '\0';
 					newarg = sdscatvprintf(curarg, _format, _cpy);
@@ -1248,6 +1274,7 @@ int32_t redisvFormatCommand(char **target, const char *format, va_list ap)
 		cmd[pos++] = '\r';
 		cmd[pos++] = '\n';
 	}
+
 	assert(pos == totlen);
 	cmd[pos] = '\0';
 
@@ -1264,7 +1291,8 @@ memoryErr:
 	goto cleanup;
 
 cleanup:
-	if (curargv) {
+	if (curargv)
+	{
 		while (argc--)
 			sdsfree(curargv[argc]);
 		zfree(curargv);
@@ -2075,7 +2103,7 @@ RedisAsyncContextPtr Hiredis::getRedisAsyncContext(const std::thread::id &thread
 
 	auto it = threadMaps.find(threadId);
 	assert(it != threadMaps.end());
-	
+
 	const TcpConnectionPtr &conn = it->second[(it->second.size() % sockfd) - 1]->getConnection();
 	if (conn == nullptr)
 	{
@@ -2191,7 +2219,7 @@ void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 			{
 				callback = iter->second;
 				/* If this is an unsubscribe message, remove it. */
-				if (STRCMP(stype + pvariant, "unsubscribe") == 0)
+				if (MEMCMP(stype + pvariant, "unsubscribe", 11) == 0)
 				{
 					ac->subCb.patternCb.erase(iter);
 
@@ -2210,7 +2238,7 @@ void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 			{
 				callback = iter->second;
 				/* If this is an unsubscribe message, remove it. */
-				if (STRCMP(stype + pvariant, "unsubscribe") == 0)
+				if (MEMCMP(stype + pvariant, "unsubscribe", 11) == 0)
 				{
 					ac->subCb.channelCb.erase(iter);
 
@@ -2240,10 +2268,8 @@ void Hiredis::redisAsyncDisconnect(const RedisAsyncContextPtr &ac)
 	if (ac->err == 0)
 	{
 		/* For clean disconnects, there should be no pending callbacks. */
-		if (!ac->repliesCb.empty())
-		{
-			ac->repliesCb.pop_front();
-		}
+		assert(!ac->repliesCb.empty());
+		ac->repliesCb.pop_front();
 	}
 	else
 	{
@@ -2409,16 +2435,14 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 
 			if (reply->type == REDIS_REPLY_ERROR)
 			{
-				ac->err = REDIS_ERR_OTHER;
-				ac->errstr = reply->str;
-				ac->redisContext->flags = REDIS_DISCONNECTING;
 				redisAsyncDisconnect(ac);
 				return;
 			}
 
-			/* No more regular callbacks and no errors, the context *must* be subscribed or monitoring. */
 			assert((ac->redisContext->flags == REDIS_SUBSCRIBED ||
 				ac->redisContext->flags == REDIS_MONITORING));
+
+			/* No more regular callbacks and no errors, the context *must* be subscribed or monitoring. */
 			if (ac->redisContext->flags == REDIS_SUBSCRIBED)
 			{
 				redisGetSubscribeCallback(ac, reply, repliesCb);
@@ -2444,7 +2468,7 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 
 			const char *ip = p + 1;
 			int16_t port = atoi(s + 1);
-			//LOG_WARN << "-> Redirected to slot " << slot << " located at " << ip << " " << port;
+			LOG_WARN << "-> Redirected to slot " << slot << " located at " << ip << " " << port;
 			const TcpConnectionPtr &redirectConn = redirectySlot(conn->getSockfd(), conn->getLoop(), ip, port);
 			if (redirectConn == nullptr)
 			{
@@ -2497,7 +2521,7 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 		{
 			if (ac->redisContext->flags == REDIS_MONITORING)
 			{
-				//LOG_INFO << reply->str;
+				LOG_INFO << reply->str;
 			}
 
 			if (repliesCb->cb.fn)

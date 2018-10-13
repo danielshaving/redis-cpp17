@@ -65,7 +65,7 @@ void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffe
 		assert(multibulklen == 0);
 		if (redisCommands.empty())
 		{
-			redis->processCommand(conn, buf, len);
+			redis->processCommand(command, conn, buf, len);
 		}
 		else
 		{
@@ -197,7 +197,7 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 		{
 			return REDIS_ERR;
 		}
-		
+
 		/* Buffer should also contain \n */
 		if ((newline - (queryBuf + pos)) > (buffer->readableBytes() - pos - 2))
 		{
@@ -206,7 +206,6 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 
 		if (queryBuf[pos] != '*')
 		{
-			assert(false);
 			addReplyError(conn->outputBuffer(), "Protocol error: *");
 			conn->shutdown();
 			return REDIS_ERR;
@@ -217,7 +216,6 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 		ok = string2ll(queryBuf + pos + 1, newline - (queryBuf + pos + 1), &ll);
 		if (!ok || ll > REDIS_MBULK_BIG_ARG || ll <= 0)
 		{
-			assert(false);
 			addReplyError(conn->outputBuffer(), "Protocol error: invalid multibulk length");
 			conn->shutdown();
 			return REDIS_ERR;
@@ -247,7 +245,6 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 
 			if (queryBuf[pos] != '$')
 			{
-				assert(false);
 				addReplyErrorFormat(conn->outputBuffer(),
 					"Protocol error: expected '$',got '%c'", queryBuf[pos]);
 				conn->shutdown();
@@ -257,7 +254,6 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 			ok = string2ll(queryBuf + pos + 1, newline - (queryBuf + pos + 1), &ll);
 			if (!ok || ll < 0 || ll > REDIS_MBULK_BIG_ARG)
 			{
-				assert(false);
 				addReplyError(conn->outputBuffer(),
 					"Protocol error: invalid bulk length");
 				conn->shutdown();
