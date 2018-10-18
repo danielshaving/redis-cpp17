@@ -912,7 +912,6 @@ int32_t RedisAsyncContext::proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncC
 		{
 			return REDIS_ERR;
 		}
-		redisContext->flags = REDIS_CONNECTED;
 		/* (P)UNSUBSCRIBE does not have its own response: every channel or
 		* pattern that is unsubscribed will receive a message. This means we
 		* should not append a callback function for this command. */
@@ -996,7 +995,6 @@ int32_t RedisAsyncContext::__redisAsyncCommand(const RedisAsyncCallbackPtr &asyn
 				return REDIS_ERR;
 			}
 
-			redisContext->flags = REDIS_CONNECTED;
 			/* (P)UNSUBSCRIBE does not have its own response: every channel or
 			* pattern that is unsubscribed will receive a message. This means we
 			* should not append a callback function for this command. */
@@ -1725,6 +1723,11 @@ std::function<void()> RedisAsyncContext::getRedisvAsyncCommand(const RedisCallba
 		shared_from_this(), asyncCallback);
 }
 
+void RedisAsyncContext::clearSubscribe()
+{
+	
+}
+
 int32_t RedisAsyncContext::processCommand(const RedisCallbackFn &fn,
 	const std::any &privdata, const std::vector<RedisObjectPtr> &commands)
 {
@@ -1776,7 +1779,7 @@ int32_t RedisAsyncContext::processCommand(const RedisCallbackFn &fn,
 	return REDIS_OK;
 }
 
-int32_t RedisAsyncContext::proxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data,
+int32_t RedisAsyncContext::threadProxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data,
 	int32_t len, const std::any &privdata)
 {
 	TcpConnectionPtr conn = weakRedisConn.lock();
@@ -2227,7 +2230,7 @@ void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 						* non-subscribe mode. */
 					assert(reply->element[2]->type == REDIS_REPLY_INTEGER);
 					if (reply->element[2]->integer == 0)
-						ac->redisContext->flags = REDIS_SUBSCRIBED;
+						ac->redisContext->flags = REDIS_CONNECTED;
 				}
 			}
 		}
@@ -2246,7 +2249,7 @@ void Hiredis::redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 						* non-subscribe mode. */
 					assert(reply->element[2]->type == REDIS_REPLY_INTEGER);
 					if (reply->element[2]->integer == 0)
-						ac->redisContext->flags = REDIS_SUBSCRIBED;
+						ac->redisContext->flags = REDIS_CONNECTED;
 				}
 			}
 		}

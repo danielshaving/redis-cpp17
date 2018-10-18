@@ -24,10 +24,10 @@ RedisProxy::~RedisProxy()
 	sessions.clear();
 	threadHiredis.clear();
 	threadRedisContexts.clear();
-	proxyReplys.clear();
-	proxySends.clear();
-	proxyCounts.clear();
-	proxyRedis.clear();
+	threadProxyReplys.clear();
+	threadProxySends.clear();
+	threadProxyCounts.clear();
+	threadProxyRedis.clear();
 }
 
 void RedisProxy::initRedisPorxy()
@@ -54,23 +54,40 @@ void RedisProxy::initRedisAsync()
 		hiredis->start(pools[i], 0);
 		threadHiredis[pools[i]->getThreadId()] = hiredis;
 
-		std::unordered_map<int32_t, std::map<int64_t, RedisReplyPtr>> umaps;
-		proxyReplys[pools[i]->getThreadId()] = umaps;
+		{
+			std::unordered_map<int32_t, std::map<int64_t, RedisReplyPtr>> m;
+			threadProxyReplys[pools[i]->getThreadId()] = m;
+		}
 
-		std::unordered_map<int32_t, std::set<int64_t>> sets;
-		proxySends[pools[i]->getThreadId()] = sets;
+		{
+			std::unordered_map<int32_t, std::set<int64_t>> m;
+			threadProxySends[pools[i]->getThreadId()] = m;
+		}
 
-		std::unordered_map<int32_t, int64_t> maps;
-		proxyCounts[pools[i]->getThreadId()] = maps;
+		{
+			std::unordered_map<int32_t, int64_t> m;
+			threadProxyCounts[pools[i]->getThreadId()] = m;
+		}
 
-		std::unordered_map<int32_t, std::unordered_set<int32_t>> vmaps;
-		proxyRedis[pools[i]->getThreadId()] = vmaps;
+		{
+			std::unordered_map<int32_t, std::unordered_set<int32_t>> m;
+			threadProxyRedis[pools[i]->getThreadId()] = m;
+		}
 
-		std::unordered_map<int32_t, std::vector<RedisReplyPtr>> mvaps;
-		commandReplys[pools[i]->getThreadId()] = mvaps;
+		{
+			std::unordered_map<int32_t, std::vector<RedisReplyPtr>> m;
+			threadCommandReplys[pools[i]->getThreadId()] = m;
+		}
 
-		std::vector<RedisObjectPtr> v;
-		proxyCommands[pools[i]->getThreadId()] = v;
+		{
+			std::vector<RedisObjectPtr> m;
+			threadProxyCommands[pools[i]->getThreadId()] = m;
+		}
+
+		{
+			std::unordered_map<int32_t, std::vector<RedisObjectPtr>> m;
+			threadPubSubCommands[pools[i]->getThreadId()] = m;
+		}
 	}
 }
 
@@ -93,6 +110,8 @@ void RedisProxy::initRedisCommand()
 
 	pubSubCommands.insert(shared.subscribe);
 
+	redisCommands[shared.subscribe] = std::bind(&RedisProxy::subscribeCommand,
+		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 	redisCommands[shared.hgetall] = std::bind(&RedisProxy::hgetallCommand,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 	redisCommands[shared.mget] = std::bind(&RedisProxy::mgetCommand,
@@ -134,23 +153,36 @@ void RedisProxy::run()
 void RedisProxy::redisConnCallback(const TcpConnectionPtr &conn)
 {
 	conn->getLoop()->assertInLoopThread();
-	LOG_INFO << "RedisClient connect redis-server success" << conn->getSockfd();
+	LOG_INFO << "RedisClient connect redis-server success " << conn->getSockfd();
 }
 
 void RedisProxy::redisDisconnCallback(const TcpConnectionPtr &conn)
 {
 	conn->getLoop()->assertInLoopThread();
-	clearProxyRedis(conn->getLoop()->getThreadId(), conn->getSockfd());
-	LOG_INFO << "RedisClient disconnect redis-server" << conn->getSockfd();
+	clearthreadProxyRedis(conn->getLoop()->getThreadId(), conn->getSockfd());
+	LOG_INFO << "RedisClient disconnect redis-server " << conn->getSockfd();
 }
 
-void RedisProxy::clearSubscribe(const TcpConnectionPtr &conn, const std::thread::id &threadId, const int32_t sockfd)
+void RedisProxy::clearSubscribe(const TcpConnectionPtr &conn)
 {
-	conn->getLoop()->assertInLoopThread();
 	auto redis = checkReply(conn);
 	if (redis)
 	{
-		
+		auto it = threadPubSubCommands.find(conn->getLoop()->getThreadId());
+		assert(it != threadPubSubCommands.end());
+
+		auto iter = it->second.find(conn->getSockfd());
+		if (iter != it->second.end())
+		{
+			for (auto &iterr : iter->second)
+			{
+				int32_t status = redis->redisAsyncCommand(std::bind(&RedisProxy::unSubscribeCallback,
+					this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+					nullptr, "unsubscribe %s", iterr->ptr);
+				assert(status == REDIS_OK);
+			}
+			it->second.erase(iter);
+		}
 	}
 }
 
@@ -165,8 +197,8 @@ void RedisProxy::clearProxy(const std::thread::id &threadId, const int32_t sockf
 int64_t RedisProxy::insertProxyCount(const std::thread::id &threadId, const int32_t sockfd)
 {
 	int64_t proxyCount = 0;
-	auto it = proxyCounts.find(threadId);
-	assert(it != proxyCounts.end());
+	auto it = threadProxyCounts.find(threadId);
+	assert(it != threadProxyCounts.end());
 	auto iter = it->second.find(sockfd);
 	if (iter == it->second.end())
 	{
@@ -182,8 +214,8 @@ int64_t RedisProxy::insertProxyCount(const std::thread::id &threadId, const int3
 
 void RedisProxy::insertProxySend(const std::thread::id &threadId, const int32_t sockfd, const int64_t count)
 {
-	auto it = proxySends.find(threadId);
-	assert(it != proxySends.end());
+	auto it = threadProxySends.find(threadId);
+	assert(it != threadProxySends.end());
 	auto iter = it->second.find(sockfd);
 	if (iter == it->second.end())
 	{
@@ -203,30 +235,25 @@ void RedisProxy::processCommand(const RedisObjectPtr &command, const TcpConnecti
 	auto redis = checkReply(conn);
 	if (redis)
 	{
+		
+		int64_t proxyCount = insertProxyCount(conn->getLoop()->getThreadId(), conn->getSockfd());
+		insertProxySend(conn->getLoop()->getThreadId(), conn->getSockfd(), proxyCount);
 		RedisCluster proxy;
 		proxy.conn = conn;
+		proxy.proxyCount = proxyCount;
+		proxy.command = nullptr;
 
-		auto it = pubSubCommands.find(command);
-		if (it != pubSubCommands.end())
-		{
-			int32_t status = redis->proxyRedisvAsyncCommand(std::bind(&RedisProxy::subscribeCallback,
-				this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-				buf, len, proxy);
-			assert(status == REDIS_OK);
-		}
-		else
-		{
-			int64_t proxyCount = insertProxyCount(conn->getLoop()->getThreadId(), conn->getSockfd());
-			insertProxySend(conn->getLoop()->getThreadId(), conn->getSockfd(), proxyCount);
-			proxy.proxyCount = proxyCount;
-			proxy.command = nullptr;
-
-			int32_t status = redis->proxyRedisvAsyncCommand(std::bind(&RedisProxy::proxyCallback,
-				this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-				buf, len, proxy);
-			assert(status == REDIS_OK);
-		}
+		int32_t status = redis->threadProxyRedisvAsyncCommand(std::bind(&RedisProxy::proxyCallback,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+			buf, len, proxy);
+		assert(status == REDIS_OK);
 	}
+}
+
+void RedisProxy::unSubscribeCallback(const RedisAsyncContextPtr &c,
+	const RedisReplyPtr &reply, const std::any &privdata)
+{
+
 }
 
 void RedisProxy::subscribeCallback(const RedisAsyncContextPtr &c,
@@ -290,8 +317,8 @@ void RedisProxy::proxyCallback(const RedisAsyncContextPtr &c,
 		return;
 	}
 
-	auto it = proxySends.find(conn->getLoop()->getThreadId());
-	assert(it != proxySends.end());
+	auto it = threadProxySends.find(conn->getLoop()->getThreadId());
+	assert(it != threadProxySends.end());
 
 	auto iter = it->second.find(conn->getSockfd());
 	if (iter == it->second.end())
@@ -308,8 +335,8 @@ void RedisProxy::proxyCallback(const RedisAsyncContextPtr &c,
 		reply->command = command;
 		insertProxyReply(conn->getLoop()->getThreadId(), conn->getSockfd(), proxyCount, reply);
 
-		auto it = proxyReplys.find(conn->getLoop()->getThreadId());
-		assert(it != proxyReplys.end());
+		auto it = threadProxyReplys.find(conn->getLoop()->getThreadId());
+		assert(it != threadProxyReplys.end());
 		auto iter = it->second.find(conn->getSockfd());
 		assert(iter != it->second.end());
 
@@ -350,8 +377,8 @@ void RedisProxy::proxyCallback(const RedisAsyncContextPtr &c,
 void RedisProxy::mgetCallback(const std::thread::id &threadId, const int32_t sockfd,
 	const TcpConnectionPtr &conn)
 {
-	auto it = commandReplys.find(threadId);
-	assert(it != commandReplys.end());
+	auto it = threadCommandReplys.find(threadId);
+	assert(it != threadCommandReplys.end());
 	auto iter = it->second.find(sockfd);
 	assert(iter != it->second.end());
 	auto buffer = conn->outputBuffer();
@@ -377,8 +404,8 @@ void RedisProxy::mgetCallback(const std::thread::id &threadId, const int32_t soc
 
 int32_t RedisProxy::getCommandReplyCount(const std::thread::id &threadId, const int32_t sockfd)
 {
-	auto it = commandReplys.find(threadId);
-	assert(it != commandReplys.end());
+	auto it = threadCommandReplys.find(threadId);
+	assert(it != threadCommandReplys.end());
 	auto iter = it->second.find(sockfd);
 	if (iter != it->second.end())
 	{
@@ -390,8 +417,8 @@ int32_t RedisProxy::getCommandReplyCount(const std::thread::id &threadId, const 
 void RedisProxy::insertProxyReply(const std::thread::id &threadId,
 	const int32_t sockfd, const int64_t count, const RedisReplyPtr &reply)
 {
-	auto it = proxyReplys.find(threadId);
-	assert(it != proxyReplys.end());
+	auto it = threadProxyReplys.find(threadId);
+	assert(it != threadProxyReplys.end());
 	auto iter = it->second.find(sockfd);
 	if (iter != it->second.end())
 	{
@@ -462,7 +489,8 @@ void RedisProxy::proxyConnCallback(const TcpConnectionPtr &conn)
 		}
 
 		clearProxy(conn->getLoop()->getThreadId(), conn->getSockfd());
-		clearProxyRedisClient(conn->getLoop()->getThreadId(), conn->getSockfd());
+		clearSubscribe(conn);
+		clearthreadProxyRedisClient(conn->getLoop()->getThreadId(), conn->getSockfd());
 		LOG_INFO << "Client diconnect " << conn->getSockfd();
 	}
 }
@@ -483,6 +511,53 @@ RedisAsyncContextPtr RedisProxy::checkReply(const TcpConnectionPtr &conn)
 	return redis;
 }
 
+bool RedisProxy::subscribeCommand(const std::vector<RedisObjectPtr> &commands,
+	const ProxySessionPtr &session, const TcpConnectionPtr &conn)
+{
+	conn->getLoop()->assertInLoopThread();
+	if (commands.size() < 2)
+	{
+		return false;
+	}
+
+	auto redis = checkReply(conn);
+	if (redis)
+	{
+		auto it = threadProxyCommands.find(conn->getLoop()->getThreadId());
+		assert(it != threadProxyCommands.end());
+
+		auto iter = threadPubSubCommands.find(conn->getLoop()->getThreadId());
+		assert(iter != threadPubSubCommands.end());
+
+		it->second.clear();
+		auto command = createStringObject(commands[commands.size() - 1]->ptr,
+			sdslen(commands[commands.size() - 1]->ptr));
+		it->second.push_back(command);
+		for (int i = 0; i < commands.size() - 1; i++)
+		{
+			auto iterr = iter->second.find(conn->getSockfd());
+			if (iterr != iter->second.end())
+			{
+				iterr->second.push_back(commands[i]);
+			}
+			else
+			{
+				std::vector<RedisObjectPtr> v;
+				v.push_back(commands[i]);
+				iter->second.insert(std::make_pair(conn->getSockfd(), v));
+			}
+			it->second.push_back(commands[i]);
+		}
+
+		RedisCluster proxy;
+		proxy.conn = conn;
+		int32_t status = redis->processCommand(std::bind(&RedisProxy::subscribeCallback,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), proxy, it->second);
+		assert(status == REDIS_OK);
+	}
+	return false;
+}
+
 bool RedisProxy::mgetCommand(const std::vector<RedisObjectPtr> &commands,
 	const ProxySessionPtr &session, const TcpConnectionPtr &conn)
 {
@@ -496,8 +571,8 @@ bool RedisProxy::mgetCommand(const std::vector<RedisObjectPtr> &commands,
 	if (redis)
 	{
 		int64_t commandCount = 0;
-		auto it = proxyCommands.find(conn->getLoop()->getThreadId());
-		assert(it != proxyCommands.end());
+		auto it = threadProxyCommands.find(conn->getLoop()->getThreadId());
+		assert(it != threadProxyCommands.end());
 
 		auto command = createStringObject(commands[commands.size() - 1]->ptr,
 			sdslen(commands[commands.size() - 1]->ptr));
@@ -547,8 +622,8 @@ void RedisProxy::processCommandReply(const RedisObjectPtr &command,
 
 void RedisProxy::eraseProxySend(const std::thread::id &threadId, const int32_t sockfd, const int64_t count)
 {
-	auto it = proxySends.find(threadId);
-	assert(it != proxySends.end());
+	auto it = threadProxySends.find(threadId);
+	assert(it != threadProxySends.end());
 
 	auto iter = it->second.find(sockfd);
 	assert(iter != it->second.end());
@@ -557,8 +632,8 @@ void RedisProxy::eraseProxySend(const std::thread::id &threadId, const int32_t s
 
 void RedisProxy::clearProxyReply(const std::thread::id &threadId, const int32_t sockfd)
 {
-	auto it = proxyReplys.find(threadId);
-	assert(it != proxyReplys.end());
+	auto it = threadProxyReplys.find(threadId);
+	assert(it != threadProxyReplys.end());
 	if (!it->second.empty())
 	{
 		auto iter = it->second.find(sockfd);
@@ -571,8 +646,8 @@ void RedisProxy::clearProxyReply(const std::thread::id &threadId, const int32_t 
 
 void RedisProxy::clearProxyCount(const std::thread::id &threadId, const int32_t sockfd)
 {
-	auto it = proxyCounts.find(threadId);
-	assert(it != proxyCounts.end());
+	auto it = threadProxyCounts.find(threadId);
+	assert(it != threadProxyCounts.end());
 	if (!it->second.empty())
 	{
 		auto iter = it->second.find(sockfd);
@@ -585,8 +660,8 @@ void RedisProxy::clearProxyCount(const std::thread::id &threadId, const int32_t 
 
 void RedisProxy::clearProxySend(const std::thread::id &threadId, const int32_t sockfd)
 {
-	auto it = proxySends.find(threadId);
-	assert(it != proxySends.end());
+	auto it = threadProxySends.find(threadId);
+	assert(it != threadProxySends.end());
 	if (!it->second.empty())
 	{
 		auto iter = it->second.find(sockfd);
@@ -597,10 +672,10 @@ void RedisProxy::clearProxySend(const std::thread::id &threadId, const int32_t s
 	}
 }
 
-void RedisProxy::clearProxyRedis(const std::thread::id &threadId, const int32_t sockfd)
+void RedisProxy::clearthreadProxyRedis(const std::thread::id &threadId, const int32_t sockfd)
 {
-	auto it = proxyRedis.find(threadId);
-	assert(it != proxyRedis.end());
+	auto it = threadProxyRedis.find(threadId);
+	assert(it != threadProxyRedis.end());
 	if (!it->second.empty())
 	{
 		auto iter = it->second.find(sockfd);
@@ -617,8 +692,8 @@ void RedisProxy::clearProxyRedis(const std::thread::id &threadId, const int32_t 
 
 void RedisProxy::clearCommandReply(const std::thread::id &threadId, const int32_t sockfd)
 {
-	auto it = commandReplys.find(threadId);
-	assert(it != commandReplys.end());
+	auto it = threadCommandReplys.find(threadId);
+	assert(it != threadCommandReplys.end());
 	auto iter = it->second.find(sockfd);
 	if (iter != it->second.end())
 	{
@@ -629,8 +704,8 @@ void RedisProxy::clearCommandReply(const std::thread::id &threadId, const int32_
 void RedisProxy::insertCommandReply(const std::thread::id &threadId,
 	const int32_t sockfd, const RedisReplyPtr &reply)
 {
-	auto it = commandReplys.find(threadId);
-	assert(it != commandReplys.end());
+	auto it = threadCommandReplys.find(threadId);
+	assert(it != threadCommandReplys.end());
 	auto iter = it->second.find(sockfd);
 	if (iter == it->second.end())
 	{
@@ -644,7 +719,7 @@ void RedisProxy::insertCommandReply(const std::thread::id &threadId,
 	}
 }
 
-void RedisProxy::clearProxyRedisClient(const std::thread::id &threadId, const int32_t sockfd)
+void RedisProxy::clearthreadProxyRedisClient(const std::thread::id &threadId, const int32_t sockfd)
 {
 	auto it = threadHiredis.find(threadId);
 	assert(it != threadHiredis.end());
@@ -654,8 +729,8 @@ void RedisProxy::clearProxyRedisClient(const std::thread::id &threadId, const in
 		auto conn = redis->getTcpConnection().lock();
 		assert(conn != nullptr);
 
-		auto it = proxyRedis.find(threadId);
-		assert(it != proxyRedis.end());
+		auto it = threadProxyRedis.find(threadId);
+		assert(it != threadProxyRedis.end());
 
 		if (!it->second.empty())
 		{

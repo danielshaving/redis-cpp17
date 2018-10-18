@@ -30,6 +30,8 @@ public:
 		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
 	bool mgetCommand(const std::vector<RedisObjectPtr> &commands,
 		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
+	bool subscribeCommand(const std::vector<RedisObjectPtr> &commands,
+		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
 
 	void highWaterCallback(const TcpConnectionPtr &conn, size_t bytesToSent);
 	void writeCompleteCallback(const TcpConnectionPtr &conn);
@@ -41,14 +43,16 @@ public:
 		const TcpConnectionPtr &conn);
 	void subscribeCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply, const std::any &privdata);
+	void unSubscribeCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply, const std::any &privdata);
 
-	void clearSubscribe(const TcpConnectionPtr &conn, const std::thread::id &threadId, const int32_t sockfd);
+	void clearSubscribe(const TcpConnectionPtr &conn);
 	void clearProxy(const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxyReply(const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxyCount(const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxySend(const std::thread::id &threadId, const int32_t sockfd);
-	void clearProxyRedis(const std::thread::id &threadId, const int32_t sockfd);
-	void clearProxyRedisClient(const std::thread::id &threadId, const int32_t sockfd);
+	void clearthreadProxyRedis(const std::thread::id &threadId, const int32_t sockfd);
+	void clearthreadProxyRedisClient(const std::thread::id &threadId, const int32_t sockfd);
 	void eraseProxySend(const std::thread::id &threadId, const int32_t sockfd, const int64_t count);
 	void foreachProxyReply(const std::thread::id &threadId, const int32_t sockfd, int64_t begin);
 	void insertProxyReply(const std::thread::id &threadId,
@@ -79,12 +83,13 @@ private:
 	std::unordered_map<int32_t, ProxySessionPtr> sessions;
 	std::unordered_map<std::thread::id, std::shared_ptr<Hiredis>> threadHiredis;
 	std::unordered_map<std::thread::id, std::vector<RedisContextPtr>> threadRedisContexts;
-	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::map<int64_t, RedisReplyPtr>>> proxyReplys;
-	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::set<int64_t>>> proxySends;
-	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::vector<RedisReplyPtr>>> commandReplys;
-	std::unordered_map<std::thread::id, std::unordered_map<int32_t, int64_t>> proxyCounts;
-	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::unordered_set<int32_t>>> proxyRedis;
-	std::unordered_map<std::thread::id, std::vector<RedisObjectPtr>> proxyCommands;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::map<int64_t, RedisReplyPtr>>> threadProxyReplys;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::set<int64_t>>> threadProxySends;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::vector<RedisReplyPtr>>> threadCommandReplys;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, int64_t>> threadProxyCounts;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::unordered_set<int32_t>>> threadProxyRedis;
+	std::unordered_map<std::thread::id, std::vector<RedisObjectPtr>> threadProxyCommands;
+	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::vector<RedisObjectPtr>>> threadPubSubCommands;
 	typedef std::function<bool(const std::vector<RedisObjectPtr> &,
 		const ProxySessionPtr &, const TcpConnectionPtr &)> CommandFunc;
 	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> redisCommands;

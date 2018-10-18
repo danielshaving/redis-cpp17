@@ -25,13 +25,13 @@ struct RedisReply
 	RedisReply();
 	~RedisReply();
 
-	char type;			/* REDIS_REPLY_* */
+	char type;			/* REDIS_REPLY_TYPE */
 	int64_t integer;	/* The integer when type is REDIS_REPLY_INTEGER */
 	sds str;	 		/* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
 	sds buffer;			/* Proxy reply client buffer */
 	std::vector<RedisReplyPtr> element;	/* elements vector for REDIS_REPLY_ARRAY */
-	int64_t commandCount;
-	RedisObjectPtr command;
+	int64_t commandCount;	 /*mset ,mget , del  Proxy send server command count*/
+	RedisObjectPtr command; /* protocol command name*/
 };
 
 struct RedisReadTask
@@ -214,7 +214,7 @@ public:
 		const std::any &privdata, const char *format, va_list ap);
 	int32_t redisAsyncCommand(const RedisCallbackFn &fn,
 		const std::any &privdata, const char *format, ...);
-	int32_t proxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data,
+	int32_t threadProxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data,
 		int32_t len, const std::any &privdata);
 
 	int32_t proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback);
@@ -230,14 +230,15 @@ public:
 	void resetContext() { context.reset(); }
 	void setContext(const std::any &context) { this->context = context; }
 	WeakTcpConnectionPtr getTcpConnection() { return weakRedisConn; }
-	
+	void clearSubscribe();
+
 	int32_t err;
 	std::string errstr;
 	std::any context;
 	RedisContextPtr redisContext;
 	WeakTcpConnectionPtr weakRedisConn;
 	RedisAsyncCallbackList repliesCb;
-	SubCallback	subCb;
+	SubCallback subCb;
 
 private:
 	RedisAsyncContext(const RedisAsyncContext&);
