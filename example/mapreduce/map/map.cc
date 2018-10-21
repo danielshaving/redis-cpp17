@@ -6,61 +6,42 @@ const size_t kMaxHashSize = 10 * 1000 * 1000;
 class MapWoker
 {
 public:
-	MapWoker(EventLoop *loop,const char *ip1,
-			 int port1,const char *ip2,int port2)
-	:loop(loop),
-	 count(2)
+	MapWoker(EventLoop *loop, const char *ip1,
+		int port1)
+		:loop(loop),
+		count(1)
 	{
-		TcpClientPtr client1(new TcpClient(loop,this));
-		client1->setConnectionCallback(std::bind(&MapWoker::connCallBack,this,
-				std::placeholders::_1,std::placeholders::_2));
-		client1->setMessageCallback( std::bind(&MapWoker::readCallBack,this,
-				std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
-		client1->connect(ip1,port1);
-		tcpVecs.push_back(client1);
-
-		TcpClientPtr client2(new TcpClient(loop,this));
-		client2->setConnectionCallback(std::bind(&xMapWoker::connCallBack,this,
-					std::placeholders::_1,std::placeholders::_2));
-		client2->setMessageCallback( std::bind(&xMapWoker::readCallBack,this,
-					std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
-		client2->setConnectionErrorCallBack(std::bind(&xMapWoker::connErrorCallBack,this));
-		client2->connect(ip2,port2);
-		tcpVecs.push_back(client2);
-
-		{
-			std::unique_lock <std::mutex> lck(mutex);
-			while(count > 0 )
-			{
-				condition.wait(lck);
-			}
-		}
-		LOG_INFO<<"all connect success";
+		TcpClientPtr client1(new TcpClient(loop, ip1, port1, this));
+		client1->setConnectionCallback(std::bind(&MapWoker::connCallBack, this,
+			std::placeholders::_1));
+		client1->setMessageCallback(std::bind(&MapWoker::readCallBack, this,
+			std::placeholders::_1, std::placeholders::_2));
+		client1->connect(true);
+		tcpClients.push_back(client1);
+		LOG_INFO << "all connect success";
 	}
 
-	void connErrorCallBack()
+	~MapWoker()
 	{
 
 	}
 
-	void readCallBack(const TcpConnectionPtr& conn,Buffer *recvBuf)
+	void readCallBack(const TcpConnectionPtr& conn, Buffer *recvBuf)
 	{
 
 	}
 
 	void connCallBack(const TcpConnectionPtr &conn)
 	{
-		if(conn->connected())
+		if (conn->connected())
 		{
-			std::unique_lock <std::mutex> lck(mutex);
 			--count;
-			condition.notify_one();
 		}
 		else
 		{
-			std::unique_lock <std::mutex> lck(mutex);
-			if(++count == 2)
+			if (++count == 1)
 			{
+				LOG_INFO << "all disconnect success";
 				loop->quit();
 			}
 		}
@@ -71,65 +52,89 @@ public:
 
 	}
 
+	void readFile(const char *fileName)
+	{
+		std::ifstream in(fileName);
+		std::string str;
+		while (in)
+		{
+			works.clear();
+			while (in >> str)
+			{
+				works.insert(std::make_pair(str, str));
+			}
+		}
+
+		int32_t topN = 100;
+		for (auto &it : works)
+		{
+			if (--topN <= 0)
+			{
+				break;
+			}
+			std::cout << it.first << " " << it.second << std::endl;
+		}
+	}
+
 	void processFile(const char *fileName)
 	{
 		std::ifstream in(fileName);
-		std::string word;
+		std::string str;
 
-		while(in)
+		while (in)
 		{
-			mapWorks.clear();
-			while(in >> word)
+			works.clear();
+			while (in >> str)
 			{
-				mapWorks[word] += 1;
-				if(mapWorks.size() > kMaxHashSize)
+				works.insert(std::make_pair(str, str));
+				if (works.size() > kMaxHashSize)
 				{
 					break;
 				}
 			}
 
-			LOG_INFO<<"map work " <<mapWorks.size()<<" recude work";
-			for(auto &it : mapWorks)
+			LOG_INFO << "map work " << works.size() << " recude work";
+			for (auto &it : works)
 			{
-				size_t index =  std::hash<std::string>()(it->first) % tcpVecs.size();
-				buffer.append(it->first);
-				char buf[64];
-				snprintf(buf,sizeof buf,"\t%" PRId64 "\r\n",it->second);
-				buffer.append(buf);
-				tcpVecs[index]->connection->send(&buffer);
+				size_t index = std::hash<std::string>()(it.first) % tcpClients.size();
+				buffer.append(it.first);
+				buffer.append("\t");
+				buffer.append(it.second);
+				buffer.append("\r\n");
+				tcpClients[index]->getConnection()->send(&buffer);
+				buffer.retrieveAll();
 			}
 		}
+	}
 
-		for(auto &it : tcpVecs)
+	void disconnectAll()
+	{
+		for (auto &it : tcpClients)
 		{
-			it->connection->shutdown();//close eagin  close write  ask  TCP fin
+			it->getConnection()->shutdown();//close eagin  close write  ask  TCP fin
 		}
-
-		loop->quit();
 	}
 private:
-	std::unordered_map<std::string,int64_t> mapWorks;
+	std::multimap<std::string, std::string> works;
 	EventLoop *loop;
-	std::vector<TcpClientPtr> tcpVecs;
-	std::condition_variable condition;
-	std::mutex mutex;
-	int count;
+	std::vector<TcpClientPtr> tcpClients;
+	std::atomic<int32_t> count;
 	Buffer buffer;
 };
 
-int main(int argc,char* argv[])
+int main(int argc, char* argv[])
 {
-	if (argc < 5)
+	if (argc < 2)
 	{
-		printf("Example: ip1 port1 ip2 port2 input_file1....... \n");
-	}
-	else
-	{
-		EventLoop loop;
-		MapWoker work(&loop,argv[1],atoi(argv[2]),argv[3],atoi(argv[4]));
-		work.processFile(argv[5]);
-		loop.run();
+		exit(1);
 	}
 
+	EventLoop loop;
+	MapWoker work(&loop, "127.0.0.1", 8888);
+	//work.readFile(argv[1]);
+
+	work.processFile(argv[1]);
+	work.disconnectAll();
+	loop.run();
 	return 0;
 }
