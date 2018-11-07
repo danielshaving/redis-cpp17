@@ -145,16 +145,84 @@ bool Version::overlapInLevel(int level, const std::string_view *smallestUserKey,
 		smallestUserKey, largestUserKey);
 }
 
+static bool newestFirst(const std::shared_ptr<FileMetaData> &a, const std::shared_ptr<FileMetaData> &b) 
+{
+	return a->number > b->number;
+}
+
 Status Version::get(const ReadOptions&, const LookupKey &key, std::string *val, GetStats *stats)
 {
 	std::string_view ikey = key.internalKey();
 	std::string_view userKey = key.userKey();
+	InternalKeyComparator cmp;
 	Status s;
 
 	stats->seekFile = nullptr;
 	stats->seekFileLevel = -1;
 	std::shared_ptr<FileMetaData> lastFileRead = nullptr;
 	int lastFileReadLevel = -1;
+
+	// We can search level-by-level since entries never hop across
+	// levels.  Therefore we are guaranteed that if we find data
+	// in an smaller level, later levels are irrelevant.
+	std::vector<std::shared_ptr<FileMetaData>> tmp;
+	std::shared_ptr<FileMetaData> tmp2;
+	for (int level = 0; level < kNumLevels; level++) 
+	{
+		size_t numFiles = files[level].size();
+		if (numFiles == 0) continue;
+		
+		// Get the list of files to search in this level
+		std::vector<std::shared_ptr<FileMetaData>> fs = files[level];
+		if (level == 0) 
+		{
+			 // Level-0 files may overlap each other.  Find all files that
+			// overlap user_key and process them in order from newest to oldest.
+			tmp.reserve(numFiles);
+			for (uint32_t i = 0; i < numFiles; i++) 
+			{
+				const std::shared_ptr<FileMetaData> &f = fs[i];
+				if (cmp.compare(userKey, f->smallest.userKey()) >= 0 &&
+					cmp.compare(userKey, f->largest.userKey()) <= 0) 
+				{
+					tmp.push_back(f);
+				}
+			}
+			
+			if (tmp.empty()) continue;
+			
+			std::sort(tmp.begin(), tmp.end(), newestFirst);
+			fs = tmp;
+			numFiles = tmp.size();
+		}
+		else
+		{
+			// Binary search to find earliest index whose largest key >= ikey.
+			uint32_t index = findFile(cmp, files[level], ikey);
+			if (index >= numFiles) 
+			{
+				fs.clear();
+				numFiles = 0;
+			} 
+			else 
+			{
+				tmp2 = fs[index];
+				if (cmp.compare(userKey, tmp2->smallest.userKey()) < 0) 
+				{
+					// All of "tmp2" is past any data for user_key
+					fs.clear();
+					numFiles = 0;
+				}
+				else 
+				{
+					fs.clear();
+					fs.push_back(tmp2);	
+				    numFiles = 1;
+				}
+			}
+		}
+	}
+		 
 }
 
 // Store in "*inputs" all files in "level" that overlap [begin,end]

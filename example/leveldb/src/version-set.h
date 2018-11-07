@@ -184,7 +184,6 @@ public:
 		}
 	}
 
-
 	std::shared_ptr<Version> current() const;
 	// Apply *edit to the current version to form a new descriptor that
 	// is both saved to persistent state and installed as the new

@@ -19,6 +19,8 @@ public:
 	void initRedisAsync();
 	void initRedisCommand();
 	void initRedisTimer();
+	void redisContextTimer(const std::thread::id &threadId);
+	RedisAsyncContextPtr checkReply(const RedisObjectPtr &command, const TcpConnectionPtr &conn);
 	RedisAsyncContextPtr checkReply(const TcpConnectionPtr &conn);
 
 	bool getRedisCommand(const RedisObjectPtr &command);
@@ -26,11 +28,21 @@ public:
 		const ProxySessionPtr &session,
 		const std::vector<RedisObjectPtr> &commands,
 		const TcpConnectionPtr &conn);
-	bool hgetallCommand(const std::vector<RedisObjectPtr> &commands,
+	bool selectCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
 		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
-	bool mgetCommand(const std::vector<RedisObjectPtr> &commands,
+	bool dbsizeCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
 		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
-	bool subscribeCommand(const std::vector<RedisObjectPtr> &commands,
+	bool flushdbCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
+		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
+	bool delCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
+		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
+	bool mgetCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
+		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
+	bool subScribeCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
+		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
+	bool unSubscribeCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
+		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
+	bool debugCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
 		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
 
 	void highWaterCallback(const TcpConnectionPtr &conn, size_t bytesToSent);
@@ -39,11 +51,17 @@ public:
 	void redisDisconnCallback(const TcpConnectionPtr &conn);
 	void proxyCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply, const std::any &privdata);
+	void flushdbCallback(const std::thread::id &threadId, const int32_t sockfd,
+		const TcpConnectionPtr &conn);
+	void dbsizeCallback(const std::thread::id &threadId, const int32_t sockfd,
+		const TcpConnectionPtr &conn);
+	void delCallback(const std::thread::id &threadId, const int32_t sockfd,
+		const TcpConnectionPtr &conn);
 	void mgetCallback(const std::thread::id &threadId, const int32_t sockfd,
 		const TcpConnectionPtr &conn);
-	void subscribeCallback(const RedisAsyncContextPtr &c,
+	void subScribeCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply, const std::any &privdata);
-	void unSubscribeCallback(const RedisAsyncContextPtr &c,
+	void unsubScribeCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply, const std::any &privdata);
 
 	void clearSubscribe(const TcpConnectionPtr &conn);
@@ -66,6 +84,9 @@ public:
 		const std::thread::id &threadId, const int32_t sockfd, const TcpConnectionPtr &conn);
 
 private:
+	RedisProxy(const RedisProxy&);
+	void operator=(const RedisProxy&);
+
 	EventLoop loop;
 	TcpServer server;
 	std::mutex mutex;
@@ -76,13 +97,13 @@ private:
 	int16_t redisPort;
 	int16_t threadCount;
 	int16_t sessionCount;
+	bool clusterEnabled;
 
 	static const int32_t kHeart = 10;
 	static const int32_t kHighWaterBytes = 1024 * 1024 * 64;
 
 	std::unordered_map<int32_t, ProxySessionPtr> sessions;
 	std::unordered_map<std::thread::id, std::shared_ptr<Hiredis>> threadHiredis;
-	std::unordered_map<std::thread::id, std::vector<RedisContextPtr>> threadRedisContexts;
 	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::map<int64_t, RedisReplyPtr>>> threadProxyReplys;
 	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::set<int64_t>>> threadProxySends;
 	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::vector<RedisReplyPtr>>> threadCommandReplys;
@@ -90,11 +111,10 @@ private:
 	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::unordered_set<int32_t>>> threadProxyRedis;
 	std::unordered_map<std::thread::id, std::vector<RedisObjectPtr>> threadProxyCommands;
 	std::unordered_map<std::thread::id, std::unordered_map<int32_t, std::vector<RedisObjectPtr>>> threadPubSubCommands;
-	typedef std::function<bool(const std::vector<RedisObjectPtr> &,
+	typedef std::function<bool(const RedisObjectPtr &, const std::vector<RedisObjectPtr> &,
 		const ProxySessionPtr &, const TcpConnectionPtr &)> CommandFunc;
 	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> redisCommands;
 	typedef std::function<void(const std::thread::id &,
 			const int32_t, const TcpConnectionPtr &)> CommandReplyFuc;
 	std::unordered_map<RedisObjectPtr, CommandReplyFuc, Hash, Equal> redisReplyCommands;
-	std::unordered_set<RedisObjectPtr, Hash, Equal> pubSubCommands;
 };

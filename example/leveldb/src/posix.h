@@ -165,6 +165,17 @@ public:
 	// Returns the number of micro-seconds since some fixed point in time. Only
 	// useful for computing deltas of time.
 	uint64_t nowMicros();
+
+	// Create an object supporting random-access reads from the file with the
+	// specified name.  On success, stores a pointer to the new file in
+	// *result and returns OK.  On failure stores nullptr in *result and
+	// returns non-OK.  If the file does not exist, returns a non-OK
+	// status.  Implementations should return a NotFound status when the file does
+	// not exist.
+	//
+	// The returned file may be concurrently accessed by multiple threads.
+	Status newRandomAccessFile(const std::string &filename,
+								 std::shared_ptr<PosixMmapReadableFile> &result);
 };
 
 

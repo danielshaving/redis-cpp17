@@ -252,7 +252,7 @@ public:
 		const char *ip, int16_t port, bool proxyMode = false);
 	~Hiredis();
 
-	void redisAsyncDisconnect(const RedisAsyncContextPtr &ac);
+	void redisAsyncDisconnect(const RedisAsyncContextPtr &ac, const RedisReplyPtr &reply);
 	void redisGetSubscribeCallback(const RedisAsyncContextPtr &ac,
 		const RedisReplyPtr &reply, RedisAsyncCallbackPtr &callback);
 	void clusterAskConnCallback(const TcpConnectionPtr &conn);
@@ -268,9 +268,11 @@ public:
 	void setConnectionCallback(const ConnectionCallback &&cb)
 	{ connectionCallback = std::move(cb); }
 
+	void redisContextTimer();
 	void clusterNodeTimer();
 	void connect(EventLoop *loop, const TcpClientPtr &client, int32_t count = 0);
 	void pushTcpClient(const TcpClientPtr &client);
+	void pushRedisContext(const RedisContextPtr &context);
 	void clearTcpClient();
 	auto &getTcpClient() { return tcpClients; }
 	void diconnectTcpClient();
@@ -280,29 +282,44 @@ public:
 	void start(EventLoop *loop, int32_t count);
 	void setThreadNum(int16_t threadNum) { pool->setThreadNum(threadNum); }
 	
+	uint32_t keyHashSlot(char *key, int32_t keylen);
+
 	void setPool(ThreadPoolPtr pool) { this->pool = pool; }
 	ThreadPoolPtr getPool() { return pool; }
 
-	TcpConnectionPtr redirectySlot(int32_t sockfd, EventLoop *loop, const char *ip, int16_t port);
+	TcpConnectionPtr redirectySlot(int32_t sockfd,
+			EventLoop *loop, const char *ip, int16_t port);
+	RedisAsyncContextPtr getRedisAsyncContext(const RedisObjectPtr &command,
+			const std::thread::id &threadId, int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext(const std::thread::id &threadId, int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext(int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext();
+	std::vector<RedisContextPtr> getRedisContext(const std::thread::id &threadId);
+
 	RedisAsyncContextPtr getClusterRedisAsyncContext(const std::thread::id &threadId);
 	std::string getTcpClientInfo(const std::thread::id &threadId, int32_t sockfd);
 	std::string setTcpClientInfo(const char *ip, int16_t port);
+
 private:
 	Hiredis(const Hiredis&);
 	void operator=(const Hiredis&);
+
+	std::vector<TcpClientPtr> tcpClients;
+	std::vector<RedisContextPtr> redisContexts;
+	std::vector<RedisContextPtr> tmpContexts;
+	std::vector<TcpClientPtr> tmpClients;
+	std::vector<RedisContextPtr> tmpAsync;
+	std::map<int16_t, RedisContextPtr> tmpMaps;
+	std::unordered_map<std::thread::id, std::vector<TcpClientPtr>> threadMaps;
+	std::unordered_map<std::thread::id, std::vector<RedisContextPtr>> threadRedisContexts;
+	std::vector<TcpConnectionPtr> moveAskClients;
+	std::vector<std::shared_ptr<ClusterNode>> clusterNodes;
 
 	ConnectionCallback connectionCallback;
 	DisConnectionCallback disConnectionCallback;
 	EventLoop *loop;
 	ThreadPoolPtr pool;
 	std::mutex mutex;
-	std::vector<TcpClientPtr> tcpClients;
-	std::unordered_map<std::thread::id, std::vector<TcpClientPtr>> threadMaps;
-	std::vector<TcpConnectionPtr> moveAskClients;
-	std::vector<std::shared_ptr<ClusterNode>> clusterNodes;
 	int32_t pos;
 	int32_t sessionCount;
 	const char *ip;

@@ -14,6 +14,7 @@ Limits: each shard must fit in memory.
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
+#include <map>
 
 const size_t kMaxSize = 10 * 1000 * 1000;
 

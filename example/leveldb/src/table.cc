@@ -21,11 +21,10 @@ struct Table::Rep
 };
 
 Status Table::open(const Options &options,
-	PosixRandomAccessFile *file,
+	PosixMmapReadableFile *file,
 	uint64_t fileSize,
-	Table **table)
+	std::shared_ptr<Table> &table)
 {
-	*table = nullptr;
 	if (fileSize < Footer::kEncodedLength)
 	{
 		return Status::corruption("file is too short to be an sstable");

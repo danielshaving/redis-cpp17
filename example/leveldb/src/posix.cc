@@ -342,6 +342,36 @@ uint64_t PosixEnv::nowMicros()
 	return static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
 }
 
+Status PosixEnv::newRandomAccessFile(const std::string &filename,
+		std::shared_ptr<PosixMmapReadableFile> &result)
+{
+	int fd = ::open(filename.c_str(), O_RDONLY);
+	if (fd < 0)
+	{
+		return posixError(filename, errno);
+	}
+
+	uint64_t fileSize;
+	Status status = getFileSize(filename, &fileSize);
+	if (status.ok())
+	{
+		void *mmapBase = ::mmap(/*addr=*/nullptr, fileSize, PROT_READ,
+							   MAP_SHARED, fd, 0);
+		if (mmapBase != MAP_FAILED)
+		{
+			std::shared_ptr<PosixMmapReadableFile> r(new PosixMmapReadableFile(filename, nullptr, fileSize));
+			result = r;
+		}
+		else
+		{
+			status = posixError(filename, errno);
+		}
+	}
+
+	::close(fd);
+	return status;
+}
+
 PosixRandomAccessFile::PosixRandomAccessFile(const std::string &fname, int fd)
 	:filename(fname), fd(fd)
 {
@@ -350,7 +380,7 @@ PosixRandomAccessFile::PosixRandomAccessFile(const std::string &fname, int fd)
 
 PosixRandomAccessFile::~PosixRandomAccessFile()
 {
-	close(fd);
+	::close(fd);
 }
 
 Status PosixRandomAccessFile::read(uint64_t offset, size_t n, std::string_view *result,
@@ -383,7 +413,7 @@ PosixMmapReadableFile::PosixMmapReadableFile(const std::string &fname, void *bas
 
 PosixMmapReadableFile::~PosixMmapReadableFile()
 {
-	munmap(mmappedRegion, length);
+	::munmap(mmappedRegion, length);
 }
 
 Status PosixMmapReadableFile::read(uint64_t offset, size_t n, std::string_view *result,

@@ -17,6 +17,9 @@ public:
 	void reset();
 	
 private:
+	ProxySession(const ProxySession&);
+	void operator=(const ProxySession&);
+
 	RedisProxy *redis;
 	RedisObjectPtr command;
 	std::vector<RedisObjectPtr> redisCommands;

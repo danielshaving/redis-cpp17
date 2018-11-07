@@ -44,7 +44,6 @@ int Rdb::rioBufferFlush(Rio *r)
 	return REDIS_OK; /* Nothing to do, our write just appends to the buffer. */
 }
 
-
 off_t Rdb::rioTell(Rio *r)
 {
 	return r->tellFuc(r);

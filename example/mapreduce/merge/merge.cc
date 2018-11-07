@@ -20,12 +20,14 @@ public:
 		if (getline(*in, line))
 		{
 			size_t tab = line.find('\t');
-			assert(tab != std::string::npos);
-			std::string key(line.c_str(), line.c_str() + tab);
-			this->key = key;
-			std::string (line.c_str() + tab + 1, line.c_str() + line.size());
-			this->value = value;
-			return true;
+			if (tab != std::string::npos)
+			{
+				std::string key(line.c_str(), line.c_str() + tab);
+				this->key = key;
+				std::string(line.c_str() + tab + 1, line.c_str() + line.size());
+				this->value = value;
+				return true;
+			}
 		}
 		return false;
 	}

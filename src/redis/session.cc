@@ -41,7 +41,7 @@ void Session::readCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 		/* Determine request type when unknown. */
 		if (!reqtype)
 		{
-			if ((buffer->peek()[0]) == '*')
+			if ((buffer->peek()[pos]) == '*')
 			{
 				reqtype = REDIS_REQ_MULTIBULK;
 			}
@@ -313,7 +313,7 @@ int32_t Session::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *buffe
 
 	/* Split the input buffer up to the \r\n */
 	queryLen = newline - queryBuf;
-	if (queryLen + linefeedChars > buffer->readableBytes())
+	if ((queryLen + linefeedChars) > buffer->readableBytes())
 	{
 		return REDIS_ERR;
 	}
@@ -393,7 +393,7 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *bu
 			return REDIS_ERR;
 		}
 
-		if (queryBuf[0] != '*')
+		if (queryBuf[pos] != '*')
 		{
 			addReplyError(conn->outputBuffer(), "Protocol error: *");
 			conn->shutdown();
@@ -410,7 +410,7 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *bu
 			return REDIS_ERR;
 		}
 
-		pos += (newline - queryBuf) + 2;
+		pos += (newline - (queryBuf + pos)) + 2;
 		multibulklen = ll;
 	}
 
@@ -425,15 +425,17 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *bu
 				break;
 			}
 
-		/* Buffer should also contain \n */
+			/* Buffer should also contain \n */
 			if ((newline - (queryBuf + pos)) > (buffer->readableBytes() - pos - 2))
 			{
 				return REDIS_ERR;
 			}
-			
+
+
 			if (queryBuf[pos] != '$')
 			{
-				addReplyErrorFormat(conn->outputBuffer(), "Protocol error: expected '$',got '%c'", queryBuf[pos]);
+				addReplyErrorFormat(conn->outputBuffer(),
+					"Protocol error: expected '$',got '%c'", queryBuf[pos]);
 				conn->shutdown();
 				return REDIS_ERR;
 			}
@@ -441,17 +443,18 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *bu
 			ok = string2ll(queryBuf + pos + 1, newline - (queryBuf + pos + 1), &ll);
 			if (!ok || ll < 0 || ll > REDIS_MBULK_BIG_ARG)
 			{
-				addReplyError(conn->outputBuffer(), "Protocol error: invalid bulk length");
+				addReplyError(conn->outputBuffer(),
+					"Protocol error: invalid bulk length");
 				conn->shutdown();
 				return REDIS_ERR;
 			}
 
-			pos += (newline - queryBuf) + 2;
+			pos += (newline - (queryBuf + pos)) + 2;
 			bulklen = ll;
 		}
 
 		/* Read bulk argument */
-		if (buffer->readableBytes() - pos < (bulklen + 2))
+		if ((buffer->readableBytes() - pos) < (bulklen + 2))
 		{
 			break;
 		}
@@ -488,6 +491,8 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *bu
 	/* We're done when c->multibulk == 0 */
 	if (multibulklen == 0)
 	{
+		/* Trim to pos */
+		assert(pos <= buffer->readableBytes());
 		buffer->retrieve(pos);
 		pos = 0;
 		return REDIS_OK;

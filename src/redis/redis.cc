@@ -2716,6 +2716,7 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,
 			}
 
 			rangelen = (end - start) + 1;
+			end = rangelen;
 			addReplyMultiBulkLen(conn->outputBuffer(), withscores ? (rangelen * 2) : rangelen);
 
 			if (reverse)
@@ -2733,6 +2734,7 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,
 							addReplyDouble(conn->outputBuffer(), iterr->first);
 						}
 					}
+
 					if (count >= end)
 					{
 						break;
@@ -2754,6 +2756,7 @@ bool Redis::zrangeGenericCommand(const std::deque<RedisObjectPtr> &obj,
 							addReplyDouble(conn->outputBuffer(), iterr->first);
 						}
 					}
+
 					if (count >= end)
 					{
 						break;

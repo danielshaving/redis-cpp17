@@ -3,13 +3,14 @@
 #include <string_view>
 #include <any>
 #include <functional>
+#include <memory>
 #include "status.h"
 
 class Block;
 class BlockHandle;
 class Footer;
 struct Options;
-class PosixRandomAccessFile;
+class PosixMmapReadableFile;
 struct ReadOptions;
 class TableCache;
 
@@ -32,9 +33,9 @@ public:
 	//
 	// *file must remain live while this Table is in use.
 	static Status open(const Options &options,
-		PosixRandomAccessFile *file,
+		PosixMmapReadableFile *file,
 		uint64_t fileSize,
-		Table **table);
+		std::shared_ptr<Table> &table);
 
 	Table(const Table&) = delete;
 	void operator=(const Table&) = delete;

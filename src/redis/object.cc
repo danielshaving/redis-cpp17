@@ -440,7 +440,7 @@ void addReplyError(Buffer *buffer, const char *str)
 
 void addReply(Buffer *buffer, const RedisObjectPtr &obj)
 {
-	buffer->append(obj->ptr, sdslen((const sds)obj->ptr));
+	buffer->append(obj->ptr, sdslen(obj->ptr));
 }
 
 /* Add sds to reply (takes ownership of sds and frees it) */

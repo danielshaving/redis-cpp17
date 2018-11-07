@@ -63,17 +63,23 @@ void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffe
 		}
 
 		assert(multibulklen == 0);
-		if (redisCommands.empty())
+		if (redis->getRedisCommand(command))
 		{
-			redis->processCommand(command, conn, buf, len);
-		}
-		else
-		{
-			redisCommands.push_back(command);
 			if (!redis->handleRedisCommand(command, shared_from_this(), redisCommands, conn))
 			{
 				addReplyErrorFormat(conn->outputBuffer(),
 					"wrong number of arguments`%s`, for command", command->ptr);
+			}
+		}
+		else
+		{
+			if (redisCommands.empty())
+			{
+				redis->processCommand(command, conn, buf, len);
+			}
+			else
+			{
+				redis->processCommand(redisCommands[0], conn, buf, len);
 			}
 		}
 		reset();
@@ -126,7 +132,7 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 
 	/* Split the input buffer up to the \r\n */
 	queryLen = newline - queryBuf;
-	if (queryLen + linefeedChars > buffer->readableBytes())
+	if ((queryLen + linefeedChars) > buffer->readableBytes())
 	{
 		return REDIS_ERR;
 	}
@@ -154,11 +160,19 @@ int32_t ProxySession::processInlineBuffer(const TcpConnectionPtr &conn, Buffer *
 		if (j == 0)
 		{
 			command->ptr = sdscpylen(command->ptr, argv[j], sdslen(argv[j]));
+			if (command->ptr[0] >= 'A' && command->ptr[0] <= 'Z')
+			{
+				int len = sdslen(command->ptr);
+				for (int i = 0; i < len; i++)
+				{
+					command->ptr[i] += 32;
+				}
+			}
 			command->calHash();
 		}
 		else
 		{
-			if (redis->getRedisCommand(command))
+			if (j == 1 || redis->getRedisCommand(command))
 			{
 				RedisObjectPtr obj = createStringObject(argv[j], sdslen(argv[j]));
 				redisCommands.push_back(obj);
@@ -242,7 +256,6 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 				return REDIS_ERR;
 			}
 
-
 			if (queryBuf[pos] != '$')
 			{
 				addReplyErrorFormat(conn->outputBuffer(),
@@ -277,11 +290,19 @@ int32_t ProxySession::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffe
 			if (++argc == 1)
 			{
 				command->ptr = sdscpylen(command->ptr, queryBuf + pos, bulklen);
+				if (command->ptr[0] >= 'A' && command->ptr[0] <= 'Z')
+				{
+					int len = sdslen(command->ptr);
+					for (int i = 0; i < len; i++)
+					{
+						command->ptr[i] += 32;
+					}
+				}
 				command->calHash();
 			}
 			else
 			{
-				if (redis->getRedisCommand(command))
+				if (argc == 2 || redis->getRedisCommand(command))
 				{
 					RedisObjectPtr obj = createStringObject((char*)queryBuf + pos, bulklen);
 					redisCommands.push_back(obj);
