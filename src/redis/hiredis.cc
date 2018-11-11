@@ -2118,7 +2118,8 @@ uint32_t Hiredis::keyHashSlot(char *key, int32_t keylen)
 	return crc16(key + s + 1, e - s - 1) & 0x3FFF;
 }
 
-RedisAsyncContextPtr Hiredis::getRedisAsyncContext(const RedisObjectPtr &command, const std::thread::id &threadId, int32_t sockfd)
+RedisAsyncContextPtr Hiredis::getRedisAsyncContext(const RedisObjectPtr &command,
+		const std::thread::id &threadId, int32_t sockfd)
 {
 	std::unique_lock<std::mutex> lk(mutex);
 	if (tcpClients.empty())
@@ -2570,12 +2571,6 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 				return;
 			}
 
-			/* If monitor mode, repush callback */
-			if (ac->redisContext->flags == REDIS_MONITORING)
-			{
-				ac->repliesCb.emplace_back(new RedisAsyncCallback());
-			}
-
 			/* When the connection is not being disconnected, simply stop
 				 * trying to get replies and wait for the next loop tick. */
 			break;
@@ -2691,6 +2686,10 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer)
 			if (ac->redisContext->flags == REDIS_MONITORING)
 			{
 				LOG_INFO << reply->str;
+
+				/* If monitor mode, repush callback */
+				ac->repliesCb.push_back(repliesCb);
+				reply->type = REDIS_REPLY_MONITOR;
 			}
 
 			if (repliesCb->cb.fn)
@@ -2744,6 +2743,7 @@ TcpConnectionPtr Hiredis::redirectySlot(int32_t sockfd, EventLoop *loop, const c
 void Hiredis::redisContextTimer()
 {
 	loop->assertInLoopThread();
+	std::unique_lock<std::mutex> lk(mutex);
 	auto it = threadRedisContexts.find(loop->getThreadId());
 	assert(it != threadRedisContexts.end());
 
@@ -2754,6 +2754,90 @@ void Hiredis::redisContextTimer()
 		{
 			assert(strcmp(reply->str, "PONG") == 0);
 			assert(reply->type == REDIS_REPLY_STATUS);
+		}
+		else
+		{
+			iter = redisConnect(iter->ip, iter->port);
+		}
+
+		reply = iter->redisCommand("cluster nodes");
+		if (reply != nullptr && reply->type != REDIS_REPLY_ERROR)
+		{
+			clusterNodes.clear();
+			int32_t index = 0;
+			while (index < sdslen(reply->str))
+			{
+				std::shared_ptr<ClusterNode> node(new ClusterNode());
+				const char *id = strchr(reply->str + index, ' ');
+				assert(id != nullptr);
+
+				node->id = std::string(reply->str + index, id - (reply->str + index));
+				const char *ip = strchr(id + 1, ':');
+				assert(ip != nullptr);
+
+				node->ip = std::string(id + 1, ip - id - 1);
+				const char *port = strchr(ip + 1, '@');
+				assert(port != nullptr);
+
+				int16_t p = atoi(ip + 1);
+				node->port = p;
+				const char *p1 = strchr(port + 1, ' ');
+				assert(p1 != nullptr);
+
+				const char *myself = strchr(p1 + 1, ' ');
+				std::string m = std::string(p1 + 1, myself - p1 - 1);
+				if (m == "myself,master" || m == "master")
+				{
+					node->master = "master";
+					const char *p1 = strchr(myself + 1, ' ');
+					assert(p1 != nullptr);
+					const char *p2 = strchr(p1 + 1, ' ');
+					assert(p2 != nullptr);
+					const char *p3 = strchr(p2 + 1, ' ');
+					assert(p3 != nullptr);
+					const char *p4 = strchr(p3 + 1, ' ');
+					assert(p4 != nullptr);
+					const char *p5 = strchr(p4 + 1, ' ');
+					assert(p5 != nullptr);
+					std::string str = std::string(p4 + 1, p5 - p4 - 1);
+
+					if (str == "connected")
+					{
+						node->status = 1;
+					}
+					else
+					{
+						node->status = 0;
+					}
+
+					int16_t startSlot = atoi(p5 + 1);
+					node->startSlot = startSlot;
+					const char *p6 = strchr(p5 + 1, '-');
+					assert(p6 != nullptr);
+					const char *p7 = strchr(p6 + 1, '\n');
+					assert(p7 != nullptr);
+					int16_t endSlot = atoi(p6 + 1);
+					node->endSlot = endSlot;
+					index = p7 + 1 - reply->str;
+				}
+				else
+				{
+					node->slave = "slave";
+					const char *p1 = strchr(myself + 1, ' ');
+					assert(p1 != nullptr);
+					std::string master = std::string(myself + 1, p1 - myself - 1);
+					const char *p2 = strchr(p1 + 1, ' ');
+					assert(p2 != nullptr);
+					const char *p3 = strchr(p2 + 1, ' ');
+					assert(p3 != nullptr);
+					const char *p4 = strchr(p3 + 1, ' ');
+					assert(p4 != nullptr);
+					const char *p5 = strchr(p4 + 1, '\n');
+					assert(p5 != nullptr);
+					index = p5 + 1 - reply->str;
+				}
+				clusterNodes.push_back(node);
+			}
 		}
 		else
 		{

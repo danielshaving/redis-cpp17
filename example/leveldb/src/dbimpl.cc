@@ -6,6 +6,12 @@
 
 const int kNumNonTableCacheFiles = 10;
 
+static int tableCacheSize(const Options &options) 
+{
+	// Reserve ten files or so for other uses and give the rest to TableCache.
+	return kNumNonTableCacheFiles * kNumNonTableCacheFiles;
+}
+
 // Information kept for every waiting writer
 struct DBImpl::Writer
 {
@@ -17,9 +23,10 @@ struct DBImpl::Writer
 
 DBImpl::DBImpl(const Options &options, const std::string &dbname)
 	:options(options),
-	dbname(dbname)
+	dbname(dbname),
+	tableCache(new TableCache(dbname, options, tableCacheSize(options)))
 {
-	versions.reset(new VersionSet(dbname, options));
+	versions.reset(new VersionSet(dbname, options, tableCache));
 	mem.reset(new MemTable);
 	imm.reset(new MemTable);
 }

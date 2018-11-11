@@ -66,7 +66,7 @@ Status Footer::decodeFrom(std::string_view *input)
 	return result;
 }
 
-Status readBlock(PosixRandomAccessFile *file,
+Status readBlock(PosixMmapReadableFile *file,
 	const ReadOptions &options,
 	const BlockHandle &handle,
 	BlockContents *result)

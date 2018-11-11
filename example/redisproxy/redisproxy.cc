@@ -98,8 +98,10 @@ void RedisProxy::initRedisTimer()
 	{
 		auto it = threadHiredis.find(pools[i]->getThreadId());
 		assert(it != threadHiredis.end());
-		pools[i]->runAfter(1.0, true, std::bind(&Hiredis::clusterNodeTimer, it->second.get()));
-		pools[i]->runAfter(1.0, true, std::bind(&Hiredis::redisContextTimer, it->second.get()));
+		if (!clusterEnabled)
+		{
+			pools[i]->runAfter(1.0, true, std::bind(&Hiredis::redisContextTimer, it->second.get()));
+		}
 	}
 }
 
@@ -117,7 +119,7 @@ void RedisProxy::initRedisCommand()
 		
 	redisCommands[shared.subscribe] = std::bind(&RedisProxy::subScribeCommand,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-	redisCommands[shared.subscribe] = std::bind(&RedisProxy::unSubscribeCommand,
+	redisCommands[shared.unsubscribe] = std::bind(&RedisProxy::unSubscribeCommand,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 	redisCommands[shared.mget] = std::bind(&RedisProxy::mgetCommand,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
@@ -125,10 +127,13 @@ void RedisProxy::initRedisCommand()
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 //	redisCommands[shared.flushdb] = std::bind(&RedisProxy::flushdbCommand,
 //		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-//	redisCommands[shared.del] = std::bind(&RedisProxy::delCommand,
-//		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-	redisCommands[shared.dbsize] = std::bind(&RedisProxy::dbsizeCommand,
+	redisCommands[shared.monitor] = std::bind(&RedisProxy::monitorCommand,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+	if (clusterEnabled)
+	{
+		redisCommands[shared.dbsize] = std::bind(&RedisProxy::dbsizeCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+	}
 }
 
 bool RedisProxy::getRedisCommand(const RedisObjectPtr &command)
@@ -249,7 +254,6 @@ void RedisProxy::insertProxySend(const std::thread::id &threadId, const int32_t 
 
 void RedisProxy::processCommand(const RedisObjectPtr &command, const TcpConnectionPtr &conn, const char *buf, size_t len)
 {
-	conn->getLoop()->assertInLoopThread();
 	auto redis = checkReply(command, conn);
 	if (redis)
 	{	
@@ -264,6 +268,39 @@ void RedisProxy::processCommand(const RedisObjectPtr &command, const TcpConnecti
 			buf, len, proxy);
 		assert(status == REDIS_OK);
 	}
+}
+
+bool RedisProxy::monitorCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
+	const ProxySessionPtr &session, const TcpConnectionPtr &conn)
+{
+	return false;
+}
+
+void RedisProxy::monitorCallback(const RedisAsyncContextPtr &c,
+		const RedisReplyPtr &reply, const std::any &privdata)
+{
+	assert(reply->type == REDIS_REPLY_MONITOR);
+	assert(privdata.has_value());
+	RedisCluster proxy = std::any_cast<RedisCluster>(privdata);
+	WeakTcpConnectionPtr weakConn = proxy.conn;
+	TcpConnectionPtr conn = weakConn.lock();
+	if (conn == nullptr)
+	{
+		return;
+	}
+
+	conn->getLoop()->assertInLoopThread();
+	Buffer *buffer = conn->outputBuffer();
+	if (reply == nullptr)
+	{
+		LOG_WARN << "monitorCallback err: " << c->err;
+		buffer->append(c->errstr.c_str(), c->errstr.size());
+		conn->sendPipe();
+		return;
+	}
+
+	buffer->append(reply->buffer, sdslen(reply->buffer));
+	conn->sendPipe();
 }
 
 void RedisProxy::unsubScribeCallback(const RedisAsyncContextPtr &c,

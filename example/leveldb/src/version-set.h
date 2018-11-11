@@ -9,6 +9,7 @@
 #include "dbformat.h"
 #include "version-edit.h"
 #include "log-writer.h"
+#include "table-cache.h"
 
 class VersionSet;
 class Version
@@ -50,7 +51,7 @@ public:
 		int seekFileLevel;
 	};
 
-	Status get(const ReadOptions&, const LookupKey &key, std::string *val,
+	Status get(const ReadOptions &options, const LookupKey &key, std::string *val,
 		GetStats *stats);
 	// List of files per level
 	std::vector<std::shared_ptr<FileMetaData>> files[kNumLevels];
@@ -69,7 +70,8 @@ public:
 		const InternalKey *begin,         // nullptr means before all keys
 		const InternalKey *end,           // nullptr means after all keys
 		std::vector<std::shared_ptr<FileMetaData>> *inputs);
-
+	
+	void saveValue(const std::any &arg, const std::string_view &ikey, const std::string_view &v);
 	// Returns true iff some file in the specified level overlaps
 	// some part of [*smallest_user_key,*largest_user_key].
 	// smallest_user_key==nullptr represents a key smaller than all the DB's keys.
@@ -155,7 +157,7 @@ public:
 class VersionSet
 {
 public:
-	VersionSet(const std::string &dbname, const Options &options);
+	VersionSet(const std::string &dbname, const Options &options, std::shared_ptr<TableCache> tableCache);
 	~VersionSet();
 
 	uint64_t getLastSequence() const { return lastSequence; }
@@ -213,6 +215,7 @@ public:
 	bool reuseManifest(const std::string &dscname, const std::string &dscbase);
 	int numLevelFiles(int level) const;
 
+	std::shared_ptr<TableCache> getTableCache() { return tableCache; }
 	// Per-level key at which the next compaction at that level should start.
 	// Either an empty string, or a valid InternalKey.
 	std::string compactPointer[kNumLevels];
@@ -228,4 +231,5 @@ private:
 	std::list<std::shared_ptr<Version>> versions;
 	std::shared_ptr<LogWriter> descriptorLog;
 	std::shared_ptr<PosixWritableFile> descriptorFile;
+	std::shared_ptr<TableCache> tableCache;
 };

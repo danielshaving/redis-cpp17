@@ -37,6 +37,8 @@ public:
 		return Status(kCorruption, msg, msg2);
 	}
 
+	 static Status OK() { return Status(); }
+
 	static Status notSupported(const std::string_view &msg, const std::string_view &msg2 = std::string_view())
 	{
 		return Status(kNotSupported, msg, msg2);

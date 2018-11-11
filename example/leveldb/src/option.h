@@ -127,7 +127,7 @@ struct Options
 		blockSize(4096),
 		blockRestartInterval(16),
 		maxFileSize(2 << 20),
-		compression(kSnappyCompression),
+		compression(kNoCompression),
 		reuseLogs(false)
 	{
 

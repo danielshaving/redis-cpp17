@@ -3,6 +3,22 @@
 #include "filename.h"
 #include "log-reader.h"
 
+enum SaverState 
+{
+	kNotFound,
+	kFound,
+	kDeleted,
+	kCorrupt,
+};
+
+struct Saver 
+{
+	SaverState state;
+	const InternalKeyComparator *cmp;
+	std::string_view userKey;
+	std::string *value;
+};
+
 static bool afterFile(const InternalKeyComparator *ucmp,
 	const std::string_view *userKey, const FileMetaData *f)
 {
@@ -150,7 +166,7 @@ static bool newestFirst(const std::shared_ptr<FileMetaData> &a, const std::share
 	return a->number > b->number;
 }
 
-Status Version::get(const ReadOptions&, const LookupKey &key, std::string *val, GetStats *stats)
+Status Version::get(const ReadOptions &options, const LookupKey &key, std::string *value, GetStats *stats)
 {
 	std::string_view ikey = key.internalKey();
 	std::string_view userKey = key.userKey();
@@ -221,8 +237,71 @@ Status Version::get(const ReadOptions&, const LookupKey &key, std::string *val, 
 				}
 			}
 		}
+		
+		for (uint32_t i = 0; i < numFiles; ++i) 
+		{
+			if (lastFileRead != nullptr && stats->seekFile == nullptr) 
+			{
+				// We have had more than one seek for this read.  Charge the 1st file.
+				stats->seekFile = lastFileRead;
+				stats->seekFileLevel = lastFileReadLevel;
+			}
+
+			std::shared_ptr<FileMetaData> f = fs[i];
+			lastFileRead = f;
+			lastFileReadLevel = level;
+
+			Saver saver;
+			saver.state = kNotFound;
+			saver.cmp = &cmp;
+			saver.userKey = userKey;
+			saver.value = value;
+			s = vset->getTableCache()->get(options, f->number, f->fileSize,
+				ikey, saver, std::bind(&Version::saveValue, this,
+				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+			
+			if (!s.ok()) 
+			{
+				return s;
+			}
+			
+			switch (saver.state) 
+			{
+				case kNotFound:
+				  break;      // Keep searching in other files
+				case kFound:
+				  return s;
+				case kDeleted:
+				  s = Status::notFound(std::string_view());  // Use empty error message for speed
+				  return s;
+				case kCorrupt:
+				  s = Status::corruption("corrupted key for ", userKey);
+				  return s;
+			}
+		}
 	}
-		 
+	return Status::notFound(std::string_view());  // Use an empty error message for speed
+}
+
+void Version::saveValue(const std::any &arg, const std::string_view &ikey, const std::string_view &v)
+ {
+	Saver *s = std::any_cast<Saver*>(arg);
+	ParsedInternalKey parsedKey;
+	if (!parseInternalKey(ikey, &parsedKey)) 
+	{
+		s->state = kCorrupt;
+	} 
+	else 
+	{
+		if (s->cmp->compare(parsedKey.userKey, s->userKey) == 0) 
+		{
+			s->state = (parsedKey.type == kTypeValue) ? kFound : kDeleted;
+			if (s->state == kFound) 
+			{
+				s->value->assign(v.data(), v.size());
+			}
+		}
+	}
 }
 
 // Store in "*inputs" all files in "level" that overlap [begin,end]
@@ -323,7 +402,7 @@ int Version::pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
 	return level;
 }
 
-VersionSet::VersionSet(const std::string &dbname, const Options &options)
+VersionSet::VersionSet(const std::string &dbname, const Options &options, std::shared_ptr<TableCache> tableCache)
 	:dbname(dbname),
 	options(options),
 	lastSequence(0),
@@ -332,7 +411,8 @@ VersionSet::VersionSet(const std::string &dbname, const Options &options)
 	prevLogNumber(0),
 	manifestFileNumber(0),
 	descriptorLog(nullptr),
-	descriptorFile(nullptr)
+	descriptorFile(nullptr),
+	tableCache(tableCache)
 {
 	std::shared_ptr<Version> v(new Version(this));
 	appendVersion(v);
@@ -363,8 +443,8 @@ Status VersionSet::recover(bool *manifest)
 	{
 		return Status::corruption("CURRENT file does not end with newline");
 	}
+	
 	current.resize(current.size() - 1);
-
 	std::string dscname = dbname + "/" + current;
 	std::shared_ptr<PosixSequentialFile> file;
 	s = options.env->newSequentialFile(dscname, file);
@@ -758,7 +838,6 @@ void Builder::saveTo(Version *v)
 			{
 				maybeAddFile(v, level, (*baseIter));
 			}
-
 			maybeAddFile(v, level, (*addedIter));
 		}
 

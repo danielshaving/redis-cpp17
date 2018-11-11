@@ -6,6 +6,10 @@
 #include "table.h"
 #include "option.h"
 
+//, std::bind(&Version::saveValue, this, 
+//				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
+//std::function<void(const std::any &arg, 
+//				 const std::string_view &k, const std::any &value)> &&callback
 class TableCache
 {
 public:
@@ -18,7 +22,8 @@ public:
 	             uint64_t fileSize,
 	             const std::string_view &k,
 	             const std::any &arg,
-				 std::function<void(const std::string_view &k, const std::any &value)> &handleResult);
+				 std::function<void( const std::any &,
+				 const std::string_view &,  const std::string_view &)> &&callback);
 	  Status findTable(uint64_t fileNumber, uint64_t fileSize,
 			  std::shared_ptr<LRUHandle> &handle);
 private:

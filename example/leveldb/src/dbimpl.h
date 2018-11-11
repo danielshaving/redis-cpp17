@@ -9,6 +9,7 @@
 #include "posix.h"
 #include "version-edit.h"
 #include "version-set.h"
+#include "table-cache.h"
 
 class DBImpl
 {
@@ -50,6 +51,7 @@ private:
 	std::shared_ptr<VersionSet> versions;
 	std::shared_ptr<LogWriter> log;
 	std::shared_ptr<PosixWritableFile> logfile;
+	std::shared_ptr<TableCache> tableCache;
 	const Options options;  // options_.comparator == &internal_comparator_
 	uint64_t logfileNumber;
 	const std::string dbname;

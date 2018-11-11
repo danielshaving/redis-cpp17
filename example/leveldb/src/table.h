@@ -33,7 +33,7 @@ public:
 	//
 	// *file must remain live while this Table is in use.
 	static Status open(const Options &options,
-		PosixMmapReadableFile *file,
+		std::shared_ptr<PosixMmapReadableFile> &file,
 		uint64_t fileSize,
 		std::shared_ptr<Table> &table);
 
@@ -49,21 +49,26 @@ public:
 	// E.g., the approximate offset of the last key in the table will
 	// be close to the file length.
 	uint64_t approximateOffsetOf(const std::string_view &key) const;
-
-private:
-	struct Rep;
-	Rep* rep;
-
-	explicit Table(Rep *rep) { this->rep = rep; }
-
+	
 	// Calls (*handle_result)(arg, ...) with the entry found after a call
 	// to Seek(key).  May not make such a call if filter policy says
 	// that key is not present.
 	Status internalGet(
-		const ReadOptions&, const std::string_view &key,
-		std::any *arg,
-		std::function<void(std::any *arg, const std::string_view &k, const std::string_view &v)> handleResult);
+		const ReadOptions &options, 
+		const std::string_view &key,
+		const std::any &arg,
+		std::function<void(const std::any &arg,
+		const std::string_view &k, const std::string_view &v)> &callback);
+		
+private:
+	struct Rep;
+	std::shared_ptr<Rep> rep;
 
+	explicit Table(const std::shared_ptr<Rep> &rep)
+	:rep(rep)
+	{
+		
+	}
 
 	void readMeta(const Footer &footer);
 	void readFilter(const std::string_view &filterHandleValue);

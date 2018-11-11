@@ -43,7 +43,7 @@ Status TableCache::findTable(uint64_t fileNumber, uint64_t fileSize,
 		s = options.env->newRandomAccessFile(fname, file);
 		if (s.ok()) 
 		{
-			s = Table::open(options, file.get(), fileSize, table);
+			s = Table::open(options, file, fileSize, table);
 		}
 
 		if (!s.ok()) 
@@ -68,13 +68,15 @@ Status TableCache::get(const ReadOptions &options,
 		 uint64_t fileSize,
 		 const std::string_view &k,
 		 const std::any &arg,
-		 std::function<void(const std::string_view &k, const std::any &value)> &handleResult)
+		 std::function<void( const std::any &,
+		 const std::string_view &,  const std::string_view &)> &&callback)
 {
 	std::shared_ptr<LRUHandle> handle;
 	Status s = findTable(fileNumber, fileSize, handle);
 	if (s.ok())
 	{
-
+		std::shared_ptr<Table> table = std::any_cast<std::shared_ptr<TableAndFile>>(handle->value)->table;
+		s = table->internalGet(options, k, arg, callback);
 	}
 	return s;
 }
