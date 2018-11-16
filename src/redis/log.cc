@@ -1,5 +1,4 @@
 #include "log.h"
-#include "timerqueue.h"
 
 namespace fs = std::experimental::filesystem;
 const char digits[] = "9876543210123456789";
@@ -543,27 +542,39 @@ Logger::Impl::Impl(LogLevel level, int32_t savedErrno, const SourceFile &file, i
 	:stream(),
 	level(level),
 	line(line),
-	baseName(file)
+	baseName(file),
+	time(TimeStamp::now())
 {
 	formatTime();
 }
 
+char t_time[64];
+time_t t_lastSecond;
+
 void Logger::Impl::formatTime()
 {
-	struct tm tmtime;
-	time_t now = time(0);
-	tmtime = *(localtime(&now));
-	int32_t len = snprintf(ttime, sizeof(ttime), "%4d%02d%02d %02d:%02d:%02d",
-		tmtime.tm_year + 1900, tmtime.tm_mon + 1, tmtime.tm_mday,
-		tmtime.tm_hour, tmtime.tm_min, tmtime.tm_sec);
-	assert(len == 17); (void)len;
-	stream << T(ttime, 17);
+	int32_t len = 0;
+	int64_t microSecondsSinceEpoch = time.getMicroSecondsSinceEpoch();
+	time_t seconds = static_cast<time_t>(microSecondsSinceEpoch / TimeStamp::kMicroSecondsPerSecond);
+	int microseconds = static_cast<int>(microSecondsSinceEpoch % TimeStamp::kMicroSecondsPerSecond);
+	if (seconds != t_lastSecond)
+	{
+		t_lastSecond = seconds;
+		struct tm tmtime;
+		gmtime_r(&seconds, &tmtime);
+		len = snprintf(t_time, sizeof(t_time), "%4d%02d%02d %02d:%02d:%02d",
+				tmtime.tm_year + 1900, tmtime.tm_mon + 1, tmtime.tm_mday,
+				tmtime.tm_hour, tmtime.tm_min, tmtime.tm_sec);
+		assert(len == 17); (void)len;
+	}
+
+	stream << T(t_time, 17);
 	stream << "  ";
 }
 
 void Logger::Impl::finish()
 {
-	stream << "  " << T(baseName.data, baseName.size) << ':' << line << '\n';
+	stream << " - " << baseName.data << ':' << line << '\n';
 }
 
 Logger::Logger(SourceFile file, int32_t line)

@@ -92,12 +92,32 @@ ssize_t Socket::readv(int32_t sockfd,  IOV_TYPE *iov, int32_t iovcnt)
 
 ssize_t Socket::read(int32_t sockfd, void *buf, int32_t count)
 {
+#ifdef __linux__
+	return ::read(sockfd, static_cast<char*>(buf), count);
+#endif
+
+#ifdef __APPLE__
+	return ::read(sockfd, static_cast<char*>(buf), count);
+#endif
+
+#ifdef _WIN64
 	return ::recv(sockfd, static_cast<char*>(buf), count, 0);
+#endif
 }
 
 ssize_t Socket::write(int32_t sockfd, const void* buf, int32_t count)
 {
+#ifdef __linux__
+	ssize_t n = ::write(sockfd, static_cast<const char*>(buf), count);
+#endif
+
+#ifdef __APPLE__
+	ssize_t n = ::write(sockfd, static_cast<const char*>(buf), count);
+#endif
+
+#ifdef _WIN64
 	return ::send(sockfd, static_cast<const char*>(buf), count, 0);
+#endif
 }
 
 int32_t Socket::pipe(int32_t fildes[2])

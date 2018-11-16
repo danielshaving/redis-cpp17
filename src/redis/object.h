@@ -53,7 +53,7 @@ struct SharedObjectsStruct
 		info, echo, client, hkeys, hlen, keys, bgsave, memory, cluster, migrate, debug,
 		ttl, lrange, llen, sadd, scard, addsync, setslot, node, clusterconnect, delsync,
 		zadd, zrange, zrevrange, zcard, dump, restore, incr, decr, monitor, mget, subscribe,
-		unsubscribe, select,
+		unsubscribe, select,publish,
 		integers[REDIS_SHARED_INTEGERS],
 		mbulkhdr[REDIS_SHARED_BULKHDR_LEN],
 		bulkhdr[REDIS_SHARED_BULKHDR_LEN];

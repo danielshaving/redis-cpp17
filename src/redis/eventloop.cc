@@ -52,17 +52,10 @@ EventLoop::~EventLoop()
 	wakeupChannel->disableAll();
 	wakeupChannel->remove();
 #ifdef __linux__
-	::close(wakeupFd);
-#endif
-
-#ifdef __APPLE__
-	::close(wakeupFd[0]);
-	::close(wakeupFd[1]);
-#endif
-
-#ifdef _WIN64
-	::closesocket(wakeupFd[0]);
-	::closesocket(wakeupFd[1]);
+	Socket::close(wakeupFd);
+#else
+	Socket::close(wakeupFd[0]);
+	Socket::close(wakeupFd[1]);
 #endif
 }
 
@@ -139,12 +132,12 @@ bool EventLoop::hasChannel(Channel *channel)
 void  EventLoop::handleRead()
 {
 	uint64_t one = 1;
-#ifdef __linux__	
-	ssize_t n = ::read(wakeupFd, &one, sizeof one);
+#ifdef __linux__
+	ssize_t n =  Socket::read(wakeupFd, &one, sizeof one);
 #endif
 
 #ifdef __APPLE__
-	ssize_t n = ::read(wakeupFd[1], &one, sizeof one);
+	ssize_t n = Socket::read(wakeupFd[1], &one, sizeof one);
 #endif
 
 #ifdef _WIN64
@@ -166,11 +159,11 @@ void EventLoop::wakeup()
 {
 	uint64_t one = 1;
 #ifdef __linux__
-	ssize_t n = ::write(wakeupFd, &one, sizeof one);
+	ssize_t n = Socket::write(wakeupFd, &one, sizeof one);
 #endif
 
 #ifdef __APPLE__
-	ssize_t n = ::write(wakeupFd[0], &one, sizeof one);
+	ssize_t n = Socket::write(wakeupFd[0], &one, sizeof one);
 #endif
 
 #ifdef _WIN64

@@ -34,17 +34,9 @@ public:
 		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
 	bool flushdbCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
 		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
-	bool delCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
 	bool mgetCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
 		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
-	bool subScribeCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
-	bool unSubscribeCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
 	bool debugCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
-	bool monitorCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
 		const ProxySessionPtr &session, const TcpConnectionPtr &conn);
 
 	void highWaterCallback(const TcpConnectionPtr &conn, size_t bytesToSent);
@@ -68,7 +60,6 @@ public:
 	void monitorCallback(const RedisAsyncContextPtr &c,
 			const RedisReplyPtr &reply, const std::any &privdata);
 
-	void clearSubscribe(const TcpConnectionPtr &conn);
 	void clearProxy(const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxyReply(const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxyCount(const std::thread::id &threadId, const int32_t sockfd);

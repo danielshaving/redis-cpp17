@@ -1,12 +1,13 @@
 #pragma once
 #include "all.h"
+#include "timerqueue.h"
 
 #ifdef _BOOST_FILE_LOCK
 #include <boost/interprocess/sync/file_lock.hpp>
 #endif
 
 const int32_t kSmallBuffer = 4000;
-const int32_t kLargeBuffer = 4000;
+const int32_t kLargeBuffer = 4000 * 1000;
 
 template<int32_t SIZE>
 class FixedBuffer
@@ -335,6 +336,7 @@ private:
 		LogLevel level;
 		int32_t line;
 		SourceFile baseName;
+		TimeStamp time;
 	};
 	Impl impl;
 };

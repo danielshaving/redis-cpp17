@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include "status.h"
+#include "block.h"
 
 class Block;
 class BlockHandle;
@@ -60,6 +61,12 @@ public:
 		std::function<void(const std::any &arg,
 		const std::string_view &k, const std::string_view &v)> &callback);
 		
+	// Convert an index iterator value (i.e., an encoded BlockHandle)
+	// into an iterator over the contents of the corresponding block.
+	static std::shared_ptr<BlockIterator> blockReader(const std::any &arg,
+								 const ReadOptions &options,
+								 const std::string_view &indexValue);
+									 
 private:
 	struct Rep;
 	std::shared_ptr<Rep> rep;

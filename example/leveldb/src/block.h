@@ -168,9 +168,9 @@ public:
 		while (left < right)
 		{
 			uint32_t mid = (left + right + 1) / 2;
-			uint32_t region_offset = getRestartPoint(mid);
+			uint32_t regionOffset = getRestartPoint(mid);
 			uint32_t shared, nonShared, valueLength;
-			const char *keyPtr = decodeEntry(data + region_offset,
+			const char *keyPtr = decodeEntry(data + regionOffset,
 											data + restarts,
 											&shared, &nonShared, &valueLength);
 			if (keyPtr == nullptr || (shared != 0))

@@ -733,11 +733,7 @@ int32_t RedisContext::redisBufferWrite(int32_t *done)
 
 	if (sender.readableBytes() > 0)
 	{
-#ifdef _WIN64
-		nwritten = ::send(fd, sender.peek(), sender.readableBytes(), 0);
-#else
-		nwritten = ::write(fd, sender.peek(), sender.readableBytes());
-#endif
+		nwritten = Socket::write(fd, sender.peek(), sender.readableBytes());
 		if (nwritten < 0)
 		{
 			if ((errno == EAGAIN && !(flags == REDIS_BLOCK)) || (errno == EINTR))
@@ -2478,11 +2474,7 @@ void Hiredis::connect(EventLoop *loop, const TcpClientPtr &client, int32_t count
 	{
 		if (c)
 		{
-			printf("Connection error: %s\n", c->errstr);
-		}
-		else
-		{
-			printf("Connection error: can't allocate redis context\n");
+			LOG_WARN <<"Hiredis connection error: " << c->errstr;
 		}
 	}
 	else

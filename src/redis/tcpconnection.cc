@@ -123,11 +123,7 @@ void TcpConnection::handleWrite()
 
 	if (channel->isWriting())
 	{
-#ifdef _WIN64
-		ssize_t n = ::send(channel->getfd(), writeBuffer.peek(), writeBuffer.readableBytes(), 0);
-#else
-		ssize_t n = ::write(channel->getfd(), writeBuffer.peek(), writeBuffer.readableBytes());
-#endif
+		ssize_t n = Socket::write(channel->getfd(), writeBuffer.peek(), writeBuffer.readableBytes());
 		if (n > 0)
 		{
 			writeBuffer.retrieve(n);

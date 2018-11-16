@@ -2,7 +2,6 @@
 #include "format.h"
 #include "coding.h"
 #include "option.h"
-#include "block.h"
 
 struct Table::Rep
 {
@@ -68,7 +67,6 @@ Status Table::open(const Options &options,
 		rep->file = file;
 		rep->metaindexHandle = footer.getMetaindexHandle();
 		rep->indexBlock = indexBlock;
-		//rep->cacheId = (options.blockCache ? options.blockCache->newId() : 0);
 		rep->filterData = nullptr;
 		std::shared_ptr<Table> t (new Table(rep));
 		table = t;
@@ -76,6 +74,26 @@ Status Table::open(const Options &options,
 	return s;
 }
 
+std::shared_ptr<BlockIterator> Table::blockReader(const std::any &arg,
+	 const ReadOptions &options,
+	 const std::string_view &indexValue)
+{
+	Table *table = std::any_cast<Table*>(arg);
+	std::shared_ptr<Block> block = nullptr;
+	BlockHandle handle;
+	std::string_view input = indexValue;
+	Status s = handle.decodeFrom(&input);
+    if (s.ok()) 
+	{
+		BlockContents contents;
+		s = readBlock(table->rep->file.get(), options, handle, &contents);
+		if (s.ok()) 
+		{
+			block = std::shared_ptr<new Block(contents)>();
+		}
+	}
+}
+								 
 Status Table::internalGet(
 	const ReadOptions &options, 
 	const std::string_view &key,
@@ -84,5 +102,11 @@ Status Table::internalGet(
 	const std::string_view &k, const std::string_view &v)> &callback)
 {
 	Status s;
+	std::shared_ptr<BlockIterator> iter = rep->indexBlock->newIterator(rep->options.comparator);
+	iter->seek(key);
+	if (iter->valid())
+	{
+		std::shared_ptr<BlockIterator> blockIter = blockReader(this, options, iter->getValue());
+	}
 }
 

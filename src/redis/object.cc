@@ -314,6 +314,7 @@ void createSharedObjects()
 	shared.subscribe = createObject(REDIS_STRING, sdsnew("subscribe"));
 	shared.select = createObject(REDIS_STRING, sdsnew("select"));
 	shared.unsubscribe = createObject(REDIS_STRING, sdsnew("unsubscribe"));
+	shared.publish =  createObject(REDIS_STRING, sdsnew("publish"));
 
 	for (j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{

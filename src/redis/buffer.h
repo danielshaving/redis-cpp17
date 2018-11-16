@@ -154,6 +154,14 @@ public:
 		return result;
 	}
 
+	void append(const char *data)
+	{
+		int32_t len = strlen(data) + 1;
+		ensureWritableBytes(len);
+		std::copy(data, data + len, beginWrite());
+		hasWritten(len);
+	}
+
 	void append(const char *data, int32_t len)
 	{
 		ensureWritableBytes(len);

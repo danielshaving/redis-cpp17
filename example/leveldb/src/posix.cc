@@ -1,16 +1,5 @@
 #include "posix.h"
 
-//void Log(Logger *infoLog,const char *format, ...)
-//{
-//	if (infoLog != nullptr)
-//	{
-//		va_list ap;
-//		va_start(ap,format);
-//		infoLog->Logv(format,ap);
-//		va_end(ap);
-//	}
-//}
-
 PosixWritableFile::PosixWritableFile(const std::string &fname, int fd)
 	:filename(fname), fd(fd), pos(0)
 {
