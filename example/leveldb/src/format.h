@@ -1,10 +1,10 @@
 #pragma once
 #include <string>
 #include <stdint.h>
+#include "tablebuilder.h"
 #include <string_view>
 #include "posix.h"
 #include "status.h"
-#include "table-builder.h"
 
 // BlockHandle is a pointer to the extent of a file that stores a data
 // block or a meta block.
@@ -80,7 +80,7 @@ struct BlockContents
 
 // Read the block identified by "handle" from "file".  On failure
 // return non-OK.  On success fill *result and return OK.
-Status readBlock(PosixMmapReadableFile *file,
+Status readBlock(const std::shared_ptr<RandomAccessFile> &file,
 	const ReadOptions &options,
 	const BlockHandle &handle,
 	BlockContents *result);

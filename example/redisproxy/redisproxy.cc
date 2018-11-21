@@ -119,12 +119,12 @@ void RedisProxy::initRedisCommand()
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 	redisCommands[shared.unsubscribe] = std::bind(&RedisProxy::debugCommand,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-	redisCommands[shared.select] = std::bind(&RedisProxy::selectCommand,
-		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 	redisCommands[shared.monitor] = std::bind(&RedisProxy::debugCommand,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 	if (clusterEnabled)
 	{
+		redisCommands[shared.select] = std::bind(&RedisProxy::selectCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 		redisCommands[shared.mget] = std::bind(&RedisProxy::mgetCommand,
 			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 		redisCommands[shared.dbsize] = std::bind(&RedisProxy::dbsizeCommand,
@@ -634,12 +634,6 @@ bool RedisProxy::flushdbCommand(const RedisObjectPtr &command, const std::vector
 	return true;
 }
 
-bool RedisProxy::RedisProxy::delCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-	const ProxySessionPtr &session, const TcpConnectionPtr &conn)
-{
-	return true;
-}
-		
 void RedisProxy::processCommandReply(const RedisObjectPtr &command,
 	const std::thread::id &threadId, const int32_t sockfd, const TcpConnectionPtr &conn)
 {

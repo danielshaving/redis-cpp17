@@ -26,7 +26,7 @@ struct Options
 	// REQUIRES: The client must ensure that the comparator supplied
 	// here has the same name and orders keys *exactly* the same as the
 	// comparator provided to previous open calls on the same DB.
-	const InternalKeyComparator *comparator;
+	std::shared_ptr<Comparator> comparator;
 
 	// If true, the database will be created if it is missing.
 	// Default: false
@@ -119,7 +119,8 @@ struct Options
 
 	// Create an Options object with default values for all fields.
 	Options()
-		:createIfMissing(false),
+		:comparator(new BytewiseComparatorImpl()),
+		createIfMissing(false),
 		errorIfExists(false),
 		paranoidChecks(false),
 		writeBufferSize(4 << 20),
@@ -129,6 +130,11 @@ struct Options
 		maxFileSize(2 << 20),
 		compression(kNoCompression),
 		reuseLogs(false)
+	{
+
+	}
+
+	~Options()
 	{
 
 	}

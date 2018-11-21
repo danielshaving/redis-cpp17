@@ -560,8 +560,7 @@ void Logger::Impl::formatTime()
 	if (seconds != t_lastSecond)
 	{
 		t_lastSecond = seconds;
-		struct tm tmtime;
-		gmtime_r(&seconds, &tmtime);
+		struct tm tmtime = *(localtime(&seconds));
 		len = snprintf(t_time, sizeof(t_time), "%4d%02d%02d %02d:%02d:%02d",
 				tmtime.tm_year + 1900, tmtime.tm_mon + 1, tmtime.tm_mday,
 				tmtime.tm_hour, tmtime.tm_min, tmtime.tm_sec);

@@ -1,15 +1,15 @@
 #pragma once
+#include "logwriter.h"
+#include "versionedit.h"
+#include "versionset.h"
 #include <deque>
 #include <set>
 #include <memory>
 #include "option.h"
 #include "status.h"
 #include "writebatch.h"
-#include "log-writer.h"
 #include "posix.h"
-#include "version-edit.h"
-#include "version-set.h"
-#include "table-cache.h"
+#include "tablecache.h"
 
 class DBImpl
 {
@@ -59,7 +59,7 @@ private:
 	// Set of table files to protect from deletion because they are
 	// part of ongoing compactions.
 	std::set<uint64_t> pendingOutPuts;
-	
+	const InternalKeyComparator comparator;
 	// Per level compaction stats.  stats_[level] stores the stats for
 	// compactions that produced data for the specified "level".
 	struct CompactionStats 

@@ -9,7 +9,7 @@
 class MemTable
 {
 public:
-	MemTable();
+	MemTable(const InternalKeyComparator &comparator);
 	~MemTable();
 
 	size_t getMemoryUsage() { return memoryUsage; }
@@ -25,7 +25,8 @@ public:
 private:
 	struct KeyComparator
 	{
-		const InternalKeyComparator comparator;
+	    const InternalKeyComparator comparator;
+	    KeyComparator(const InternalKeyComparator &c) : comparator(c) { }
 		int operator()(const char *a, const char *b) const;
 	};
 
@@ -35,5 +36,5 @@ private:
 	size_t memoryUsage;
 	int refs;
 public:
-	Table & getTable() { return table; }
+	Table &getTable() { return table; }
 };

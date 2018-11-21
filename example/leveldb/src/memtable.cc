@@ -2,9 +2,11 @@
 #include "coding.h"
 #include "zmalloc.h"
 
-MemTable::MemTable()
+MemTable::MemTable(const InternalKeyComparator &comparator)
 	:memoryUsage(0),
-	refs(0)
+	refs(0),
+	kcmp(comparator),
+	table(comparator)
 {
 
 }

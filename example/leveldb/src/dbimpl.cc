@@ -1,7 +1,7 @@
+#include "logreader.h"
+#include "tablebuilder.h"
 #include "dbimpl.h"
 #include "filename.h"
-#include "log-reader.h"
-#include "table-builder.h"
 #include "coding.h"
 
 const int kNumNonTableCacheFiles = 10;
@@ -23,12 +23,13 @@ struct DBImpl::Writer
 
 DBImpl::DBImpl(const Options &options, const std::string &dbname)
 	:options(options),
+	 comparator(options.comparator.get()),
 	dbname(dbname),
 	tableCache(new TableCache(dbname, options, tableCacheSize(options)))
 {
-	versions.reset(new VersionSet(dbname, options, tableCache));
-	mem.reset(new MemTable);
-	imm.reset(new MemTable);
+	versions.reset(new VersionSet(dbname, options, tableCache, &comparator));
+	mem.reset(new MemTable(comparator));
+	imm.reset(new MemTable(comparator));
 }
 
 DBImpl::~DBImpl()
@@ -289,7 +290,7 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 		
 		if (mem == nullptr)
 		{
-			mem.reset(new MemTable);
+			mem.reset(new MemTable(comparator));
 		}
 
 		WriteBatchInternal::setContents(&batch, record);
@@ -407,7 +408,7 @@ Status DBImpl::makeRoomForWrite(bool force)
 			logfileNumber = newLogNumber;
 			log.reset(new LogWriter(lfile.get()));
 			imm = mem;
-			mem.reset(new MemTable());
+			mem.reset(new MemTable(comparator));
 			force = false;   // Do not force another compaction if have room
 			maybeScheduleCompaction();
 		}
@@ -636,7 +637,7 @@ Status DBImpl::buildTable(FileMetaData *meta)
 	}
 	
 	auto &table = mem->getTable();
-	std::shared_ptr<TableBuilder> builder(new TableBuilder(options, file.get()));
+	std::shared_ptr<TableBuilder> builder(new TableBuilder(options, file));
 	auto iter = table.begin();
 	
 	const char *entry = *iter;

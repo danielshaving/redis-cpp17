@@ -45,11 +45,12 @@ static inline const char *decodeEntry(const char *p, const char *limit,
 	return p;
 }
 
+class Block;
 struct BlockContents;
 class BlockIterator
 {
 private:
-	const InternalKeyComparator *const comparator;
+	const Comparator *const comparator;
 	const char *const data;      // underlying block contents
 	uint32_t const restarts;     // Offset of restart array (list of fixed32)
 	uint32_t const numRestarts; // Number of uint32_t entries in restart array
@@ -60,6 +61,8 @@ private:
 	std::string key;
 	std::string_view value;
 	Status status;
+	std::list<std::shared_ptr<Block>> clearnups;
+
 	
 	inline int compare(const std::string_view &a, const std::string_view &b) const 
 	{
@@ -100,7 +103,7 @@ public:
 
 	}
 
-	BlockIterator(const InternalKeyComparator *comparator,
+	BlockIterator(const Comparator *comparator,
 	       const char *data,
 	       uint32_t restarts,
 	       uint32_t numRestarts)
@@ -113,7 +116,12 @@ public:
 	{
 	    assert(numRestarts > 0);
 	}
-
+	
+	void registerCleanup(const std::shared_ptr<Block> &block)
+	{
+		clearnups.push_back(block);
+	}
+	
 	bool valid() const { return current < restarts; }
 	Status getStatus() const { return status; }
 	std::string_view getKey() const
@@ -279,7 +287,7 @@ public:
 	~Block();
 
 	size_t getSize() const { return size; }
-	std::shared_ptr<BlockIterator> newIterator(const InternalKeyComparator *comparator);
+	std::shared_ptr<BlockIterator> newIterator(const Comparator *comparator);
   
 private:
 	 uint32_t numRestarts() const;

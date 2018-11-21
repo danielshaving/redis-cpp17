@@ -34,7 +34,7 @@ public:
 	//
 	// *file must remain live while this Table is in use.
 	static Status open(const Options &options,
-		std::shared_ptr<PosixMmapReadableFile> &file,
+		const std::shared_ptr<RandomAccessFile> &file,
 		uint64_t fileSize,
 		std::shared_ptr<Table> &table);
 

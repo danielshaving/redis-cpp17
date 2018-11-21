@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 
+/*
 int main(int argc, char *argv[])
 {
 	Options options;
@@ -37,3 +38,4 @@ int main(int argc, char *argv[])
 	}
 	return 0;
 }
+*/

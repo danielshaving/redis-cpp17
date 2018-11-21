@@ -95,9 +95,9 @@ void InternalKeyComparator::findShortestSeparator(std::string *start, const std:
 	std::string_view userStart = extractUserKey(*start);
 	std::string_view userLimit = extractUserKey(limit);
 	std::string tmp(userStart.data(), userStart.size());
-	byteComparator.findShortestSeparator(&tmp, userLimit);
+	comparator->findShortestSeparator(&tmp, userLimit);
 	if (tmp.size() < userStart.size() &&
-		byteComparator.compare(userStart, tmp) < 0)
+		comparator->compare(userStart, tmp) < 0)
 	{
 		// User key has become shorter physically, but larger logically.
 		// Tack on the earliest possible number to the shortened user key.
@@ -112,9 +112,9 @@ void InternalKeyComparator::findShortSuccessor(std::string *key) const
 {
 	std::string_view userKey = extractUserKey(*key);
 	std::string tmp(userKey.data(), userKey.size());
-	byteComparator.findShortSuccessor(&tmp);
+	comparator->findShortSuccessor(&tmp);
 	if (tmp.size() < userKey.size() &&
-		byteComparator.compare(userKey, tmp) < 0)
+		comparator->compare(userKey, tmp) < 0)
 	{
 		// User key has become shorter physically, but larger logically.
 		// Tack on the earliest possible number to the shortened user key.
@@ -130,7 +130,7 @@ int InternalKeyComparator::compare(const std::string_view &akey, const std::stri
 	//    increasing user key (according to user-supplied comparator)
 	//    decreasing sequence number
 	//    decreasing type (though sequence# should be enough to disambiguate)
-	int r = byteComparator.compare(extractUserKey(akey), extractUserKey(bkey));
+	int r = comparator->compare(extractUserKey(akey), extractUserKey(bkey));
 	if (r == 0)
 	{
 		const uint64_t anum = decodeFixed64(akey.data() + akey.size() - 8);

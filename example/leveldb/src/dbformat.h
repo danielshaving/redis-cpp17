@@ -84,33 +84,76 @@ inline std::string_view extractUserKey(const std::string_view &internalKey)
 	return std::string_view(internalKey.data(), internalKey.size() - 8);
 }
 
-class BytewiseComparatorImpl
+class Comparator
 {
 public:
-	BytewiseComparatorImpl() { }
-	const char *name() const { return "leveldb.BytewiseComparator"; }
-	int compare(const std::string_view &a, const std::string_view &b) const { return a.compare(b); }
-	void findShortestSeparator(std::string *start, const std::string_view &limit) const;
-	void findShortSuccessor(std::string *key) const;
+	virtual ~Comparator() { }
+
+	// Three-way comparison.  Returns value:
+	//   < 0 iff "a" < "b",
+	//   == 0 iff "a" == "b",
+	//   > 0 iff "a" > "b"
+	virtual int compare(const std::string_view &a, const std::string_view &b) const = 0;
+
+	// The name of the comparator.  Used to check for comparator
+	// mismatches (i.e., a DB created with one comparator is
+	// accessed using a different comparator.
+	//
+	// The client of this package should switch to a new name whenever
+	// the comparator implementation changes in a way that will cause
+	// the relative ordering of any two keys to change.
+	//
+	// Names starting with "leveldb." are reserved and should not be used
+	// by any clients of this package.
+	virtual const char *name() const = 0;
+
+	// Advanced functions: these are used to reduce the space requirements
+	// for internal data structures like index blocks.
+
+	// If *start < limit, changes *start to a short string in [start,limit).
+	// Simple comparator implementations may return with *start unchanged,
+	// i.e., an implementation of this method that does nothing is correct.
+	virtual void findShortestSeparator(
+	  std::string *start,
+	  const std::string_view &limit) const = 0;
+
+	// Changes *key to a short string >= *key.
+	// Simple comparator implementations may return with *key unchanged,
+	// i.e., an implementation of this method that does nothing is correct.
+	virtual void findShortSuccessor(std::string *key) const = 0;
+};
+
+class BytewiseComparatorImpl : public Comparator
+{
+public:
+	explicit BytewiseComparatorImpl() { }
+	virtual ~BytewiseComparatorImpl() {}
+	virtual const char *name() const { return "leveldb.BytewiseComparator"; }
+	virtual int compare(const std::string_view &a, const std::string_view &b) const
+	{
+		return a.compare(b);
+	}
+	virtual void findShortestSeparator(std::string *start, const std::string_view &limit) const;
+	virtual void findShortSuccessor(std::string *key) const;
 };
 // A comparator for internal keys that uses a specified comparator for
 // the user key portion and breaks ties by decreasing sequence number.
 
-class InternalKeyComparator
+class InternalKeyComparator : public Comparator
 {
 public:
-	InternalKeyComparator() { }
-	~InternalKeyComparator() { }
+	explicit InternalKeyComparator(const Comparator *c) : comparator(c) { }
+	virtual ~InternalKeyComparator() { }
 
-	const char *name() const;
-	void findShortestSeparator(std::string *start, const std::string_view &limit) const;
-	void findShortSuccessor(std::string *key) const;
-	int compare(const std::string_view &a, const std::string_view &b) const;
-	int compare(const InternalKey &a, const InternalKey &b) const;
-	const BytewiseComparatorImpl *getComparator() const { return &byteComparator; }
+	virtual const char *name() const;
+	virtual void findShortestSeparator(std::string *start, const std::string_view &limit) const;
+	virtual void findShortSuccessor(std::string *key) const;
+	virtual int compare(const std::string_view &a, const std::string_view &b) const;
+	virtual int compare(const InternalKey &a, const InternalKey &b) const;
+	const Comparator *getComparator() const { return comparator; }
 
 private:
-	BytewiseComparatorImpl byteComparator;
+	 const Comparator *comparator;
 };
 
 // Modules in this directory should keep internal keys wrapped inside

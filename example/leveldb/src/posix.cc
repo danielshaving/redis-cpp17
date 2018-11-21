@@ -27,8 +27,7 @@ Status PosixWritableFile::append(const std::string_view &data)
 	pos += copy;
 	if (n == 0)
 	{
-		Status s;
-		return s;
+		return Status::OK();
 	}
 
 	// Can't fit in buffer, so need to do at least one write.
@@ -66,7 +65,6 @@ Status PosixWritableFile::flush()
 {
 	return flushBuffered();
 }
-
 
 Status PosixWritableFile::syncDirIfManifest()
 {
@@ -148,8 +146,8 @@ Status PosixWritableFile::writeRaw(const char *p, size_t n)
 		p += r;
 		n -= r;
 	}
-	Status s;
-	return s;
+	
+	return Status::OK();
 }
 
 PosixSequentialFile::PosixSequentialFile(const std::string &fname, int fd)

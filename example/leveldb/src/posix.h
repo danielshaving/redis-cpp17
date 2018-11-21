@@ -40,46 +40,89 @@ static Status posixError(const std::string &context, int err)
 	}
 }
 
+// A file abstraction for sequential writing.  The implementation
+// must provide buffering since callers may append small fragments
+// at a time to the file.
+class WritableFile
+{
+public:
+	WritableFile() = default;
+
+	WritableFile(const WritableFile&) = delete;
+	WritableFile &operator=(const WritableFile&) = delete;
+
+	virtual ~WritableFile() { }
+
+	virtual Status append(const std::string_view &data) = 0;
+	virtual Status close() = 0;
+	virtual Status flush() = 0;
+	virtual Status sync() = 0;
+};
+
 // Log the specified data to *info_log if info_log is non-null.
 //void Log(Logger *infoLog,const char *format,...);
-class PosixWritableFile
+class PosixWritableFile : public WritableFile
 {
 private:
 	// buf_[0, pos_-1] contains data to be written to fd_.
 	std::string filename;
 	int fd;
-	char buf[kBufSize];
+	char buf[kBufSize]; 
 	size_t pos;
 public:
 	PosixWritableFile(const std::string &fname, int fd);
 	~PosixWritableFile();
 
-	Status append(const std::string_view &data);
-	Status close();
-	Status flush();
-	Status syncDirIfManifest();
-	Status sync();
+	virtual Status append(const std::string_view &data);
+	virtual Status close();
+	virtual Status flush();
+	virtual Status syncDirIfManifest();
+	virtual Status sync();
 
 private:
 	Status flushBuffered();
 	Status writeRaw(const char *p, size_t n);
 };
 
+// A file abstraction for randomly reading the contents of a file.
+class RandomAccessFile 
+{
+public:
+	RandomAccessFile() = default;
+
+	RandomAccessFile(const RandomAccessFile&) = delete;
+	RandomAccessFile& operator=(const RandomAccessFile&) = delete;
+
+	virtual ~RandomAccessFile() { }
+
+	// Read up to "n" bytes from the file starting at "offset".
+	// "scratch[0..n-1]" may be written by this routine.  Sets "*result"
+	// to the data that was read (including if fewer than "n" bytes were
+	// successfully read).  May set "*result" to point at data in
+	// "scratch[0..n-1]", so "scratch[0..n-1]" must be live when
+	// "*result" is used.  If an error was encountered, returns a non-OK
+	// status.
+	//
+	// Safe for concurrent use by multiple threads.
+	virtual Status read(uint64_t offset, size_t n, std::string_view *result,
+	              char *scratch) const = 0;
+};
+
 // pread() based random-access
-class PosixRandomAccessFile
+class PosixRandomAccessFile : public RandomAccessFile
 {
 private:
 	std::string filename;
 	int fd;
 public:
 	PosixRandomAccessFile(const std::string &fname, int fd);
-	~PosixRandomAccessFile();
-	Status read(uint64_t offset, size_t n, std::string_view *result,
+	virtual ~PosixRandomAccessFile();
+	virtual Status read(uint64_t offset, size_t n, std::string_view *result,
 		char *scratch) const;
 };
 
 // mmap() based random-access
-class PosixMmapReadableFile
+class PosixMmapReadableFile : public RandomAccessFile
 {
 private:
 	std::string filename;
@@ -89,8 +132,8 @@ private:
 public:
 	// base[0,length-1] contains the mmapped contents of the file.
 	PosixMmapReadableFile(const std::string &fname, void *base, size_t length);
-	~PosixMmapReadableFile();
-	Status read(uint64_t offset, size_t n, std::string_view *result,
+	virtual ~PosixMmapReadableFile();
+	virtual Status read(uint64_t offset, size_t n, std::string_view *result,
 		char *scratch) const;
 };
 

@@ -1,5 +1,4 @@
 #include "block.h"
-
 #include <vector>
 #include <algorithm>
 
@@ -13,7 +12,7 @@ Block::Block(const BlockContents &contents)
     : data(contents.data.data()),
       size(contents.data.size()),
       owned(contents.heapAllocated) 
-{
+{ 
 	if (size < sizeof(uint32_t)) 
 	{
 		size = 0;  // Error marker
@@ -41,7 +40,7 @@ Block::~Block()
 	}
 }
 
-std::shared_ptr<BlockIterator> Block::newIterator(const InternalKeyComparator *comparator)
+std::shared_ptr<BlockIterator> Block::newIterator(const Comparator *comparator)
 {
 	if (size < sizeof(uint32_t))
 	{
