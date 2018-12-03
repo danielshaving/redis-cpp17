@@ -17,7 +17,7 @@ void onConnection(const TcpConnectionPtr &conn)
 	}
 }
 
-void onMessage(const TcpConnectionPtr &conn,Buffer *buffer)
+void onMessage(const TcpConnectionPtr &conn, Buffer *buffer)
 {
 	conn->send(buffer);
 	buffer->retrieveAll();
@@ -33,12 +33,12 @@ int main(int argc,char* argv[])
 	{
 		LOG_INFO << "ping pong server pid = " << getpid();
 
-		const char* ip = argv[1];
+		const char *ip = argv[1];
 		uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
 		int threadCount = atoi(argv[3]);
 
 		EventLoop loop;
-		TcpServer server(&loop, ip,port,nullptr);
+		TcpServer server(&loop, ip, port, nullptr);
 		server.setConnectionCallback(onConnection);
 		server.setMessageCallback(onMessage);
 

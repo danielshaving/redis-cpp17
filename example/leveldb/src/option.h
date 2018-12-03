@@ -45,7 +45,7 @@ struct Options
 	// Use the specified object to interact with the environment,
 	// e.g. to read/write files, schedule background work, etc.
 	// Default: Env::Default()
-	PosixEnv *env;
+	std::shared_ptr<PosixEnv> env;
 
 	// -------------------
 	// Parameters that affect performance
@@ -123,6 +123,7 @@ struct Options
 		createIfMissing(false),
 		errorIfExists(false),
 		paranoidChecks(false),
+		env(new PosixEnv()),
 		writeBufferSize(4 << 20),
 		maxOpenFiles(1000),
 		blockSize(4096),
@@ -155,7 +156,7 @@ struct ReadOptions
 	bool fillCache;
 
 	ReadOptions()
-		: verifyChecksums(false),
+		: verifyChecksums(true),
 		fillCache(true)
 	{
 

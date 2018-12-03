@@ -46,7 +46,7 @@ char *encodeVarint64(char *dst, uint64_t value);
 // Lower-level versions of Get... that read directly from a character buffer
 // without any bounds checking.
 
-inline uint32_t decodeFixed32(const char* ptr)
+inline uint32_t decodeFixed32(const char *ptr)
 {
 	if (!kLittleEndian)
 	{
@@ -95,4 +95,4 @@ inline const char *getVarint32Ptr(const char *p, const char *limit, uint32_t *va
 	return getVarint32PtrFallback(p, limit, value);
 }
 
-uint32_t calHash(const char* data, size_t n, uint32_t seed);
+uint32_t calHash(const char *data, size_t n, uint32_t seed);

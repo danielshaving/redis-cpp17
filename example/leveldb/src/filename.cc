@@ -44,7 +44,7 @@ std::string currentFileName(const std::string &dbname)
 	return dbname + "/CURRENT";
 }
 
-std::string LockFileName(const std::string& dbname)
+std::string lockFileName(const std::string& dbname)
 {
 	return dbname + "/LOCK";
 }

@@ -1,10 +1,14 @@
 #pragma once
 #include <string>
 #include <stdint.h>
-#include "tablebuilder.h"
 #include <string_view>
-#include "posix.h"
+#include <memory>
 #include "status.h"
+#include "option.h"
+
+class Block;
+class RandomAccessFile;
+struct ReadOptions;
 
 // BlockHandle is a pointer to the extent of a file that stores a data
 // block or a meta block.

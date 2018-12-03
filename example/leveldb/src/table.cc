@@ -70,11 +70,20 @@ Status Table::open(const Options &options,
 	return s;
 }
 
-std::shared_ptr<BlockIterator> Table::blockReader(const std::any &arg,
-	 const ReadOptions &options,
-	 const std::string_view &indexValue)
+std::shared_ptr<Iterator> Table::newIterator(const ReadOptions &options) const 
 {
-	Table *table = std::any_cast<Table*>(arg);
+	std::shared_ptr<Iterator> indexIter = rep->indexBlock->newIterator(rep->options.comparator.get());
+	return newTwoLevelIterator(indexIter,
+		std::bind(blockReader, std::placeholders::_1, 
+			std::placeholders::_2, std::placeholders::_3), shared_from_this(), options);
+}
+
+std::shared_ptr<Iterator> Table::blockReader(const std::any &arg,
+		 const ReadOptions &options,
+		 const std::string_view &indexValue)
+{
+	assert(arg.has_value());
+	const std::shared_ptr<const Table> &table = std::any_cast<std::shared_ptr<const Table>>(arg);
 	std::shared_ptr<Block> block = nullptr;
 	BlockHandle handle;
 	std::string_view input = indexValue;
@@ -89,7 +98,7 @@ std::shared_ptr<BlockIterator> Table::blockReader(const std::any &arg,
 		}
 	}
 
-	std::shared_ptr<BlockIterator> iter;
+	std::shared_ptr<Iterator> iter;
 	if (block != nullptr)
 	{
 		iter = block->newIterator(table->rep->options.comparator.get());
@@ -97,7 +106,7 @@ std::shared_ptr<BlockIterator> Table::blockReader(const std::any &arg,
 	}
 	else
 	{
-		iter = std::shared_ptr<BlockIterator>(new BlockIterator(s));
+		//iter = std::shared_ptr<Iterator>(new Iterator(s));
 	}
 	return iter;
 }
@@ -110,35 +119,35 @@ Status Table::internalGet(
 	const std::string_view &k, const std::string_view &v)> &callback)
 {
 	Status s;
-	std::shared_ptr<BlockIterator> iter = rep->indexBlock->newIterator(rep->options.comparator.get());
+	std::shared_ptr<Iterator> iter = rep->indexBlock->newIterator(rep->options.comparator.get());
 	iter->seek(key);
 	if (iter->valid())
 	{
-		std::shared_ptr<BlockIterator> blockIter = blockReader(this, options, iter->getValue());
+		std::shared_ptr<Iterator> blockIter = blockReader(shared_from_this(), options, iter->value());
 		blockIter->seek(key);
 		if (blockIter->valid()) 
 		{
-			callback(arg, blockIter->getKey(), blockIter->getValue());
+			callback(arg, blockIter->key(), blockIter->value());
 		}
-		s = blockIter->getStatus();
+		s = blockIter->status();
 	}
 	
 	if (s.ok()) 
 	{
-		s = iter->getStatus();
+		s = iter->status();
 	}
 	return s;
 }
 
 uint64_t Table::approximateOffsetOf(const std::string_view &key) const
 {
-	std::shared_ptr<BlockIterator> indexIter = rep->indexBlock->newIterator(rep->options.comparator.get());
+	std::shared_ptr<Iterator> indexIter = rep->indexBlock->newIterator(rep->options.comparator.get());
 	indexIter->seek(key);
 	uint64_t result;
 	if (indexIter->valid())
 	{
 		BlockHandle handle;
-		std::string_view input = indexIter->getValue();
+		std::string_view input = indexIter->value();
 		Status s = handle.decodeFrom(&input);
 		if (s.ok())
 		{
@@ -146,10 +155,10 @@ uint64_t Table::approximateOffsetOf(const std::string_view &key) const
 		}
 		else
 		{
-			 // Strange: we can't decode the block handle in the index block.
-			  // We'll just return the offset of the metaindex block, which is
-			  // close to the whole file size for this case.
-			  result = rep->metaindexHandle.getOffset();
+			// Strange: we can't decode the block handle in the index block.
+			// We'll just return the offset of the metaindex block, which is
+			// close to the whole file size for this case.
+			result = rep->metaindexHandle.getOffset();
 		}
 	}
 	else

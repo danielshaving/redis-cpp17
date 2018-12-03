@@ -23,11 +23,11 @@ bool MemTable::get(const LookupKey &key, std::string *value, Status *s)
 	if (it != table.end())
 	{
 		// entry format is:
-		//    klength  varint32
-		//    userkey  char[klength]
-		//    tag      uint64
-		//    vlength  varint32
-		//    value    char[vlength]
+		// klength  varint32
+		// userkey  char[klength]
+		// tag      uint64
+		// vlength  varint32
+		// value    char[vlength]
 		// Check that it belongs to same user key.  We do not check the
 		// sequence number since the Seek() call above should have skipped
 		// all entries with overly large sequence numbers.
@@ -105,4 +105,66 @@ void MemTable::clearTable()
 	memoryUsage = 0;
 	table.clear();
 }
+
+// Encode a suitable internal key target for "target" and return it.
+// Uses *scratch as scratch space, and the returned pointer will point
+// into this scratch space.
+static const char *encodeKey(std::string *scratch, const std::string_view &target) 
+{
+	scratch->clear();
+	putVarint32(scratch, target.size());
+	scratch->append(target.data(), target.size());
+	return scratch->data();
+}
+
+class MemTableIterator : public Iterator 
+{
+public:
+	explicit MemTableIterator(const MemTable::Table &table) 
+	:table(table)
+	{
+		
+	}
+
+	virtual bool valid() const { return iter == table.end(); }
+	virtual void seek(const std::string_view &k) 
+	{
+		auto it = table.find(encodeKey(&tmp, k));
+		if (it != table.end())
+		{
+			iter = it;
+		}
+	}
+	virtual void seekToFirst() { iter = table.begin(); }
+	virtual void seekToLast() { iter = table.end(); }
+	virtual void next() { ++iter; }
+	virtual void prev() { --iter; }
+	virtual std::string_view key() const 
+	{
+		return getLengthPrefixedSlice(*iter); 
+	}
+	virtual std::string_view value() const 
+	{
+		std::string_view view = getLengthPrefixedSlice(*iter);
+		return getLengthPrefixedSlice(view.data() + view.size());
+	}
+
+	virtual Status status() const { return Status::OK(); }
+  	
+	virtual void registerCleanup(const std::any &arg) { }
+private:
+	MemTable::Table table;
+	MemTable::Table::iterator iter;
+	std::string tmp;
+	 // No copying allowed
+	MemTableIterator(const MemTableIterator&);
+	void operator=(const MemTableIterator&);
+};
+
+std::shared_ptr<Iterator> MemTable::newIterator()
+{
+	std::shared_ptr<Iterator> it(new MemTableIterator(table));
+	return it;
+}
+
 

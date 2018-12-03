@@ -3,6 +3,7 @@
 #include "coding.h"
 #include "crc32c.h"
 #include "zmalloc.h"
+#include "posix.h"
 
 void BlockHandle::encodeTo(std::string *dst) const
 {
@@ -18,8 +19,7 @@ Status BlockHandle::decodeFrom(std::string_view *input)
 	if (getVarint64(input, &offset) &&
 		getVarint64(input, &size))
 	{
-		Status s;
-		return s;
+		return Status::OK();
 	}
 	else
 	{

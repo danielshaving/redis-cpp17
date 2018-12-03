@@ -150,7 +150,7 @@ Status DBImpl::newDB()
 	if (s.ok())
 	{
 		// Make "CURRENT" file that points to the new manifest file.
-		s = setCurrentFile(options.env, dbname, 1);
+		s = setCurrentFile(options.env.get(), dbname, 1);
 	}
 	else
 	{
@@ -658,24 +658,24 @@ Status DBImpl::buildTable(FileMetaData *meta)
 		builder->add(key, value);
 	}
 	
-	 // Finish and check for builder errors
-    s = builder->finish();
-    if (s.ok()) 
+	// Finish and check for builder errors
+	s = builder->finish();
+	if (s.ok()) 
 	{
 		meta->fileSize = builder->fileSize();
 		assert(meta->fileSize > 0);
-    }
-	
+	}
+
 	// Finish and check for file errors
-    if (s.ok()) 
+	if (s.ok()) 
 	{
 		s = file->sync();
-    }
-	
-    if (s.ok()) 
-	{
+	}
+
+	if (s.ok()) 
+	{	
 		s = file->close();
-    }
+	}
 	
 	if (s.ok() && meta->fileSize > 0) 
 	{

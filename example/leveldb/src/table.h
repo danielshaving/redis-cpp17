@@ -1,11 +1,7 @@
 #pragma once
-#include <stdint.h>
-#include <string_view>
-#include <any>
-#include <functional>
-#include <memory>
 #include "status.h"
 #include "block.h"
+#include "iterator.h"
 
 class Block;
 class BlockHandle;
@@ -18,7 +14,7 @@ class TableCache;
 // A Table is a sorted map from strings to strings.  Tables are
 // immutable and persistent.  A Table may be safely accessed from
 // multiple threads without external synchronization.
-class Table
+class Table : public std::enable_shared_from_this<Table>
 {
 public:
 	// Attempt to open the table that is stored in bytes [0..file_size)
@@ -38,10 +34,15 @@ public:
 		uint64_t fileSize,
 		std::shared_ptr<Table> &table);
 
-	Table(const Table&) = delete;
-	void operator=(const Table&) = delete;
+	//Table(const Table&) = delete;
+	//void operator=(const Table&) = delete;
 
 	~Table();
+
+	// Returns a new iterator over the table contents.
+	// The result of NewIterator() is initially invalid (caller must
+	// call one of the Seek methods on the iterator before using it).
+	std::shared_ptr<Iterator> newIterator(const ReadOptions &options) const ;
 
 	// Given a key, return an approximate byte offset in the file where
 	// the data for that key begins (or would begin if the key were
@@ -63,20 +64,20 @@ public:
 		
 	// Convert an index iterator value (i.e., an encoded BlockHandle)
 	// into an iterator over the contents of the corresponding block.
-	static std::shared_ptr<BlockIterator> blockReader(const std::any &arg,
-								 const ReadOptions &options,
-								 const std::string_view &indexValue);
-									 
+	static std::shared_ptr<Iterator> blockReader(const std::any &arg,
+		 const ReadOptions &options,
+		 const std::string_view &indexValue);
+
 private:
+	void readMeta(const Footer &footer);
+	void readFilter(const std::string_view &filterHandleValue);
+
 	struct Rep;
 	std::shared_ptr<Rep> rep;
 
-	explicit Table(const std::shared_ptr<Rep> &rep)
+	Table(const std::shared_ptr<Rep> &rep)
 	:rep(rep)
 	{
 		
 	}
-
-	void readMeta(const Footer &footer);
-	void readFilter(const std::string_view &filterHandleValue);
 };

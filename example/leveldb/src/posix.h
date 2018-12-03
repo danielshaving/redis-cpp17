@@ -126,12 +126,12 @@ class PosixMmapReadableFile : public RandomAccessFile
 {
 private:
 	std::string filename;
-	void *mmappedRegion;
+	char *const mmapBase;
 	size_t length;
 
 public:
 	// base[0,length-1] contains the mmapped contents of the file.
-	PosixMmapReadableFile(const std::string &fname, void *base, size_t length);
+	PosixMmapReadableFile(const std::string &fname, char *base, size_t length);
 	virtual ~PosixMmapReadableFile();
 	virtual Status read(uint64_t offset, size_t n, std::string_view *result,
 		char *scratch) const;
@@ -218,7 +218,7 @@ public:
 	//
 	// The returned file may be concurrently accessed by multiple threads.
 	Status newRandomAccessFile(const std::string &filename,
-								 std::shared_ptr<PosixMmapReadableFile> &result);
+								 std::shared_ptr<RandomAccessFile> &result);
 };
 
 

@@ -4,7 +4,7 @@
 #include "tcpserver.h"
 #include "eventloop.h"
 #include "log.h"
-#include "timer.h"
+#include "timerqueue.h"
 
 std::vector<int32_t> pipes;
 int32_t numPipes;
