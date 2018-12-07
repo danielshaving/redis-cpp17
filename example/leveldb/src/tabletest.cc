@@ -335,11 +335,37 @@ public:
 	:iter(iter)
 	{
 	
-	}
 	
+	}
 	virtual ~KeyConvertingIterator()
 	{
 		
+	}
+
+	virtual bool valid() const { return iter->valid(); }
+	virtual void seek(const std::string_view &target) 
+	{
+		ParsedInternalKey ikey(target, kMaxSequenceNumber, kTypeValue);
+		std::string encoded;
+		appendInternalKey(&encoded, ikey);
+		iter->seek(encoded);
+	}
+	
+	virtual void seekToFirst() { iter->seekToFirst(); }
+	virtual void seekToLast() { iter->seekToLast(); }
+	virtual void next() { iter->next(); }
+	virtual void prev() { iter->prev(); }
+
+	virtual std::string_view key() const 
+	{
+		assert(valid());
+		ParsedInternalKey key;
+		if (!parseInternalKey(iter->key(), &key)) 
+		{
+			s = Status::corruption("malformed internal key");
+			return std::string_view("corrupted key");
+		}
+		return key.userKey;
 	}
 
 	virtual std::string_view value() const { return iter->value(); }
@@ -347,9 +373,10 @@ public:
 	{
 		return s.ok() ? iter->status() : s;
 	}
-  
+
+  	virtual void registerCleanup(const std::any &arg)  { }
 private:
-	Status s;
+	mutable Status s;
 	std::shared_ptr<Iterator> iter;
 	// No copying allowed
 	KeyConvertingIterator(const KeyConvertingIterator&);
@@ -367,10 +394,22 @@ public:
 	
 	}
 
-	
+	virtual Status finishImpl(const Options &options, const KVMap &data, bool store = true) 
+	{
+		memtable.reset(new MemTable(icmp));
+		int seq = 1;
+		for (auto &it : data)
+		{
+			memtable->add(seq, kTypeValue, it.first, it.second);
+			seq++;
+		}
+		return Status::OK();
+	}
+	 
 	virtual std::shared_ptr<Iterator> newIterator() const 
 	{
-		//return new KeyConvertingIterator(memtable_->NewIterator());
+		std::shared_ptr<Iterator> iter(new KeyConvertingIterator(memtable->newIterator()));
+		return iter;
 	}
 
 private:
@@ -407,6 +446,10 @@ static const TestArgs kTestArgList[] =
 	{ BLOCK_TEST, true, 16 },
 	{ BLOCK_TEST, true, 1 },
 	{ BLOCK_TEST, true, 1024 },
+	
+	// Restart interval does not matter for memtables
+	{ MEMTABLE_TEST, false, 16 },
+	{ MEMTABLE_TEST, true, 16 },
 };
 
 static const int kNumTestArgs = sizeof(kTestArgList) / sizeof(kTestArgList[0]);
@@ -444,6 +487,9 @@ public:
 				break;
 			case BLOCK_TEST:
 				constructor = std::shared_ptr<BlockConstructor>(new BlockConstructor(options.comparator.get()));
+				break;
+			case MEMTABLE_TEST:
+				constructor = std::shared_ptr<MemTableConstructor>(new MemTableConstructor(options.comparator.get()));
 				break;
 		}
 	}
@@ -519,7 +565,7 @@ public:
 					// Attempt to return something smaller than an existing key
 					if (result.size() > 0 && result[result.size() - 1] > '\0') 
 					{
-						result[result.size() - 1]--;
+						result[result.size() - 1];
 					}
 					break;
 				}
@@ -683,6 +729,7 @@ private:
 	std::string value;
 };
 
+/*
 int main()
 {	
 	// Test the empty key
@@ -691,7 +738,12 @@ int main()
 		Harness arness ;
 		arness.init(kTestArgList[i]);
 		arness.add("k", "v");
+		arness.add("k", "v");
+		arness.add("k", "v0");
+		arness.add("k1", "v1");
+		arness.add("k2", "v2");
 		arness.test();
 	}
-	
+	return 0;
 }
+*/

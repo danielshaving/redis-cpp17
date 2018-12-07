@@ -98,7 +98,7 @@ void RedisProxy::initRedisTimer()
 	{
 		auto it = threadHiredis.find(pools[i]->getThreadId());
 		assert(it != threadHiredis.end());
-		if (!clusterEnabled)
+		if (clusterEnabled)
 		{
 			pools[i]->runAfter(1.0, true, std::bind(&Hiredis::redisContextTimer, it->second.get()));
 		}

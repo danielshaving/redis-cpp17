@@ -3,7 +3,6 @@
 #include "posix.h"
 #include "coding.h"
 #include "crc32c.h"
-#include "zmalloc.h"
 
 LogReporter::~LogReporter()
 {
@@ -20,7 +19,7 @@ LogReader::LogReader(PosixSequentialFile *file, LogReporter *reporter, bool chec
 	:file(file),
 	reporter(reporter),
 	checksum(checksum),
-	backingStore((char*)zmalloc(kBlockSize)),
+	backingStore((char*)malloc(kBlockSize)),
 	buffer(),
 	eof(false),
 	lastRecordOffset(0),
@@ -33,7 +32,7 @@ LogReader::LogReader(PosixSequentialFile *file, LogReporter *reporter, bool chec
 
 LogReader::~LogReader()
 {
-	zfree(backingStore);
+	free(backingStore);
 }
 
 bool LogReader::skipToInitialBlock()
@@ -188,14 +187,14 @@ bool LogReader::readRecord(std::string_view *record, std::string *scratch)
 			break;
 
 		default:
-		{
-			char buf[40];
-			snprintf(buf, sizeof(buf), "unknown record type %u", recordType);
-			reportCorruption((fragment.size() + (inFragmentedRecord ? scratch->size() : 0)), buf);
-			inFragmentedRecord = false;
-			scratch->clear();
-			break;
-		}
+			{
+				char buf[40];
+				snprintf(buf, sizeof(buf), "unknown record type %u", recordType);
+				reportCorruption((fragment.size() + (inFragmentedRecord ? scratch->size() : 0)), buf);
+				inFragmentedRecord = false;
+				scratch->clear();
+				break;
+			}
 		}
 	}
 	return false;

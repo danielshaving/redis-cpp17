@@ -258,9 +258,19 @@ Status PosixEnv::getFileSize(const std::string &fname, uint64_t* size)
 
 bool PosixEnv::fileExists(const std::string &fname)
 {
-	return access(fname.c_str(), F_OK) == 0;
+	return ::access(fname.c_str(), F_OK) == 0;
 }
 
+Status PosixEnv::lockFile(const std::string& fname, std::shared_ptr<PosixFileLock> &lock)
+{
+
+}
+
+Status PosixEnv::unlockFile(const std::shared_ptr<PosixFileLock> &lock)
+{
+
+}
+	
 Status PosixEnv::getChildren(const std::string &dir, std::vector<std::string> *result)
 {
 	Status s;

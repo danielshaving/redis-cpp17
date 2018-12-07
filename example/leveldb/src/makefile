@@ -1,6 +1,5 @@
 TARGET= ./leveldb
-CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated\
--Wl,--no-as-needed -std=c++17
+CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17 #-I /usr/local/include/leveldb/
 ccfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(ccfiles) $(cfiles))
@@ -9,7 +8,7 @@ CXXOBJS=${patsubst %.cc,./%.o,$(ccfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB= 
+LIB= #/usr/local/lib/libleveldb.a /usr/local/lib/libsnappy.a
 
 SO_LIB= 
 

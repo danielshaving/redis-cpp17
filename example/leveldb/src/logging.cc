@@ -1,5 +1,4 @@
 #include "logging.h"
-#include "zmalloc.h"
 
 bool consumeDecimalNumber(std::string_view *in, uint64_t *val)
 {
@@ -99,7 +98,7 @@ Status readFileToString(PosixEnv *env, const std::string &fname, std::string *da
 		return s;
 	}
 	static const int kBufferSize = 8192;
-	char *space = (char*)zmalloc(kBufferSize);
+	char *space = (char*)malloc(kBufferSize);
 	while (true)
 	{
 		std::string_view fragment;
@@ -115,7 +114,8 @@ Status readFileToString(PosixEnv *env, const std::string &fname, std::string *da
 			break;
 		}
 	}
-	zfree(space);
+	
+	free(space);
 	return s;
 }
 

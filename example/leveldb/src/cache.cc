@@ -1,5 +1,4 @@
 #include "cache.h"
-#include "zmalloc.h"
 
 // LRU cache implementation
 //
@@ -30,7 +29,7 @@ LRUHandle::~LRUHandle()
 {
 	if (keyData != nullptr)
 	{
-		zfree(keyData);
+		free(keyData);
 	}
 }
 
@@ -48,7 +47,7 @@ LRUCache::~LRUCache()
 std::shared_ptr<LRUHandle> LRUCache::lookup(const std::string_view &key, uint32_t hash)
 {
 	std::shared_ptr<LRUHandle> e(new LRUHandle);
-	e->keyData = (char*)zmalloc(key.size());
+	e->keyData = (char*)malloc(key.size());
 	memcpy(e->keyData, key.data(), key.size());
 	e->hash = hash;
 	auto it = tables.find(e);
@@ -75,7 +74,7 @@ std::shared_ptr<LRUHandle> LRUCache::insert(const std::string_view &key, uint32_
 	e->charge = charge;
 	e->keyLength = key.size();
 	e->inCache = false;
-	e->keyData = (char*)zmalloc(key.size());
+	e->keyData = (char*)malloc(key.size());
 	memcpy(e->keyData, key.data(), key.size());
 
 	e->inCache = true;
@@ -96,7 +95,7 @@ std::shared_ptr<LRUHandle> LRUCache::insert(const std::string_view &key, uint32_
 void LRUCache::erase(const std::string_view &key, uint32_t hash)
 {
 	std::shared_ptr<LRUHandle> e(new LRUHandle);
-	e->keyData = (char*)zmalloc(key.size());
+	e->keyData = (char*)malloc(key.size());
 	memcpy(e->keyData, key.data(), key.size());
 	e->hash = hash;
 	auto it = tables.find(e);

@@ -7,7 +7,6 @@
 #include <memory>
 #include <assert.h>
 #include "coding.h"
-#include "zmalloc.h"
 #include "format.h"
 #include "dbformat.h"
 #include "iterator.h"

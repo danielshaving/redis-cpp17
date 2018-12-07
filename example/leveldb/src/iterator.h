@@ -69,8 +69,8 @@ std::shared_ptr<Iterator> newErrorIterator(const Status &status);
 
 typedef std::function<std::shared_ptr<Iterator>(const std::any &arg,
 		 const ReadOptions &options,
-		 const std::string_view &indexValue)> BlockCallback;
+		 const std::string_view &indexValue)> Callback;
 
 std::shared_ptr<Iterator> newTwoLevelIterator(const std::shared_ptr<Iterator> &indexIter,
-	const BlockCallback &callback , const std::any &arg, const ReadOptions &options);
+	const Callback &callback , const std::any &arg, const ReadOptions &options);
 

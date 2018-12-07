@@ -295,7 +295,7 @@ Block::~Block()
 {
 	if (owned) 
 	{
-		zfree((void*)data);
+		free((void*)data);
 	}
 }
 

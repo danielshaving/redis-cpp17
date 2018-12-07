@@ -40,6 +40,7 @@ HiredisTest::~HiredisTest()
 void HiredisTest::connectionCallback(const TcpConnectionPtr &conn)
 {
 	connectCount++;
+	std::unique_lock<std::mutex> lk(mutex);
 	condition.notify_one();
 }
 
@@ -199,7 +200,9 @@ void HiredisTest::redLockCallback(const RedisAsyncContextPtr &c,
 			callback, "set %s %s px %d nx", callback->resource, callback->val, callback->ttl);
 
 		double retry = ((double)(rand() % 100) / 100);
-		c->redisConn->getLoop()->runAfter(retry, false, std::move(willCallback));
+		TcpConnectionPtr conn = c->getTcpConnection().lock();
+		assert(conn != nullptr);
+		conn->getLoop()->runAfter(retry, false, std::move(willCallback));
 	}
 }
 
@@ -398,7 +401,7 @@ int main(int argc, char *argv[])
 
 	const char *ip = "127.0.0.1";
 	uint16_t port = 6379;
-	int16_t sessionCount = 100;
+	int16_t sessionCount = 1;
 	int8_t threadCount = 4;
 	int32_t messageCount = 100000;
 
@@ -413,7 +416,7 @@ int main(int argc, char *argv[])
 	//		hiredis.hash();
 	//		hiredis.list();
 	//		hiredis.lrange();
-	hiredis.info();
+	//hiredis.info();
 	//hiredis.redlock("test","test",100000);
 	loop.run();
 

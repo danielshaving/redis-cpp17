@@ -1,6 +1,5 @@
 #include "memtable.h"
 #include "coding.h"
-#include "zmalloc.h"
 
 MemTable::MemTable(const InternalKeyComparator &comparator)
 	:memoryUsage(0),
@@ -19,7 +18,7 @@ MemTable::~MemTable()
 bool MemTable::get(const LookupKey &key, std::string *value, Status *s)
 {
 	std::string_view memkey = key.memtableKey();
-	auto it = table.find(memkey.data());
+	auto it = table.lower_bound(memkey.data());
 	if (it != table.end())
 	{
 		// entry format is:
@@ -42,16 +41,16 @@ bool MemTable::get(const LookupKey &key, std::string *value, Status *s)
 			const uint64_t tag = decodeFixed64(keyPtr + keyLength - 8);
 			switch (static_cast<ValueType>(tag & 0xff))
 			{
-			case kTypeValue:
-			{
-				std::string_view v = getLengthPrefixedSlice(keyPtr + keyLength);
-				value->assign(v.data(), v.size());
-				return true;
-			}
+				case kTypeValue:
+				{
+					std::string_view v = getLengthPrefixedSlice(keyPtr + keyLength);
+					value->assign(v.data(), v.size());
+					return true;
+				}
 
-			case kTypeDeletion:
-				*s = Status::notFound(std::string_view());
-				return true;
+				case kTypeDeletion:
+					*s = Status::notFound(std::string_view());
+					return true;
 			}
 		}
 	}
@@ -74,7 +73,7 @@ void MemTable::add(uint64_t seq, ValueType type, const std::string_view &key,
 		varintLength(internalKeySize) + internalKeySize +
 		varintLength(valSize) + valSize;
 
-	char *buf = (char*)zmalloc(encodedLen);
+	char *buf = (char*)malloc(encodedLen);
 	char *p = encodeVarint32(buf, internalKeySize);
 	memcpy(p, key.data(), keySize);
 	p += keySize;
@@ -87,19 +86,19 @@ void MemTable::add(uint64_t seq, ValueType type, const std::string_view &key,
 	memoryUsage += encodedLen;
 }
 
-int MemTable::KeyComparator::operator()(const char *aptr, const char *bptr) const
+bool MemTable::KeyComparator::operator()(const char *aptr, const char *bptr) const
 {
 	// Internal keys are encoded as length-prefixed strings.
 	std::string_view a = getLengthPrefixedSlice(aptr);
 	std::string_view b = getLengthPrefixedSlice(bptr);
-	return comparator.compare(a, b);
+	return comparator.compare(a, b) < 0;
 }
 
 void MemTable::clearTable()
 {
 	for (auto &iter : table)
 	{
-		zfree((void*)iter);
+		free((void*)iter);
 	}
 
 	memoryUsage = 0;
@@ -121,34 +120,98 @@ class MemTableIterator : public Iterator
 {
 public:
 	explicit MemTableIterator(const MemTable::Table &table) 
-	:table(table)
+	:table(table), iter(table.end()), empty(false)
 	{
 		
 	}
 
-	virtual bool valid() const { return iter == table.end(); }
+	virtual bool valid() const
+	{
+		if(!empty) return false;
+		return iter != table.end();
+	}
+	
 	virtual void seek(const std::string_view &k) 
 	{
-		auto it = table.find(encodeKey(&tmp, k));
-		if (it != table.end())
+		iter = table.lower_bound(encodeKey(&tmp, k));
+		if (iter == table.end())
 		{
-			iter = it;
+			empty = false;
+		}
+		else
+		{
+			empty = true;
 		}
 	}
-	virtual void seekToFirst() { iter = table.begin(); }
-	virtual void seekToLast() { iter = table.end(); }
-	virtual void next() { ++iter; }
-	virtual void prev() { --iter; }
+	
+	virtual void seekToFirst() 
+	{ 
+		iter = table.begin(); 
+		if (iter == table.end())
+		{
+			empty = false;
+		}
+		else
+		{
+			empty = true;
+		}
+	}
+	
+	virtual void seekToLast()
+	{
+		iter = table.empty() ? table.end() : std::prev(table.end());
+		if (iter == table.end())
+		{
+			empty = false;
+		}
+		else
+		{
+			empty = true;
+		}
+	}
+	
+	virtual void next()
+	{
+		assert (iter != table.end());
+		++iter;
+
+		if (iter == table.end())
+		{
+			empty = false;
+		}
+	}
+	
+	virtual void prev() 
+	{
+		assert(iter != table.end());
+		if (iter == table.begin()) 
+		{
+			iter = table.end();
+		}
+		else 
+		{
+			--iter;
+		}
+		
+		if (iter == table.end())
+		{
+			empty = false;
+		}
+	}
+	
 	virtual std::string_view key() const 
 	{
+		assert (iter != table.end());
 		return getLengthPrefixedSlice(*iter); 
 	}
+	
 	virtual std::string_view value() const 
 	{
+		assert (iter != table.end());
 		std::string_view view = getLengthPrefixedSlice(*iter);
 		return getLengthPrefixedSlice(view.data() + view.size());
 	}
-
+	
 	virtual Status status() const { return Status::OK(); }
   	
 	virtual void registerCleanup(const std::any &arg) { }
@@ -156,6 +219,7 @@ private:
 	MemTable::Table table;
 	MemTable::Table::iterator iter;
 	std::string tmp;
+	bool empty;
 	 // No copying allowed
 	MemTableIterator(const MemTableIterator&);
 	void operator=(const MemTableIterator&);

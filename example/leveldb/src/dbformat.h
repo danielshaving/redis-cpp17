@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <string>
 #include <assert.h>
-#include "zmalloc.h"
 
 static const int kNumLevels = 7;
 
@@ -127,7 +126,7 @@ class BytewiseComparatorImpl : public Comparator
 {
 public:
 	explicit BytewiseComparatorImpl() { }
-	virtual ~BytewiseComparatorImpl() {}
+	virtual ~BytewiseComparatorImpl() { }
 	virtual const char *name() const { return "leveldb.BytewiseComparator"; }
 	virtual int compare(const std::string_view &a, const std::string_view &b) const
 	{
@@ -234,5 +233,5 @@ private:
 
 inline LookupKey::~LookupKey()
 {
-	if (start != space) { zfree((void*)start); }
+	if (start != space) { free((void*)start); }
 }

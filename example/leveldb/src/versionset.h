@@ -24,24 +24,6 @@ public:
 
 	VersionSet *vset;     // VersionSet to which this Version belongs
 
-	// Reference count management (so Versions do not disappear out from
-	// under live iterators)
-	void ref()
-	{
-		++refs;
-	}
-
-	bool unref()
-	{
-		assert(refs >= 1);
-		--refs;
-		if (refs == 0)
-		{
-			return true;
-		}
-		return false;
-	}
-
 	// Lookup the value for key.  If found, store it in *val and
 	// return OK.  Else return a non-OK status.  Fills *stats.
 	// REQUIRES: lock is not held
@@ -158,7 +140,7 @@ class VersionSet
 {
 public:
 	VersionSet(const std::string &dbname, const Options &options,
-			std::shared_ptr<TableCache> tableCache, const InternalKeyComparator *cmp);
+			const std::shared_ptr<TableCache> &tableCache, const InternalKeyComparator *cmp);
 	~VersionSet();
 
 	uint64_t getLastSequence() const { return lastSequence; }
@@ -234,3 +216,23 @@ private:
 	std::shared_ptr<PosixWritableFile> descriptorFile;
 	std::shared_ptr<TableCache> tableCache;
 };
+
+
+int findFile(const InternalKeyComparator &icmp,
+	const std::vector<std::shared_ptr<FileMetaData>> &files,
+	const std::string_view &key);
+
+
+bool someFileOverlapsRange(const InternalKeyComparator &icmp, bool disjointSortedFiles,
+	const std::vector<std::shared_ptr<FileMetaData>> &files,
+	const std::string_view *smallestUserKey,
+	const std::string_view *largestUserKey);
+
+
+// A Compaction encapsulates information about a compaction.
+class Compaction 
+{
+public:
+	Compaction();
+};
+

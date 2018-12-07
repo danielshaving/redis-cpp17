@@ -19,6 +19,8 @@
 #include <string_view>
 #include <memory>
 #include <vector>
+#include <mutex>
+#include <thread>
 #include "status.h"
 
 static const size_t kBufSize = 65536;
@@ -39,6 +41,19 @@ static Status posixError(const std::string &context, int err)
 		return Status::ioError(context, strerror(err));
 	}
 }
+
+static int LockOrUnlock(int fd, bool lock) 
+{
+	errno = 0;
+	struct ::flock file_lock_info;
+	memset(&file_lock_info, 0, sizeof(file_lock_info));
+	file_lock_info.l_type = (lock ? F_WRLCK : F_UNLCK);
+	file_lock_info.l_whence = SEEK_SET;
+	file_lock_info.l_start = 0;
+	file_lock_info.l_len = 0;  // Lock/unlock entire file.
+	return ::fcntl(fd, F_SETLK, &file_lock_info);
+}
+
 
 // A file abstraction for sequential writing.  The implementation
 // must provide buffering since callers may append small fragments
@@ -150,6 +165,42 @@ public:
 	Status skip(uint64_t n);
 };
 
+class PosixLockTable 
+{
+public:
+	bool Insert(const std::string &fname)
+	{
+		std::unique_lock<std::mutex> lk(mutex);
+		bool succeeded = lockedFiles.insert(fname).second;
+		return succeeded;
+	}
+	void remove(const std::string &fname) 
+	{
+		std::unique_lock<std::mutex> lk(mutex);
+		lockedFiles.erase(fname);
+	}
+
+private:
+	std::mutex mutex;
+	std::set<std::string> lockedFiles;
+};
+
+
+// Instances are thread-safe because they are immutable.
+class PosixFileLock
+{
+public:
+	PosixFileLock(int fd, std::string filename)
+	  : fd(fd), filename(std::move(filename)) { }
+
+	int getfd() const { return fd; }
+	const std::string &getfilename() const { return filename; }
+
+	private:
+	const int fd;
+	const std::string filename;
+};
+
 class PosixEnv
 {
 public:
@@ -185,6 +236,13 @@ public:
 	//
 	// The returned file will only be accessed by one thread at a time.
 
+	// May create the named file if it does not already exist.
+	Status lockFile(const std::string& fname, std::shared_ptr<PosixFileLock> &lock);
+	// Release the lock acquired by a previous successful call to LockFile.
+	// REQUIRES: lock was returned by a successful LockFile() call
+	// REQUIRES: lock has not already been unlocked.
+	Status unlockFile(const std::shared_ptr<PosixFileLock> &lock);
+  
 	Status newSequentialFile(const std::string &fname,
 		std::shared_ptr<PosixSequentialFile> &result);
 	// Rename file src to target.

@@ -5,6 +5,8 @@
 #include <deque>
 #include <set>
 #include <memory>
+#include <mutex>
+#include <condition_variable>
 #include "option.h"
 #include "status.h"
 #include "writebatch.h"
@@ -22,8 +24,8 @@ public:
 	Status del(const WriteOptions&, const std::string_view &key);
 	Status write(const WriteOptions &options, WriteBatch *updates);
 	Status get(const ReadOptions &options, const std::string_view &key, std::string *value);
-	// Implementations of the DB interface
 
+	Status destroyDB(const std::string &dbname, const Options &options);
 	void deleteObsoleteFiles();
 	Status recover(VersionEdit *edit, bool *saveManifest);
 	Status recoverLogFile(uint64_t logNumber, bool lastLog,
@@ -88,5 +90,9 @@ private:
 		const InternalKey *end;     // null means end of key range
 		InternalKey tmpStorage;    // Used to keep track of compaction progress
 	};
-	ManualCompaction *manualCompaction;
+	
+	std::shared_ptr<ManualCompaction> manualCompaction;
+	std::mutex mutex;
+	std::condition_variable condition;
+	Status bgerror;
 };

@@ -2,7 +2,6 @@
 #include "block.h"
 #include "coding.h"
 #include "crc32c.h"
-#include "zmalloc.h"
 #include "posix.h"
 
 void BlockHandle::encodeTo(std::string *dst) const
@@ -78,18 +77,18 @@ Status readBlock(const std::shared_ptr<RandomAccessFile> &file,
 	// Read the block contents as well as the type/crc footer.
 	// See table_builder.cc for the code that built this structure.
 	size_t n = static_cast<size_t>(handle.getSize());
-	char *buf = (char*)zmalloc(n + kBlockTrailerSize);
+	char *buf = (char*)malloc(n + kBlockTrailerSize);
 	std::string_view contents;
 	Status s = file->read(handle.getOffset(), n + kBlockTrailerSize, &contents, buf);
 	if (!s.ok())
 	{
-		zfree(buf);
+		free(buf);
 		return s;
 	}
 
 	if (contents.size() != n + kBlockTrailerSize)
 	{
-		zfree(buf);
+		free(buf);
 		return Status::corruption("truncated block read");
 	}
 
@@ -101,7 +100,7 @@ Status readBlock(const std::shared_ptr<RandomAccessFile> &file,
 		const uint32_t actual = crc32c::value(data, n + 1);
 		if (actual != crc)
 		{
-			zfree(buf);
+			free(buf);
 			s = Status::corruption("block checksum mismatch");
 			return s;
 		}
@@ -115,7 +114,7 @@ Status readBlock(const std::shared_ptr<RandomAccessFile> &file,
 			// File implementation gave us pointer to some other data.
 			// Use it directly under the assumption that it will be live
 			// while the file is open.
-			zfree(buf);
+			free(buf);
 			result->data = std::string_view(data, n);
 			result->heapAllocated = false;
 			result->cachable = false;  // Do not double-cache
@@ -134,7 +133,7 @@ Status readBlock(const std::shared_ptr<RandomAccessFile> &file,
 
 	}
 	default:
-		zfree(buf);
+		free(buf);
 		return Status::corruption("bad block type");
 	}
 	return s;

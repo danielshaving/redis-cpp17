@@ -1,12 +1,12 @@
 #include <stdio.h>
+#include <string.h>
 #include "status.h"
-
 
 const char *Status::copyState(const char *state)
 {
 	uint32_t size;
 	memcpy(&size, state, sizeof(size));
-	char *result = (char*)zmalloc(size + 5);
+	char *result = (char*)malloc(size + 5);
 	memcpy(result, state, size + 5);
 	return result;
 }
@@ -17,7 +17,7 @@ Status::Status(Code code, const std::string_view &msg, const std::string_view &m
 	const uint32_t len1 = msg.size();
 	const uint32_t len2 = msg2.size();
 	const uint32_t size = len1 + (len2 ? (2 + len2) : 0);
-	char *result = (char*)zmalloc(size + 5);
+	char *result = (char*)malloc(size + 5);
 	memcpy(result, &size, sizeof(size));
 	result[4] = static_cast<char>(code);
 	memcpy(result + 5, msg.data(), len1);

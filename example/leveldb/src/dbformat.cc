@@ -135,6 +135,7 @@ int InternalKeyComparator::compare(const std::string_view &akey, const std::stri
 	{
 		const uint64_t anum = decodeFixed64(akey.data() + akey.size() - 8);
 		const uint64_t bnum = decodeFixed64(bkey.data() + bkey.size() - 8);
+
 		if (anum > bnum)
 		{
 			r = -1;
@@ -174,7 +175,7 @@ LookupKey::LookupKey(const std::string_view &userKey, uint64_t s)
 	}
 	else
 	{
-		dst = (char*)zmalloc(needed);
+		dst = (char*)malloc(needed);
 	}
 
 	start = dst;

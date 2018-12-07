@@ -25,11 +25,12 @@ DBImpl::DBImpl(const Options &options, const std::string &dbname)
 	:options(options),
 	 comparator(options.comparator.get()),
 	dbname(dbname),
-	tableCache(new TableCache(dbname, options, tableCacheSize(options)))
+	mem(nullptr),
+	imm(nullptr),
+	manualCompaction(nullptr)
 {
+	tableCache.reset(new TableCache(dbname, options, tableCacheSize(options)));
 	versions.reset(new VersionSet(dbname, options, tableCache, &comparator));
-	mem.reset(new MemTable(comparator));
-	imm.reset(new MemTable(comparator));
 }
 
 DBImpl::~DBImpl()
@@ -38,12 +39,11 @@ DBImpl::~DBImpl()
 }
 
 Status DBImpl::open()
-{
-	Status s = options.env->createDir(dbname);
+{	
 	VersionEdit edit;
 	bool saveManifest = false;
-	s = recover(&edit, &saveManifest);
-	if (s.ok() && imm->getMemoryUsage() == 0)
+	Status s = recover(&edit, &saveManifest);
+	if (s.ok() && mem == nullptr)
 	{
 		uint64_t newLogNumber = versions->newFileNumber();
 		s = options.env->newWritableFile(logFileName(dbname, newLogNumber), logfile);
@@ -51,6 +51,7 @@ Status DBImpl::open()
 		{
 			log.reset(new LogWriter(logfile.get()));
 			logfileNumber = newLogNumber;
+			mem.reset(new MemTable(comparator));
 		}
 	}
 
@@ -64,6 +65,7 @@ Status DBImpl::open()
 	if (s.ok())
 	{
 		deleteObsoleteFiles();
+		maybeScheduleCompaction();
 	}
 	else
 	{
@@ -163,7 +165,6 @@ Status DBImpl::recover(VersionEdit *edit, bool *saveManifest)
 {
 	Status s;
 	options.env->createDir(dbname);
-
 	if (!options.env->fileExists(currentFileName(dbname)))
 	{
 		if (options.createIfMissing)
@@ -213,7 +214,7 @@ Status DBImpl::recover(VersionEdit *edit, bool *saveManifest)
 		return s;
 	}
 
-	uint64_t maxSequence(0);
+	uint64_t maxSequence = 0;
 	std::set<uint64_t> expected;
 	versions->addLiveFiles(&expected);
 	uint64_t number;
@@ -279,7 +280,6 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 	int compactions = 0;
 
 	std::shared_ptr<MemTable> mem = nullptr;
-	  
 	while (reader.readRecord(&record, &scratch) && status.ok())
 	{
 		if (record.size() < 12)
@@ -331,6 +331,7 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 			options.env->newAppendableFile(fname, logfile).ok()) 
 		{
 			printf("Reusing old log %s \n", fname.c_str());
+			log.reset(new LogWriter(logfile.get(), lfileSize));
 			logfileNumber = logNumber;
 			if (mem != nullptr) 
 			{
@@ -340,6 +341,7 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 			else 
 			{
 				// mem can be nullptr if lognum exists but was empty
+				this->mem.reset(new MemTable(comparator));
 			}
 		}
 	}
@@ -384,7 +386,7 @@ Status DBImpl::makeRoomForWrite(bool force)
 		}
 		else if (imm != nullptr)
 		{
-
+		
 		}
 		else if (versions->numLevelFiles(0) >= kL0_StopWritesTrigger)
 		{	
@@ -462,6 +464,42 @@ WriteBatch *DBImpl::buildBatchGroup(Writer **lastWriter)
 			WriteBatchInternal::append(result, w->batch);
 		}
 		*lastWriter = w;
+	}
+	return result;
+}
+
+Status DBImpl::destroyDB(const std::string &dbname, const Options &options)
+{
+	auto env = options.env;
+	std::vector<std::string> filenames;
+	Status result = options.env->getChildren(dbname, &filenames);
+	if (!result.ok()) 
+	{
+		// Ignore error in case directory does not exist
+		return Status::OK();
+	}
+
+	const std::string lockname = lockFileName(dbname);
+	
+	if (result.ok()) 
+	{
+		uint64_t number;
+		FileType type;
+		for (size_t i = 0; i < filenames.size(); i++) 
+		{
+			if (parseFileName(filenames[i], &number, &type) &&
+			  type != kDBLockFile) 
+			{ 	 // Lock file will be deleted at end
+				Status del = env->deleteFile(dbname + "/" + filenames[i]);
+				if (result.ok() && !del.ok()) 
+				{
+					result = del;
+				}
+			}
+		}
+		
+		env->deleteFile(lockname);
+		env->deleteDir(dbname);  // Ignore error in case dir contains other files
 	}
 	return result;
 }

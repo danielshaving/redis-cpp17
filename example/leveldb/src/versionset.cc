@@ -403,7 +403,7 @@ int Version::pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
 }
 
 VersionSet::VersionSet(const std::string &dbname,
-		const Options &options, std::shared_ptr<TableCache> tableCache,
+		const Options &options, const std::shared_ptr<TableCache> &tableCache,
 		const InternalKeyComparator *cmp)
 	:dbname(dbname),
 	options(options),
@@ -672,13 +672,12 @@ void VersionSet::appendVersion(const std::shared_ptr<Version> &v)
 	assert(v->refs == 0);
 	if (!versions.empty())
 	{
-		if (versions.back()->unref())
+		if (versions.back())
 		{
 			versions.pop_back();
 		}
 	}
 
-	v->ref();
 	versions.push_back(v);
 }
 

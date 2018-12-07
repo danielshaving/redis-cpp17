@@ -37,7 +37,7 @@ private:
 	{
 	    const InternalKeyComparator comparator;
 	    KeyComparator(const InternalKeyComparator &c) : comparator(c) { }
-		int operator()(const char *a, const char *b) const;
+		bool operator()(const char *a, const char *b) const;
 	};
 	
 	friend class MemTableIterator;

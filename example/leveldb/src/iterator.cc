@@ -139,7 +139,7 @@ private:
 class TwoLevelIterator : public Iterator 
 {
 public:
-	TwoLevelIterator(const std::shared_ptr<Iterator> &indexIter, const BlockCallback &callback,
+	TwoLevelIterator(const std::shared_ptr<Iterator> &indexIter, const Callback &callback,
 		const std::any &arg, const ReadOptions &options)
 	:callback(callback),
 	arg(arg),
@@ -311,7 +311,7 @@ private:
 		}
 	}
 
-	BlockCallback callback;
+	Callback callback;
 	std::any arg;
 	const ReadOptions options;
 	Status s;
@@ -323,7 +323,7 @@ private:
 };
 
 std::shared_ptr<Iterator> newTwoLevelIterator(const std::shared_ptr<Iterator> &indexIter,
-	const BlockCallback &callback, const std::any &arg, const ReadOptions &options)
+	const Callback &callback, const std::any &arg, const ReadOptions &options)
 {
 	std::shared_ptr<Iterator> iter(new TwoLevelIterator(indexIter, callback, arg, options));
 	return iter;

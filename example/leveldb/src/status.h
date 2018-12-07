@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <string>
 #include <assert.h>
-#include "zmalloc.h"
 
 class Status
 {
@@ -16,7 +15,7 @@ public:
 	{
 		if (state != nullptr)
 		{
-			zfree((void*)state);
+			free((void*)state);
 		}
 	}
 
@@ -109,7 +108,7 @@ inline Status& Status::operator=(const Status &rhs)
 	// and the common case where both rhs and *this are ok.
 	if (state != rhs.state)
 	{
-		zfree((void*)state);
+		free((void*)state);
 		state = (rhs.state == nullptr) ? nullptr : copyState(rhs.state);
 	}
 	return *this;
