@@ -35,8 +35,12 @@ public:
 private:
 	struct KeyComparator
 	{
-	    const InternalKeyComparator comparator;
-	    KeyComparator(const InternalKeyComparator &c) : comparator(c) { }
+		const InternalKeyComparator icmp;
+		KeyComparator(const InternalKeyComparator &icmp)
+		:icmp(icmp)
+		{
+		
+		}
 		bool operator()(const char *a, const char *b) const;
 	};
 	

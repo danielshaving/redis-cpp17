@@ -14,7 +14,7 @@ public:
 	~RedisObject();
 
 	void calHash();
-	bool operator <(const RedisObjectPtr &r) const;
+	bool operator < (const RedisObjectPtr &r) const;
 	unsigned type : 4;
 	unsigned encoding : 4;
 	size_t hash;

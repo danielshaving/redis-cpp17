@@ -11,7 +11,7 @@ inline uint32_t Block::numRestarts() const
 // storing the number of shared key bytes, non_shared key bytes,
 // and the length of the value in "*shared", "*non_shared", and
 // "*value_length", respectively.  Will not dereference past "limit".
-//
+// 
 // If any errors are detected, returns nullptr.  Otherwise, returns a
 // pointer to the key delta (just past the three decoded values).
 static inline const char *decodeEntry(const char *p, const char *limit,
@@ -60,8 +60,26 @@ private:
 
 	inline int compare(const std::string_view &a, const std::string_view &b) const 
 	{
-		return comparator->compare(a, b);
+		//return comparator->compare(a, b);
+		
+		int r = comparator->compare(extractUserKey(a), extractUserKey(b));
+		if (r == 0)
+		{
+			const uint64_t anum = decodeFixed64(a.data() + a.size() - 8);
+			const uint64_t bnum = decodeFixed64(b.data() + b.size() - 8);
+
+			if (anum > bnum)
+			{
+				r = -1;
+			}
+			else if (anum < bnum)
+			{
+				r = +1;
+			}
+		}
+		return r;
 	}
+
 
 	// Return the offset in data_ just past the end of the current entry.
 	inline uint32_t nextEntryOffset() const 
@@ -98,7 +116,8 @@ public:
 	        current(restarts),
 	        restartIndex(numRestarts)
 	{
-	    assert(numRestarts > 0);
+		
+		assert(numRestarts > 0);
 	}
 	
 	virtual ~BlockIterator()
@@ -199,7 +218,7 @@ public:
 			{
 				return;
 			}
-
+			
 			if (compare(k, target) >= 0)
 			{
 				return;

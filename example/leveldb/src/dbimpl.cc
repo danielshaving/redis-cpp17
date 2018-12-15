@@ -21,9 +21,19 @@ struct DBImpl::Writer
 	bool done;
 };
 
-DBImpl::DBImpl(const Options &options, const std::string &dbname)
-	:options(options),
-	 comparator(options.comparator.get()),
+Options DBImpl::sanitizeOptions(const std::string &dbname,
+                      	const Comparator *icmp,
+                        const Options &src) 
+{
+	Options result = src;
+	BytewiseComparatorImpl impl;
+	result.comparator.reset(new InternalKeyComparator(&impl));
+	return result;
+}
+                        
+DBImpl::DBImpl(const Options &op, const std::string &dbname)
+	:comparator(options.comparator.get()),
+	options(op),
 	dbname(dbname),
 	mem(nullptr),
 	imm(nullptr),
@@ -133,7 +143,7 @@ Status DBImpl::newDB()
 	newdb.setNextFile(2);
 	newdb.setLastSequence(0);
 	const std::string manifest = descriptorFileName(dbname, 1);
-	std::shared_ptr<PosixWritableFile> file;
+	std::shared_ptr<WritableFile> file;
 	Status s = options.env->newWritableFile(manifest, file);
 	if (!s.ok())
 	{
@@ -310,7 +320,7 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 		{
 			compactions++;
 			*saveManifest = true;
-			status = writeLevel0Table(edit, nullptr);
+			status = writeLevel0Table(mem, edit, nullptr);
 			mem.reset();
 			if (!status.ok()) 
 			{
@@ -320,7 +330,7 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 			}
 		}
 	}
-	printf("logNumber %d# memtable:size %d\n", logNumber, mem->getTableSize());
+	printf("logNumber %d# memtable:size %d\n", logNumber, mem == nullptr ? 0 : mem->getTableSize());
 	
 	// See if we should keep reusing the last log file.
 	if (status.ok() && lastLog && compactions == 0) 
@@ -352,9 +362,8 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 		if (status.ok()) 
 		{
 			*saveManifest = true;
-			status = writeLevel0Table(edit, nullptr);
+			status = writeLevel0Table(mem, edit, nullptr);
 		}
-		mem.reset();
 	}	
 	return status;
 }
@@ -384,20 +393,12 @@ Status DBImpl::makeRoomForWrite(bool force)
 		{
 			break;
 		}
-		else if (imm != nullptr)
-		{
-		
-		}
-		else if (versions->numLevelFiles(0) >= kL0_StopWritesTrigger)
-		{	
-			
-		}
 		else
 		{
 			// Attempt to switch to a new memtable and trigger compaction of old
    			assert(versions->getPrevLogNumber() == 0);
    			uint64_t newLogNumber = versions->newFileNumber();	
-   			std::shared_ptr<PosixWritableFile> lfile;
+   			std::shared_ptr<WritableFile> lfile;
    			s = options.env->newWritableFile(logFileName(dbname, newLogNumber), lfile);
 			if (!s.ok()) 
 			{
@@ -548,6 +549,10 @@ Status DBImpl::get(const ReadOptions &opt, const std::string_view &key, std::str
 {
 	Status s;
 	uint64_t snapshot = versions->getLastSequence();
+	bool haveStatUpdate = false;
+	auto current = versions->current();
+	Version::GetStats stats;
+	
 	LookupKey lkey(key, snapshot);
 	if (mem->get(lkey, value, &s))
 	{
@@ -559,24 +564,29 @@ Status DBImpl::get(const ReadOptions &opt, const std::string_view &key, std::str
 	}
 	else
 	{
-		//	  s = current->Get(options, lkey, value, &stats);
-		//	  have_stat_update = true;
-		s = Status::notFound(std::string_view());
+		s = current->get(opt, lkey, value, &stats);
+		haveStatUpdate = true;
 	}
+
+	if (haveStatUpdate && current->updateStats(stats)) 
+	{
+		maybeScheduleCompaction();
+	} 
 	return s;
 }
 
-Status DBImpl::writeLevel0Table(VersionEdit *edit, Version *base)
+Status DBImpl::writeLevel0Table(const std::shared_ptr<MemTable> &mem, VersionEdit *edit, Version *base)
 {
 	const uint64_t startMicros = options.env->nowMicros();
 	FileMetaData meta;
 	meta.number = versions->newFileNumber();
 	pendingOutPuts.insert(meta.number);
-	printf("Level-0 table #%llu: started",
+	printf("Level-0 table #%llu: started\n",
 		(unsigned long long) meta.number);
 
-	Status s = buildTable(&meta);
-	printf("Level-0 table #%llu: %lld bytes %s", (unsigned long long) meta.number,
+	std::shared_ptr<Iterator> iter = mem->newIterator();
+	Status s = buildTable(&meta, iter);
+	printf("Level-0 table #%llu: %lld bytes %s\n", (unsigned long long) meta.number,
 		(unsigned long long) meta.fileSize, s.toString().c_str());
 		
 	pendingOutPuts.erase(meta.number);
@@ -610,8 +620,7 @@ void DBImpl::maybeScheduleCompaction()
 	while (1)
 	{
 		if (imm == nullptr &&
-			 manualCompaction == nullptr &&
-			 !versions->needsCompaction()) 
+			 manualCompaction == nullptr)
 
 		{
 			 // No work to be done
@@ -639,7 +648,7 @@ void DBImpl::compactMemTable()
 	// Save the contents of the memtable as a new Table
 	VersionEdit edit;
 	auto base = versions->current();
-	Status s = writeLevel0Table(&edit, base.get());
+	Status s = writeLevel0Table(imm, &edit, base.get());
 
 	// Replace immutable memtable with the generated Table
 	if (s.ok()) 
@@ -656,44 +665,32 @@ void DBImpl::compactMemTable()
 	}
 	else 
 	{
+
 		//RecordBackgroundError(s);
 	}
 }
 
-Status DBImpl::buildTable(FileMetaData *meta)
+Status DBImpl::buildTable(FileMetaData *meta, const std::shared_ptr<Iterator> &iter)
 {
-	assert(mem->getMemoryUsage() > 0);
 	Status s;
 	meta->fileSize = 0;
+	iter->seekToFirst();
 	
 	std::string fname = tableFileName(dbname, meta->number);
-	std::shared_ptr<PosixWritableFile> file;
+	std::shared_ptr<WritableFile> file;
 	s = options.env->newWritableFile(fname, file);
 	if (!s.ok())
 	{
 		return s;
 	}
 	
-	auto &table = mem->getTable();
 	std::shared_ptr<TableBuilder> builder(new TableBuilder(options, file));
-	auto iter = table.begin();
-	
-	const char *entry = *iter;
-	uint32_t keyLength;
-	const char *keyPtr = getVarint32Ptr(entry, entry + 5, &keyLength);
-	std::string_view key = std::string_view(keyPtr, keyLength - 8);
-	meta->smallest.decodeFrom(key);
-	
-	for (auto &it : table)
-	{
-		const char *entry = it;
-		const char *keyPtr = getVarint32Ptr(entry, entry + 5, &keyLength);
-		uint32_t keyLength;
-		std::string_view key = std::string_view(keyPtr, keyLength - 8);
+	meta->smallest.decodeFrom(iter->key());
+	 for (; iter->valid(); iter->next())
+	 {
+	 	std::string_view key = iter->key();
 		meta->largest.decodeFrom(key);
-		
-		std::string_view value = getLengthPrefixedSlice(keyPtr + keyLength);
-		builder->add(key, value);
+		builder->add(key, iter->value());
 	}
 	
 	// Finish and check for builder errors
@@ -714,14 +711,41 @@ Status DBImpl::buildTable(FileMetaData *meta)
 	{	
 		s = file->close();
 	}
-	
+
+	if (s.ok()) 
+	{
+		// Verify that the table is usable
+		std::shared_ptr<Iterator> it = tableCache->newIterator(ReadOptions(),
+		                                      meta->number,
+		                                      meta->fileSize);
+		s = it->status();
+	}
+
+	// Check for input iterator errors
+	if (!iter->status().ok()) 
+	{
+		s = iter->status();
+	}
+
 	if (s.ok() && meta->fileSize > 0) 
 	{
 		// Keep it
-	} 
+	}
 	else 
 	{
 		options.env->deleteFile(fname);
 	}
 	return s;
 }
+
+Status DBImpl::testCompactMemTable()
+{
+	// nullptr batch means just wait for earlier writes to be done
+	Status s = write(WriteOptions(), nullptr);
+	if (s.ok()) 
+	{
+		
+	}
+	return s;
+}
+

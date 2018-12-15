@@ -54,7 +54,6 @@ static int LockOrUnlock(int fd, bool lock)
 	return ::fcntl(fd, F_SETLK, &file_lock_info);
 }
 
-
 // A file abstraction for sequential writing.  The implementation
 // must provide buffering since callers may append small fragments
 // at a time to the file.
@@ -214,7 +213,7 @@ public:
 	//
 	// The returned file will only be accessed by one thread at a time.
 
-	Status newWritableFile(const std::string &fname, std::shared_ptr<PosixWritableFile> &result);
+	Status newWritableFile(const std::string &fname, std::shared_ptr<WritableFile> &result);
 	// Delete the named file.
 	Status deleteFile(const std::string &fname);
 	// Create the specified directory.
@@ -261,7 +260,7 @@ public:
   // the leveldb implementation) must be prepared to deal with
   // an Env that does not support appending.
 	Status newAppendableFile(const std::string &fname,
-		std::shared_ptr<PosixWritableFile> &result);
+		std::shared_ptr<WritableFile> &result);
 
 	// Returns the number of micro-seconds since some fixed point in time. Only
 	// useful for computing deltas of time.

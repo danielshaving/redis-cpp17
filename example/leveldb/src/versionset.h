@@ -62,6 +62,11 @@ public:
 	bool overlapInLevel(int level, const std::string_view *smallestUserKey,
 		const std::string_view *largestUserKey);
 
+	// Adds "stats" into the current state.  Returns true if a new
+	// compaction may need to be triggered, false otherwise.
+	// REQUIRES: lock is held
+	bool updateStats(const GetStats &stats);
+	  
 	// Level that should be compacted next and its compaction score.
 	// Score < 1 means compaction is not strictly needed.  These fields
 	// are initialized by Finalize().
@@ -73,11 +78,22 @@ private:
 	// No copying allowed
 	Version(const Version&);
 	void operator=(const Version&);
-
 };
+
 
 class Builder
 {
+public:
+	Builder(VersionSet *vset, Version *base);
+	~Builder();
+	
+	// Apply all of the edits in *edit to the current state.
+	void apply(VersionEdit *edit);
+
+	// Save the current state in *v.
+	void saveTo(Version *v);
+
+	void maybeAddFile(Version *v, int level, const std::shared_ptr<FileMetaData> &f);
 private:
 	// Helper to sort by v->files_[file_number].smallest
 	struct BySmallestKey
@@ -109,31 +125,6 @@ private:
 	VersionSet *vset;
 	Version *base;
 	LevelState levels[kNumLevels];
-
-public:
-	Builder(VersionSet *vset, Version *base)
-		:vset(vset),
-		base(base)
-	{
-		BySmallestKey cmp;
-		for (int level = 0; level < kNumLevels; level++)
-		{
-			levels[level].addedFiles.reset(new FileSet(cmp));
-		}
-	}
-
-	~Builder()
-	{
-
-	}
-	// Apply all of the edits in *edit to the current state.
-	void apply(VersionEdit *edit);
-
-	// Save the current state in *v.
-	void saveTo(Version *v);
-
-	void maybeAddFile(Version *v, int level, const std::shared_ptr<FileMetaData> &f);
-
 };
 
 class VersionSet
@@ -204,8 +195,6 @@ public:
 	std::string compactPointer[kNumLevels];
 	const std::string dbname;
 	const Options options;
-
-private:
 	uint64_t nextFileNumber;
 	uint64_t manifestFileNumber;
 	uint64_t lastSequence;
@@ -213,7 +202,7 @@ private:
 	uint64_t prevLogNumber;  // 0 or backing store for memtable being compacted
 	std::list<std::shared_ptr<Version>> versions;
 	std::shared_ptr<LogWriter> descriptorLog;
-	std::shared_ptr<PosixWritableFile> descriptorFile;
+	std::shared_ptr<WritableFile> descriptorFile;
 	std::shared_ptr<TableCache> tableCache;
 };
 

@@ -6,8 +6,6 @@ class BlockingQueue
 {
 public:
 	BlockingQueue()
-		: mutex(),
-		queue()
 	{
 
 	}
@@ -33,7 +31,7 @@ public:
 		// always use a while-loop, due to spurious wakeup
 		while (queue.empty())
 		{
-			notEmpty.wait(mutex);
+			notEmpty.wait(lck);
 		}
 
 		assert(!queue.empty());
@@ -50,7 +48,7 @@ public:
 	}
 
 private:
-	mutable std::mutex mutex;
+	std::mutex mutex;
 	std::condition_variable notEmpty;
 	std::deque<T> queue;
 };

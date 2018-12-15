@@ -287,7 +287,7 @@ public:
 		}
 		else
 		{
-			std::shared_ptr<PosixWritableFile> wfile;
+			std::shared_ptr<WritableFile> wfile;
 			s = options.env->newWritableFile(filename, wfile);
 			assert(s.ok());
 

@@ -21,7 +21,7 @@ void RedisObject::calHash()
 	hash = dictGenHashFunction(ptr, sdslen(ptr));
 }
 
-bool RedisObject::operator <(const RedisObjectPtr &r) const
+bool RedisObject::operator < (const RedisObjectPtr &r) const
 {
 	auto cmp = memcmp(ptr, r->ptr, sdslen(ptr));
 	if (cmp < 0)

@@ -447,7 +447,7 @@ int main(int argc, char* argv[])
 	{
 		if (c)
 		{
-			printf("Connection error: %s\n", c->errstr);
+			printf("Connection error: %s\n", c->errstr.c_str());
 		}
 		else
 		{

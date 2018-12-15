@@ -2,6 +2,7 @@
 #include "format.h"
 #include "coding.h"
 #include "option.h"
+#include <iostream>
 
 struct Table::Rep
 {
@@ -83,12 +84,12 @@ std::shared_ptr<Iterator> Table::blockReader(const std::any &arg,
 		 const std::string_view &indexValue)
 {
 	assert(arg.has_value());
-	const std::shared_ptr<const Table> &table = std::any_cast<std::shared_ptr<const Table>>(arg);
+	std::shared_ptr<Table> table = std::any_cast<std::shared_ptr<Table>>(arg);
 	std::shared_ptr<Block> block = nullptr;
 	BlockHandle handle;
 	std::string_view input = indexValue;
 	Status s = handle.decodeFrom(&input);
-    if (s.ok()) 
+    	if (s.ok()) 
 	{
 		BlockContents contents;
 		s = readBlock(table->rep->file, options, handle, &contents);
@@ -101,12 +102,13 @@ std::shared_ptr<Iterator> Table::blockReader(const std::any &arg,
 	std::shared_ptr<Iterator> iter;
 	if (block != nullptr)
 	{
+		
 		iter = block->newIterator(table->rep->options.comparator.get());
 		iter->registerCleanup(block);
 	}
 	else
 	{
-		//iter = std::shared_ptr<Iterator>(new Iterator(s));
+		iter = newErrorIterator(s);	
 	}
 	return iter;
 }
@@ -120,10 +122,26 @@ Status Table::internalGet(
 {
 	Status s;
 	std::shared_ptr<Iterator> iter = rep->indexBlock->newIterator(rep->options.comparator.get());
+
+#ifdef NDEBUG
+	iter->seekToFirst();
+	for (; iter->valid(); iter->next()) 
+	{
+		std::cout << iter->key() << ": "  << iter->value() << std::endl;
+	}
+#endif
+
 	iter->seek(key);
 	if (iter->valid())
 	{
 		std::shared_ptr<Iterator> blockIter = blockReader(shared_from_this(), options, iter->value());
+#ifdef NDEBUG
+		blockIter->seekToFirst();
+		for (; blockIter->valid(); blockIter->next()) 
+		{
+			std::cout << blockIter->key() << ": "  << blockIter->value() << std::endl;
+		}
+#endif
 		blockIter->seek(key);
 		if (blockIter->valid()) 
 		{

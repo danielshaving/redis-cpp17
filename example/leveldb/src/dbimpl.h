@@ -20,23 +20,28 @@ public:
 	~DBImpl();
 
 	Status open();
+	Status newDB();
 	Status put(const WriteOptions&, const std::string_view &key, const std::string_view &value);
 	Status del(const WriteOptions&, const std::string_view &key);
 	Status write(const WriteOptions &options, WriteBatch *updates);
 	Status get(const ReadOptions &options, const std::string_view &key, std::string *value);
-
 	Status destroyDB(const std::string &dbname, const Options &options);
 	void deleteObsoleteFiles();
 	Status recover(VersionEdit *edit, bool *saveManifest);
 	Status recoverLogFile(uint64_t logNumber, bool lastLog,
 		bool *saveManifest, VersionEdit *edit, uint64_t *maxSequence);
-	Status newDB();
-	Status writeLevel0Table(VersionEdit *edit, Version *base);
-	Status buildTable(FileMetaData *meta);
+	Status writeLevel0Table(const std::shared_ptr<MemTable> &mem, VersionEdit *edit, Version *base);
+	Status buildTable(FileMetaData *meta, const std::shared_ptr<Iterator> &iter);
 	void maybeScheduleCompaction();
 	void backgroundCompaction();
 	void compactMemTable();
+	
+	Options sanitizeOptions(const std::string &dbname,
+	                    const Comparator *icmp,
+	                    const Options& src);
 
+	 // Force current memtable contents to be compacted.
+	Status testCompactMemTable();
 private:
 	struct Writer;
 	// No copying allowed
@@ -52,7 +57,7 @@ private:
 	std::shared_ptr<MemTable> imm;
 	std::shared_ptr<VersionSet> versions;
 	std::shared_ptr<LogWriter> log;
-	std::shared_ptr<PosixWritableFile> logfile;
+	std::shared_ptr<WritableFile> logfile;
 	std::shared_ptr<TableCache> tableCache;
 	const Options options;  // options_.comparator == &internal_comparator_
 	uint64_t logfileNumber;

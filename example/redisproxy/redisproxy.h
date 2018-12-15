@@ -50,16 +50,16 @@ public:
 	void dbsizeCallback(const std::thread::id &threadId, const int32_t sockfd,
 		const TcpConnectionPtr &conn);
 	void delCallback(const std::thread::id &threadId, const int32_t sockfd,
-		const TcpConnectionPtr &conn);
+		const TcpConnectionPtr &conn, int32_t commandCount);
 	void mgetCallback(const std::thread::id &threadId, const int32_t sockfd,
-		const TcpConnectionPtr &conn);
+		const TcpConnectionPtr &conn, int32_t commandCount);
 	void subScribeCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply, const std::any &privdata);
 	void unsubScribeCallback(const RedisAsyncContextPtr &c,
 		const RedisReplyPtr &reply, const std::any &privdata);
 	void monitorCallback(const RedisAsyncContextPtr &c,
 			const RedisReplyPtr &reply, const std::any &privdata);
-
+			
 	void clearProxy(const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxyReply(const std::thread::id &threadId, const int32_t sockfd);
 	void clearProxyCount(const std::thread::id &threadId, const int32_t sockfd);
@@ -75,7 +75,7 @@ public:
 	void insertCommandReply(const std::thread::id &threadId, const int32_t sockfd, const RedisReplyPtr &reply);
 	void clearCommandReply(const std::thread::id &threadId, const int32_t sockfd);
 	int32_t getCommandReplyCount(const std::thread::id &threadId, const int32_t sockfd);
-	void processCommandReply(const RedisObjectPtr &command,
+	void processCommandReply(const RedisObjectPtr &command, int32_t commandCount,
 		const std::thread::id &threadId, const int32_t sockfd, const TcpConnectionPtr &conn);
 
 private:
@@ -110,6 +110,6 @@ private:
 		const ProxySessionPtr &, const TcpConnectionPtr &)> CommandFunc;
 	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> redisCommands;
 	typedef std::function<void(const std::thread::id &,
-			const int32_t, const TcpConnectionPtr &)> CommandReplyFuc;
+			const int32_t, const TcpConnectionPtr &, int32_t commandCount)> CommandReplyFuc;
 	std::unordered_map<RedisObjectPtr, CommandReplyFuc, Hash, Equal> redisReplyCommands;
 };

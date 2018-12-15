@@ -4,7 +4,8 @@
 #include "logging.h"
 #include "posix.h"
 
-static std::string makeFileName(const std::string& dbname, uint64_t number,
+
+static std::string makeFileName(const std::string &dbname, uint64_t number,
 	const char *suffix)
 {
 	char buf[100];
@@ -44,7 +45,7 @@ std::string currentFileName(const std::string &dbname)
 	return dbname + "/CURRENT";
 }
 
-std::string lockFileName(const std::string& dbname)
+std::string lockFileName(const std::string &dbname)
 {
 	return dbname + "/LOCK";
 }

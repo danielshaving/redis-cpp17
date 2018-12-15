@@ -51,7 +51,7 @@ void appendNumberTo(std::string *str, uint64_t num)
 static Status doWriteStringToFile(PosixEnv *env, const std::string_view &data,
 	const std::string &fname, bool shouldSync)
 {
-	std::shared_ptr<PosixWritableFile> file;
+	std::shared_ptr<WritableFile> file;
 	Status s = env->newWritableFile(fname, file);
 	if (!s.ok())
 	{

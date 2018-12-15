@@ -11,14 +11,14 @@ static void initTypeCrc(uint32_t *typeCrc)
 	}
 }
 
-LogWriter::LogWriter(PosixWritableFile *dest)
+LogWriter::LogWriter(WritableFile *dest)
 	:dest(dest),
 	blockOffset(0)
 {
 	initTypeCrc(typeCrc);
 }
 
-LogWriter::LogWriter(PosixWritableFile *dest, uint64_t destLength)
+LogWriter::LogWriter(WritableFile *dest, uint64_t destLength)
 	:dest(dest),
 	blockOffset(destLength % kBlockSize)
 {

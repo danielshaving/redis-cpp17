@@ -166,6 +166,22 @@ static bool newestFirst(const std::shared_ptr<FileMetaData> &a, const std::share
 	return a->number > b->number;
 }
 
+bool Version::updateStats(const GetStats &stats)
+{
+	std::shared_ptr<FileMetaData> f = stats.seekFile;
+	if (f != nullptr) 
+	{
+		f->allowedSeeks--;
+		if (f->allowedSeeks <= 0 && fileToCompact == nullptr) 
+		{
+			fileToCompact = f;
+			fileToCompactLevel = stats.seekFileLevel;
+			return true;
+		}
+	}
+	return false;
+}
+
 Status Version::get(const ReadOptions &options, const LookupKey &key, std::string *value, GetStats *stats)
 {
 	std::string_view ikey = key.internalKey();
@@ -233,7 +249,7 @@ Status Version::get(const ReadOptions &options, const LookupKey &key, std::strin
 				{
 					fs.clear();
 					fs.push_back(tmp2);	
-				    numFiles = 1;
+				   	numFiles = 1;
 				}
 			}
 		}
@@ -257,7 +273,7 @@ Status Version::get(const ReadOptions &options, const LookupKey &key, std::strin
 			saver.userKey = userKey;
 			saver.value = value;
 			s = vset->getTableCache()->get(options, f->number, f->fileSize,
-				ikey, saver, std::bind(&Version::saveValue, this,
+				ikey, &saver, std::bind(&Version::saveValue, this,
 				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 			
 			if (!s.ok()) 
@@ -401,6 +417,25 @@ int Version::pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
 	}
 	return level;
 }
+
+
+Builder::Builder(VersionSet *vset, Version *base)
+		:vset(vset),
+	base(base)
+{
+	BySmallestKey cmp;
+	cmp.internalComparator = &vset->icmp;
+	for (int level = 0; level < kNumLevels; level++) 
+	{
+		levels[level].addedFiles.reset(new FileSet(cmp));
+	}
+}
+
+Builder::~Builder()
+{
+
+}
+
 
 VersionSet::VersionSet(const std::string &dbname,
 		const Options &options, const std::shared_ptr<TableCache> &tableCache,
@@ -643,10 +678,12 @@ bool VersionSet::reuseManifest(const std::string &dscname, const std::string &ds
 	Status r = options.env->newAppendableFile(dscname, descriptorFile);
 	if (!r.ok())
 	{
+		printf("Reuse MANIFEST: %s\n", r.toString().c_str());
 		assert(descriptorFile == nullptr);
 		return false;
 	}
 
+	printf("Reuse MANIFEST: %s\n", dscname.c_str());
 	descriptorLog.reset(new LogWriter(descriptorFile.get(), manifestSize));
 	manifestFileNumber = manifestNumber;
 	return true;
@@ -669,7 +706,6 @@ int VersionSet::numLevelFiles(int level) const
 
 void VersionSet::appendVersion(const std::shared_ptr<Version> &v)
 {
-	assert(v->refs == 0);
 	if (!versions.empty())
 	{
 		if (versions.back())
@@ -677,7 +713,6 @@ void VersionSet::appendVersion(const std::shared_ptr<Version> &v)
 			versions.pop_back();
 		}
 	}
-
 	versions.push_back(v);
 }
 
@@ -703,12 +738,12 @@ Status VersionSet::logAndApply(VersionEdit *edit)
 
 	std::shared_ptr<Version> v(new Version(this));
 	{
-		Builder builder(this, versions.back().get());
+		Builder builder(this, current().get());
 		builder.apply(edit);
 		builder.saveTo(v.get());
 	}
+	
 	finalize(v.get());
-
 	// Initialize new descriptor log file if necessary by creating
 	// a temporary file that contains a snapshot of the current version.
 	std::string newManifestFile;
@@ -821,11 +856,12 @@ void Builder::apply(VersionEdit *edit)
 void Builder::saveTo(Version *v)
 {
 	BySmallestKey cmp;
+	cmp.internalComparator = &vset->icmp;
 	for (int level = 0; level < kNumLevels; level++)
 	{
 		// Merge the set of added files with the set of pre-existing files.
 		// Drop any deleted files.  Store the result in *v.
-		auto baseFiles = base->files[level];
+		auto &baseFiles = base->files[level];
 		auto baseIter = baseFiles.begin();
 		auto baseEnd = baseFiles.end();
 		auto added = levels[level].addedFiles;
@@ -835,7 +871,7 @@ void Builder::saveTo(Version *v)
 			++addedIter)
 		{
 			// Add all smaller files listed in base_
-			for (auto bpos = std::upper_bound(baseIter, baseEnd, *addedIter, cmp);
+			for (auto bpos = std::upper_bound(baseIter, baseEnd, (*addedIter), cmp);
 				baseIter != bpos; ++baseIter)
 			{
 				maybeAddFile(v, level, (*baseIter));
@@ -849,7 +885,7 @@ void Builder::saveTo(Version *v)
 			maybeAddFile(v, level, (*baseIter));
 		}
 
-#ifndef NDEBUG
+#ifdef NDEBUG
 		// Make sure there is no overlap in levels > 0
 		if (level > 0)
 		{
@@ -867,6 +903,7 @@ void Builder::saveTo(Version *v)
 			}
 		}
 #endif
+
 	}
 }
 
@@ -878,7 +915,7 @@ void Builder::maybeAddFile(Version *v, int level, const std::shared_ptr<FileMeta
 	}
 	else
 	{
-		auto files = v->files[level];
+		auto &files = v->files[level];
 		if (level > 0 && !files.empty())
 		{
 			// Must not overlap

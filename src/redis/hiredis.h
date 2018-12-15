@@ -259,8 +259,6 @@ public:
 	void clusterMoveConnCallback(const TcpConnectionPtr &conn);
 	void redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer);
 	void redisConnCallback(const TcpConnectionPtr &conn);
-	void clusterNodeCallback(const RedisAsyncContextPtr &c,
-			const RedisReplyPtr &reply, const std::any &privdata);
 
 	void setDisconnectionCallback(const DisConnectionCallback &&cb)
 	{ disConnectionCallback = std::move(cb); }
@@ -269,7 +267,6 @@ public:
 	{ connectionCallback = std::move(cb); }
 
 	void redisContextTimer();
-	void clusterNodeTimer();
 	void connect(EventLoop *loop, const TcpClientPtr &client, int32_t count = 0);
 	void pushTcpClient(const TcpClientPtr &client);
 	void pushRedisContext(const RedisContextPtr &context);
@@ -279,7 +276,7 @@ public:
 	
 	void poolStart();
 	void start();
-	void start(EventLoop *loop, int32_t count);
+	void start(EventLoop *loop, int32_t count, const char *ip, int16_t port);
 	void setThreadNum(int16_t threadNum) { pool->setThreadNum(threadNum); }
 	
 	uint32_t keyHashSlot(char *key, int32_t keylen);

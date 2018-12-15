@@ -9,17 +9,17 @@ public:
 	// Create a writer that will append data to "*dest".
 	// "*dest" must be initially empty.
 	// "*dest" must remain live while this Writer is in use.
-	explicit LogWriter(PosixWritableFile *dest);
+	explicit LogWriter(WritableFile *dest);
 
 	// Create a writer that will append data to "*dest".
 	// "*dest" must have initial length "dest_length".
 	// "*dest" must remain live while this Writer is in use.
-	LogWriter(PosixWritableFile *dest, uint64_t destLength);
+	LogWriter(WritableFile *dest, uint64_t destLength);
 
 	Status addRecord(const std::string_view &slice);
 
 private:
-	PosixWritableFile *dest;
+	WritableFile *dest;
 	int blockOffset;       // Current offset in block
 	// crc32c values for all supported record types.  These are
 	// pre-computed to reduce the overhead of computing the crc of the

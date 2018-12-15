@@ -9,7 +9,7 @@ struct TableAndFile
 	std::shared_ptr<Table> table;
 };
 
-static void deleteEntry(const std::string_view &key, std::any  &value) 
+static void deleteEntry(const std::string_view &key, std::any &value) 
 {
 	
 }
@@ -58,9 +58,29 @@ Status TableCache::findTable(uint64_t fileNumber, uint64_t fileSize,
 			tf->file = file;
 			tf->table = table;
 			handle = cache->insert(key, tf, 1, nullptr);
+			printf("Table cache is open %s\n", fname.c_str());
 		}
 	}
 	return s;
+}
+
+std::shared_ptr<Iterator> TableCache::newIterator(const ReadOptions &options,
+	uint64_t fileNumber,
+	uint64_t fileSize,
+	std::shared_ptr<Table> tableptr)
+{
+	std::shared_ptr<LRUHandle> handle;
+	Status s = findTable(fileNumber, fileSize, handle);
+	if (!s.ok())
+	{
+		return newErrorIterator(s);
+	}
+
+	std::shared_ptr<Table> table = std::any_cast<std::shared_ptr<TableAndFile>>(handle->value)->table;
+	std::shared_ptr<Iterator> result = table->newIterator(options);
+	result->registerCleanup(handle);
+	tableptr = table;
+	return result;
 }
 
 Status TableCache::get(const ReadOptions &options,
@@ -75,8 +95,10 @@ Status TableCache::get(const ReadOptions &options,
 	Status s = findTable(fileNumber, fileSize, handle);
 	if (s.ok())
 	{
+		//printf("Table cache get file number :%d bytes %lld\n", fileNumber, fileSize);
 		std::shared_ptr<Table> table = std::any_cast<std::shared_ptr<TableAndFile>>(handle->value)->table;
 		s = table->internalGet(options, k, arg, callback);
 	}
+	
 	return s;
 }

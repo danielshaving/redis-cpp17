@@ -130,6 +130,7 @@ int InternalKeyComparator::compare(const std::string_view &akey, const std::stri
 	//    increasing user key (according to user-supplied comparator)
 	//    decreasing sequence number
 	//    decreasing type (though sequence# should be enough to disambiguate)
+	return comparator->compare(extractUserKey(akey), extractUserKey(bkey));
 	int r = comparator->compare(extractUserKey(akey), extractUserKey(bkey));
 	if (r == 0)
 	{

@@ -60,7 +60,7 @@ TableBuilder::~TableBuilder()
 void TableBuilder::add(const std::string_view &key, const std::string_view &value)
 {
 	assert(!rep->closed);
-	 if (!ok()) return;
+	if (!ok()) return;
 	 
 	if (rep->numEntries > 0)
 	{
@@ -70,7 +70,7 @@ void TableBuilder::add(const std::string_view &key, const std::string_view &valu
 	if (rep->pendingIndexEntry)
 	{
 		assert(rep->dataBlock.empty());
-		rep->options.comparator->findShortestSeparator(&rep->lastKey, key);
+		//rep->options.comparator->findShortestSeparator(&rep->lastKey, key);
 		std::string handleEncoding;
 		rep->pendingHandle.encodeTo(&handleEncoding);
 		rep->indexBlock.add(rep->lastKey, std::string_view(handleEncoding));
@@ -107,7 +107,7 @@ Status TableBuilder::finish()
 	{
 		if (rep->pendingIndexEntry) 
 		{
-			rep->options.comparator->findShortSuccessor(&rep->lastKey);
+			//rep->options.comparator->findShortSuccessor(&rep->lastKey);
 			std::string handleEncoding;
 			rep->pendingHandle.encodeTo(&handleEncoding);
 			rep->indexBlock.add(rep->lastKey, std::string_view(handleEncoding));

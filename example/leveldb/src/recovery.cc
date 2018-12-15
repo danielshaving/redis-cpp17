@@ -59,7 +59,7 @@ public:
 	
 	bool canAppend() 
 	{
-		std::shared_ptr<PosixWritableFile> tmp;
+		std::shared_ptr<WritableFile> tmp;
 		Status s = env->newAppendableFile(currentFileName(dbname), tmp);
 		if (s.isNotSupportedError()) 
 		{
@@ -76,7 +76,7 @@ public:
 		return db->put(WriteOptions(), k, v);
 	}
 
-	std::string get(const std::string& k) 
+	std::string get(const std::string &k) 
 	{
 		std::string result;
 		Status s = db->get(ReadOptions(), k, &result);
@@ -183,6 +183,151 @@ public:
 		assert(oldManifest == manifestFileName());
 		assert("bar" == get("foo"));
 	}
+
+	void largeManifestCompacted()
+	{
+		if (!canAppend()) 
+		{
+			fprintf(stderr, "skipping test because env does not support appending\n");
+			return;
+		}
+
+		open();
+		assert(put("foo", "bar").ok());
+
+		std::string oldManifest = manifestFileName();
+		
+		// Pad with zeroes to make manifest file very big.
+		{
+			uint64_t len = fileSize(oldManifest);
+			std::shared_ptr<WritableFile> file;
+			options.env->newAppendableFile(oldManifest, file);
+			std::string zeroes(3*1048576 - static_cast<size_t>(len), 0);
+			assert(file->append(zeroes).ok());
+			assert(file->flush().ok());
+		}
+
+		open();
+		std::string newManifest = manifestFileName();
+		assert(oldManifest != newManifest);
+		assert(10000 > fileSize(newManifest));
+		assert("bar" == get("foo"));
+
+		open();
+		assert(newManifest == manifestFileName());
+		assert("bar" == get("foo"));
+	}
+
+	void noLogFiles()
+	{
+		assert(put("foo", "bar").ok());
+		assert(1 ==  deleteLogFiles());
+		open();
+		assert("NOT_FOUND" == get("foo"));
+		open();
+		assert("NOT_FOUND" == get("foo"));
+	}
+
+	void logFileReuse()
+	{
+		if (!canAppend()) 
+		{
+			fprintf(stderr, "skipping test because env does not support appending\n");
+			return;
+		}
+
+		for (int i =0; i < 2; i++)
+		{
+			assert(put("foo", "bar").ok());
+			if (i == 0)
+			{
+				 // Compact to ensure current log is empty
+  				 compactMemTable();
+			}
+
+			close();
+			assert(1 == numLogs());
+			uint64_t number = firstLogFile();
+			if (i == 0) 
+			{
+				assert(0 == fileSize(logName(number)));
+			}
+			else
+			{
+				assert(0 < fileSize(logName(number)));
+			}
+			
+			open();
+			assert(1 == numLogs());
+			assert(number == firstLogFile());
+			assert("bar" == get("foo"));
+			open();
+			assert(1 == numLogs());
+			assert(number == firstLogFile());
+			assert("bar" == get("foo"));
+		}
+	}
+
+	void multipleMemTables()
+	{
+		const int kNum = 1000;
+		for (int i = 0; i < kNum; i++) 
+		{
+			char buf[100];
+			snprintf(buf, sizeof(buf), "%050d", i);
+			assert(put(buf, buf).ok());
+		}
+
+		assert(0 == numTables());
+		close();
+		assert(0 == numTables());
+		assert(1 == numLogs());
+		uint64_t oldLogFile = firstLogFile();
+
+		// Force creation of multiple memtables by reducing the write buffer size.
+		Options opt;
+		opt.reuseLogs = true;
+		opt.writeBufferSize = (kNum*100) / 2;
+		open(&opt);
+		assert(2 <= numTables());
+		assert(1 == numLogs());
+		assert(oldLogFile != firstLogFile());
+		for (int i = 0; i < kNum; i++) 
+		{
+			char buf[100];
+			snprintf(buf, sizeof(buf), "%050d", i);
+			assert(buf == get(buf));
+		}
+		
+	}
+
+	void singleTables()
+	{
+		const int kNum = 1000000;
+		for (int i = 0; i < kNum; i++) 
+		{
+			char buf[100];
+			snprintf(buf, sizeof(buf), "%050d", 100);
+			assert(put(buf, buf).ok());
+		}
+
+		close();
+		open();
+
+		for (int i = 0; i < kNum; i++) 
+		{
+			char buf[100];
+			snprintf(buf, sizeof(buf), "%050d", 100);
+			assert(buf == get(buf));
+		}
+		
+	}
+	
+
+	void compactMemTable()
+	{
+		 db->testCompactMemTable();
+	}
 	
 private:
 	const Options options;
@@ -191,12 +336,16 @@ private:
 	std::shared_ptr<DBImpl> db;
 };
 
-
 int main()
 {
 	Options options;
 	const std::string dbname = "recovery";
 	RecoveryTest rtest(options, dbname);
-	rtest.manifestReused();
+	/*rtest.manifestReused();
+	rtest.largeManifestCompacted();
+	rtest.noLogFiles();
+	rtest.logFileReuse();
+	*/
+	rtest.multipleMemTables();
 	return 0;
 }

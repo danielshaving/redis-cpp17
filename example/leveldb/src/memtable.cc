@@ -35,7 +35,7 @@ bool MemTable::get(const LookupKey &key, std::string *value, Status *s)
 		uint32_t keyLength;
 		const char *keyPtr = getVarint32Ptr(entry, entry + 5, &keyLength);
 
-		if (kcmp.comparator.getComparator()->compare(std::string_view(keyPtr, keyLength - 8),
+		if (kcmp.icmp.getComparator()->compare(std::string_view(keyPtr, keyLength - 8),
 			key.userKey()) == 0)
 		{
 			const uint64_t tag = decodeFixed64(keyPtr + keyLength - 8);
@@ -86,12 +86,13 @@ void MemTable::add(uint64_t seq, ValueType type, const std::string_view &key,
 	memoryUsage += encodedLen;
 }
 
+
 bool MemTable::KeyComparator::operator()(const char *aptr, const char *bptr) const
 {
 	// Internal keys are encoded as length-prefixed strings.
 	std::string_view a = getLengthPrefixedSlice(aptr);
 	std::string_view b = getLengthPrefixedSlice(bptr);
-	return comparator.compare(a, b) < 0;
+	return icmp.comdpare(a, b) < 0;
 }
 
 void MemTable::clearTable()

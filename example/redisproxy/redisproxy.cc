@@ -11,7 +11,7 @@ RedisProxy::RedisProxy(const char *ip, int16_t port, const char *redisIp, int16_
 	redisPort(redisPort),
 	threadCount(threadCount),
 	sessionCount(sessionCount),
-	clusterEnabled(false)
+	clusterEnabled(true)
 {
 	LOG_INFO << "Proxy initialized";
 	initRedisPorxy();
@@ -51,7 +51,7 @@ void RedisProxy::initRedisAsync()
 			this, std::placeholders::_1));
 		hiredis->setDisconnectionCallback(std::bind(&RedisProxy::redisDisconnCallback,
 			this, std::placeholders::_1));
-		hiredis->start(pools[i], 0);
+		hiredis->start(pools[i], 0, redisIp, redisPort);
 		threadHiredis[pools[i]->getThreadId()] = hiredis;
 
 		{
@@ -109,9 +109,9 @@ void RedisProxy::initRedisCommand()
 {
 	createSharedObjects();
 	redisReplyCommands[shared.mget] = std::bind(&RedisProxy::mgetCallback,
-		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	redisReplyCommands[shared.mget] = std::bind(&RedisProxy::delCallback,
-		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+	redisReplyCommands[shared.del] = std::bind(&RedisProxy::delCallback,
+		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 		
 	redisCommands[shared.publish] = std::bind(&RedisProxy::debugCommand,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
@@ -316,7 +316,7 @@ void RedisProxy::proxyCallback(const RedisAsyncContextPtr &c,
 					if (getCommandReplyCount(conn->getLoop()->getThreadId(),
 						conn->getSockfd()) >= iterr->second->commandCount)
 					{
-						processCommandReply(iterr->second->command,
+						processCommandReply(iterr->second->command, iterr->second->commandCount,
 							conn->getLoop()->getThreadId(), conn->getSockfd(), conn);
 						clearCommandReply(conn->getLoop()->getThreadId(), conn->getSockfd());
 					}
@@ -335,18 +335,29 @@ void RedisProxy::proxyCallback(const RedisAsyncContextPtr &c,
 }
 
 void RedisProxy::delCallback(const std::thread::id &threadId, const int32_t sockfd,
-	const TcpConnectionPtr &conn)
+	const TcpConnectionPtr &conn, int32_t commandCount)
 {
 	auto it = threadCommandReplys.find(threadId);
 	assert(it != threadCommandReplys.end());
 	auto iter = it->second.find(sockfd);
 	assert(iter != it->second.end());
+	
+	int32_t count = 0;
+	for (auto &iterr : iter->second)
+	{
+		assert(iterr->type == REDIS_REPLY_INTEGER);
+		if (iterr->integer == 1)
+		{
+			count++;
+		}
+	}
+	
 	auto buffer = conn->outputBuffer();
-	addReply(buffer, shared.ok);
+	addReplyLongLong(buffer, count);
 }
 
 void RedisProxy::mgetCallback(const std::thread::id &threadId, const int32_t sockfd,
-	const TcpConnectionPtr &conn)
+	const TcpConnectionPtr &conn, int32_t commandCount)
 {
 	auto it = threadCommandReplys.find(threadId);
 	assert(it != threadCommandReplys.end());
@@ -634,12 +645,12 @@ bool RedisProxy::flushdbCommand(const RedisObjectPtr &command, const std::vector
 	return true;
 }
 
-void RedisProxy::processCommandReply(const RedisObjectPtr &command,
+void RedisProxy::processCommandReply(const RedisObjectPtr &command, int32_t commandCount,
 	const std::thread::id &threadId, const int32_t sockfd, const TcpConnectionPtr &conn)
 {
 	auto it = redisReplyCommands.find(command);
 	assert(it != redisReplyCommands.end());
-	it->second(threadId, sockfd, conn);
+	it->second(threadId, sockfd, conn, commandCount);
 }
 
 void RedisProxy::eraseProxySend(const std::thread::id &threadId, const int32_t sockfd, const int64_t count)

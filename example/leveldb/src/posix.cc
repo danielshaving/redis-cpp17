@@ -195,7 +195,7 @@ Status PosixSequentialFile::skip(uint64_t n)
 };
 
 
-Status PosixEnv::newWritableFile(const std::string &fname, std::shared_ptr<PosixWritableFile> &result)
+Status PosixEnv::newWritableFile(const std::string &fname, std::shared_ptr<WritableFile> &result)
 {
 	Status s;
 	int fd = ::open(fname.c_str(), O_TRUNC | O_WRONLY | O_CREAT, 0644);
@@ -316,7 +316,7 @@ Status PosixEnv::newSequentialFile(const std::string &fname, std::shared_ptr<Pos
 	}
 }
 
-Status PosixEnv::newAppendableFile(const std::string &fname, std::shared_ptr<PosixWritableFile> &result)
+Status PosixEnv::newAppendableFile(const std::string &fname, std::shared_ptr<WritableFile> &result)
 {
 	Status s;
 	int fd = open(fname.c_str(), O_APPEND | O_WRONLY | O_CREAT, 0644);
