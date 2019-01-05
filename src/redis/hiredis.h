@@ -216,7 +216,7 @@ public:
 		const std::any &privdata, const char *format, ...);
 	int32_t threadProxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data,
 		int32_t len, const std::any &privdata);
-
+	
 	int32_t proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback);
 	int32_t processCommand(const RedisCallbackFn &fn,
 		const std::any &privdata, const std::vector<RedisObjectPtr> &commands);
@@ -292,10 +292,11 @@ public:
 	RedisAsyncContextPtr getRedisAsyncContext(int32_t sockfd);
 	RedisAsyncContextPtr getRedisAsyncContext();
 	std::vector<RedisContextPtr> getRedisContext(const std::thread::id &threadId);
-
+	
 	RedisAsyncContextPtr getClusterRedisAsyncContext(const std::thread::id &threadId);
 	std::string getTcpClientInfo(const std::thread::id &threadId, int32_t sockfd);
 	std::string setTcpClientInfo(const char *ip, int16_t port);
+	std::string setTcpClientInfo(const std::string &errstr, const char *ip, int16_t port);
 
 private:
 	Hiredis(const Hiredis&);

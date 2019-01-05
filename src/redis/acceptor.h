@@ -29,7 +29,6 @@ private:
 	void operator=(const Acceptor&);
 
 	EventLoop *loop;
-	Socket socket;
 	Channel channel;
 	int32_t sockfd;
 

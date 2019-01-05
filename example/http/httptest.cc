@@ -24,7 +24,7 @@ void onMessage(const HttpRequest &req, HttpResponse *resp)
 		if (req.getPath() == "/")
 		{
 			printf("");
-			resp->setStatusCode(HttpResponse::k2000k);
+			resp->setStatusCode(HttpResponse::k200k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/html");
 			resp->addHeader("Server", "xHttp");
@@ -35,14 +35,14 @@ void onMessage(const HttpRequest &req, HttpResponse *resp)
 		}
 		else if (req.getPath() == "/favicon.ico")
 		{
-			resp->setStatusCode(HttpResponse::k2000k);
+			resp->setStatusCode(HttpResponse::k200k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("image/png");
 			resp->setBody(std::string(favicon, sizeof favicon));
 		}
 		else if (req.getPath() == "/hello")
 		{
-			resp->setStatusCode(HttpResponse::k2000k);
+			resp->setStatusCode(HttpResponse::k200k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/plain");
 			resp->addHeader("Server", "xHttp");
@@ -52,7 +52,7 @@ void onMessage(const HttpRequest &req, HttpResponse *resp)
 		{
 			std::string filename = "attachment;filename=";
 			filename += "test.txt";
-			resp->setStatusCode(HttpResponse::k2000k);
+			resp->setStatusCode(HttpResponse::k200k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/plain");
 			resp->addHeader("Content-Disposition", filename);
@@ -67,7 +67,7 @@ void onMessage(const HttpRequest &req, HttpResponse *resp)
 	}
 	else if (req.getMethod() == HttpRequest::kPost)
 	{
-		resp->setStatusCode(HttpResponse::k2000k);
+		resp->setStatusCode(HttpResponse::k200k);
 		resp->setStatusMessage("OK");
 	}
 }

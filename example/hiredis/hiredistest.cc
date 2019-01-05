@@ -390,14 +390,14 @@ void HiredisTest::list()
 
 int main(int argc, char *argv[])
 {
-	#ifdef _WIN64
-		WSADATA wsaData;
-		int32_t iRet = WSAStartup(MAKEWORD(2, 2), &wsaData);
-		assert(iRet == 0);
-	#else
-		signal(SIGPIPE, SIG_IGN);
-		signal(SIGHUP, SIG_IGN);
-	#endif
+#ifdef _WIN64
+	WSADATA wsaData;
+	int32_t iRet = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	assert(iRet == 0);
+#else
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
+#endif
 
 	const char *ip = "127.0.0.1";
 	uint16_t port = 6379;

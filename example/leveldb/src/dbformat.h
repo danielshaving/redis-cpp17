@@ -125,8 +125,15 @@ public:
 class BytewiseComparatorImpl : public Comparator
 {
 public:
-	explicit BytewiseComparatorImpl() { }
-	virtual ~BytewiseComparatorImpl() { }
+	explicit BytewiseComparatorImpl()
+	{
+		
+	}
+	
+	virtual ~BytewiseComparatorImpl()
+	{
+	
+	}
 	virtual const char *name() const { return "leveldb.BytewiseComparator"; }
 	virtual int compare(const std::string_view &a, const std::string_view &b) const
 	{
@@ -141,14 +148,22 @@ public:
 class InternalKeyComparator : public Comparator
 {
 public:
-	explicit InternalKeyComparator(const Comparator *c) : comparator(c) { }
-	virtual ~InternalKeyComparator() { }
+	explicit InternalKeyComparator(const Comparator *c)
+		: comparator(c)
+	{
+		
+	}
+		
+	virtual ~InternalKeyComparator() 
+	{
+		
+	}
 
 	virtual const char *name() const;
 	virtual void findShortestSeparator(std::string *start, const std::string_view &limit) const;
 	virtual void findShortSuccessor(std::string *key) const;
 	virtual int compare(const std::string_view &a, const std::string_view &b) const;
-	virtual int compare(const InternalKey &a, const InternalKey &b) const;
+	virtual int compare1(const InternalKey &a, const InternalKey &b) const;
 	const Comparator *getComparator() const { return comparator; }
 
 private:
@@ -189,7 +204,7 @@ public:
 	void clear() { rep.clear(); }
 };
 
-inline int InternalKeyComparator::compare(const InternalKey &a, const InternalKey &b) const
+inline int InternalKeyComparator::compare1(const InternalKey &a, const InternalKey &b) const
 {
 	return compare(a.encode(), b.encode());
 }

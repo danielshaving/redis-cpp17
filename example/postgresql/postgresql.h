@@ -266,6 +266,7 @@ private:
 	void operator=(const PGconn&);
 };
 
+void handleSyncLoss(const std::shared_ptr<PGconn> &conn, char id, int msgLength);
 std::shared_ptr<PGconn> PQconnectStart(const char *conninfo);
 char *pqBuildStartupPacket3(const std::shared_ptr<PGconn> &conn, int *packetlen,
 					  const PQEnvironmentOption *options);

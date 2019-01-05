@@ -1,7 +1,3 @@
-//
-// Created by zhanghao on 2018/6/17.
-//
-
 #include "util.h"
 
 #if AVOID_ERRNO
@@ -1082,6 +1078,31 @@ int32_t stringmatch(const char *pattern, const char *string, int32_t nocase)
 	return stringmatchlen(pattern, strlen(pattern), string, strlen(string), nocase);
 }
 
+/* Perform the SHA1 of the input string. We use this both for hashing script
+ * bodies in order to obtain the Lua function name, and in the implementation
+ * of redis.sha1().
+ *
+ * 'digest' should point to a 41 bytes buffer: 40 for SHA1 converted into an
+ * hexadecimal number, plus 1 byte for null term. */
+void sha1hex(char *digest, char *script, size_t len) 
+{
+    SHA1_CTX ctx;
+    unsigned char hash[20];
+    char *cset = "0123456789abcdef";
+    int j;
+
+    SHA1Init(&ctx);
+    SHA1Update(&ctx,(unsigned char*)script,len);
+    SHA1Final(hash,&ctx);
+
+    for (j = 0; j < 20; j++) 
+	{
+        digest[j*2] = cset[((hash[j]&0xF0)>>4)];
+        digest[j*2+1] = cset[(hash[j]&0xF)];
+    }
+    digest[40] = '\0';
+}
+
 void getRandomHexChars(char *p, uint32_t len)
 {
 #ifndef _WIN64
@@ -1169,18 +1190,9 @@ void getRandomHexChars(char *p, uint32_t len)
 
 int64_t ustime(void)
 {
-#ifdef _WIN64
 	auto time_now = std::chrono::system_clock::now();
 	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(time_now.time_since_epoch());
 	return microseconds.count();
-#else
-	struct timeval tv;
-	int64_t ust;
-	gettimeofday(&tv, nullptr);
-	ust = ((int64_t)tv.tv_sec) * 1000000;
-	ust += tv.tv_usec;
-	return ust;
-#endif
 }
 
 /* Return the UNIX time in milliseconds */

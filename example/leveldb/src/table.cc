@@ -73,7 +73,7 @@ Status Table::open(const Options &options,
 
 std::shared_ptr<Iterator> Table::newIterator(const ReadOptions &options) const 
 {
-	std::shared_ptr<Iterator> indexIter = rep->indexBlock->newIterator(rep->options.comparator.get());
+	std::shared_ptr<Iterator> indexIter = rep->indexBlock->newIterator(rep->options.comparator);
 	return newTwoLevelIterator(indexIter,
 		std::bind(blockReader, std::placeholders::_1, 
 			std::placeholders::_2, std::placeholders::_3), shared_from_this(), options);
@@ -103,7 +103,7 @@ std::shared_ptr<Iterator> Table::blockReader(const std::any &arg,
 	if (block != nullptr)
 	{
 		
-		iter = block->newIterator(table->rep->options.comparator.get());
+		iter = block->newIterator(table->rep->options.comparator);
 		iter->registerCleanup(block);
 	}
 	else
@@ -121,7 +121,7 @@ Status Table::internalGet(
 	const std::string_view &k, const std::string_view &v)> &callback)
 {
 	Status s;
-	std::shared_ptr<Iterator> iter = rep->indexBlock->newIterator(rep->options.comparator.get());
+	std::shared_ptr<Iterator> iter = rep->indexBlock->newIterator(rep->options.comparator);
 
 #ifdef NDEBUG
 	iter->seekToFirst();
@@ -159,7 +159,7 @@ Status Table::internalGet(
 
 uint64_t Table::approximateOffsetOf(const std::string_view &key) const
 {
-	std::shared_ptr<Iterator> indexIter = rep->indexBlock->newIterator(rep->options.comparator.get());
+	std::shared_ptr<Iterator> indexIter = rep->indexBlock->newIterator(rep->options.comparator);
 	indexIter->seek(key);
 	uint64_t result;
 	if (indexIter->valid())

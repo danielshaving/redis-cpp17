@@ -44,6 +44,9 @@
 #include <experimental/filesystem>
 #include <ratio>
 #include <chrono>
+#ifdef _LUA
+#include <lua.hpp>
+#endif
 
 #ifdef _WIN64
 #include <WinSock2.h>

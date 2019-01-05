@@ -1,5 +1,5 @@
 TARGET= ./redis-server
-CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17 #-D_BOOST_FILE_LOCK  # -I /usr/local/include/  #-DUSE_JEMALLOC
+CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17
 cppfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))
@@ -8,9 +8,9 @@ CXXOBJS=${patsubst %.cc,./%.o,$(cppfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB=  #/usr/local/lib/libprofiler.a /usr/local/lib/libtcmalloc.a #/usr/local/lib/libprotobuf.a #./libjemalloc.a # ./libhiredis.a    /usr/lib64/libprofiler.so.0 #-ltcmalloc
+LIB= #/usr/local/lib/liblua.a
 
-SO_LIB= 
+SO_LIB=
 
 
 .PHONY: all clean
@@ -18,7 +18,7 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread -lstdc++fs #-lz -lcurl -lcrypto -ldl -lssl 
+	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread -lstdc++fs  #-lz -lcurl -lcrypto -ldl -lssl  -llua
 ${CXXOBJS}:./%.o:./%.cc
 	g++-7 -MMD -c -o $@ $< ${CFLAGS} 
 

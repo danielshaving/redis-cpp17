@@ -12,15 +12,21 @@
 #include "dbformat.h"
 
 class VersionSet;
+class Compaction;
 class Version
 {
 public:
 	Version(VersionSet *vset)
-		:vset(vset),
-		refs(0)
+		:vset(vset)
 	{
 
 	}
+
+    // Append to *iters a sequence of iterators that will
+    // yield the contents of this Version when merged together.
+    // REQUIRES: This version has been saved (see VersionSet::SaveTo)
+    void addIterators(const ReadOptions &ops, std::vector<std::shared_ptr<Iterator>> *iters);
+
 
 	VersionSet *vset;     // VersionSet to which this Version belongs
 
@@ -35,12 +41,6 @@ public:
 
 	Status get(const ReadOptions &options, const LookupKey &key, std::string *val,
 		GetStats *stats);
-	// List of files per level
-	std::vector<std::shared_ptr<FileMetaData>> files[kNumLevels];
-
-	// Next file to compact based on seek stats.
-	std::shared_ptr<FileMetaData> fileToCompact;
-	int fileToCompactLevel;
 
 	// Return the level at which we should place a new memtable compaction
 	// result that covers the range [smallest_user_key,largest_user_key].
@@ -66,20 +66,30 @@ public:
 	// compaction may need to be triggered, false otherwise.
 	// REQUIRES: lock is held
 	bool updateStats(const GetStats &stats);
-	  
+
+	// No copying allowed
+	Version(const Version&);
+	void operator=(const Version&);
+
+	friend class Compaction;
+	friend class VersionSet;
+	class LevelFileNumIterator;
+
+    std::shared_ptr<Iterator> newConcatenatingIterator(const ReadOptions &ops, int level) const;
+
+	// List of files per level
+	std::vector<std::shared_ptr<FileMetaData>> files[kNumLevels];
+
+	// Next file to compact based on seek stats.
+	std::shared_ptr<FileMetaData> fileToCompact;
+	int fileToCompactLevel;
+
 	// Level that should be compacted next and its compaction score.
 	// Score < 1 means compaction is not strictly needed.  These fields
 	// are initialized by Finalize().
 	double compactionScore;
 	int compactionLevel;
-	int refs;
-
-private:
-	// No copying allowed
-	Version(const Version&);
-	void operator=(const Version&);
 };
-
 
 class Builder
 {
@@ -102,7 +112,7 @@ private:
 		bool operator()(const std::shared_ptr<FileMetaData> &f1,
 			const std::shared_ptr<FileMetaData> &f2) const
 		{
-			int r = internalComparator->compare(f1->smallest, f2->smallest);
+			int r = internalComparator->compare1(f1->smallest, f2->smallest);
 			if (r != 0)
 			{
 				return (r < 0);
@@ -189,9 +199,45 @@ public:
 	bool reuseManifest(const std::string &dscname, const std::string &dscbase);
 	int numLevelFiles(int level) const;
 
+	std::shared_ptr<Iterator> makeInputIterator(Compaction *c);
+
+	// Return a human-readable short (single-line) summary of the number
+	// of files per level.  Uses *scratch as backing store.
+	struct LevelSummaryStorage 
+	{
+		char buffer[100];
+	};
+	const char *levelSummary(LevelSummaryStorage *scratch) const;
+  
+	// Pick level and inputs for a new compaction.
+	// Returns nullptr if there is no compaction to be done.
+	// Otherwise returns a pointer to a heap-allocated object that
+	// describes the compaction.  Caller should delete the result.
+	std::shared_ptr<Compaction> pickCompaction();
+
+	// Return a compaction object for compacting the range [begin,end] in
+	// the specified level.  Returns nullptr if there is nothing in that
+	// level that overlaps the specified range.  Caller should delete
+	// the result.
+	std::shared_ptr<Compaction> compactRange(
+		int level,
+		const InternalKey *begin,
+		const InternalKey *end);
+
+	void getRange(const std::vector<std::shared_ptr<FileMetaData>> &inputs,
+				InternalKey *smallest,
+				InternalKey *largest);
+
+	void getRange2(const std::vector<std::shared_ptr<FileMetaData>> &inputs1,
+				 const std::vector<std::shared_ptr<FileMetaData>> &inputs2,
+				 InternalKey *smallest,
+				 InternalKey *largest);
+
+	void setupOtherInputs(const std::shared_ptr<Compaction> &c);
 	std::shared_ptr<TableCache> getTableCache() { return tableCache; }
 	// Per-level key at which the next compaction at that level should start.
 	// Either an empty string, or a valid InternalKey.
+
 	std::string compactPointer[kNumLevels];
 	const std::string dbname;
 	const Options options;
@@ -206,22 +252,82 @@ public:
 	std::shared_ptr<TableCache> tableCache;
 };
 
-
 int findFile(const InternalKeyComparator &icmp,
 	const std::vector<std::shared_ptr<FileMetaData>> &files,
 	const std::string_view &key);
-
 
 bool someFileOverlapsRange(const InternalKeyComparator &icmp, bool disjointSortedFiles,
 	const std::vector<std::shared_ptr<FileMetaData>> &files,
 	const std::string_view *smallestUserKey,
 	const std::string_view *largestUserKey);
 
-
 // A Compaction encapsulates information about a compaction.
 class Compaction 
 {
 public:
-	Compaction();
-};
+	Compaction(const Options *options, int level);
+	~Compaction();
+	
+	// Return the level that is being compacted.  Inputs from "level"
+	// and "level+1" will be merged to produce a set of "level+1" files.
+	int getLevel() const { return level; }
+
+	// Return the object that holds the edits to the descriptor done
+	// by this compaction.
+	VersionEdit *getEdit() { return &edit; }
+	
+	// "which" must be either 0 or 1
+	int numInputFiles(int which) const { return inputs[which].size(); }
+
+	// Return the ith input file at "level()+which" ("which" must be 0 or 1).
+	std::shared_ptr<FileMetaData> input(int which, int i) const { return inputs[which][i]; }
+
+	// Maximum size of files to build during this compaction.
+	uint64_t getMaxOutputFileSize() const { return maxOutputfileSize; }
+
+	// Is this a trivial compaction that can be implemented by just
+	// moving a single input file to the next level (no merging or splitting)
+	bool isTrivialMove() const;
+
+	// Add all inputs to this compaction as delete operations to *edit.
+	void addInputDeletions(VersionEdit *edit);
+ 
+	// Returns true if the information we have available guarantees that
+	// the compaction is producing data in "level+1" for which no data exists
+	// in levels greater than "level+1".
+	bool isBaseLevelForKey(const std::string_view &userKey);
+
+	// Returns true iff we should stop building the current output
+	// before processing "internal_key".
+	bool shouldStopBefore(const std::string_view &internalKey);
+
+	// Release the input version for the compaction, once the compaction
+	// is successful.
+	void releaseInputs();
+  
+private:
+	friend class Version;
+	friend class VersionSet;
+	
+	int level;
+	uint64_t maxOutputfileSize;
+	Version *inputVersion;
+	VersionEdit edit;
+	// Each compaction reads inputs from "level_" and "level_+1"
+	std::vector<std::shared_ptr<FileMetaData>> inputs[2];
+	// State used to check for number of of overlapping grandparent files
+	// (parent == level_ + 1, grandparent == level_ + 2)
+	std::vector<std::shared_ptr<FileMetaData>> grandparents;
+	size_t grandparentIndex; // Index in grandparent_starts_
+	bool seenKey; // Some output key has been seen
+	int64_t overlappedBytes; // Bytes of overlap between current output
+							  // and grandparent files
+	// State for implementing IsBaseLevelForKey
+
+	// level_ptrs_ holds indices into input_version_->levels_: our state
+	// is that we are positioned at one of the file ranges for each
+	// higher level than the ones involved in this compaction (i.e. for
+	// all L >= level_ + 2).
+	size_t levelPtrs[kNumLevels];
+}; 
 

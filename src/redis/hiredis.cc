@@ -1936,6 +1936,19 @@ void Hiredis::redisConnCallback(const TcpConnectionPtr &conn)
 	}
 }
 
+std::string Hiredis::setTcpClientInfo(const std::string &errstr, const char *ip, int16_t port)
+{
+	std::string result;
+	result += "-";
+	result += errstr;
+	result += " ";
+	result += ip;
+	std::string p = std::to_string(port);
+	result += " :";
+	result += p;
+	return result;
+}
+
 std::string Hiredis::setTcpClientInfo(const char *ip, int16_t port)
 {
 	std::string result;

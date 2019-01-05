@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="redlock.cc">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="replication.cc">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -96,14 +93,8 @@
     <ClCompile Include="redis.cc">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="rediscli.cc">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="redlock.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="replication.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -183,9 +174,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="redis.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="rediscli.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

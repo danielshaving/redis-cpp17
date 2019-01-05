@@ -60,7 +60,7 @@ private:
 
 	inline int compare(const std::string_view &a, const std::string_view &b) const 
 	{
-		//return comparator->compare(a, b);
+		return comparator->compare(a, b);
 		
 		int r = comparator->compare(extractUserKey(a), extractUserKey(b));
 		if (r == 0)
@@ -79,7 +79,6 @@ private:
 		}
 		return r;
 	}
-
 
 	// Return the offset in data_ just past the end of the current entry.
 	inline uint32_t nextEntryOffset() const 
@@ -129,7 +128,7 @@ public:
 	{
 		clearnups.push_back(arg);
 	}
-	
+
 	virtual bool valid() const { return current < restarts; }
 	virtual Status status() const { return s; }
 	virtual std::string_view key() const

@@ -473,7 +473,7 @@ public:
 		if (args.reverseCompare) 
 		{
 			reverseCmp = std::shared_ptr<ReverseKeyComparator>(new ReverseKeyComparator());
-			options.comparator = reverseCmp;
+			options.comparator = reverseCmp.get();
 		}
 		else
 		{
@@ -483,13 +483,13 @@ public:
 		switch (args.type) 
 		{
 			case TABLE_TEST:
-				constructor = std::shared_ptr<TableConstructor>(new TableConstructor(options.comparator.get()));
+				constructor = std::shared_ptr<TableConstructor>(new TableConstructor(options.comparator));
 				break;
 			case BLOCK_TEST:
-				constructor = std::shared_ptr<BlockConstructor>(new BlockConstructor(options.comparator.get()));
+				constructor = std::shared_ptr<BlockConstructor>(new BlockConstructor(options.comparator));
 				break;
 			case MEMTABLE_TEST:
-				constructor = std::shared_ptr<MemTableConstructor>(new MemTableConstructor(options.comparator.get()));
+				constructor = std::shared_ptr<MemTableConstructor>(new MemTableConstructor(options.comparator));
 				break;
 		}
 	}
@@ -572,7 +572,7 @@ public:
 				case 2:
 				{
 					// Return something larger than an existing key
-	         			increment(options.comparator.get(), &result);
+	         			increment(options.comparator, &result);
 					break;
 				}
 			}
@@ -583,7 +583,7 @@ public:
 	void test() 
 	{
 		std::vector<std::string> keys;
-		KVMap data(options.comparator.get());
+		KVMap data(options.comparator);
 		constructor->finish(options, &keys, &data);
 		testForwardScan(keys, data);
 		testBackwardScan(keys, data);

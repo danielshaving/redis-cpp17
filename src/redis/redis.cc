@@ -3316,6 +3316,12 @@ bool Redis::monitorCommand(const std::deque<RedisObjectPtr> &obj,
 	return true;
 }
 
+bool Redis::evalCommand(const std::deque<RedisObjectPtr> &obj,
+	const SessionPtr &session, const TcpConnectionPtr &conn)
+{
+	return true;
+}
+
 void Redis::flush()
 {
 
@@ -3340,6 +3346,158 @@ void Redis::run()
 {
 	loop.run();
 }
+
+#ifdef _LUA
+void Redis::luaLoadLib(lua_State *lua, const char *libname, lua_CFunction luafunc) 
+{
+	lua_pushcfunction(lua, luafunc);
+	lua_pushstring(lua, libname);
+	lua_call(lua, 1, 0);
+}
+
+/*
+LUALIB_API int (luaopen_cjson) (lua_State *L);
+LUALIB_API int (luaopen_struct) (lua_State *L);
+LUALIB_API int (luaopen_cmsgpack) (lua_State *L);
+LUALIB_API int (luaopen_bit) (lua_State *L);
+*/
+
+void Redis::luaLoadLibraries(lua_State *lua)
+{
+	luaLoadLib(lua, "", luaopen_base);
+	luaLoadLib(lua, LUA_TABLIBNAME, luaopen_table);
+	luaLoadLib(lua, LUA_STRLIBNAME, luaopen_string);
+	luaLoadLib(lua, LUA_MATHLIBNAME, luaopen_math);
+	luaLoadLib(lua, LUA_DBLIBNAME, luaopen_debug);
+	/*luaLoadLib(lua, "cjson", luaopen_cjson);
+	luaLoadLib(lua, "struct", luaopen_struct);
+	luaLoadLib(lua, "cmsgpack", luaopen_cmsgpack);
+	luaLoadLib(lua, "bit", luaopen_bit);
+	*/
+
+#if 0 /* Stuff that we don't load currently, for sandboxing concerns. */
+    luaLoadLib(lua, LUA_LOADLIBNAME, luaopen_package);
+    luaLoadLib(lua, LUA_OSLIBNAME, luaopen_os);
+#endif
+}
+
+/* Remove a functions that we don't want to expose to the Redis scripting
+ * environment. */
+void Redis::luaRemoveUnsupportedFunctions(lua_State *lua) 
+{
+    lua_pushnil(lua);
+    lua_setglobal(lua,"loadfile");
+    lua_pushnil(lua);
+    lua_setglobal(lua,"dofile");
+}
+
+int Redis::luaRedisCallCommand(lua_State *lua)
+{
+	
+}
+
+int Redis::luaRedisPCallCommand(lua_State *lua)
+{
+	
+}
+
+/* This function installs metamethods in the global table _G that prevent
+ * the creation of globals accidentally.
+ *
+ * It should be the last to be called in the scripting engine initialization
+ * sequence, because it may interact with creation of globals. */
+void Redis::scriptingEnableGlobalsProtection(lua_State *lua) 
+{
+	char *s[32];
+    sds code = sdsempty();
+    int j = 0;
+
+    /* strict.lua from: http://metalua.luaforge.net/src/lib/strict.lua.html.
+     * Modified to be adapted to Redis. */
+    s[j++]="local dbg=debug\n";
+    s[j++]="local mt = {}\n";
+    s[j++]="setmetatable(_G, mt)\n";
+    s[j++]="mt.__newindex = function (t, n, v)\n";
+    s[j++]="  if dbg.getinfo(2) then\n";
+    s[j++]="    local w = dbg.getinfo(2, \"S\").what\n";
+    s[j++]="    if w ~= \"main\" and w ~= \"C\" then\n";
+    s[j++]="      error(\"Script attempted to create global variable '\"..tostring(n)..\"'\", 2)\n";
+    s[j++]="    end\n";
+    s[j++]="  end\n";
+    s[j++]="  rawset(t, n, v)\n";
+    s[j++]="end\n";
+    s[j++]="mt.__index = function (t, n)\n";
+    s[j++]="  if dbg.getinfo(2) and dbg.getinfo(2, \"S\").what ~= \"C\" then\n";
+    s[j++]="    error(\"Script attempted to access nonexistent global variable '\"..tostring(n)..\"'\", 2)\n";
+    s[j++]="  end\n";
+    s[j++]="  return rawget(t, n)\n";
+    s[j++]="end\n";
+    s[j++]="debug = nil\n";
+    s[j++]=nullptr;
+
+    for (j = 0; s[j] != nullptr; j++) code = sdscatlen(code,s[j],strlen(s[j]));
+    luaL_loadbuffer(lua,code,sdslen(code),"@enable_strict_lua");
+    lua_pcall(lua,0,0,0);
+    sdsfree(code);
+}
+
+void Redis::scriptingInit()
+{
+	lua = lua_open();
+	luaLoadLibraries(lua);
+	luaRemoveUnsupportedFunctions(lua);
+	/* Register the redis commands table and fields */
+    lua_newtable(lua);
+	
+	 /* redis.call */
+    lua_pushstring(lua,"call");
+    lua_pushcfunction(lua,luaRedisCallCommand);
+    lua_settable(lua,-3);
+
+    /* redis.pcall */
+    lua_pushstring(lua,"pcall");
+    lua_pushcfunction(lua,luaRedisPCallCommand);
+    lua_settable(lua,-3);
+	
+	 /* Add a helper function that we use to sort the multi bulk output of non
+     * deterministic commands, when containing 'false' elements. */
+    {
+        char *func = "function __redis__compare_helper(a,b)\n"
+                                "  if a == false then a = '' end\n"
+                                "  if b == false then b = '' end\n"
+                                "  return a<b\n"
+                                "end\n";
+        luaL_loadbuffer(lua,func,strlen(func),"@cmp_func_def");
+        lua_pcall(lua,0,0,0);
+    }
+	
+	 /* Add a helper function we use for pcall error reporting.
+     * Note that when the error is in the C function we want to report the
+     * information about the caller, that's what makes sense from the point
+     * of view of the user debugging a script. */
+    {
+        char *func = "local dbg = debug\n"
+                                "function __redis__err__handler(err)\n"
+                                "  local i = dbg.getinfo(2,'nSl')\n"
+                                "  if i and i.what == 'C' then\n"
+                                "    i = dbg.getinfo(3,'nSl')\n"
+                                "  end\n"
+                                "  if i then\n"
+                                "    return i.source .. ':' .. i.currentline .. ': ' .. err\n"
+                                "  else\n"
+                                "    return err\n"
+                                "  end\n"
+                                "end\n";
+        luaL_loadbuffer(lua,func,strlen(func),"@err_handler_def");
+        lua_pcall(lua,0,0,0);
+    }
+
+	/* Lua beginners often don't use "local", this is likely to introduce
+     * subtle bugs in their code. To prevent problems we protect accesses
+     * to global variables. */
+    scriptingEnableGlobalsProtection(lua);
+}
+#endif
 
 void Redis::initConfig()
 {

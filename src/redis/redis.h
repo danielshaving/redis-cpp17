@@ -21,6 +21,7 @@ public:
 	~Redis();
 
 	void initConfig();
+	void scriptingInit();
 	void timeOut();
 	void serverCron();
 	void bgsaveCron();
@@ -36,7 +37,16 @@ public:
 	void replyCheck();
 	void loadDataFromDisk();
 	void flush();
-
+	
+	void luaLoadLib(lua_State *lua, const char *libname, lua_CFunction luafunc);
+	static int luaRedisCallCommand(lua_State *lua);
+	static int luaRedisPCallCommand(lua_State *lua);
+	void luaLoadLibraries(lua_State *lua);
+	void luaRemoveUnsupportedFunctions(lua_State *lua);
+	void scriptingEnableGlobalsProtection(lua_State *lua);
+	
+	bool evalCommand(const std::deque<RedisObjectPtr> &obj,
+		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool saveCommand(const std::deque<RedisObjectPtr> &obj,
 		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool pingCommand(const std::deque<RedisObjectPtr> &obj,
@@ -294,6 +304,7 @@ public:
 	std::string master;
 	std::string slave;
 
+	lua_State *lua;
 	int16_t port;
 	int16_t threadCount;
 	int32_t masterPort;

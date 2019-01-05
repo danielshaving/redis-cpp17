@@ -14,6 +14,7 @@ enum CompressionType
 	kSnappyCompression = 0x1
 };
 
+
 // Options to control the behavior of a database (passed to DB::Open)
 struct Options
 {
@@ -26,7 +27,7 @@ struct Options
 	// REQUIRES: The client must ensure that the comparator supplied
 	// here has the same name and orders keys *exactly* the same as the
 	// comparator provided to previous open calls on the same DB.
-	std::shared_ptr<Comparator> comparator;
+	const Comparator *comparator;
 
 	// If true, the database will be created if it is missing.
 	// Default: false
@@ -118,27 +119,7 @@ struct Options
 	bool reuseLogs;
 
 	// Create an Options object with default values for all fields.
-	Options()
-		:comparator(new BytewiseComparatorImpl()),
-		createIfMissing(false),
-		errorIfExists(false),
-		paranoidChecks(false),
-		env(new PosixEnv()),
-		writeBufferSize(4 << 20),
-		maxOpenFiles(1000),
-		blockSize(4096),
-		blockRestartInterval(16),
-		maxFileSize(2 << 20),
-		compression(kNoCompression),
-		reuseLogs(false)
-	{
-
-	}
-
-	~Options()
-	{
-
-	}
+	Options();
 };
 
 

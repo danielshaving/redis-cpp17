@@ -3,6 +3,7 @@
 #include "dbimpl.h"
 #include "filename.h"
 #include "coding.h"
+#include "merger.h"
 
 const int kNumNonTableCacheFiles = 10;
 
@@ -21,23 +22,105 @@ struct DBImpl::Writer
 	bool done;
 };
 
+struct DBImpl::CompactionState 
+{
+	Compaction *const compaction;
+
+	// Sequence numbers < smallest_snapshot are not significant since we
+	// will never have to service a snapshot below smallest_snapshot.
+	// Therefore if we have seen a sequence number S <= smallest_snapshot,
+	// we can drop all entries for the same key with sequence numbers < S.
+	uint64_t smallestSnapshot;
+
+	// Files produced by compaction
+	struct Output 
+	{
+		uint64_t number;
+		uint64_t fileSize;
+		InternalKey smallest, largest;
+	};
+	std::vector<Output> outputs;
+
+	// State kept for output being generated
+	std::shared_ptr<WritableFile> outfile;
+	std::shared_ptr<TableBuilder> builder;
+
+	uint64_t totalBytes;
+
+	Output *currentOutput() { return &outputs[outputs.size() - 1]; }
+
+	explicit CompactionState(Compaction *c)
+	  : compaction(c),
+	    outfile(nullptr),
+	    builder(nullptr),
+	    totalBytes(0) 
+	{
+		
+	}
+};
+		
+struct IterState
+{
+	std::shared_ptr<Version> const version;
+	std::shared_ptr<MemTable> const mem;
+	std::shared_ptr<MemTable> const imm;
+
+  IterState(const std::shared_ptr<MemTable> &mem,
+		  const std::shared_ptr<MemTable> &imm,
+		  const std::shared_ptr<Version> &version)
+      :version(version), mem(mem), imm(imm) { }
+};
+
+std::shared_ptr<Iterator> DBImpl::newInternalIterator(const ReadOptions &options,
+	uint64_t *latestSnapshot, uint32_t *seed)
+{
+	*latestSnapshot = versions->getLastSequence();
+
+	// Collect together all needed child iterators
+	std::vector<std::shared_ptr<Iterator>> list;
+	list.push_back(mem->newIterator());
+	if (imm != nullptr)
+	{
+		list.push_back(imm->newIterator());
+	}
+
+	versions->current()->addIterators(options, &list);
+	std::shared_ptr<Iterator> internalIter =
+	  newMergingIterator(&comparator, list, list.size());
+
+	std::shared_ptr<IterState> cleanup(new IterState(mem, imm, versions->current()));
+	internalIter->registerCleanup(cleanup);
+	
+	*seed = ++this->seed;
+	return internalIter;
+}
+									  
+std::shared_ptr<Iterator> DBImpl::newIterator(const ReadOptions &options)
+{
+	uint64_t latestSnapshot;
+	uint32_t seed;
+	std::shared_ptr<Iterator> iter = newInternalIterator(options, &latestSnapshot, &seed);
+	//return newDBIterator(
+	//	this, comparator, iter, latestSnapshot	, seed);
+}
+
 Options DBImpl::sanitizeOptions(const std::string &dbname,
-                      	const Comparator *icmp,
+                      	const InternalKeyComparator *icmp,
                         const Options &src) 
 {
 	Options result = src;
-	BytewiseComparatorImpl impl;
-	result.comparator.reset(new InternalKeyComparator(&impl));
+	result.comparator = icmp;
 	return result;
 }
                         
 DBImpl::DBImpl(const Options &op, const std::string &dbname)
-	:comparator(options.comparator.get()),
-	options(op),
+	:comparator(op.comparator),
+	options(sanitizeOptions(dbname, &comparator, op)),
 	dbname(dbname),
 	mem(nullptr),
 	imm(nullptr),
-	manualCompaction(nullptr)
+	manualCompaction(nullptr),
+	seed(0)
 {
 	tableCache.reset(new TableCache(dbname, options, tableCacheSize(options)));
 	versions.reset(new VersionSet(dbname, options, tableCache, &comparator));
@@ -481,7 +564,6 @@ Status DBImpl::destroyDB(const std::string &dbname, const Options &options)
 	}
 
 	const std::string lockname = lockFileName(dbname);
-	
 	if (result.ok()) 
 	{
 		uint64_t number;
@@ -568,10 +650,10 @@ Status DBImpl::get(const ReadOptions &opt, const std::string_view &key, std::str
 		haveStatUpdate = true;
 	}
 
-	if (haveStatUpdate && current->updateStats(stats)) 
-	{
-		maybeScheduleCompaction();
-	} 
+//	if (haveStatUpdate && current->updateStats(stats))
+//	{
+//		maybeScheduleCompaction();
+//	}
 	return s;
 }
 
@@ -640,6 +722,395 @@ void DBImpl::backgroundCompaction()
 		compactMemTable();
 		return;
 	}
+
+
+	return ;
+
+	std::shared_ptr<Compaction> c;
+	bool ismanual = (manualCompaction != nullptr);
+	InternalKey manualend;
+	if (ismanual)
+	{
+		auto m = manualCompaction;
+		c = versions->compactRange(m->level, m->begin, m->end);
+		m->done = (c == nullptr);
+		if (c != nullptr) 
+		{
+			manualend = c->input(0, c->numInputFiles(0) - 1)->largest;
+		}
+		
+		printf("Manual compaction at level-%d from %s .. %s; will stop at %s\n",
+			m->level,
+			(m->begin ? m->begin->debugString().c_str() : "(begin)"),
+			(m->end ? m->end->debugString().c_str() : "(end)"),
+			(m->done ? "(end)" : manualend.debugString().c_str()));
+	}
+	else
+	{
+		 c = versions->pickCompaction();
+	}
+
+	Status status;
+	if (c == nullptr)
+    {
+		// Nothing to do
+	} 
+	else if (!ismanual && c->isTrivialMove()) 
+	{
+		// Move file to next level
+		assert(c->numInputFiles(0) == 1);
+		auto f = c->input(0, 0);
+		c->getEdit()->deleteFile(c->getLevel(), f->number);
+		c->getEdit()->addFile(c->getLevel() + 1, f->number, f->fileSize,
+		               f->smallest, f->largest);
+		status = versions->logAndApply(c->getEdit());
+		if (!status.ok()) 
+		{
+			//RecordBackgroundError(status);
+		}
+
+		VersionSet::LevelSummaryStorage tmp;
+		printf("Moved #%lld to level-%d %lld bytes %s: %s\n",
+			static_cast<unsigned long long>(f->number),
+			c->getLevel() + 1,
+			static_cast<unsigned long long>(f->fileSize),
+			status.toString().c_str(),
+			versions->levelSummary(&tmp));
+	} 
+	else 
+	{
+		std::shared_ptr<CompactionState> compact(new CompactionState(c.get()));
+		status = doCompactionWork(compact.get());
+		if (!status.ok()) 
+		{
+			//RecordBackgroundError(status);
+		}
+		
+		cleanupCompaction(compact.get());
+		c->releaseInputs();
+		deleteObsoleteFiles();
+	}
+
+	if (status.ok())
+	{
+		// Done
+	}
+	// Ignore compaction errors found during shutting down
+	else
+	{
+		printf("Compaction error: %s", status.toString().c_str());
+	}
+
+	if (ismanual)
+	{
+		auto m = manualCompaction;
+		if (!status.ok())
+		{
+			m->done = true;
+		}
+
+		if (!m->done)
+		{
+			// We only compacted part of the requested range.  Update *m
+			// to the range that is left to be compacted.
+			m->tmpStorage = manualend;
+			m->begin = &m->tmpStorage;
+		}
+		manualCompaction = nullptr;
+	}
+}
+
+void DBImpl::cleanupCompaction(CompactionState *compact)
+{
+	if (compact->builder != nullptr)
+	{
+	    // May happen if we get a shutdown call in the middle of compaction
+	    compact->builder->abandon();
+	}
+	else
+	{
+	    assert(compact->outfile == nullptr);
+	}
+
+	for (size_t i = 0; i < compact->outputs.size(); i++)
+	{
+		const CompactionState::Output &out = compact->outputs[i];
+		pendingOutPuts.erase(out.number);
+	}
+}
+
+Status DBImpl::finishCompactionOutputFile(CompactionState *compact,
+	                                          const std::shared_ptr<Iterator> &input)
+{
+	assert(compact != nullptr);
+	assert(compact->outfile != nullptr);
+	assert(compact->builder != nullptr);
+
+	const uint64_t outputNumber = compact->currentOutput()->number;
+	assert(outputNumber != 0);
+
+	// Check for iterator errors
+	Status s = input->status();
+	const uint64_t currentEntries = compact->builder->numEntries();
+	if (s.ok())
+	{
+		s = compact->builder->finish();
+	}
+	else
+	{
+		compact->builder->abandon();
+	}
+
+	const uint64_t currentBytes = compact->builder->fileSize();
+	compact->currentOutput()->fileSize = currentBytes;
+	compact->totalBytes += currentBytes;
+	// Finish and check for file errors
+	if (s.ok())
+	{
+		s = compact->outfile->sync();
+	}
+
+	if (s.ok())
+	{
+		s = compact->outfile->close();
+	}
+
+	compact->outfile = nullptr;
+
+	if (s.ok() && currentEntries > 0)
+	{
+		// Verify that the table is usable
+		std::shared_ptr<Iterator> iter = tableCache->newIterator(ReadOptions(),
+												   outputNumber,
+												   currentBytes);
+		s = iter->status();
+		if (s.ok())
+		{
+			printf("Generated table #%llu@%d: %lld keys, %lld bytes",
+				(unsigned long long) outputNumber,
+				compact->compaction->getLevel(),
+				(unsigned long long) currentEntries,
+				(unsigned long long) currentBytes);
+		}
+	}
+	return s;
+}
+
+Status DBImpl::doCompactionWork(CompactionState *compact)
+{
+	const uint64_t startMicros = options.env->nowMicros();
+	int64_t immMicros = 0;  // Micros spent doing imm_ compactions
+    printf("Compacting %d@%d + %d@%d files",
+        compact->compaction->numInputFiles(0),
+        compact->compaction->getLevel(),
+        compact->compaction->numInputFiles(1),
+        compact->compaction->getLevel() + 1);
+
+    assert(versions->numLevelFiles(compact->compaction->getLevel()) > 0);
+    assert(compact->builder == nullptr);
+    assert(compact->outfile == nullptr);
+
+	compact->smallestSnapshot = versions->getLastSequence();
+	std::shared_ptr<Iterator> input = versions->makeInputIterator(compact->compaction);
+	input->seekToFirst();
+
+	Status status;
+	ParsedInternalKey ikey;
+	std::string currentUserKey;
+	bool hasCurrentUserKey = false;
+	uint64_t lastSequenceForKey = kMaxSequenceNumber;
+	for(; input->valid(); )
+	{
+		const uint64_t immStart = options.env->nowMicros();
+		if (imm != nullptr)
+		{
+			compactMemTable();
+		}
+
+		immMicros += (options.env->nowMicros() - immStart);
+		std::string_view key = input->key();
+		if (compact->compaction->shouldStopBefore(key) &&
+				compact->builder != nullptr)
+		{
+			status = finishCompactionOutputFile(compact, input);
+			if (!status.ok())
+			{
+				break;
+			}
+		}
+		// Handle key/value, add to state, etc.
+		bool drop = false;
+		if (!parseInternalKey(key, &ikey))
+		{
+			// Do not hide error keys
+			currentUserKey.clear();
+			hasCurrentUserKey = false;
+			lastSequenceForKey = kMaxSequenceNumber;
+		}
+		else
+		{
+			if (!hasCurrentUserKey ||
+				  comparator.compare(ikey.userKey,
+										 std::string_view(currentUserKey)) != 0)
+			{
+				// First occurrence of this user key
+				currentUserKey.assign(ikey.userKey.data(), ikey.userKey.size());
+				hasCurrentUserKey = true;
+				lastSequenceForKey = kMaxSequenceNumber;
+			}
+
+			if (lastSequenceForKey <= compact->smallestSnapshot)
+			{
+				// Hidden by an newer entry for same user key
+				drop = true;    // (A)
+			}
+			else if (ikey.type == kTypeDeletion &&
+					 ikey.sequence <= compact->smallestSnapshot &&
+					 compact->compaction->isBaseLevelForKey(ikey.userKey))
+			{
+				// For this user key:
+				// (1) there is no data in higher levels
+				// (2) data in lower levels will have larger sequence numbers
+				// (3) data in layers that are being compacted here and have
+				//     smaller sequence numbers will be dropped in the next
+				//     few iterations of this loop (by rule (A) above).
+				// Therefore this deletion marker is obsolete and can be dropped.
+				drop = true;
+			}
+			lastSequenceForKey = ikey.sequence;
+		}
+	#if 0
+		printf("  Compact: %s, seq %d, type: %d %d, drop: %d, is_base: %d, "
+			"%d smallest_snapshot: %d",
+			ikey.userKey.toString().c_str(),
+			(int)ikey.sequence, ikey.type, kTypeValue, drop,
+			compact->compaction->isBaseLevelForKey(ikey.userKey),
+			(int)lastSequenceForKey, (int)compact->smallestSnapshot);
+	#endif
+
+		if (!drop)
+		{
+			// Open output file if necessary
+			if (compact->builder == nullptr)
+			{
+				status = openCompactionOutputFile(compact);
+				if (!status.ok())
+				{
+					break;
+				}
+			}
+
+			if (compact->builder->numEntries() == 0)
+			{
+				compact->currentOutput()->smallest.decodeFrom(key);
+			}
+
+			compact->currentOutput()->largest.decodeFrom(key);
+			compact->builder->add(key, input->value());
+
+			// Close output file if it is big enough
+			if (compact->builder->fileSize() >=
+			  compact->compaction->getMaxOutputFileSize())
+			{
+				status = finishCompactionOutputFile(compact, input);
+				if (!status.ok())
+				{
+					break;
+				}
+			}
+		}
+		input->next();
+	}
+
+	if (status.ok())
+	{
+		status = Status::ioError("Deleting DB during compaction");
+	}
+
+	if (status.ok() && compact->builder != nullptr)
+	{
+		status = finishCompactionOutputFile(compact, input);
+	}
+
+	if (status.ok())
+	{
+		status = input->status();
+	}
+
+	CompactionStats stats;
+	stats.micros = options.env->nowMicros() - startMicros - immMicros;
+	for (int which = 0; which < 2; which++)
+	{
+		for (int i = 0; i < compact->compaction->numInputFiles(which); i++)
+		{
+			stats.bytesRead += compact->compaction->input(which, i)->fileSize;
+		}
+	}
+
+	for (size_t i = 0; i < compact->outputs.size(); i++)
+	{
+		stats.bytesWritten += compact->outputs[i].fileSize;
+	}
+
+	this->stats[compact->compaction->getLevel() + 1].add(stats);
+	if (status.ok())
+	{
+		status = installCompactionResults(compact);
+	}
+
+	if (!status.ok())
+	{
+		//recordBackgroundError(status);
+	}
+
+	VersionSet::LevelSummaryStorage tmp;
+	printf("compacted to: %s", versions->levelSummary(&tmp));
+	return status;
+}
+
+Status DBImpl::openCompactionOutputFile(CompactionState *compact)
+{
+	assert(compact != nullptr);
+	assert(compact->builder == nullptr);
+	uint64_t fileNumber;
+	fileNumber = versions->newFileNumber();
+	pendingOutPuts.insert(fileNumber);
+	CompactionState::Output out;
+	out.number = fileNumber;
+	out.smallest.clear();
+	out.largest.clear();
+	compact->outputs.push_back(out);
+
+	// Make the output file
+	std::string fname = tableFileName(dbname, fileNumber);
+	Status s = options.env->newWritableFile(fname, compact->outfile);
+	if (s.ok())
+	{
+		compact->builder.reset(new TableBuilder(options, compact->outfile));
+	}
+	return s;
+}
+
+Status DBImpl::installCompactionResults(CompactionState *compact)
+{
+	printf("Compacted %d@%d + %d@%d files => %lld bytes",
+	  compact->compaction->numInputFiles(0),
+	  compact->compaction->getLevel(),
+	  compact->compaction->numInputFiles(1),
+	  compact->compaction->getLevel() + 1,
+	  static_cast<long long>(compact->totalBytes));
+
+	// Add compaction outputs
+	compact->compaction->addInputDeletions(compact->compaction->getEdit());
+	const int level = compact->compaction->getLevel();
+	for (size_t i = 0; i < compact->outputs.size(); i++)
+	{
+		const CompactionState::Output &out = compact->outputs[i];
+		compact->compaction->getEdit()->addFile(
+			level + 1,
+			out.number, out.fileSize, out.smallest, out.largest);
+	}
+	return versions->logAndApply(compact->compaction->getEdit());
 }
 
 void DBImpl::compactMemTable() 

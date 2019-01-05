@@ -33,8 +33,6 @@
     <ClCompile Include="poll.cc" />
     <ClCompile Include="rdb.cc" />
     <ClCompile Include="redis.cc" />
-    <ClCompile Include="rediscli.cc" />
-    <ClCompile Include="redlock.cc" />
     <ClCompile Include="replication.cc" />
     <ClCompile Include="sds.cc" />
     <ClCompile Include="select.cc" />
@@ -64,8 +62,6 @@
     <ClInclude Include="poll.h" />
     <ClInclude Include="rdb.h" />
     <ClInclude Include="redis.h" />
-    <ClInclude Include="rediscli.h" />
-    <ClInclude Include="redlock.h" />
     <ClInclude Include="replication.h" />
     <ClInclude Include="sds.h" />
     <ClInclude Include="select.h" />

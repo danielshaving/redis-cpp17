@@ -65,7 +65,7 @@ void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffe
 		assert(multibulklen == 0);
 		if (redis->getRedisCommand(command))
 		{
-			if (!redis->handleRedisCommand(command, shared_from_this(), redisCommands, conn))
+			if (!redis->handleRedisCommand(command, shared_from_this(), redisCommands, conn, buf, len))
 			{
 				addReplyErrorFormat(conn->outputBuffer(),
 					"wrong number of arguments`%s`, for command", command->ptr);

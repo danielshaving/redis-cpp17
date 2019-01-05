@@ -59,13 +59,8 @@ RedLock::~RedLock()
 
 sds RedLock::getUniqueLockId()
 {
-#ifdef _WIN64
 	char buffer[20];
-	if (::recv(fd, buffer, sizeof(buffer), 0) == sizeof(buffer))
-#else
-	unsigned char buffer[20];
-	if (::read(fd, buffer, sizeof(buffer)) == sizeof(buffer))
-#endif
+	if (Socket::read(fd, buffer, sizeof(buffer)) == sizeof(buffer))
 	{
 		sds s;
 		s = sdsempty();

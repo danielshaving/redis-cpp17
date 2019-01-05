@@ -311,11 +311,32 @@ void createSharedObjects()
 	shared.decr = createObject(REDIS_STRING, sdsnew("decr"));
 	shared.monitor = createObject(REDIS_STRING, sdsnew("monitor"));
 	shared.mget = createObject(REDIS_STRING, sdsnew("mget"));
+	shared.mset = createObject(REDIS_STRING, sdsnew("mset"));
 	shared.subscribe = createObject(REDIS_STRING, sdsnew("subscribe"));
 	shared.select = createObject(REDIS_STRING, sdsnew("select"));
 	shared.unsubscribe = createObject(REDIS_STRING, sdsnew("unsubscribe"));
-	shared.publish =  createObject(REDIS_STRING, sdsnew("publish"));
-
+	shared.publish = createObject(REDIS_STRING, sdsnew("publish"));
+	shared.rename = createObject(REDIS_STRING, sdsnew("rename"));
+	shared.move = createObject(REDIS_STRING, sdsnew("move"));
+	shared.object = createObject(REDIS_STRING, sdsnew("object"));
+	shared.scan = createObject(REDIS_STRING, sdsnew("scan"));
+	shared.hscan = createObject(REDIS_STRING, sdsnew("hscan"));
+	shared.randomkey = createObject(REDIS_STRING, sdsnew("randomkey"));
+	shared.renamenx = createObject(REDIS_STRING, sdsnew("renamenx"));
+	shared.bitop = createObject(REDIS_STRING, sdsnew("bitop"));
+	shared.brpoplpush = createObject(REDIS_STRING, sdsnew("brpoplpush"));
+	shared.rpoplpush = createObject(REDIS_STRING, sdsnew("rpoplpush"));
+	shared.sinterstore = createObject(REDIS_STRING, sdsnew("sinterstore"));
+	shared.sdiffstore = createObject(REDIS_STRING, sdsnew("sdiffstore"));
+	shared.sinter = createObject(REDIS_STRING, sdsnew("sinter"));
+	shared.smove = createObject(REDIS_STRING, sdsnew("smove"));
+	shared.sunionstore = createObject(REDIS_STRING, sdsnew("sunionstore"));
+	shared.smove = createObject(REDIS_STRING, sdsnew("smove"));
+	shared.zinterstore = createObject(REDIS_STRING, sdsnew("zinterstore"));
+	shared.zunionstore = createObject(REDIS_STRING, sdsnew("zunionstore"));
+	shared.pubsub = createObject(REDIS_STRING, sdsnew("pubsub"));
+	shared.eval = createObject(REDIS_STRING, sdsnew("eval"));
+	
 	for (j = 0; j < REDIS_SHARED_INTEGERS; j++)
 	{
 		shared.integers[j] = createObject(REDIS_STRING, sdsfromlonglong(j));

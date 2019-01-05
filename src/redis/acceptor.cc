@@ -39,7 +39,7 @@ void Acceptor::handleRead()
 	{
 		if (newConnectionCallback)
 		{
-			socket.setSocketNonBlock(connfd);
+			Socket::setSocketNonBlock(connfd);
 			newConnectionCallback(connfd);
 		}
 		else

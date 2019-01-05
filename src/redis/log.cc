@@ -1,6 +1,4 @@
 #include "log.h"
-
-namespace fs = std::experimental::filesystem;
 const char digits[] = "9876543210123456789";
 const char digitsHex[] = "0123456789ABCDEF";
 const char *zero = digits + 9;
@@ -67,7 +65,7 @@ AppendFile::~AppendFile()
 
 bool AppendFile::exists()
 {
-	return fs::exists(filename.c_str());
+	return std::experimental::filesystem::exists(filename.c_str());
 }
 
 bool AppendFile::lockFile(const std::string &fname)
@@ -198,7 +196,7 @@ LogFile::LogFile(const std::string &filePath, const std::string &basename,
 	lastFlush(0)
 {
 	assert(basename.find('/') == std::string::npos);
-	fs::create_directories(filePath);
+	std::experimental::filesystem::create_directories(filePath);
 	rollFile();
 }
 
@@ -221,7 +219,7 @@ void LogFile::flush()
 
 void LogFile::appendUnlocked(const char *logline, int32_t len)
 {
-	fs::space_info info = fs::space(filePath.c_str());
+	std::experimental::filesystem::space_info info = std::experimental::filesystem::space(filePath.c_str());
 	if (info.free <= rollSize * interval)
 	{
 		std::cout << ".        Capacity       Free      Available\n"

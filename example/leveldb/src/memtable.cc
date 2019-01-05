@@ -86,13 +86,12 @@ void MemTable::add(uint64_t seq, ValueType type, const std::string_view &key,
 	memoryUsage += encodedLen;
 }
 
-
 bool MemTable::KeyComparator::operator()(const char *aptr, const char *bptr) const
 {
 	// Internal keys are encoded as length-prefixed strings.
 	std::string_view a = getLengthPrefixedSlice(aptr);
 	std::string_view b = getLengthPrefixedSlice(bptr);
-	return icmp.comdpare(a, b) < 0;
+	return icmp.compare(a, b) < 0;
 }
 
 void MemTable::clearTable()

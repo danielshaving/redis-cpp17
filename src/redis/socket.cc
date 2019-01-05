@@ -1,15 +1,5 @@
 #include "socket.h"
 #include "log.h"
-
-Socket::Socket()
-{
-
-}
-
-Socket::~Socket()
-{
-
-}
  
 bool Socket::resolve(std::string_view hostname, struct sockaddr_in6 *out)
 {

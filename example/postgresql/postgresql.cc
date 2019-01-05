@@ -130,6 +130,11 @@ int pqGetInt(int *result, size_t bytes, const std::shared_ptr<PGconn> &conn)
 	return 0;
 }
 
+void handleSyncLoss(const std::shared_ptr<PGconn> &conn, char id, int msgLength)
+{
+	
+}
+
 std::shared_ptr<PGresult> PQmakeEmptyPGresult(const std::shared_ptr<PGconn> &conn, ExecStatusType status)
 {
 	std::shared_ptr<PGresult> result(new PGresult());

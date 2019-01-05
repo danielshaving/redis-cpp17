@@ -11,7 +11,7 @@ RedisProxy::RedisProxy(const char *ip, int16_t port, const char *redisIp, int16_
 	redisPort(redisPort),
 	threadCount(threadCount),
 	sessionCount(sessionCount),
-	clusterEnabled(true)
+	clusterEnabled(false)
 {
 	LOG_INFO << "Proxy initialized";
 	initRedisPorxy();
@@ -110,29 +110,113 @@ void RedisProxy::initRedisCommand()
 	createSharedObjects();
 	redisReplyCommands[shared.mget] = std::bind(&RedisProxy::mgetCallback,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+	redisReplyCommands[shared.mset] = std::bind(&RedisProxy::msetCallback,
+		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 	redisReplyCommands[shared.del] = std::bind(&RedisProxy::delCallback,
 		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 		
 	redisCommands[shared.publish] = std::bind(&RedisProxy::debugCommand,
-		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+		std::placeholders::_5, std::placeholders::_6);
 	redisCommands[shared.subscribe] = std::bind(&RedisProxy::debugCommand,
-		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+		std::placeholders::_5, std::placeholders::_6);
 	redisCommands[shared.unsubscribe] = std::bind(&RedisProxy::debugCommand,
-		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-	redisCommands[shared.monitor] = std::bind(&RedisProxy::debugCommand,
-		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+		std::placeholders::_5, std::placeholders::_6);
+	redisCommands[shared.pubsub] = std::bind(&RedisProxy::debugCommand,
+		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+		std::placeholders::_5, std::placeholders::_6);
+			
 	if (clusterEnabled)
 	{
+		redisCommands[shared.keys] = std::bind(&RedisProxy::keysCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
 		redisCommands[shared.select] = std::bind(&RedisProxy::selectCommand,
-			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
 		redisCommands[shared.mget] = std::bind(&RedisProxy::mgetCommand,
-			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.mset] = std::bind(&RedisProxy::mgetCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
 		redisCommands[shared.dbsize] = std::bind(&RedisProxy::dbsizeCommand,
-			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
 		redisCommands[shared.flushdb] = std::bind(&RedisProxy::flushdbCommand,
-				this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
 		redisCommands[shared.del] = std::bind(&RedisProxy::mgetCommand,
-				this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.randomkey] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.renamenx] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.bitop] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.brpoplpush] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.rpoplpush] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.sinterstore] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.sdiffstore] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.sinter] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.smove] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.sunionstore] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.zinterstore] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.zunionstore] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.hscan] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.scan] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.object] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.move] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.debug] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.migrate] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.rename] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.info] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.cluster] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
+		redisCommands[shared.monitor] = std::bind(&RedisProxy::debugCommand,
+			this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+			std::placeholders::_5, std::placeholders::_6);
 	}
 }
 
@@ -149,12 +233,14 @@ bool RedisProxy::getRedisCommand(const RedisObjectPtr &command)
 bool RedisProxy::handleRedisCommand(const RedisObjectPtr &command,
 	const ProxySessionPtr &session,
 	const std::vector<RedisObjectPtr> &commands,
-	const TcpConnectionPtr &conn)
+	const TcpConnectionPtr &conn,
+	const char *buf,
+	const size_t len)
 {
 	auto it = redisCommands.find(command);
 	if (it != redisCommands.end())
 	{
-		if (!it->second(command, commands, session, conn))
+		if (!it->second(command, commands, session, conn, buf, len))
 		{
 			return false;
 		}
@@ -356,6 +442,25 @@ void RedisProxy::delCallback(const std::thread::id &threadId, const int32_t sock
 	addReplyLongLong(buffer, count);
 }
 
+void RedisProxy::msetCallback(const std::thread::id &threadId, const int32_t sockfd,
+		const TcpConnectionPtr &conn, int32_t commandCount)
+{
+	auto it = threadCommandReplys.find(threadId);
+	assert(it != threadCommandReplys.end());
+	auto iter = it->second.find(sockfd);
+	assert(iter != it->second.end());
+	
+	int32_t count = 0;
+	for (auto &iterr : iter->second)
+	{
+		assert(iterr->type == REDIS_REPLY_STATUS);
+		assert(strcmp(iterr->str, "OK") == 0);
+	}
+	
+	auto buffer = conn->outputBuffer();
+	addReply(buffer, shared.ok);
+}
+
 void RedisProxy::mgetCallback(const std::thread::id &threadId, const int32_t sockfd,
 	const TcpConnectionPtr &conn, int32_t commandCount)
 {
@@ -520,13 +625,13 @@ RedisAsyncContextPtr RedisProxy::checkReply(const RedisObjectPtr &command, const
 }
 
 bool RedisProxy::debugCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-	const ProxySessionPtr &session, const TcpConnectionPtr &conn)
+	const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf, const size_t len)
 {
 	return false;
 }
 
 bool RedisProxy::selectCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-	const ProxySessionPtr &session, const TcpConnectionPtr &conn)
+	const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf, const size_t len)
 {
 	if (commands.size() > 1)
 	{
@@ -537,10 +642,52 @@ bool RedisProxy::selectCommand(const RedisObjectPtr &command, const std::vector<
 	return true;
 }
 
-bool RedisProxy::mgetCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-	const ProxySessionPtr &session, const TcpConnectionPtr &conn)
+bool RedisProxy::keysCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
+	const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf, const size_t len)
 {
-	conn->getLoop()->assertInLoopThread();
+	if (commands.size() != 1)
+	{
+		return false;
+	}
+	
+	int64_t numkeys = 0;
+	auto it = threadHiredis.find(conn->getLoop()->getThreadId());
+	assert(it != threadHiredis.end());
+
+	auto contexts = it->second->getRedisContext(
+		conn->getLoop()->getThreadId());
+	assert(!contexts.empty());
+
+	std::string cmd = command->ptr;
+	cmd += " ";
+	cmd += std::string(commands[0]->ptr, sdslen(commands[0]->ptr));
+	for (auto &iter : contexts)
+	{
+		RedisReplyPtr reply = iter->redisCommand(cmd.c_str());
+		if (reply != nullptr)
+		{
+			assert(reply->type == REDIS_REPLY_ARRAY);
+			for (int i = 0; i < reply->element.size(); i++)
+			{
+				addReplyBulkCBuffer(conn->outputBuffer(), reply->element[i]->str, sdslen(reply->element[i]->str));
+				numkeys++;
+			}
+		}
+		else
+		{
+			std::string str = it->second->setTcpClientInfo(iter->errstr, iter->ip, iter->port);
+			conn->outputBuffer()->append(str.c_str(), str.size());
+			return true;
+		}
+	}
+
+	prePendReplyLongLongWithPrefix(conn->outputBuffer(), numkeys);
+	return true;
+}
+
+bool RedisProxy::mgetCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
+	const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf, const size_t len)
+{
 	if (commands.size() < 1)
 	{
 		return false;
@@ -578,8 +725,13 @@ bool RedisProxy::mgetCommand(const RedisObjectPtr &command, const std::vector<Re
 }
 
 bool RedisProxy::dbsizeCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-	const ProxySessionPtr &session, const TcpConnectionPtr &conn)
+	const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf, const size_t len)
 {
+	if (!commands.empty())
+	{
+		return false;
+	}
+	
 	int64_t dbsize  = 0;
 	auto it = threadHiredis.find(conn->getLoop()->getThreadId());
 	assert(it != threadHiredis.end());
@@ -590,19 +742,15 @@ bool RedisProxy::dbsizeCommand(const RedisObjectPtr &command, const std::vector<
 
 	for (auto &iter : contexts)
 	{
-		RedisReplyPtr reply = iter->redisCommand("dbsize");
+		RedisReplyPtr reply = iter->redisCommand(command->ptr, sdslen(command->ptr));
 		if (reply != nullptr)
 		{
-			if (reply->type != REDIS_REPLY_INTEGER)
-			{
-				conn->outputBuffer()->append(reply->buffer, sdslen(reply->buffer));
-				return true;
-			}
+			assert (reply->type == REDIS_REPLY_INTEGER);
 			dbsize += reply->integer;
 		}
 		else
 		{
-			std::string str = it->second->setTcpClientInfo(iter->ip, iter->port);
+			std::string str = it->second->setTcpClientInfo(iter->errstr, iter->ip, iter->port);
 			conn->outputBuffer()->append(str.c_str(), str.size());
 			return true;
 		}
@@ -613,8 +761,13 @@ bool RedisProxy::dbsizeCommand(const RedisObjectPtr &command, const std::vector<
 }
 
 bool RedisProxy::flushdbCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,
-	const ProxySessionPtr &session, const TcpConnectionPtr &conn)
+	const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf, const size_t len)
 {
+	if (!commands.empty())
+	{
+		return false;
+	}
+	
 	auto it = threadHiredis.find(conn->getLoop()->getThreadId());
 	assert(it != threadHiredis.end());
 
@@ -624,18 +777,14 @@ bool RedisProxy::flushdbCommand(const RedisObjectPtr &command, const std::vector
 
 	for (auto &iter : contexts)
 	{
-		RedisReplyPtr reply = iter->redisCommand("flushdb");
+		RedisReplyPtr reply = iter->redisCommand(command->ptr, sdslen(command->ptr));
 		if (reply != nullptr)
 		{
-			if (reply->type != REDIS_REPLY_STATUS)
-			{
-				conn->outputBuffer()->append(reply->buffer, sdslen(reply->buffer));
-				return true;
-			}
+			assert(reply->type == REDIS_REPLY_STATUS);
 		}
 		else
 		{
-			std::string str = it->second->setTcpClientInfo(iter->ip, iter->port);
+			std::string str = it->second->setTcpClientInfo(iter->errstr, iter->ip, iter->port);
 			conn->outputBuffer()->append(str.c_str(), str.size());
 			return true;
 		}
