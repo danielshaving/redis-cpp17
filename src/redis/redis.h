@@ -38,12 +38,14 @@ public:
 	void loadDataFromDisk();
 	void flush();
 	
+#ifdef _LUA
 	void luaLoadLib(lua_State *lua, const char *libname, lua_CFunction luafunc);
 	static int luaRedisCallCommand(lua_State *lua);
 	static int luaRedisPCallCommand(lua_State *lua);
 	void luaLoadLibraries(lua_State *lua);
 	void luaRemoveUnsupportedFunctions(lua_State *lua);
 	void scriptingEnableGlobalsProtection(lua_State *lua);
+#endif
 	
 	bool evalCommand(const std::deque<RedisObjectPtr> &obj,
 		const SessionPtr &session, const TcpConnectionPtr &conn);
@@ -304,7 +306,9 @@ public:
 	std::string master;
 	std::string slave;
 
+#ifdef _LUA
 	lua_State *lua;
+#endif
 	int16_t port;
 	int16_t threadCount;
 	int32_t masterPort;
