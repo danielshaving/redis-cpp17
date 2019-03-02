@@ -1,13 +1,3 @@
-/* sort str key, sharding while topN version.
-
-1. read input file, if map > 10M keys, write map to 10 shard files:
-key \t value
-2. assume each shard file fits in memory, read each shard file, accumulate counts, and write to 10 count files:
-key \t value
-3. merge 10 count files using heap.
-
-Limits: each shard must fit in memory.
-*/
 #include <unistd.h>
 #include <memory>
 #include <fstream>
@@ -15,9 +5,11 @@ Limits: each shard must fit in memory.
 #include <unordered_map>
 #include <map>
 #include <vector>
+#include <set>
 #include <assert.h>
 #include <algorithm>
 
+int32_t index = 0;
 const size_t kMaxSize = 10 * 1000 * 1000;
 
 class Sharder
@@ -54,7 +46,7 @@ void shard(int32_t nbuckets, int32_t argc, char *argv[])
 	for (int32_t i = 1; i < argc; ++i)
 	{
 		std::cout << "  processing input file " << argv[i] << std::endl;
-		std::multimap<std::string, std::string> shareds;
+		std::map<std::string, std::string> shareds;
 		std::ifstream in(argv[i]);
 		while (in && !in.eof())
 		{
@@ -81,9 +73,9 @@ void shard(int32_t nbuckets, int32_t argc, char *argv[])
 
 // ======= sortShareds =======
 
-std::multimap<std::string, std::string> readShard(int32_t idx, int32_t nbuckets)
+std::map<std::string, std::string> readShard(int32_t idx, int32_t nbuckets)
 {
-	std::multimap<std::string, std::string> shareds;
+	std::map<std::string, std::string> shareds;
 
 	char buf[256];
 	snprintf(buf, sizeof buf, "shard-%05d-of-%05d", idx, nbuckets);
@@ -111,7 +103,7 @@ void sortShareds(const int32_t nbuckets)
 	for (int32_t i = 0; i < nbuckets; ++i)
 	{
 		// std::cout << "  sorting " << std::endl;
-		std::multimap<std::string, std::string> shareds;
+		std::map<std::string, std::string> shareds;
 		for (const auto &entry : readShard(i, nbuckets))
 		{
 			shareds.insert(std::make_pair(entry.first, entry.second));
@@ -162,10 +154,16 @@ public:
 	{
 		return key < rhs.key;
 	}
-
-	void outputTo(std::ostream &out) const
+	
+	void retrieve()
 	{
-		out << key << '\t' << value << '\n';
+		index += key.size() + 3 + value.size() + sizeof(int32_t)
+	}
+
+	void outputTo(std::ostream &out, int32_t index) const
+	{
+		out << key << '\t' << value << '\t' << std::to_string(index) << '\n';
+		retrieve();
 	}
 
 	std::shared_ptr<std::ifstream> in;
@@ -195,42 +193,19 @@ void merge(const int32_t nbuckets)
 	std::ofstream out("output");
 	std::make_heap(keys.begin(), keys.end());
 
-	std::multimap<std::string, std::string> outPuts;
-	int64_t cnt = 0;
-	int64_t topK = 1;
-
 	while (!keys.empty())
 	{
 		std::pop_heap(keys.begin(), keys.end());
-		//keys.back().outputTo(out);
-		outPuts.insert(std::make_pair(keys.back().key, keys.back().value));
-
-		if (++cnt >= topK)
-		{
-			keys.pop_back();
-			break;
-		}
-
+		keys.back().outputTo(out, index);
+	
 		if (keys.back().next())
 		{
 			std::push_heap(keys.begin(), keys.end());
 		}
 		else
 		{
-			cnt = 0;
 			keys.pop_back();
 		}
-	}
-
-	std::cout << "merging done size:" << outPuts.size() << std::endl;
-	cnt = 0;
-	for (auto &it : outPuts)
-	{
-		if (cnt++ >= topK)
-		{
-			break;
-		}
-		out << it.first << "\t" << it.second << "\n";
 	}
 }
 

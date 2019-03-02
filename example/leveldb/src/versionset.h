@@ -67,6 +67,9 @@ public:
 	// REQUIRES: lock is held
 	bool updateStats(const GetStats &stats);
 
+	// Return a human readable string that describes this version's contents.
+	std::string debugString() const;
+
 	// No copying allowed
 	Version(const Version&);
 	void operator=(const Version&);
@@ -197,7 +200,10 @@ public:
 
 	void appendVersion(const std::shared_ptr<Version> &v);
 	bool reuseManifest(const std::string &dscname, const std::string &dscbase);
+	// Return the number of Table files at the specified level.
 	int numLevelFiles(int level) const;
+	// Return the combined file size of all files at the specified level.
+	int64_t numLevelBytes(int level) const;
 
 	std::shared_ptr<Iterator> makeInputIterator(Compaction *c);
 

@@ -4,10 +4,12 @@
 #include "filename.h"
 #include "coding.h"
 #include "merger.h"
+#include "dbiter.h"
+#include "logging.h"
 
 const int kNumNonTableCacheFiles = 10;
 
-static int tableCacheSize(const Options &options) 
+static int tableCacheSize(const Options &options)
 {
 	// Reserve ten files or so for other uses and give the rest to TableCache.
 	return kNumNonTableCacheFiles * kNumNonTableCacheFiles;
@@ -22,7 +24,7 @@ struct DBImpl::Writer
 	bool done;
 };
 
-struct DBImpl::CompactionState 
+struct DBImpl::CompactionState
 {
 	Compaction *const compaction;
 
@@ -33,7 +35,7 @@ struct DBImpl::CompactionState
 	uint64_t smallestSnapshot;
 
 	// Files produced by compaction
-	struct Output 
+	struct Output
 	{
 		uint64_t number;
 		uint64_t fileSize;
@@ -53,12 +55,12 @@ struct DBImpl::CompactionState
 	  : compaction(c),
 	    outfile(nullptr),
 	    builder(nullptr),
-	    totalBytes(0) 
+	    totalBytes(0)
 	{
-		
+
 	}
 };
-		
+
 struct IterState
 {
 	std::shared_ptr<Version> const version;
@@ -90,29 +92,28 @@ std::shared_ptr<Iterator> DBImpl::newInternalIterator(const ReadOptions &options
 
 	std::shared_ptr<IterState> cleanup(new IterState(mem, imm, versions->current()));
 	internalIter->registerCleanup(cleanup);
-	
+
 	*seed = ++this->seed;
 	return internalIter;
 }
-									  
+
 std::shared_ptr<Iterator> DBImpl::newIterator(const ReadOptions &options)
 {
 	uint64_t latestSnapshot;
 	uint32_t seed;
 	std::shared_ptr<Iterator> iter = newInternalIterator(options, &latestSnapshot, &seed);
-	//return newDBIterator(
-	//	this, comparator, iter, latestSnapshot	, seed);
+	return newDBIterator(this, &comparator, iter, latestSnapshot, seed);
 }
 
 Options DBImpl::sanitizeOptions(const std::string &dbname,
                       	const InternalKeyComparator *icmp,
-                        const Options &src) 
+                        const Options &src)
 {
 	Options result = src;
 	result.comparator = icmp;
 	return result;
 }
-                        
+
 DBImpl::DBImpl(const Options &op, const std::string &dbname)
 	:comparator(op.comparator),
 	options(sanitizeOptions(dbname, &comparator, op)),
@@ -132,7 +133,7 @@ DBImpl::~DBImpl()
 }
 
 Status DBImpl::open()
-{	
+{
 	VersionEdit edit;
 	bool saveManifest = false;
 	Status s = recover(&edit, &saveManifest);
@@ -380,7 +381,7 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 			reporter.corruption(record.size(), Status::corruption("log record too small"));
 			continue;
 		}
-		
+
 		if (mem == nullptr)
 		{
 			mem.reset(new MemTable(comparator));
@@ -398,14 +399,14 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 		{
 			*maxSequence = lastSeq;
 		}
-		
-		if (mem->getMemoryUsage() > options.writeBufferSize) 
+
+		if (mem->getMemoryUsage() > options.writeBufferSize)
 		{
 			compactions++;
 			*saveManifest = true;
 			status = writeLevel0Table(mem, edit, nullptr);
 			mem.reset();
-			if (!status.ok()) 
+			if (!status.ok())
 			{
 				// Reflect errors immediately so that conditions like full
 				// file-systems cause the DB::Open() to fail.
@@ -414,40 +415,40 @@ Status DBImpl::recoverLogFile(uint64_t logNumber, bool lastLog,
 		}
 	}
 	printf("logNumber %d# memtable:size %d\n", logNumber, mem == nullptr ? 0 : mem->getTableSize());
-	
+
 	// See if we should keep reusing the last log file.
-	if (status.ok() && lastLog && compactions == 0) 
+	if (status.ok() && lastLog && compactions == 0)
 	{
 		 uint64_t lfileSize;
-		 
+
 		if (options.env->getFileSize(fname, &lfileSize).ok() &&
-			options.env->newAppendableFile(fname, logfile).ok()) 
+			options.env->newAppendableFile(fname, logfile).ok())
 		{
 			printf("Reusing old log %s \n", fname.c_str());
 			log.reset(new LogWriter(logfile.get(), lfileSize));
 			logfileNumber = logNumber;
-			if (mem != nullptr) 
+			if (mem != nullptr)
 			{
 				this->mem = mem;
 				mem.reset();
-			} 
-			else 
+			}
+			else
 			{
 				// mem can be nullptr if lognum exists but was empty
 				this->mem.reset(new MemTable(comparator));
 			}
 		}
 	}
-	
-	if (mem != nullptr) 
+
+	if (mem != nullptr)
 	{
 		// mem did not get reused; compact it.
-		if (status.ok()) 
+		if (status.ok())
 		{
 			*saveManifest = true;
 			status = writeLevel0Table(mem, edit, nullptr);
 		}
-	}	
+	}
 	return status;
 }
 
@@ -480,10 +481,10 @@ Status DBImpl::makeRoomForWrite(bool force)
 		{
 			// Attempt to switch to a new memtable and trigger compaction of old
    			assert(versions->getPrevLogNumber() == 0);
-   			uint64_t newLogNumber = versions->newFileNumber();	
+   			uint64_t newLogNumber = versions->newFileNumber();
    			std::shared_ptr<WritableFile> lfile;
    			s = options.env->newWritableFile(logFileName(dbname, newLogNumber), lfile);
-			if (!s.ok()) 
+			if (!s.ok())
 			{
 				// Avoid chewing through file number space in a tight loop.
 				versions->reuseFileNumber(newLogNumber);
@@ -557,30 +558,30 @@ Status DBImpl::destroyDB(const std::string &dbname, const Options &options)
 	auto env = options.env;
 	std::vector<std::string> filenames;
 	Status result = options.env->getChildren(dbname, &filenames);
-	if (!result.ok()) 
+	if (!result.ok())
 	{
 		// Ignore error in case directory does not exist
 		return Status::OK();
 	}
 
 	const std::string lockname = lockFileName(dbname);
-	if (result.ok()) 
+	if (result.ok())
 	{
 		uint64_t number;
 		FileType type;
-		for (size_t i = 0; i < filenames.size(); i++) 
+		for (size_t i = 0; i < filenames.size(); i++)
 		{
 			if (parseFileName(filenames[i], &number, &type) &&
-			  type != kDBLockFile) 
+			  type != kDBLockFile)
 			{ 	 // Lock file will be deleted at end
 				Status del = env->deleteFile(dbname + "/" + filenames[i]);
-				if (result.ok() && !del.ok()) 
+				if (result.ok() && !del.ok())
 				{
 					result = del;
 				}
 			}
 		}
-		
+
 		env->deleteFile(lockname);
 		env->deleteDir(dbname);  // Ignore error in case dir contains other files
 	}
@@ -634,7 +635,7 @@ Status DBImpl::get(const ReadOptions &opt, const std::string_view &key, std::str
 	bool haveStatUpdate = false;
 	auto current = versions->current();
 	Version::GetStats stats;
-	
+
 	LookupKey lkey(key, snapshot);
 	if (mem->get(lkey, value, &s))
 	{
@@ -650,10 +651,10 @@ Status DBImpl::get(const ReadOptions &opt, const std::string_view &key, std::str
 		haveStatUpdate = true;
 	}
 
-//	if (haveStatUpdate && current->updateStats(stats))
-//	{
-//		maybeScheduleCompaction();
-//	}
+	if (haveStatUpdate && current->updateStats(stats))
+	{
+		maybeScheduleCompaction();
+	}
 	return s;
 }
 
@@ -670,26 +671,26 @@ Status DBImpl::writeLevel0Table(const std::shared_ptr<MemTable> &mem, VersionEdi
 	Status s = buildTable(&meta, iter);
 	printf("Level-0 table #%llu: %lld bytes %s\n", (unsigned long long) meta.number,
 		(unsigned long long) meta.fileSize, s.toString().c_str());
-		
+
 	pendingOutPuts.erase(meta.number);
-	
+
 	// Note that if file_size is zero, the file has been deleted and
 	// should not be added to the manifest.
-	
+
 	int level = 0;
-	if (s.ok() && meta.fileSize > 0) 
+	if (s.ok() && meta.fileSize > 0)
 	{
 		const std::string_view minUserKey = meta.smallest.userKey();
 		const std::string_view maxUserKey = meta.largest.userKey();
-		if (base != nullptr) 
+		if (base != nullptr)
 		{
 			level = base->pickLevelForMemTableOutput(minUserKey, maxUserKey);
 		}
-		
+
 		edit->addFile(level, meta.number, meta.fileSize,
 				  meta.smallest, meta.largest);
 	}
-	
+
 	CompactionStats sta;
 	sta.micros = options.env->nowMicros() - startMicros;
 	sta.bytesWritten = meta.fileSize;
@@ -702,8 +703,8 @@ void DBImpl::maybeScheduleCompaction()
 	while (1)
 	{
 		if (imm == nullptr &&
-			 manualCompaction == nullptr)
-
+			 manualCompaction == nullptr &&
+			 !versions->needsCompaction())
 		{
 			 // No work to be done
 			break;
@@ -712,19 +713,16 @@ void DBImpl::maybeScheduleCompaction()
 		{
 			backgroundCompaction();
 		}
-	}			 
+	}
 }
 
-void DBImpl::backgroundCompaction() 
+void DBImpl::backgroundCompaction()
 {
-	if (imm != nullptr) 
+	if (imm != nullptr)
 	{
 		compactMemTable();
 		return;
 	}
-
-
-	return ;
 
 	std::shared_ptr<Compaction> c;
 	bool ismanual = (manualCompaction != nullptr);
@@ -734,11 +732,11 @@ void DBImpl::backgroundCompaction()
 		auto m = manualCompaction;
 		c = versions->compactRange(m->level, m->begin, m->end);
 		m->done = (c == nullptr);
-		if (c != nullptr) 
+		if (c != nullptr)
 		{
 			manualend = c->input(0, c->numInputFiles(0) - 1)->largest;
 		}
-		
+
 		printf("Manual compaction at level-%d from %s .. %s; will stop at %s\n",
 			m->level,
 			(m->begin ? m->begin->debugString().c_str() : "(begin)"),
@@ -754,8 +752,8 @@ void DBImpl::backgroundCompaction()
 	if (c == nullptr)
     {
 		// Nothing to do
-	} 
-	else if (!ismanual && c->isTrivialMove()) 
+	}
+	else if (!ismanual && c->isTrivialMove())
 	{
 		// Move file to next level
 		assert(c->numInputFiles(0) == 1);
@@ -764,7 +762,7 @@ void DBImpl::backgroundCompaction()
 		c->getEdit()->addFile(c->getLevel() + 1, f->number, f->fileSize,
 		               f->smallest, f->largest);
 		status = versions->logAndApply(c->getEdit());
-		if (!status.ok()) 
+		if (!status.ok())
 		{
 			//RecordBackgroundError(status);
 		}
@@ -776,16 +774,16 @@ void DBImpl::backgroundCompaction()
 			static_cast<unsigned long long>(f->fileSize),
 			status.toString().c_str(),
 			versions->levelSummary(&tmp));
-	} 
-	else 
+	}
+	else
 	{
 		std::shared_ptr<CompactionState> compact(new CompactionState(c.get()));
 		status = doCompactionWork(compact.get());
-		if (!status.ok()) 
+		if (!status.ok())
 		{
 			//RecordBackgroundError(status);
 		}
-		
+
 		cleanupCompaction(compact.get());
 		c->releaseInputs();
 		deleteObsoleteFiles();
@@ -1113,7 +1111,7 @@ Status DBImpl::installCompactionResults(CompactionState *compact)
 	return versions->logAndApply(compact->compaction->getEdit());
 }
 
-void DBImpl::compactMemTable() 
+void DBImpl::compactMemTable()
 {
 	assert(imm != nullptr);
 	// Save the contents of the memtable as a new Table
@@ -1122,19 +1120,19 @@ void DBImpl::compactMemTable()
 	Status s = writeLevel0Table(imm, &edit, base.get());
 
 	// Replace immutable memtable with the generated Table
-	if (s.ok()) 
+	if (s.ok())
 	{
 		edit.setPrevLogNumber(0);
 		edit.setLogNumber(logfileNumber);  // Earlier logs no longer needed
 		s = versions->logAndApply(&edit);
 	}
 
-	if (s.ok()) 
+	if (s.ok())
 	{
 		imm.reset();
 		deleteObsoleteFiles();
 	}
-	else 
+	else
 	{
 
 		//RecordBackgroundError(s);
@@ -1146,7 +1144,7 @@ Status DBImpl::buildTable(FileMetaData *meta, const std::shared_ptr<Iterator> &i
 	Status s;
 	meta->fileSize = 0;
 	iter->seekToFirst();
-	
+
 	std::string fname = tableFileName(dbname, meta->number);
 	std::shared_ptr<WritableFile> file;
 	s = options.env->newWritableFile(fname, file);
@@ -1154,7 +1152,7 @@ Status DBImpl::buildTable(FileMetaData *meta, const std::shared_ptr<Iterator> &i
 	{
 		return s;
 	}
-	
+
 	std::shared_ptr<TableBuilder> builder(new TableBuilder(options, file));
 	meta->smallest.decodeFrom(iter->key());
 	 for (; iter->valid(); iter->next())
@@ -1163,27 +1161,27 @@ Status DBImpl::buildTable(FileMetaData *meta, const std::shared_ptr<Iterator> &i
 		meta->largest.decodeFrom(key);
 		builder->add(key, iter->value());
 	}
-	
+
 	// Finish and check for builder errors
 	s = builder->finish();
-	if (s.ok()) 
+	if (s.ok())
 	{
 		meta->fileSize = builder->fileSize();
 		assert(meta->fileSize > 0);
 	}
 
 	// Finish and check for file errors
-	if (s.ok()) 
+	if (s.ok())
 	{
 		s = file->sync();
 	}
 
-	if (s.ok()) 
-	{	
+	if (s.ok())
+	{
 		s = file->close();
 	}
 
-	if (s.ok()) 
+	if (s.ok())
 	{
 		// Verify that the table is usable
 		std::shared_ptr<Iterator> it = tableCache->newIterator(ReadOptions(),
@@ -1193,30 +1191,125 @@ Status DBImpl::buildTable(FileMetaData *meta, const std::shared_ptr<Iterator> &i
 	}
 
 	// Check for input iterator errors
-	if (!iter->status().ok()) 
+	if (!iter->status().ok())
 	{
 		s = iter->status();
 	}
 
-	if (s.ok() && meta->fileSize > 0) 
+	if (s.ok() && meta->fileSize > 0)
 	{
 		// Keep it
 	}
-	else 
+	else
 	{
 		options.env->deleteFile(fname);
 	}
 	return s;
 }
 
+std::shared_ptr<Iterator> DBImpl::testNewInternalIterator()
+{
+	uint64_t ignored;
+	uint32_t seed;
+	return newInternalIterator(ReadOptions(), &ignored, &seed);
+}
+
 Status DBImpl::testCompactMemTable()
 {
 	// nullptr batch means just wait for earlier writes to be done
 	Status s = write(WriteOptions(), nullptr);
-	if (s.ok()) 
+	if (s.ok())
 	{
-		
+
 	}
 	return s;
 }
 
+void DBImpl::getApproximateSizes(const Range *range, int n, uint64_t* sizes)
+{
+
+}
+
+bool DBImpl::getProperty(const std::string_view &property, std::string *value)
+{
+    value->clear();
+    std::string_view in = property;
+    std::string_view prefix("leveldb.");
+    if (!startsWith(in, prefix))
+    {
+        return false;
+    }
+
+    in.remove_prefix(prefix.size());
+    if (startsWith(in, "num-files-at-level"))
+    {
+        in.remove_prefix(strlen("num-files-at-level"));
+        uint64_t level;
+        bool ok = consumeDecimalNumber(&in, &level) && in.empty();
+        if (!ok || level >= kNumLevels)
+        {
+            return false;
+        }
+        else
+        {
+            char buf[100];
+            snprintf(buf, sizeof(buf), "%d",
+                     versions->numLevelFiles(static_cast<int>(level)));
+            *value = buf;
+            return true;
+        }
+    }
+    else if (in == "status")
+    {
+		char buf[200];
+		snprintf(buf, sizeof(buf),
+				 "                               Compactions\n"
+				 "Level  Files Size(MB) Time(sec) Read(MB) Write(MB)\n"
+				 "--------------------------------------------------\n"
+		);
+
+		value->append(buf);
+		for (int level = 0; level < kNumLevels; level++)
+		{
+			int files = versions->numLevelFiles(level);
+			if (stats[level].micros > 0 || files > 0)
+			{
+				snprintf(
+						buf, sizeof(buf),
+						"%3d %8d %8.0f %9.0f %8.0f %9.0f\n",
+						level,
+						files,
+						versions->numLevelBytes(level) / 1048576.0,
+						stats[level].micros / 1e6,
+						stats[level].bytesRead / 1048576.0,
+						stats[level].bytesWritten / 1048576.0);
+				value->append(buf);
+			}
+		}
+		return true;
+    }
+    else if (in =="sstables")
+	{
+		*value = versions->current()->debugString();
+	}
+    else if (in == "approximate-memory-usage")
+    {
+		size_t totalUsage = tableCache->getCache()->totalCharge();
+		if (mem)
+		{
+			totalUsage += mem->getMemoryUsage();
+		}
+
+		if (imm)
+		{
+			totalUsage += imm->getMemoryUsage();
+		}
+
+		char buf[50];
+		snprintf(buf, sizeof(buf), "%llu",
+				 static_cast<unsigned long long>(totalUsage));
+		value->append(buf);
+		return true;
+    }
+    return false;
+}

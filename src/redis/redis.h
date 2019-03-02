@@ -40,15 +40,21 @@ public:
 	
 #ifdef _LUA
 	void luaLoadLib(lua_State *lua, const char *libname, lua_CFunction luafunc);
-	static int luaRedisCallCommand(lua_State *lua);
-	static int luaRedisPCallCommand(lua_State *lua);
+	static int32_t luaRedisCallCommand(lua_State *lua);
+	static int32_t luaRedisPCallCommand(lua_State *lua);
+	int32_t luaRedisGenericCommand(lua_State *lua, int32_t raise);
 	void luaLoadLibraries(lua_State *lua);
 	void luaRemoveUnsupportedFunctions(lua_State *lua);
 	void scriptingEnableGlobalsProtection(lua_State *lua);
-#endif
-	
+	int32_t luaCreateFunction(Buffer *buffer, lua_State *lua,
+		char *funcname, const RedisObjectPtr &body);
+	void luaSetGlobalArray(lua_State *lua, char *var,
+		const std::deque<RedisObjectPtr> &elev, int32_t start, int32_t elec);
 	bool evalCommand(const std::deque<RedisObjectPtr> &obj,
 		const SessionPtr &session, const TcpConnectionPtr &conn);
+	void luaReplyToRedisReply(Buffer *buffer, lua_State *lua);
+	void luaPushError(lua_State *lua, char *error);
+#endif
 	bool saveCommand(const std::deque<RedisObjectPtr> &obj,
 		const SessionPtr &session, const TcpConnectionPtr &conn);
 	bool pingCommand(const std::deque<RedisObjectPtr> &obj,
@@ -246,6 +252,7 @@ private:
 		std::unordered_map<int32_t, TcpConnectionPtr>, Hash, Equal> pubSubs;
 	std::unordered_map<int32_t, TcpConnectionPtr> monitorConns;
 	std::unordered_map<RedisObjectPtr, CommandFunc, Hash, Equal> handlerCommands;
+	std::unordered_map<RedisObjectPtr, RedisObjectPtr, Hash, Equal> luaScipts;
 
 	Command checkCommands;
 	Command stopReplis;

@@ -33,7 +33,7 @@ void Item::output(Buffer *out, bool needCas) const
 {
 	out->append("VALUE ");
 	out->append(data, keyLen);
-	xLogStream buf;
+	LogStream buf;
 	buf << ' ' << getFlags() << ' ' << valueLen - 2;
 	if (needCas)
 	{
@@ -581,8 +581,8 @@ bool MemcacheServer::storeItem(const ItemPtr &item, Item::UpdatePolicy policy, b
 
 ConstItemPtr MemcacheServer::getItem(const ConstItemPtr &key) const
 {
-	std::mutex & mutex = shards[key->getHash() % kShards].mutex;
-	const ItemMap& items = shards[key->getHash() % kShards].items;
+	std::mutex &mutex = shards[key->getHash() % kShards].mutex;
+	const ItemMap &items = shards[key->getHash() % kShards].items;
 	std::unique_lock <std::mutex> lck(mutex);
 	ItemMap::const_iterator it = items.find(key);
 	return it != items.end() ? *it : ConstItemPtr();
@@ -590,8 +590,8 @@ ConstItemPtr MemcacheServer::getItem(const ConstItemPtr &key) const
 
 bool MemcacheServer::deleteItem(const ConstItemPtr &key)
 {
-	std::mutex & mutex = shards[key->getHash() % kShards].mutex;
-	ItemMap& items = shards[key->getHash() % kShards].items;
+	std::mutex &mutex = shards[key->getHash() % kShards].mutex;
+	ItemMap &items = shards[key->getHash() % kShards].items;
 	std::unique_lock <std::mutex> lck(mutex);
 	return items.erase(key) == 1;
 }

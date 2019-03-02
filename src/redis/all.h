@@ -44,6 +44,7 @@
 #include <experimental/filesystem>
 #include <ratio>
 #include <chrono>
+#include <random>
 #ifdef _LUA
 #include <lua.hpp>
 #endif
@@ -114,9 +115,19 @@ typedef SSIZE_T ssize_t;
 #include <sys/utsname.h>
 #endif
 
+#define LUA_TNONE		(-1)
+
+#define LUA_TNIL		0
+#define LUA_TBOOLEAN		1
+#define LUA_TLIGHTUSERDATA	2
+#define LUA_TNUMBER		3
+#define LUA_TSTRING		4
+#define LUA_TTABLE		5
+#define LUA_TFUNCTION		6
+#define LUA_TUSERDATA		7
+#define LUA_TTHREAD		8
+
 #define REDIS_CONNECT_RETRIES  10
-
-
 /* Flag specific to the async API which means that the context should be clean
  * up as soon as possible. */
 #define REDIS_FREEING	10

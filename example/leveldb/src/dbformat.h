@@ -134,11 +134,13 @@ public:
 	{
 	
 	}
+
 	virtual const char *name() const { return "leveldb.BytewiseComparator"; }
 	virtual int compare(const std::string_view &a, const std::string_view &b) const
 	{
 		return a.compare(b);
 	}
+
 	virtual void findShortestSeparator(std::string *start, const std::string_view &limit) const;
 	virtual void findShortSuccessor(std::string *key) const;
 };

@@ -361,11 +361,7 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
 
 	if (!channel->isWriting() && writeBuffer.readableBytes() == 0)
 	{
-#ifdef _WIN64
-		nwrote = ::send(channel->getfd(), (const char *)data, len, 0);
-#else
-		nwrote = ::write(channel->getfd(), data, len);
-#endif
+		Socket::write(channel->getfd(), data, len);
 		if (nwrote >= 0)
 		{
 			remaining = len - nwrote;

@@ -511,6 +511,34 @@ void Version::getOverlappingInputs(
 	}
 }
 
+std::string Version::debugString() const
+{
+	std::string r;
+	for (int level = 0; level < kNumLevels; level++)
+	{
+		// E.g.,
+		//   --- level 1 ---
+		//   17:123['a' .. 'd']
+		//   20:43['e' .. 'g']
+		r.append("--- level ");
+		appendNumberTo(&r, level);
+		r.append(" ---\n");
+		const std::vector<std::shared_ptr<FileMetaData>> &f = files[level];
+		for (size_t i = 0; i < f.size(); i++) {
+			r.push_back(' ');
+			appendNumberTo(&r, f[i]->number);
+			r.push_back(':');
+			appendNumberTo(&r, f[i]->fileSize);
+			r.append("[");
+			r.append(f[i]->smallest.debugString());
+			r.append(" .. ");
+			r.append(f[i]->largest.debugString());
+			r.append("]\n");
+		}
+	}
+	return r;
+}
+
 int Version::pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
 	const std::string_view &largestUserKey)
 {
@@ -866,6 +894,13 @@ void VersionSet::markFileNumberUsed(uint64_t number)
 	}
 }
 
+int64_t VersionSet::numLevelBytes(int level) const
+{
+	assert(level >= 0);
+	assert(level < kNumLevels);
+	return totalFileSize(current()->files[level]);
+}
+
 int VersionSet::numLevelFiles(int level) const
 {
 	assert(level >= 0);
@@ -930,6 +965,10 @@ Status VersionSet::logAndApply(VersionEdit *edit)
 			descriptorLog.reset(new LogWriter(descriptorFile.get()));
 			//s = WriteSnapshot(descriptor_log_);
 		}
+		else
+		{
+
+		}
 	}
 
 	// Write new record to MANIFEST log
@@ -949,6 +988,8 @@ Status VersionSet::logAndApply(VersionEdit *edit)
 		}
 	}
 
+	descriptorLog.reset();
+	descriptorFile.reset();
 	// If we just created a new descriptor file, install it by writing a
 	// new CURRENT file that points to it.
 	if (s.ok() && !newManifestFile.empty())

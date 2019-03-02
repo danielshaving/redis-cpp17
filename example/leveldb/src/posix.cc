@@ -93,7 +93,7 @@ Status PosixWritableFile::syncDirIfManifest()
 		}
 		else
 		{
-			if (fsync(fd) < 0)
+			if (::fsync(fd) < 0)
 			{
 				s = posixError(dir, errno);
 			}
@@ -112,14 +112,19 @@ Status PosixWritableFile::sync()
 		return s;
 	}
 
+#ifdef __APPLE__
 	s = flushBuffered();
-	if (s.ok())
+	if (s.ok() && ::fsync(fd) != 0)
 	{
-		if (::fsync(fd) != 0)
-		{
-			s = posixError(filename, errno);
-		}
+		s = posixError(filename, errno);
 	}
+#else
+	s = flushBuffered();
+	if (s.ok() && ::fdatasync(fd) != 0)
+	{
+		s = posixError(filename, errno);
+	}
+#endif
 	return s;
 }
 

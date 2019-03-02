@@ -50,8 +50,7 @@ void onMessage(const HttpRequest &req, HttpResponse *resp)
 		}
 		else if (req.getPath() == "/test.txt")
 		{
-			std::string filename = "attachment;filename=";
-			filename += "test.txt";
+			std::string filename = "attachment;filename=test.txt";
 			resp->setStatusCode(HttpResponse::k200k);
 			resp->setStatusMessage("OK");
 			resp->setContentType("text/plain");

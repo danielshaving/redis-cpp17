@@ -676,7 +676,8 @@ int32_t RedisReader::redisReaderGetReply(RedisReplyPtr &reply)
 
 RedisAsyncCallback::RedisAsyncCallback()
 	:data(nullptr),
-	len(0)
+	len(0),
+	type(false)
 {
 
 }
@@ -685,7 +686,14 @@ RedisAsyncCallback::~RedisAsyncCallback()
 {
 	if (data != nullptr)
 	{
-		zfree(data);
+		if (type)
+		{
+			sdsfree(data);
+		}
+		else
+		{
+			zfree(data);
+		}
 	}
 }
 
@@ -2030,6 +2038,30 @@ uint32_t Hiredis::keyHashSlot(char *key, int32_t keylen)
 	return crc16(key + s + 1, e - s - 1) & 0x3FFF;
 }
 
+int32_t RedisAsyncContext::redisAsyncCommandArgv(const RedisCallbackFn &fn,
+		const std::any &privdata, int32_t argc, const char **argv, const int32_t *argvlen)
+{
+	sds cmd;
+	int32_t len;
+	int32_t status;
+	len = redisFormatSdsCommandArgv(&cmd, argc, argv, argvlen);
+	RedisCallback cb;
+	cb.fn = std::move(fn);
+	cb.privdata = std::move(privdata);
+
+	RedisAsyncCallbackPtr asyncCallback(new RedisAsyncCallback());
+	asyncCallback->data = cmd;
+	asyncCallback->len = len;
+	asyncCallback->cb = std::move(cb);
+	asyncCallback->type = true;
+
+	TcpConnectionPtr conn = weakRedisConn.lock();
+	assert(conn != nullptr);
+	conn->getLoop()->runInLoop(std::bind(&RedisAsyncContext::__redisAsyncCommand,
+		shared_from_this(), asyncCallback));
+	return REDIS_OK;
+}
+
 RedisAsyncContextPtr Hiredis::getRedisAsyncContext(const RedisObjectPtr &command,
 		const std::thread::id &threadId, int32_t sockfd)
 {
@@ -2126,6 +2158,16 @@ RedisAsyncContextPtr Hiredis::getRedisAsyncContext(const std::thread::id &thread
 	}
 }
 
+RedisContextPtr Hiredis::getRedisContext(const int32_t sockfd)
+{
+	std::unique_lock<std::mutex> lk(mutex);
+	if (redisContexts.empty())
+	{
+		return nullptr;
+	}
+	return redisContexts[(redisContexts.size() - 1) % sockfd];
+}
+
 std::vector<RedisContextPtr> Hiredis::getRedisContext(const std::thread::id &threadId)
 {
 	std::unique_lock<std::mutex> lk(mutex);
@@ -2159,13 +2201,7 @@ RedisAsyncContextPtr Hiredis::getRedisAsyncContext(int32_t sockfd)
 		return nullptr;
 	}
 	
-	int32_t index = (tcpClients.size() % sockfd) - 1;
-	if (index < 0 )
-	{
-		index = 0;
-	}
-	
-	const TcpConnectionPtr &conn = tcpClients[index]->getConnection();
+	const TcpConnectionPtr &conn = tcpClients[(tcpClients.size() - 1) % sockfd]->getConnection();
 	if (conn == nullptr)
 	{
 		return nullptr;
@@ -2651,104 +2687,103 @@ TcpConnectionPtr Hiredis::redirectySlot(int32_t sockfd, EventLoop *loop, const c
 void Hiredis::redisContextTimer()
 {
 	loop->assertInLoopThread();
-	std::map<int16_t, std::string> ports;
 	
+	std::unique_lock<std::mutex> lk(mutex);
+	auto it = threadRedisContexts.find(loop->getThreadId());
+	assert(it != threadRedisContexts.end());
+
+	for (auto &iter : it->second)
 	{
-		std::unique_lock<std::mutex> lk(mutex);
-		auto it = threadRedisContexts.find(loop->getThreadId());
-		assert(it != threadRedisContexts.end());
-
-		for (auto &iter : it->second)
+		RedisReplyPtr reply = iter->redisCommand("PING");
+		if (reply == nullptr ||
+				!(strcmp(reply->str, "PONG") == 0)
+				|| reply->type != REDIS_REPLY_STATUS)
 		{
-			RedisReplyPtr reply = iter->redisCommand("PING");
-			if (reply != nullptr)
-			{
-				assert(strcmp(reply->str, "PONG") == 0);
-				assert(reply->type == REDIS_REPLY_STATUS);
-			}
-			else
-			{
-				iter = redisConnect(iter->ip, iter->port);
-			}
+			iter = redisConnect(iter->ip, iter->port);
+		}
 
-			clusterNodes.clear();
-			reply = iter->redisCommand("cluster nodes");
-			if (reply != nullptr && reply->type != REDIS_REPLY_ERROR)
+		if (!proxyMode)
+		{
+			return ;
+		}
+
+		clusterNodes.clear();
+		reply = iter->redisCommand("cluster nodes");
+		if (reply != nullptr && reply->type != REDIS_REPLY_ERROR)
+		{
+			int32_t index = 0;
+			while (index < sdslen(reply->str))
 			{
-				int32_t index = 0;
-				while (index < sdslen(reply->str))
+				std::shared_ptr<ClusterNode> node(new ClusterNode());
+				const char *id = strchr(reply->str + index, ' ');
+				assert(id != nullptr);
+
+				node->id = std::string(reply->str + index, id - (reply->str + index));
+				const char *ip = strchr(id + 1, ':');
+				assert(ip != nullptr);
+
+				node->ip = std::string(id + 1, ip - id - 1);
+				const char *port = strchr(ip + 1, '@');
+				assert(port != nullptr);
+
+				int16_t p = atoi(ip + 1);
+				node->port = p;
+				const char *p1 = strchr(port + 1, ' ');
+				assert(p1 != nullptr);
+
+				const char *myself = strchr(p1 + 1, ' ');
+				std::string m = std::string(p1 + 1, myself - p1 - 1);
+				if (m == "myself,master" || m == "master")
 				{
-					std::shared_ptr<ClusterNode> node(new ClusterNode());
-					const char *id = strchr(reply->str + index, ' ');
-					assert(id != nullptr);
-
-					node->id = std::string(reply->str + index, id - (reply->str + index));
-					const char *ip = strchr(id + 1, ':');
-					assert(ip != nullptr);
-
-					node->ip = std::string(id + 1, ip - id - 1);
-					const char *port = strchr(ip + 1, '@');
-					assert(port != nullptr);
-
-					int16_t p = atoi(ip + 1);
-					node->port = p;
-					const char *p1 = strchr(port + 1, ' ');
+					node->master = "master";
+					const char *p1 = strchr(myself + 1, ' ');
 					assert(p1 != nullptr);
+					const char *p2 = strchr(p1 + 1, ' ');
+					assert(p2 != nullptr);
+					const char *p3 = strchr(p2 + 1, ' ');
+					assert(p3 != nullptr);
+					const char *p4 = strchr(p3 + 1, ' ');
+					assert(p4 != nullptr);
+					const char *p5 = strchr(p4 + 1, ' ');
+					assert(p5 != nullptr);
+					std::string str = std::string(p4 + 1, p5 - p4 - 1);
 
-					const char *myself = strchr(p1 + 1, ' ');
-					std::string m = std::string(p1 + 1, myself - p1 - 1);
-					if (m == "myself,master" || m == "master")
+					if (str == "connected")
 					{
-						node->master = "master";
-						const char *p1 = strchr(myself + 1, ' ');
-						assert(p1 != nullptr);
-						const char *p2 = strchr(p1 + 1, ' ');
-						assert(p2 != nullptr);
-						const char *p3 = strchr(p2 + 1, ' ');
-						assert(p3 != nullptr);
-						const char *p4 = strchr(p3 + 1, ' ');
-						assert(p4 != nullptr);
-						const char *p5 = strchr(p4 + 1, ' ');
-						assert(p5 != nullptr);
-						std::string str = std::string(p4 + 1, p5 - p4 - 1);
-
-						if (str == "connected")
-						{
-							node->status = 1;
-						}
-						else
-						{
-							node->status = 0;
-						}
-
-						int16_t startSlot = atoi(p5 + 1);
-						node->startSlot = startSlot;
-						const char *p6 = strchr(p5 + 1, '-');
-						assert(p6 != nullptr);
-						const char *p7 = strchr(p6 + 1, '\n');
-						assert(p7 != nullptr);
-						int16_t endSlot = atoi(p6 + 1);
-						node->endSlot = endSlot;
-						index = p7 + 1 - reply->str;
+						node->status = 1;
 					}
 					else
 					{
-						node->slave = "slave";
-						const char *p1 = strchr(myself + 1, ' ');
-						assert(p1 != nullptr);
-						std::string master = std::string(myself + 1, p1 - myself - 1);
-						const char *p2 = strchr(p1 + 1, ' ');
-						assert(p2 != nullptr);
-						const char *p3 = strchr(p2 + 1, ' ');
-						assert(p3 != nullptr);
-						const char *p4 = strchr(p3 + 1, ' ');
-						assert(p4 != nullptr);
-						const char *p5 = strchr(p4 + 1, '\n');
-						assert(p5 != nullptr);
-						index = p5 + 1 - reply->str;
+						node->status = 0;
 					}
-					clusterNodes.push_back(node);
+
+					int16_t startSlot = atoi(p5 + 1);
+					node->startSlot = startSlot;
+					const char *p6 = strchr(p5 + 1, '-');
+					assert(p6 != nullptr);
+					const char *p7 = strchr(p6 + 1, '\n');
+					assert(p7 != nullptr);
+					int16_t endSlot = atoi(p6 + 1);
+					node->endSlot = endSlot;
+					index = p7 + 1 - reply->str;
 				}
+				else
+				{
+					node->slave = "slave";
+					const char *p1 = strchr(myself + 1, ' ');
+					assert(p1 != nullptr);
+					std::string master = std::string(myself + 1, p1 - myself - 1);
+					const char *p2 = strchr(p1 + 1, ' ');
+					assert(p2 != nullptr);
+					const char *p3 = strchr(p2 + 1, ' ');
+					assert(p3 != nullptr);
+					const char *p4 = strchr(p3 + 1, ' ');
+					assert(p4 != nullptr);
+					const char *p5 = strchr(p4 + 1, '\n');
+					assert(p5 != nullptr);
+					index = p5 + 1 - reply->str;
+				}
+				clusterNodes.push_back(node);
 			}
 		}
 	
@@ -2770,14 +2805,14 @@ void Hiredis::redisContextTimer()
 
 					if (!mark)
 					{
-						ports[it->port] = it->ip;
+						consul[it->port] = it->ip;
 					}
 				}
 			}
 		}
 	}
 
-	for (auto &it : ports)
+	for (auto &it : consul)
 	{
 		start(loop, 0, it.second.c_str(), it.first);
 	}

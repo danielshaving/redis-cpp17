@@ -1088,17 +1088,17 @@ void sha1hex(char *digest, char *script, size_t len)
 {
     SHA1_CTX ctx;
     unsigned char hash[20];
-    char *cset = "0123456789abcdef";
+    const char *cset = "0123456789abcdef";
     int j;
 
     SHA1Init(&ctx);
-    SHA1Update(&ctx,(unsigned char*)script,len);
-    SHA1Final(hash,&ctx);
+    SHA1Update(&ctx, (unsigned char*)script, len);
+    SHA1Final(hash, &ctx);
 
     for (j = 0; j < 20; j++) 
 	{
-        digest[j*2] = cset[((hash[j]&0xF0)>>4)];
-        digest[j*2+1] = cset[(hash[j]&0xF)];
+        digest[j * 2] = cset[((hash[j]&0xF0)>>4)];
+        digest[j * 2+1] = cset[(hash[j]&0xF)];
     }
     digest[40] = '\0';
 }

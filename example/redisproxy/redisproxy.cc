@@ -98,10 +98,7 @@ void RedisProxy::initRedisTimer()
 	{
 		auto it = threadHiredis.find(pools[i]->getThreadId());
 		assert(it != threadHiredis.end());
-		if (clusterEnabled)
-		{
-			pools[i]->runAfter(1.0, true, std::bind(&Hiredis::redisContextTimer, it->second.get()));
-		}
+		pools[i]->runAfter(1.0, true, std::bind(&Hiredis::redisContextTimer, it->second.get()));
 	}
 }
 
@@ -335,12 +332,13 @@ void RedisProxy::proxyCallback(const RedisAsyncContextPtr &c,
 	RedisCluster proxy = std::any_cast<RedisCluster>(privdata);
 
 	int64_t proxyCount = proxy.proxyCount;
-	int32_t commandCount = proxy.commandCount;
+	int64_t commandCount = proxy.commandCount;
 	RedisObjectPtr command = proxy.command;
 	WeakTcpConnectionPtr weakConn = proxy.conn;
 	TcpConnectionPtr conn = weakConn.lock();
 	if (conn == nullptr)
 	{	
+		LOG_WARN << "proxyCallback client disconnect err: ";
 		return;
 	}
 
@@ -602,26 +600,26 @@ RedisAsyncContextPtr RedisProxy::checkReply(const RedisObjectPtr &command, const
 	auto it = threadHiredis.find(conn->getLoop()->getThreadId());
 	assert(it != threadHiredis.end());
 
-	RedisAsyncContextPtr redis = nullptr;
+	RedisAsyncContextPtr redisAsync = nullptr;
 	if (clusterEnabled)
 	{
-		redis = it->second->getRedisAsyncContext(command,
+		redisAsync = it->second->getRedisAsyncContext(command,
 				conn->getLoop()->getThreadId(), conn->getSockfd());
 	}
 	else
 	{
-		redis = it->second->getRedisAsyncContext(
+		redisAsync = it->second->getRedisAsyncContext(
 				conn->getLoop()->getThreadId(), conn->getSockfd());
 	}
 
-	if (redis == nullptr)
+	if (redisAsync == nullptr)
 	{
 		clearProxy(conn->getLoop()->getThreadId(), conn->getSockfd());
 		std::string reply = it->second->getTcpClientInfo(
 			conn->getLoop()->getThreadId(), conn->getSockfd());
 		conn->sendPipe(reply.c_str(), reply.size());
 	}
-	return redis;
+	return redisAsync;
 }
 
 bool RedisProxy::debugCommand(const RedisObjectPtr &command, const std::vector<RedisObjectPtr> &commands,

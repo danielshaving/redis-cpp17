@@ -26,4 +26,7 @@ Status readFileToString(PosixEnv *env, const std::string &fname, std::string *da
 
 Status writeStringToFileSync(PosixEnv *env, const std::string &data, const std::string &fname);
 
+// Return a human-readable version of "value".
+// Escapes any non-printable characters found in "value".
 std::string escapeString(const std::string &value);
+

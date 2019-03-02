@@ -39,6 +39,8 @@ public:
 				 const std::string_view &,  const std::string_view &)> &&callback);
 	  Status findTable(uint64_t fileNumber, uint64_t fileSize,
 			  std::shared_ptr<LRUHandle> &handle);
+	std::shared_ptr<ShardedLRUCache> getCache() { return cache; }
+
 private:
 	TableCache(const TableCache&) = delete;
 	void operator=(const TableCache&) = delete;
