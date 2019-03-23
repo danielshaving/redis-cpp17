@@ -1,199 +1,93 @@
 #pragma once
+
 #include "all.h"
+#include "buffer.h"
 
-class HttpRequest
-{
+class HttpResponse;
+class HttpRequest {
 public:
-	HttpRequest()
-		: method(kInvalid),
-		version(kUnknown)
-	{
-	}
+    HttpRequest()
+            : method(kInvalid),
+              version(kUnknown) {
+    }
 
-	enum Method
-	{
-		kInvalid, kGet, kPost, kHead, kPut, kDelete, kContent
-	};
-	enum Version
-	{
-		kUnknown, kHttp10, kHttp11
-	};
+    enum Method {
+        kInvalid, kGet, kPost, kHead, kPut, kDelete, kContent
+    };
 
-	void setVersion(Version v)
-	{
-		version = v;
-	}
-	Version getVersion()const
-	{
-		return version;
-	}
+    enum Version {
+        kUnknown, kHttp10, kHttp11
+    };
 
-	void setMethod()
-	{
-		method = kContent;
-	}
+    void setVersion(Version v) {
+        version = v;
+    }
 
-	bool setMethod(const char *start, const char *end)
-	{
-		assert(method == kInvalid);
-		std::string m(start, end);
-		if (m == "GET")
-		{
-			method = kGet;
-		}
-		else if (m == "POST")
-		{
-			method = kPost;
-		}
-		else if (m == "HEAD")
-		{
-			method = kHead;
-		}
-		else if (m == "PUT")
-		{
-			method = kPut;
-		}
-		else if (m == "DELETE")
-		{
-			method = kDelete;
-		}
-		else
-		{
-			method = kInvalid;
-		}
-		return method != kInvalid;
-	}
+    Version getVersion() const {
+        return version;
+    }
 
-	Method getMethod()const
-	{
-		return method;
-	}
+    void setMethod(Method method) {
+    	this->method = method;
+    }
+    void setMethod() ;
 
-	const char *methodString()const
-	{
-		const char *result = "UNKNOWN";
-		switch (method)
-		{
-		case kGet:
-		{
-			result = "GET";
-			break;
-		}
-		case kPost:
-		{
-			result = "POST";
-			break;
-		}
-		case kHead:
-		{
-			result = "HEAD";
-			break;
-		}
-		case kPut:
-		{
-			result = "PUT";
-			break;
-		}
-		case kDelete:
-		{
-			result = "DELETE";
-			break;
-		}
-		default:
-			break;
+    bool setMethod(const char *start, const char *end);
 
-		}
-		return result;
-	}
+    Method getMethod() const {
+        return method;
+    }
 
-	const std::string &getPath() const
-	{
-		return path;
-	}
+    const char *methodString() const;
 
-	void setPath(const char *start, const char *end)
-	{
-		path.assign(start, end);
-	}
+    const std::string &getPath() const;
 
-	void setQuery(const char *start, const char *end)
-	{
-		query.assign(start, end);
-	}
+    void setPath(const char *start, const char *end);
 
-	const std::string &getQuery()const
-	{
-		return query;
-	}
+    void setQuery(const std::string &query) {
+    	this->query = query;
+    }
 
-	void setReceiveTime(int64_t t)
-	{
-		receiveTime = t;
-	}
+    void setBody(const std::string &body) {
+    	this->body = body;
+    }
 
-	void addContent(const char *start, const char *colon, const char *end)
-	{
-		std::string field(start, colon);
-		++colon;
-		while (colon < end && isspace(*colon))
-		{
-			++colon;
-		}
-		std::string value(colon, end);
-		while (!value.empty() && isspace(value[value.size() - 1]))
-		{
-			value.resize(value.size() - 1);
-		}
-		contentLength = atoi(value.c_str());
-	}
-	void addHeader(const char *start, const char *colon, const char *end)
-	{
-		std::string field(start, colon);
-		++colon;
-		while (colon < end && isspace(*colon))
-		{
-			++colon;
-		}
+    void setQuery(const char *start, const char *end);
 
-		std::string value(colon, end);
-		while (!value.empty() && isspace(value[value.size() - 1]))
-		{
-			value.resize(value.size() - 1);
-		}
-		headers[field] = value;
-	}
+    const std::string &getQuery() const;
 
-	std::string getHeader(const std::string& field) const
-	{
-		std::string result;
-		auto it = headers.find(field);
-		if (it != headers.end())
-		{
-			result = it->second;
-		}
-		return result;
-	}
+    void setReceiveTime(int64_t t);
 
-	const std::map<std::string, std::string> &getHeaders() const
-	{
-		return headers;
-	}
+    void addContent(const char *start, const char *colon, const char *end);
 
-	void swap(HttpRequest& that)
-	{
-		std::swap(method, that.method);
-		path.swap(that.path);
-		query.swap(that.query);
-		headers.swap(that.headers);
-	}
+    void addHeader(const char *start, const char *colon, const char *end);
 
+    void addHeader(const std::string &key, const std::string &value);
+
+    std::string getHeader(const std::string &field) const;
+
+    const std::map <std::string, std::string> &getHeaders() const;
+
+    void swap(HttpRequest &that);
+
+    void appendToBuffer(Buffer *output) const;
+
+    void setIndex(int64_t idx) {
+    	index = idx;
+    }
+
+    int64_t getIndex() {
+    	return index;
+    }
 private:
-	Method method;
-	Version version;
-	std::string path;
-	std::string query;
-	int32_t queryLength = -1;
-	std::map<std::string, std::string> headers;
-	int64_t receiveTime = -1;
-	int32_t contentLength = -1;
+    Method method;
+    Version version;
+    std::string path;
+    std::string query;
+    std::string body;
+    int32_t queryLength;
+    std::map <std::string, std::string> headers;
+    int64_t receiveTime;
+    int32_t contentLength;
+    int64_t index;
 };

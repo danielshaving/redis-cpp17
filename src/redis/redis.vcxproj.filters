@@ -42,9 +42,6 @@
     <ClCompile Include="threadpool.cc">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="timerqueue.cc">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="util.cc">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -78,9 +75,6 @@
     <ClCompile Include="log.cc">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="main.cc">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="object.cc">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -91,6 +85,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="redis.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="timer.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cc">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -120,9 +120,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="threadpool.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="timerqueue.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="util.h">
@@ -174,6 +171,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="redis.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="timer.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

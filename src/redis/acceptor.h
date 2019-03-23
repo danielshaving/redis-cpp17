@@ -1,38 +1,40 @@
 #pragma once
+
 #include "all.h"
 #include "channel.h"
 #include "eventloop.h"
 #include "socket.h"
 
-class Acceptor
-{
+class Acceptor {
 public:
-	typedef std::function<void(int32_t)> NewConnectionCallback;
-	Acceptor(EventLoop *loop, const char *ip, int16_t port);
-	~Acceptor();
+    typedef std::function<void(int32_t)> NewConnectionCallback;
 
-	void setNewConnectionCallback(const NewConnectionCallback &&cb)
-	{
-		newConnectionCallback = std::move(cb);
-	}
+    Acceptor(EventLoop *loop, const char *ip, int16_t port);
 
-	bool getlistenning() const
-	{
-		return listenning;
-	}
+    ~Acceptor();
 
-	void listen();
-	void handleRead();
+    void setNewConnectionCallback(const NewConnectionCallback &&cb) {
+        newConnectionCallback = std::move(cb);
+    }
+
+    bool getlistenning() const {
+        return listenning;
+    }
+
+    void listen();
+
+    void handleRead();
 
 private:
-	Acceptor(const Acceptor&);
-	void operator=(const Acceptor&);
+    Acceptor(const Acceptor &);
 
-	EventLoop *loop;
-	Channel channel;
-	int32_t sockfd;
+    void operator=(const Acceptor &);
 
-	NewConnectionCallback newConnectionCallback;
-	bool listenning;
-	bool idleFd;
+    EventLoop *loop;
+    Channel channel;
+    int32_t sockfd;
+
+    NewConnectionCallback newConnectionCallback;
+    bool listenning;
+    bool idleFd;
 };

@@ -3,7 +3,7 @@
 #include "all.h"
 #include "util.h"
 #include "log.h"
-#include "timerqueue.h"
+#include "timer.h"
 
 class Channel;
 class EventLoop;

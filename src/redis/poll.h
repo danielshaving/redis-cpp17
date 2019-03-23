@@ -1,5 +1,6 @@
 #pragma once
-#ifdef __APPLE__
+
+//#ifdef __APPLE__
 #include "all.h"
 #include "log.h"
 

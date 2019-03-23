@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdint.h>
 #include <string_view>
 #include <any>
@@ -16,155 +17,141 @@ class LRUCache;
 
 // Create a new LRUCache with a fixed size capacity.  This implementation
 // of LRUCache uses a least-recently-used eviction policy.
-std::shared_ptr<LRUCache> newLRUCache(size_t capacity);
+std::shared_ptr <LRUCache> newLRUCache(size_t capacity);
 
 // An entry is a variable length heap-allocated structure.  Entries
 // are kept in a circular doubly linked list ordered by access time.
-class LRUHandle
-{
+class LRUHandle {
 public:
-	LRUHandle();
-	~LRUHandle();
+    LRUHandle();
 
-	std::any value;
-	std::function<void(const std::string_view &k,
-		const std::any &value)> deleter;
+    ~LRUHandle();
 
-	size_t charge;      // TODO(opt): Only allow uint32_t?
-	size_t keyLength;
-	bool inCache;      // Whether entry is in the cache.
-	uint32_t refs;      // References, including cache reference, if present.
-	uint32_t hash;      // Hash of key(); used for fast sharding and comparisons
-	char *keyData;   // Beginning of key
+    std::any value;
+    std::function<void(const std::string_view &k,
+                       const std::any &value)> deleter;
 
-	std::string_view key() const
-	{
-		// next_ is only equal to this if the LRU handle is the list head of an
-		// empty list. List heads never have meaningful keys.
-		return std::string_view(keyData, keyLength);
-	}
+    size_t charge;      // TODO(opt): Only allow uint32_t?
+    size_t keyLength;
+    bool inCache;      // Whether entry is in the cache.
+    uint32_t refs;      // References, including cache reference, if present.
+    uint32_t hash;      // Hash of key(); used for fast sharding and comparisons
+    char *keyData;   // Beginning of key
+
+    std::string_view key() const {
+        // next_ is only equal to this if the LRU handle is the list head of an
+        // empty list. List heads never have meaningful keys.
+        return std::string_view(keyData, keyLength);
+    }
 };
 
 // A single shard of sharded cache.
-class LRUCache
-{
+class LRUCache {
 public:
-	LRUCache();
-	~LRUCache();
+    LRUCache();
 
-	// Separate from constructor so caller can easily make an array of LRUCache
-	void setCapacity(size_t capacity) { this->capacity = capacity; }
+    ~LRUCache();
 
-	// Like Cache methods, but with an extra "hash" parameter.
-	std::shared_ptr<LRUHandle> insert(const std::string_view &key, uint32_t hash,
-		const std::any &value, size_t charge,
-		std::function<void(const std::string_view &k, const std::any &value)> &deleter);
+    // Separate from constructor so caller can easily make an array of LRUCache
+    void setCapacity(size_t capacity) { this->capacity = capacity; }
 
-	std::shared_ptr<LRUHandle> lookup(const std::string_view &key, uint32_t hash);
-	void erase(const std::string_view &key, uint32_t hash);
-	void prune();
-	size_t totalCharge() const { return usage; }
+    // Like Cache methods, but with an extra "hash" parameter.
+    std::shared_ptr <LRUHandle> insert(const std::string_view &key, uint32_t hash,
+                                       const std::any &value, size_t charge,
+                                       std::function<void(const std::string_view &k, const std::any &value)> &deleter);
 
-	struct Hash
-	{
-		size_t operator()(const std::shared_ptr<LRUHandle> &x) const
-		{
-			return x->hash;
-		}
-	};
+    std::shared_ptr <LRUHandle> lookup(const std::string_view &key, uint32_t hash);
 
-	struct Equal
-	{
-		bool operator()(const std::shared_ptr<LRUHandle> &x,
-			const std::shared_ptr<LRUHandle> &y) const
-		{
-			return memcmp(x->key().data(),
-				y->key().data(), y->key().size()) == 0;
-		}
-	};
+    void erase(const std::string_view &key, uint32_t hash);
+
+    void prune();
+
+    size_t totalCharge() const { return usage; }
+
+    struct Hash {
+        size_t operator()(const std::shared_ptr <LRUHandle> &x) const {
+            return x->hash;
+        }
+    };
+
+    struct Equal {
+        bool operator()(const std::shared_ptr <LRUHandle> &x,
+                        const std::shared_ptr <LRUHandle> &y) const {
+            return memcmp(x->key().data(),
+                          y->key().data(), y->key().size()) == 0;
+        }
+    };
 
 private:
-	// Initialized before use.
-	size_t capacity;
-	size_t usage;
+    // Initialized before use.
+    size_t capacity;
+    size_t usage;
 
-	std::list<std::shared_ptr<LRUHandle>> lru;
-	std::unordered_set<std::shared_ptr<LRUHandle>, Hash, Equal> tables;
+    std::list <std::shared_ptr<LRUHandle>> lru;
+    std::unordered_set <std::shared_ptr<LRUHandle>, Hash, Equal> tables;
 };
 
 static const int kNumShardBits = 4;
 static const int kNumShards = 1 << kNumShardBits;
 
-class ShardedLRUCache
-{
+class ShardedLRUCache {
 private:
-	LRUCache shards[kNumShards];
-	uint64_t lastId;
+    LRUCache shards[kNumShards];
+    uint64_t lastId;
 
-	static inline uint32_t hashSlice(const std::string_view &s)
-	{
-		return calHash(s.data(), s.size(), 0);
-	}
+    static inline uint32_t hashSlice(const std::string_view &s) {
+        return calHash(s.data(), s.size(), 0);
+    }
 
-	static uint32_t shard(uint32_t hash)
-	{
-		return hash >> (32 - kNumShardBits);
-	}
+    static uint32_t shard(uint32_t hash) {
+        return hash >> (32 - kNumShardBits);
+    }
 
 public:
-	explicit ShardedLRUCache(size_t capacity)
-		: lastId(0)
-	{
-		const size_t perShard = (capacity + (kNumShards - 1)) / kNumShards;
-		for (int s = 0; s < kNumShards; s++)
-		{
-			shards[s].setCapacity(perShard);
-		}
-	}
+    explicit ShardedLRUCache(size_t capacity)
+            : lastId(0) {
+        const size_t perShard = (capacity + (kNumShards - 1)) / kNumShards;
+        for (int s = 0; s < kNumShards; s++) {
+            shards[s].setCapacity(perShard);
+        }
+    }
 
-	~ShardedLRUCache()
-	{
+    ~ShardedLRUCache() {
 
-	}
+    }
 
-	std::shared_ptr<LRUHandle> insert(const std::string_view &key, const std::any &value, size_t charge,
-		std::function<void(const std::string_view &k, const std::any &value)> &&deleter)
-	{
-		const uint32_t hash = hashSlice(key);
-		return shards[shard(hash)].insert(key, hash, value, charge, deleter);
-	}
+    std::shared_ptr <LRUHandle> insert(const std::string_view &key, const std::any &value, size_t charge,
+                                       std::function<void(const std::string_view &k,
+                                                          const std::any &value)> &&deleter) {
+        const uint32_t hash = hashSlice(key);
+        return shards[shard(hash)].insert(key, hash, value, charge, deleter);
+    }
 
-	std::shared_ptr<LRUHandle> lookup(const std::string_view &key)
-	{
-		const uint32_t hash = hashSlice(key);
-		return shards[shard(hash)].lookup(key, hash);
-	}
+    std::shared_ptr <LRUHandle> lookup(const std::string_view &key) {
+        const uint32_t hash = hashSlice(key);
+        return shards[shard(hash)].lookup(key, hash);
+    }
 
-	void erase(const std::string_view &key)
-	{
-		const uint32_t hash = hashSlice(key);
-		shards[shard(hash)].erase(key, hash);
-	}
+    void erase(const std::string_view &key) {
+        const uint32_t hash = hashSlice(key);
+        shards[shard(hash)].erase(key, hash);
+    }
 
-	const std::any &value(const std::shared_ptr<LRUHandle> &handle)
-	{
-		return handle->value;
-	}
+    const std::any &value(const std::shared_ptr <LRUHandle> &handle) {
+        return handle->value;
+    }
 
-	uint64_t newId()
-	{
-		return ++(lastId);
-	}
+    uint64_t newId() {
+        return ++(lastId);
+    }
 
-	size_t totalCharge() const
-	{
-		size_t total = 0;
-		for (int s = 0; s < kNumShards; s++)
-		{
-			total += shards[s].totalCharge();
-		}
-		return total;
-	}
+    size_t totalCharge() const {
+        size_t total = 0;
+        for (int s = 0; s < kNumShards; s++) {
+            total += shards[s].totalCharge();
+        }
+        return total;
+    }
 };
 
 

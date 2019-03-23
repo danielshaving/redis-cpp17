@@ -1,51 +1,53 @@
 #pragma once
+
 #include "all.h"
 #include "util.h"
-class Arena
-{
+
+class Arena {
 public:
-	Arena();
-	~Arena();
+    Arena();
 
-	// Return a pointer to a newly allocated memory block of "bytes" bytes.
-	char *allocate(size_t bytes);
+    ~Arena();
 
-	// Allocate memory with the normal alignment guarantees provided by malloc
-	char *allocateAligned(size_t bytes);
+    // Return a pointer to a newly allocated memory block of "bytes" bytes.
+    char *allocate(size_t bytes);
 
-	size_t getMemoryUsage() { return memoryUsage; }
+    // Allocate memory with the normal alignment guarantees provided by malloc
+    char *allocateAligned(size_t bytes);
+
+    size_t getMemoryUsage() { return memoryUsage; }
 
 private:
-	char *allocateFallback(size_t bytes);
-	char *allocateNewBlock(size_t block_bytes);
+    char *allocateFallback(size_t bytes);
 
-	// Allocation state
-	char *allocPtr;
-	size_t allocBytesRemaining;
+    char *allocateNewBlock(size_t block_bytes);
 
-	// Array of new[] allocated memory blocks
-	std::vector<char*> blocks;
+    // Allocation state
+    char *allocPtr;
+    size_t allocBytesRemaining;
 
-	// Total memory usage of the arena.
-	std::atomic<size_t> memoryUsage;
+    // Array of new[] allocated memory blocks
+    std::vector<char *> blocks;
 
-	// No copying allowed
-	Arena(const Arena&);
-	void operator=(const Arena&);
+    // Total memory usage of the arena.
+    std::atomic <size_t> memoryUsage;
+
+    // No copying allowed
+    Arena(const Arena &);
+
+    void operator=(const Arena &);
 };
 
-inline char *Arena::allocate(size_t bytes)
-{
-	// The semantics of what to return are a bit messy if we allow
-	// 0-byte allocations, so we disallow them here (we don't need
-	// them for our internal use).
-	assert(bytes > 0);
-	if (bytes <= allocBytesRemaining)
-	{
-		char *result = allocPtr;
-		allocPtr += bytes;
-		allocBytesRemaining -= bytes;
-		return result;
-	}
-	return allocateFallback(bytes);
+inline char *Arena::allocate(size_t bytes) {
+    // The semantics of what to return are a bit messy if we allow
+    // 0-byte allocations, so we disallow them here (we don't need
+    // them for our internal use).
+    assert(bytes > 0);
+    if (bytes <= allocBytesRemaining) {
+        char *result = allocPtr;
+        allocPtr += bytes;
+        allocBytesRemaining -= bytes;
+        return result;
+    }
+    return allocateFallback(bytes);
 }

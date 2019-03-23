@@ -1,5 +1,5 @@
-TARGET= ./redis-server
-CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17
+TARGET= ./proxy-server
+CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17
 cppfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))
@@ -8,9 +8,9 @@ CXXOBJS=${patsubst %.cc,./%.o,$(cppfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB= #/usr/local/lib/liblua.a
+LIB= 
 
-SO_LIB=
+SO_LIB= 
 
 
 .PHONY: all clean
@@ -18,9 +18,9 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread -lstdc++fs  #-lz -lcurl -lcrypto -ldl -lssl  -llua
+	g++ -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread -lstdc++fs #-lz -lcurl -lcrypto -ldl -lssl 
 ${CXXOBJS}:./%.o:./%.cc
-	g++-7 -MMD -c -o $@ $< ${CFLAGS} 
+	g++ -MMD -c -o $@ $< ${CFLAGS} 
 
 ${COBJS}:./%.o:./%.c
 	${CC} -MMD -c -o $@ $< ${CFLAGS} 

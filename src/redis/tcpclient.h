@@ -1,74 +1,82 @@
 #pragma once
+
 #include "all.h"
 #include "eventloop.h"
 #include "callback.h"
 
-class TcpClient
-{
+class TcpClient {
 public:
-	TcpClient(EventLoop *loop, const char *ip,
-		int16_t port, const std::any &context);
-	~TcpClient();
+    TcpClient(EventLoop *loop, const char *ip,
+              int16_t port, const std::any &context);
 
-	void connect(bool s = false);
-	void disConnect();
-	void stop();
+    ~TcpClient();
 
-	bool getRetry() { return retry; }
-	void enableRetry() { retry = true; }
-	void closeRetry() { retry = false; }
+    void connect(bool s = false);
 
-	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb)
-	{
-		connectionErrorCallBack = std::move(cb);
-	}
+    void disConnect();
 
-	void setConnectionCallback(const ConnectionCallback &&cb)
-	{
-		connectionCallback = std::move(cb);
-	}
+    void stop();
 
-	void setMessageCallback(const MessageCallback &&cb)
-	{
-		messageCallback = std::move(cb);
-	}
+    bool getRetry() { return retry; }
 
-	void setWriteCompleteCallback(const WriteCompleteCallback &&cb)
-	{
-		writeCompleteCallback = std::move(cb);
-	}
+    void enableRetry() { retry = true; }
 
-	EventLoop *getLoop() { return loop; }
-	std::any *getContext() { return &context; }
-	const std::any &getContext() const { return context; }
+    void closeRetry() { retry = false; }
 
-	void setContext(const std::any &context) { this->context = context; }
-	const char *getIp() { return ip; }
-	int16_t getPort() { return port; }
+    void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb) {
+        connectionErrorCallBack = std::move(cb);
+    }
 
-	TcpConnectionPtr getConnection();
+    void setConnectionCallback(const ConnectionCallback &&cb) {
+        connectionCallback = std::move(cb);
+    }
+
+    void setMessageCallback(const MessageCallback &&cb) {
+        messageCallback = std::move(cb);
+    }
+
+    void setWriteCompleteCallback(const WriteCompleteCallback &&cb) {
+        writeCompleteCallback = std::move(cb);
+    }
+
+    EventLoop *getLoop() { return loop; }
+
+    std::any *getContext() { return &context; }
+
+    const std::any &getContext() const { return context; }
+
+    void setContext(const std::any &context) { this->context = context; }
+
+    const char *getIp() { return ip; }
+
+    int16_t getPort() { return port; }
+
+    TcpConnectionPtr getConnection();
 
 private:
-	TcpClient(const TcpClient&);
-	void operator=(const TcpClient&);
+    TcpClient(const TcpClient &);
 
-	void errorConnection();
-	void newConnection(int32_t sockfd);
-	void removeConnection(const TcpConnectionPtr &conn);
+    void operator=(const TcpClient &);
 
-	ConnectorPtr connector;
-	EventLoop *loop;
+    void errorConnection();
 
-	std::mutex mutex;
-	ConnectionErrorCallback connectionErrorCallBack;
-	ConnectionCallback connectionCallback;
-	MessageCallback messageCallback;
-	WriteCompleteCallback writeCompleteCallback;
+    void newConnection(int32_t sockfd);
 
-	TcpConnectionPtr connection;
-	std::any context;
-	const char *ip;
-	int16_t port;
-	bool retry;
-	bool connecting;
+    void removeConnection(const TcpConnectionPtr &conn);
+
+    ConnectorPtr connector;
+    EventLoop *loop;
+
+    std::mutex mutex;
+    ConnectionErrorCallback connectionErrorCallBack;
+    ConnectionCallback connectionCallback;
+    MessageCallback messageCallback;
+    WriteCompleteCallback writeCompleteCallback;
+
+    TcpConnectionPtr connection;
+    std::any context;
+    const char *ip;
+    int16_t port;
+    bool retry;
+    bool connecting;
 };

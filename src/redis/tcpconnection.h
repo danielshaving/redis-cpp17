@@ -1,113 +1,144 @@
 #pragma once
+
 #include "all.h"
 #include "buffer.h"
 #include "callback.h"
 #include "channel.h"
 
 class EventLoop;
-class TcpConnection : public std::enable_shared_from_this<TcpConnection>
-{
+
+class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 public:
-	enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };
-	TcpConnection(EventLoop *loop, int32_t sockfd, const std::any &context);
-	~TcpConnection();
+    enum StateE {
+        kDisconnected, kConnecting, kConnected, kDisconnecting
+    };
 
-	EventLoop *getLoop() { return loop; }
-	int32_t getSockfd() { return sockfd; }
-	void setState(StateE s);
+    TcpConnection(EventLoop *loop, int32_t sockfd, const std::any &context);
 
-	void setConnectionCallback(const ConnectionCallback &&cb)
-	{
-		connectionCallback = std::move(cb);
-	}
+    ~TcpConnection();
 
-	void setMessageCallback(const MessageCallback &&cb)
-	{
-		messageCallback = std::move(cb);
-	}
+    EventLoop *getLoop() { return loop; }
 
-	void setWriteCompleteCallback(const WriteCompleteCallback &&cb)
-	{
-		writeCompleteCallback = std::move(cb);
-	}
+    int32_t getSockfd() { return sockfd; }
 
-	void setHighWaterMarkCallback(const HighWaterMarkCallback &&cb, size_t highWaterMark)
-	{
-		highWaterMarkCallback = std::move(cb); this->highWaterMark = highWaterMark;
-	}
+    void setState(StateE s);
 
-	void setCloseCallback(const CloseCallback &cb)
-	{
-		closeCallback = cb;
-	}
+    void setConnectionCallback(const ConnectionCallback &&cb) {
+        connectionCallback = std::move(cb);
+    }
 
-	void sendInLoop(const void *message, size_t len);
-	void sendInLoop(const std::string_view &message);
-	void sendPipeInLoop(const void *message, size_t len);
-	void sendPipeInLoop(const std::string_view &message);
+    void setMessageCallback(const MessageCallback &&cb) {
+        messageCallback = std::move(cb);
+    }
 
-	static void bindSendInLoop(TcpConnection *conn, const std::string_view &message);
-	static void bindSendPipeInLoop(TcpConnection *conn, const std::string_view &message);
+    void setWriteCompleteCallback(const WriteCompleteCallback &&cb) {
+        writeCompleteCallback = std::move(cb);
+    }
 
-	void sendInLoopPipe();
-	void sendPipe();
-	void sendPipe(const std::string_view &message);
-	void sendPipe(Buffer *message);
-	void sendPipe(const void *message, int32_t len);
+    void setHighWaterMarkCallback(const HighWaterMarkCallback &&cb, size_t highWaterMark) {
+        highWaterMarkCallback = std::move(cb);
+        this->highWaterMark = highWaterMark;
+    }
 
-	void send(const void *message, int32_t len);
-	void send(Buffer *message);
-	void send(const std::string_view &message);
+    void setCloseCallback(const CloseCallback &cb) {
+        closeCallback = cb;
+    }
 
-	bool disconnected() const { return state == kDisconnected; }
-	bool connected() { return state == kConnected; }
-	void forceCloseInLoop();
-	void connectEstablished();
-	void forceCloseWithDelay(double seconds);
-	void forceCloseDelay();
+    void sendInLoop(const void *message, size_t len);
 
-	void connectDestroyed();
-	void shutdown();
-	void shutdownInLoop();
-	void forceClose();
+    void sendInLoop(const std::string_view &message);
 
-	void handleRead();
-	void handleWrite();
-	void handleClose();
-	void handleError();
+    void sendPipeInLoop(const void *message, size_t len);
 
-	void startReadInLoop();
-	void stopReadInLoop();
+    void sendPipeInLoop(const std::string_view &message);
 
-	void startRead();
-	void stopRead();
+    static void bindSendInLoop(TcpConnection *conn, const std::string_view &message);
 
-	std::any *getMutableContext() { return &context; }
-	const std::any &getContext() const { return context; }
-	void resetContext() { context.reset(); }
-	void setContext(const std::any &context) { this->context = context; }
+    static void bindSendPipeInLoop(TcpConnection *conn, const std::string_view &message);
 
-	Buffer *outputBuffer() { return &writeBuffer; }
-	Buffer *intputBuffer() { return &readBuffer; }
+    void sendInLoopPipe();
+
+    void sendPipe();
+
+    void sendPipe(const std::string_view &message);
+
+    void sendPipe(Buffer *message);
+
+    void sendPipe(const void *message, int32_t len);
+
+    void send(const void *message, int32_t len);
+
+    void send(Buffer *message);
+
+    void send(const std::string_view &message);
+
+    bool disconnected() const { return state == kDisconnected; }
+
+    bool connected() { return state == kConnected; }
+
+    void forceCloseInLoop();
+
+    void connectEstablished();
+
+    void forceCloseWithDelay(double seconds);
+
+    void forceCloseDelay();
+
+    void connectDestroyed();
+
+    void shutdown();
+
+    void shutdownInLoop();
+
+    void forceClose();
+
+    void handleRead();
+
+    void handleWrite();
+
+    void handleClose();
+
+    void handleError();
+
+    void startReadInLoop();
+
+    void stopReadInLoop();
+
+    void startRead();
+
+    void stopRead();
+
+    std::any *getMutableContext() { return &context; }
+
+    const std::any &getContext() const { return context; }
+
+    void resetContext() { context.reset(); }
+
+    void setContext(const std::any &context) { this->context = context; }
+
+    Buffer *outputBuffer() { return &writeBuffer; }
+
+    Buffer *intputBuffer() { return &readBuffer; }
 
 private:
-	TcpConnection(const TcpConnection&);
-	void operator=(const TcpConnection&);
+    TcpConnection(const TcpConnection &);
 
-	EventLoop *loop;
-	int32_t sockfd;
-	bool reading;
+    void operator=(const TcpConnection &);
 
-	Buffer readBuffer;
-	Buffer writeBuffer;
-	ConnectionCallback connectionCallback;
-	MessageCallback messageCallback;
-	WriteCompleteCallback writeCompleteCallback;
-	HighWaterMarkCallback highWaterMarkCallback;
-	CloseCallback closeCallback;
+    EventLoop *loop;
+    int32_t sockfd;
+    bool reading;
 
-	size_t highWaterMark;
-	StateE state;
-	ChannelPtr channel;
-	std::any context;
+    Buffer readBuffer;
+    Buffer writeBuffer;
+    ConnectionCallback connectionCallback;
+    MessageCallback messageCallback;
+    WriteCompleteCallback writeCompleteCallback;
+    HighWaterMarkCallback highWaterMarkCallback;
+    CloseCallback closeCallback;
+
+    size_t highWaterMark;
+    StateE state;
+    ChannelPtr channel;
+    std::any context;
 };

@@ -8,15 +8,14 @@
 
 class PosixEnv;
 
-enum FileType
-{
-	kLogFile,
-	kDBLockFile,
-	kTableFile,
-	kDescriptorFile,
-	kCurrentFile,
-	kTempFile,
-	kInfoLogFile  // Either the current one, or an old one
+enum FileType {
+    kLogFile,
+    kDBLockFile,
+    kTableFile,
+    kDescriptorFile,
+    kCurrentFile,
+    kTempFile,
+    kInfoLogFile  // Either the current one, or an old one
 };
 
 // Return the name of the log file with the specified number
@@ -61,7 +60,7 @@ std::string oldInfoLogFileName(const std::string &dbname);
 // If filename is a leveldb file, store the type of the file in *type.
 // The number encoded in the filename is stored in *number.  If the
 // filename was successfully parsed, returns true.  Else return false.
-bool parseFileName(const std::string &filename, uint64_t *number, FileType* type);
+bool parseFileName(const std::string &filename, uint64_t *number, FileType *type);
 
 // Make the CURRENT file point to the descriptor file with the
 // specified number.

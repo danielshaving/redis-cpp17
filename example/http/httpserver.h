@@ -1,32 +1,40 @@
 #pragma once
+
 #include "all.h"
 #include "tcpserver.h"
 
 class EventLoop;
+
 class HttpRequest;
+
 class HttpResponse;
 
-class HttpServer
-{
+class HttpServer {
 public:
-	typedef std::function<void(const HttpRequest &, HttpResponse*)> HttpCallBack;
+    typedef std::function<void(const HttpRequest &, HttpResponse *)> HttpCallBack;
 
-	HttpServer(EventLoop *loop, const char *ip, uint16_t port);
-	~HttpServer();
-	void disPlayer(const char *begin);
-	void setThreadNum(int numThreads)
-	{
-		server.setThreadNum(numThreads);
-	}
+    HttpServer(EventLoop *loop, const char *ip, uint16_t port);
 
-	void setMessageCallback(HttpCallBack callback);
-	void start();
-	void onConnection(const TcpConnectionPtr &conn);
-	void onMessage(const TcpConnectionPtr &conn, Buffer *buffer);
-	void onRequest(const TcpConnectionPtr &conn, const HttpRequest &req);
+    ~HttpServer();
+
+    void disPlayer(const char *begin);
+
+    void setThreadNum(int numThreads) {
+        server.setThreadNum(numThreads);
+    }
+
+    void setMessageCallback(HttpCallBack callback);
+
+    void start();
+
+    void onConnection(const TcpConnectionPtr &conn);
+
+    void onMessage(const TcpConnectionPtr &conn, Buffer *buffer);
+
+    void onRequest(const TcpConnectionPtr &conn, const HttpRequest &req);
 
 private:
-	EventLoop * loop;
-	TcpServer server;
-	HttpCallBack httpCallback;
+    EventLoop *loop;
+    TcpServer server;
+    HttpCallBack httpCallback;
 };

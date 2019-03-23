@@ -2,124 +2,105 @@
 #include "eventloop.h"
 
 Thread::Thread(const ThreadInitCallback &cb)
-	:loop(nullptr),
-	exiting(false),
-	callback(std::move(cb))
-{
+        : loop(nullptr),
+          exiting(false),
+          callback(std::move(cb)) {
 
 }
 
-Thread::~Thread()
-{
+Thread::~Thread() {
 
 }
 
-EventLoop *Thread::startLoop()
-{
-	std::thread t(std::bind(&Thread::threadFunc, this));
-	t.detach();
-	{
-		std::unique_lock<std::mutex> lk(mutex);
-		while (loop == nullptr)
-		{
-			condition.wait(lk);
-		}
-	}
-	return loop;
+EventLoop *Thread::startLoop() {
+    std::thread
+    t(std::bind(&Thread::threadFunc, this));
+    t.detach();
+    {
+        std::unique_lock <std::mutex> lk(mutex);
+        while (loop == nullptr) {
+            condition.wait(lk);
+        }
+    }
+    return loop;
 
 }
 
-void Thread::threadFunc()
-{
-	EventLoop xloop;
+void Thread::threadFunc() {
+    EventLoop xloop;
 
-	if (callback)
-	{
-		callback(&xloop);
-	}
+    if (callback) {
+        callback(&xloop);
+    }
 
-	{
-		std::unique_lock<std::mutex> lk(mutex);
-		loop = &xloop;
-		condition.notify_one();
-	}
+    {
+        std::unique_lock <std::mutex> lk(mutex);
+        loop = &xloop;
+        condition.notify_one();
+    }
 
-	xloop.run();
+    xloop.run();
 }
 
 ThreadPool::ThreadPool(EventLoop *baseLoop)
-	:baseLoop(baseLoop),
-	started(false),
-	numThreads(0),
-	next(0)
-{
+        : baseLoop(baseLoop),
+          started(false),
+          numThreads(0),
+          next(0) {
 
 }
 
-ThreadPool::~ThreadPool()
-{
-	threads.clear();
+ThreadPool::~ThreadPool() {
+    threads.clear();
 }
 
-void ThreadPool::start(const ThreadInitCallback &cb)
-{
-	assert(!started);
-	baseLoop->assertInLoopThread();
+void ThreadPool::start(const ThreadInitCallback &cb) {
+    assert(!started);
+    baseLoop->assertInLoopThread();
 
-	started = true;
+    started = true;
 
-	for (int i = 0; i < numThreads; i++)
-	{
-		ThreadPtr t(new Thread(cb));
-		threads.push_back(t);
-		loops.push_back(t->startLoop());
-	}
+    for (int i = 0; i < numThreads; i++) {
+        ThreadPtr t(new Thread(cb));
+        threads.push_back(t);
+        loops.push_back(t->startLoop());
+    }
 
-	if (numThreads == 0 && cb)
-	{
-		cb(baseLoop);
-	}
+    if (numThreads == 0 && cb) {
+        cb(baseLoop);
+    }
 }
 
-EventLoop *ThreadPool::getNextLoop()
-{
-	assert(started);
-	EventLoop *loop = baseLoop;
+EventLoop *ThreadPool::getNextLoop() {
+    assert(started);
+    EventLoop *loop = baseLoop;
 
-	if (!loops.empty())
-	{
-		loop = loops[next];
-		++next;
-		if (next >= loops.size())
-		{
-			next = 0;
-		}
-	}
-	return loop;
+    if (!loops.empty()) {
+        loop = loops[next];
+        ++next;
+        if (next >= loops.size()) {
+            next = 0;
+        }
+    }
+    return loop;
 }
 
-EventLoop *ThreadPool::getLoopForHash(size_t hashCode)
-{
-	baseLoop->assertInLoopThread();
-	EventLoop *loop = baseLoop;
+EventLoop *ThreadPool::getLoopForHash(size_t hashCode) {
+    baseLoop->assertInLoopThread();
+    EventLoop *loop = baseLoop;
 
-	if (!loops.empty())
-	{
-		loop = loops[hashCode % loops.size()];
-	}
-	return loop;
+    if (!loops.empty()) {
+        loop = loops[hashCode % loops.size()];
+    }
+    return loop;
 }
 
-std::vector<EventLoop*> ThreadPool::getAllLoops()
-{
-	assert(started);
-	if (loops.empty())
-	{
-		return std::vector<EventLoop*>(1, baseLoop);
-	}
-	else
-	{
-		return loops;
-	}
+std::vector<EventLoop *> ThreadPool::getAllLoops() {
+    assert(started);
+    if (loops.empty()) {
+        return std::vector<EventLoop *>(1, baseLoop);
+    } else {
+        return loops;
+    }
 }
 

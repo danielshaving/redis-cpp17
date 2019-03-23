@@ -42,7 +42,7 @@
     <ClCompile Include="tcpconnection.cc" />
     <ClCompile Include="tcpserver.cc" />
     <ClCompile Include="threadpool.cc" />
-    <ClCompile Include="timerqueue.cc" />
+    <ClCompile Include="timer.cc" />
     <ClCompile Include="util.cc" />
     <ClCompile Include="zmalloc.cc" />
   </ItemGroup>
@@ -71,7 +71,7 @@
     <ClInclude Include="tcpconnection.h" />
     <ClInclude Include="tcpserver.h" />
     <ClInclude Include="threadpool.h" />
-    <ClInclude Include="timerqueue.h" />
+    <ClInclude Include="timer.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="zmalloc.h" />
   </ItemGroup>

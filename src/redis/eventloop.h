@@ -1,7 +1,9 @@
 #pragma once
+
 #include "all.h"
 #include "channel.h"
 #include "socket.h"
+
 #ifdef __APPLE__
 #include "poll.h"
 #endif
@@ -14,72 +16,92 @@
 #include "select.h"
 #endif
 
-#include "timerqueue.h"
+#include "timer.h"
 #include "callback.h"
 
-class EventLoop
-{
+class EventLoop {
 public:
-	typedef std::function<void()> Functor;
-	EventLoop();
-	~EventLoop();
+    typedef std::function<void()> Functor;
 
-	void quit();
-	void run();
-	void handleRead();
-	void runInLoop(Functor &&cb);
-	void queueInLoop(Functor &&cb);
-	void wakeup();
-	void updateChannel(Channel *channel);
-	void removeChannel(Channel *channel);
-	bool hasChannel(Channel *channel);
-	void cancelAfter(const TimerPtr &timer);
-	void assertInLoopThread();
+    EventLoop();
 
-	TimerPtr runAfter(double when, bool repeat, TimerCallback &&cb);
-	TimerQueuePtr getTimerQueue();
-	void handlerTimerQueue();
-	bool isInLoopThread() const;
-	bool geteventHandling() const;
-	std::thread::id getThreadId() const;
+    ~EventLoop();
+
+    void quit();
+
+    void run();
+
+    void handleRead();
+
+    void runInLoop(Functor &&cb);
+
+    void queueInLoop(Functor &&cb);
+
+    void wakeup();
+
+    void updateChannel(Channel *channel);
+
+    void removeChannel(Channel *channel);
+
+    bool hasChannel(Channel *channel);
+
+    void cancelAfter(const TimerPtr &timer);
+
+    void assertInLoopThread();
+
+    TimerPtr runAfter(double when, bool repeat, TimerCallback &&cb);
+
+    TimerPtr runAt(TimeStamp &&stamp, double when, bool repeat, TimerCallback &&cb);
+
+    TimerQueuePtr getTimerQueue();
+
+    void handlerTimerQueue();
+
+    bool isInLoopThread() const;
+
+    bool geteventHandling() const;
+
+    std::thread::id getThreadId() const;
 
 private:
-	EventLoop(const EventLoop&);
-	void operator=(const EventLoop&);
+    EventLoop(const EventLoop &);
 
-	void abortNotInLoopThread();
-	void doPendingFunctors();
+    void operator=(const EventLoop &);
 
-	std::thread::id threadId;
-	mutable std::mutex mutex;
+    void abortNotInLoopThread();
+
+    void doPendingFunctors();
+
+    std::thread::id threadId;
+    mutable std::mutex mutex;
 #ifdef __APPLE__
-	PollPtr epoller;
-	int32_t op;
-	int32_t wakeupFd[2];
+    PollPtr epoller;
+    int32_t op;
+    int32_t wakeupFd[2];
 #endif
 
 #ifdef __linux__
-	EpollPtr epoller;
-	int32_t wakeupFd;
+    EpollPtr epoller;
+    int32_t wakeupFd;
 #endif
 
 #ifdef _WIN64
-	SelectPtr epoller;
-	int32_t op;
-	int wakeupFd[2];
+    SelectPtr epoller;
+    int32_t op;
+    int wakeupFd[2];
 #endif
 
-	TimerQueuePtr timerQueue;
-	ChannelPtr wakeupChannel;
+    TimerQueuePtr timerQueue;
+    ChannelPtr wakeupChannel;
 
-	typedef std::vector<Channel*> ChannelList;
-	ChannelList activeChannels;
-	Channel *currentActiveChannel;
+    typedef std::vector<Channel *> ChannelList;
+    ChannelList activeChannels;
+    Channel *currentActiveChannel;
 
-	bool running;
-	bool eventHandling;
-	bool callingPendingFunctors;
-	std::vector<Functor> functors;
-	std::vector<Functor> pendingFunctors;
+    bool running;
+    bool eventHandling;
+    bool callingPendingFunctors;
+    std::vector <Functor> functors;
+    std::vector <Functor> pendingFunctors;
 };
 
