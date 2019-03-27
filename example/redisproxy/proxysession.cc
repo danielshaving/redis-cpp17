@@ -46,11 +46,6 @@ void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffe
         } else {
             LOG_WARN << "Unknown request type";
         }
-		
-		std::string cmd = std::string(command->ptr, sdslen(command->ptr));
-		if (cmd != "ping") {
-			LOG_INFO << "Command : " << cmd;
-		}
 	
         assert(multibulklen == 0);
         if (redis->getRedisCommand(command)) {

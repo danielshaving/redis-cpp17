@@ -50,8 +50,8 @@ public:
     void assertInLoopThread();
 
     TimerPtr runAfter(double when, bool repeat, TimerCallback &&cb);
-
-    TimerPtr runAt(TimeStamp &&stamp, double when, bool repeat, TimerCallback &&cb);
+	
+	TimerPtr runAt(TimeStamp &&stamp, double when, bool repeat, TimerCallback &&cb);
 
     TimerQueuePtr getTimerQueue();
 
@@ -72,7 +72,7 @@ private:
 
     void doPendingFunctors();
 
-    std::thread::id threadId;
+    std::thread::id    threadId;
     mutable std::mutex mutex;
 #ifdef __APPLE__
     PollPtr epoller;
@@ -92,15 +92,15 @@ private:
 #endif
 
     TimerQueuePtr timerQueue;
-    ChannelPtr wakeupChannel;
+    ChannelPtr    wakeupChannel;
 
     typedef std::vector<Channel *> ChannelList;
-    ChannelList activeChannels;
-    Channel *currentActiveChannel;
+    ChannelList                    activeChannels;
+    Channel                        *currentActiveChannel;
 
-    bool running;
-    bool eventHandling;
-    bool callingPendingFunctors;
+    bool                  running;
+    bool                  eventHandling;
+    bool                  callingPendingFunctors;
     std::vector <Functor> functors;
     std::vector <Functor> pendingFunctors;
 };

@@ -51,13 +51,13 @@ EventLoop::~EventLoop() {
 #ifdef __linux__
     Socket::close(wakeupFd);
 #else
-    Socket::close(wakeupFd[0]);
-    Socket::close(wakeupFd[1]);
+    Socket::close(wakeupFd[ 0 ]);
+    Socket::close(wakeupFd[ 1 ]);
 #endif
 }
 
 void EventLoop::assertInLoopThread() {
-    if (!isInLoopThread()) {
+    if (! isInLoopThread()) {
         abortNotInLoopThread();
     }
 }
@@ -108,7 +108,7 @@ TimerPtr EventLoop::runAfter(double when, bool repeat, TimerCallback &&cb) {
 }
 
 TimerPtr EventLoop::runAt(TimeStamp &&stamp, double when, bool repeat, TimerCallback &&cb) {
-    return timerQueue->addTimer(std::move(stamp), when, repeat, std::move(cb));
+	return timerQueue->addTimer(std::move(stamp), when, repeat, std::move(cb));
 }
 
 bool EventLoop::hasChannel(Channel *channel) {
@@ -135,7 +135,7 @@ void EventLoop::handleRead() {
 
 void EventLoop::quit() {
     running = false;
-    if (!isInLoopThread()) {
+    if (! isInLoopThread()) {
         wakeup();
     }
 }
@@ -159,7 +159,8 @@ void EventLoop::wakeup() {
 void EventLoop::runInLoop(Functor &&cb) {
     if (isInLoopThread()) {
         cb();
-    } else {
+    }
+    else {
         queueInLoop(std::move(cb));
     }
 }
@@ -170,7 +171,7 @@ void EventLoop::queueInLoop(Functor &&cb) {
         pendingFunctors.push_back(std::move(cb));
     }
 
-    if (!isInLoopThread() || callingPendingFunctors) {
+    if (! isInLoopThread() || callingPendingFunctors) {
         wakeup();
     }
 }
@@ -183,8 +184,8 @@ void EventLoop::doPendingFunctors() {
         functors.swap(pendingFunctors);
     }
 
-    for (size_t i = 0; i < functors.size(); ++i) {
-        functors[i]();
+    for ( size_t i = 0 ; i < functors.size() ; ++ i ) {
+        functors[ i ]();
     }
 
     functors.clear();
@@ -193,18 +194,18 @@ void EventLoop::doPendingFunctors() {
 
 void EventLoop::run() {
     running = true;
-    while (running) {
+    while ( running ) {
         activeChannels.clear();
         epoller->epollWait(&activeChannels);
         eventHandling = true;
 
-        for (auto &it : activeChannels) {
+        for ( auto &it : activeChannels ) {
             currentActiveChannel = it;
             currentActiveChannel->handleEvent();
         }
 
         currentActiveChannel = nullptr;
-        eventHandling = false;
+        eventHandling        = false;
         doPendingFunctors();
     }
 }
