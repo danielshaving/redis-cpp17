@@ -58,7 +58,7 @@ Status Table::open(const Options &options,
         rep->file = file;
         rep->metaindexHandle = footer.getMetaindexHandle();
         rep->indexBlock = indexBlock;
-        table = std::shared_ptr<Table>(new Table(rep));
+        table = std::shared_ptr <Table>(new Table(rep));
     }
     return s;
 }
@@ -66,7 +66,7 @@ Status Table::open(const Options &options,
 std::shared_ptr <Iterator> Table::newIterator(const ReadOptions &options) const {
     std::shared_ptr <Iterator> indexIter = rep->indexBlock->newIterator(rep->options.comparator);
     return newTwoLevelIterator(indexIter,
-                               std::bind(blockReader, std::placeholders::_1,
+                               std::bind(&Table::blockReader, std::placeholders::_1,
                                          std::placeholders::_2, std::placeholders::_3), shared_from_this(), options);
 }
 
@@ -74,7 +74,7 @@ std::shared_ptr <Iterator> Table::blockReader(const std::any &arg,
                                               const ReadOptions &options,
                                               const std::string_view &indexValue) {
     assert(arg.has_value());
-    std::shared_ptr <Table> table = std::any_cast < std::shared_ptr < Table >> (arg);
+    const std::shared_ptr <const Table> &table = std::any_cast <std::shared_ptr<const Table>>(arg);
     std::shared_ptr <Block> block = nullptr;
     BlockHandle handle;
     std::string_view input = indexValue;
@@ -83,13 +83,12 @@ std::shared_ptr <Iterator> Table::blockReader(const std::any &arg,
         BlockContents contents;
         s = readBlock(table->rep->file, options, handle, &contents);
         if (s.ok()) {
-            block = std::shared_ptr<Block>(new Block(contents));
+            block = std::shared_ptr <Block>(new Block(contents));
         }
     }
 
     std::shared_ptr <Iterator> iter;
     if (block != nullptr) {
-
         iter = block->newIterator(table->rep->options.comparator);
         iter->registerCleanup(block);
     } else {

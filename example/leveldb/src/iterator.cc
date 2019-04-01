@@ -1,5 +1,13 @@
 #include "iterator.h"
 
+Iterator::Iterator() {
+	
+}
+
+Iterator::~Iterator() {
+	
+}
+
 class EmptyIterator : public Iterator {
 public:
     EmptyIterator(const Status &s) : s(s) {}

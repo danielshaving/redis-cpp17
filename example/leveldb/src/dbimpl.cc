@@ -78,11 +78,11 @@ std::shared_ptr <Iterator> DBImpl::newInternalIterator(const ReadOptions &option
         list.push_back(imm->newIterator());
     }
 
-    versions->current()->addIterators(options, &list);
+    versions->current->addIterators(options, &list);
     std::shared_ptr <Iterator> internalIter =
             newMergingIterator(&comparator, list, list.size());
 
-    std::shared_ptr <IterState> cleanup(new IterState(mem, imm, versions->current()));
+    std::shared_ptr <IterState> cleanup(new IterState(mem, imm, versions->current));
     internalIter->registerCleanup(cleanup);
 
     *seed = ++this->seed;
@@ -144,7 +144,7 @@ Status DBImpl::open() {
         deleteObsoleteFiles();
         maybeScheduleCompaction();
     } else {
-        //RecordBackgroundError(s);
+        assert(false);
     }
     return s;
 }
@@ -187,6 +187,10 @@ void DBImpl::deleteObsoleteFiles() {
             }
 
             if (!keep) {
+            	if (type == kTableFile) {
+            		tableCache->evict(number);
+            	}
+
                 printf("Delete type=%d #%lld\n",
                        static_cast<int>(type),
                        static_cast<unsigned long long>(number));
@@ -543,7 +547,7 @@ Status DBImpl::get(const ReadOptions &opt, const std::string_view &key, std::str
     Status s;
     uint64_t snapshot = versions->getLastSequence();
     bool haveStatUpdate = false;
-    auto current = versions->current();
+    auto current = versions->current;
     Version::GetStats stats;
 
     LookupKey lkey(key, snapshot);
@@ -649,9 +653,7 @@ void DBImpl::backgroundCompaction() {
         c->getEdit()->addFile(c->getLevel() + 1, f->number, f->fileSize,
                               f->smallest, f->largest);
         status = versions->logAndApply(c->getEdit());
-        if (!status.ok()) {
-            //RecordBackgroundError(status);
-        }
+        assert(status.ok());
 
         VersionSet::LevelSummaryStorage tmp;
         printf("Moved #%lld to level-%d %lld bytes %s: %s\n",
@@ -663,9 +665,7 @@ void DBImpl::backgroundCompaction() {
     } else {
         std::shared_ptr <CompactionState> compact(new CompactionState(c.get()));
         status = doCompactionWork(compact.get());
-        if (!status.ok()) {
-            //RecordBackgroundError(status);
-        }
+        assert(status.ok());
 
         cleanupCompaction(compact.get());
         c->releaseInputs();
@@ -674,9 +674,7 @@ void DBImpl::backgroundCompaction() {
 
     if (status.ok()) {
         // Done
-    }
-        // Ignore compaction errors found during shutting down
-    else {
+    } else {
         printf("Compaction error: %s", status.toString().c_str());
     }
 
@@ -700,6 +698,8 @@ void DBImpl::cleanupCompaction(CompactionState *compact) {
     if (compact->builder != nullptr) {
         // May happen if we get a shutdown call in the middle of compaction
         compact->builder->abandon();
+		compact->builder.reset();
+		compact->outfile.reset();
     } else {
         assert(compact->outfile == nullptr);
     }
@@ -731,6 +731,7 @@ Status DBImpl::finishCompactionOutputFile(CompactionState *compact,
     const uint64_t currentBytes = compact->builder->fileSize();
     compact->currentOutput()->fileSize = currentBytes;
     compact->totalBytes += currentBytes;
+	compact->builder.reset();
     // Finish and check for file errors
     if (s.ok()) {
         s = compact->outfile->sync();
@@ -739,8 +740,8 @@ Status DBImpl::finishCompactionOutputFile(CompactionState *compact,
     if (s.ok()) {
         s = compact->outfile->close();
     }
-
-    compact->outfile = nullptr;
+	
+	compact->outfile.reset();
 
     if (s.ok() && currentEntries > 0) {
         // Verify that the table is usable
@@ -805,8 +806,7 @@ Status DBImpl::doCompactionWork(CompactionState *compact) {
             lastSequenceForKey = kMaxSequenceNumber;
         } else {
             if (!hasCurrentUserKey ||
-                comparator.compare(ikey.userKey,
-                                   std::string_view(currentUserKey)) != 0) {
+                ikey.userKey.compare(std::string_view(currentUserKey)) != 0) {
                 // First occurrence of this user key
                 currentUserKey.assign(ikey.userKey.data(), ikey.userKey.size());
                 hasCurrentUserKey = true;
@@ -866,10 +866,11 @@ Status DBImpl::doCompactionWork(CompactionState *compact) {
         }
         input->next();
     }
-
-    if (status.ok()) {
+	
+    /*if (status.ok()) {
         status = Status::ioError("Deleting DB during compaction");
     }
+	*/
 
     if (status.ok() && compact->builder != nullptr) {
         status = finishCompactionOutputFile(compact, input);
@@ -878,6 +879,8 @@ Status DBImpl::doCompactionWork(CompactionState *compact) {
     if (status.ok()) {
         status = input->status();
     }
+
+	input.reset();
 
     CompactionStats stats;
     stats.micros = options.env->nowMicros() - startMicros - immMicros;
@@ -896,9 +899,7 @@ Status DBImpl::doCompactionWork(CompactionState *compact) {
         status = installCompactionResults(compact);
     }
 
-    if (!status.ok()) {
-        //recordBackgroundError(status);
-    }
+    assert(status.ok());
 
     VersionSet::LevelSummaryStorage tmp;
     printf("compacted to: %s", versions->levelSummary(&tmp));
@@ -950,7 +951,7 @@ void DBImpl::compactMemTable() {
     assert(imm != nullptr);
     // Save the contents of the memtable as a new Table
     VersionEdit edit;
-    auto base = versions->current();
+    auto base = versions->current;
     Status s = writeLevel0Table(imm, &edit, base.get());
 
     // Replace immutable memtable with the generated Table
@@ -964,8 +965,7 @@ void DBImpl::compactMemTable() {
         imm.reset();
         deleteObsoleteFiles();
     } else {
-
-        //RecordBackgroundError(s);
+		assert(false);
     }
 }
 
@@ -1093,7 +1093,7 @@ bool DBImpl::getProperty(const std::string_view &property, std::string *value) {
         }
         return true;
     } else if (in == "sstables") {
-        *value = versions->current()->debugString();
+        *value = versions->current->debugString();
     } else if (in == "approximate-memory-usage") {
         size_t totalUsage = tableCache->getCache()->totalCharge();
         if (mem) {

@@ -112,7 +112,7 @@ void Connector::handleWrite() {
             setState(kConnected);
             if (connect) {
                 newConnectionCallback(sockfd);
-                Socket::setkeepAlive(sockfd, 1);
+                Socket::setkeepAlive(sockfd, kHeart);
             } else {
                 Socket::close(sockfd);
             }
@@ -133,23 +133,14 @@ void Connector::handleError() {
 
 void Connector::connecting(bool s) {
     int32_t sockfd = Socket::createSocket();
-    assert(sockfd >= 0);
-
-    int32_t savedErrno = Socket::connect(sockfd, ip.c_str(), port);
-    if (savedErrno < 0) {
-#ifdef _WIN64
-        savedErrno = GetLastError();
-#else
-        savedErrno = errno;
-#endif
-    }
+    int32_t ret = Socket::connect(sockfd, ip.c_str(), port);
+	int32_t savedErrno = (ret == 0) ? 0 : errno;
 
     switch (savedErrno) {
         case 0:
         case EINPROGRESS:
         case EINTR:
         case EISCONN:
-            Socket::setSocketNonBlock(sockfd);
             setState(kConnecting);
             connecting(s, sockfd);
             break;

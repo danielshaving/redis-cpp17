@@ -47,6 +47,7 @@ public:
     int pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
                                    const std::string_view &largestUserKey);
 
+
     void getOverlappingInputs(
             int level,
             const InternalKey *begin,         // nullptr means before all keys
@@ -99,7 +100,7 @@ public:
 
 class Builder {
 public:
-    Builder(VersionSet *vset, Version *base);
+    Builder(VersionSet *vset, const std::shared_ptr <Version> &base);
 
     ~Builder();
 
@@ -118,7 +119,7 @@ private:
 
         bool operator()(const std::shared_ptr <FileMetaData> &f1,
                         const std::shared_ptr <FileMetaData> &f2) const {
-            int r = internalComparator->compare1(f1->smallest, f2->smallest);
+            int r = internalComparator->compare(f1->smallest, f2->smallest);
             if (r != 0) {
                 return (r < 0);
             } else {
@@ -135,7 +136,7 @@ private:
     };
 
     VersionSet *vset;
-    Version *base;
+    std::shared_ptr <Version> base;
     LevelState levels[kNumLevels];
 };
 
@@ -155,9 +156,7 @@ public:
 
     // Returns true iff some level needs a compaction.
     bool needsCompaction() const {
-        assert(!versions.empty());
-        auto v = versions.front();
-        return (v->compactionScore >= 1) || (v->fileToCompact != nullptr);
+        return (current->compactionScore >= 1) || (current->fileToCompact != nullptr);
     }
 
     // Arrange to reuse "file_number" unless a newer file number has
@@ -169,8 +168,6 @@ public:
         }
     }
 
-    std::shared_ptr <Version> current() const;
-
     // Apply *edit to the current version to form a new descriptor that
     // is both saved to persistent state and installed as the new
     // current version.  Will release *mu while actually writing to the file.
@@ -179,6 +176,9 @@ public:
     Status logAndApply(VersionEdit *edit);
 
     void finalize(Version *v);
+
+    // Save current contents to *log
+    Status writeSnapshot();
 
     // Add all files listed in any live version to *live.
     // May also mutate some internal state.
@@ -256,7 +256,7 @@ public:
     uint64_t lastSequence;
     uint64_t logNumber;
     uint64_t prevLogNumber;  // 0 or backing store for memtable being compacted
-    std::list <std::shared_ptr<Version>> versions;
+    std::shared_ptr<Version> current;
     std::shared_ptr <LogWriter> descriptorLog;
     std::shared_ptr <WritableFile> descriptorFile;
     std::shared_ptr <TableCache> tableCache;
@@ -322,7 +322,7 @@ private:
 
     int level;
     uint64_t maxOutputfileSize;
-    Version *inputVersion;
+    std::shared_ptr <Version> inputVersion;
     VersionEdit edit;
     // Each compaction reads inputs from "level_" and "level_+1"
     std::vector <std::shared_ptr<FileMetaData>> inputs[2];

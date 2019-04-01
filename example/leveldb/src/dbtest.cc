@@ -32,9 +32,145 @@ std::string makeKey(unsigned int num) {
 }
 
 class DBTest {
+private:
+	// Sequence of option configurations to try
+	enum OptionConfig {
+		kDefault,
+		kReuse,
+		kFilter,
+		kUncompressed,
+		kEnd
+	};
+	int optionConfig;
+
 public:
     std::string dbname;
-    DBImpl db;
+    std::shared_ptr <DBImpl> db;
+    Options lastOptions;
+
+    DBTest() : optionConfig(kDefault) {
+		dbname = "/db_test";
+		reopen();
+    }
+
+    ~DBTest() {
+		db->destroyDB(dbname, Options());
+    }
+
+    void reopen(Options *options = nullptr) {
+		assert(tryReopen(options).ok());
+    }
+
+    void destroyAndReopen(Options *options = nullptr) {
+        db->destroyDB(dbname, Options());
+        assert(tryReopen(options).ok());
+      }
+
+	Status tryReopen(Options *options) {
+		Options opts;
+		if (options != nullptr) {
+		  opts = *options;
+		} else {
+		  opts = currentOptions();
+		  opts.createIfMissing = true;
+		}
+
+		lastOptions = opts;
+		db.reset(new DBImpl(opts, dbname));
+		db->destroyDB(dbname, Options());
+		return db->open();
+	}
+
+	// Switch to a fresh database with the next option configuration to
+	// test.  Return false if there are no more configurations to test.
+	bool ChangeOptions() {
+		optionConfig++;
+		if (optionConfig >= kEnd) {
+		  return false;
+		} else {
+		  destroyAndReopen();
+		  return true;
+		}
+	}
+
+	// Return the current option configuration.
+	Options currentOptions() {
+		Options options;
+		options.reuseLogs = false;
+		switch (optionConfig) {
+		  case kReuse:
+			options.reuseLogs = true;
+			break;
+		  case kFilter:
+			break;
+		  case kUncompressed:
+			options.compression = kNoCompression;
+			break;
+		  default:
+			break;
+		}
+		return options;
+	}
+
+	Status put(const std::string &k, const std::string &v) {
+		return db->put(WriteOptions(), k, v);
+	}
+
+	Status del(const std::string &k) {
+		return db->del(WriteOptions(), k);
+	}
+
+	std::string get(const std::string &k) {
+		ReadOptions options;
+		//options.snapshot = snapshot;
+		std::string result;
+		Status s = db->get(ReadOptions(), k, &result);
+		if (s.isNotFound()) {
+			result = "NOT_FOUND";
+		} else if (!s.ok()) {
+		    result = s.toString();
+		}
+		return result;
+	}
+	
+	std::string iterStatus(const std::shared_ptr <Iterator> &iter) {
+		std::string result;
+		if (iter->valid()) {
+			std::string key = std::string(iter->key().data(), iter->key().size());
+			std::string value = std::string(iter->value().data(), iter->value().size());
+			result = key + "->" + value;
+		} else {
+			result = "(invalid)";
+		}
+		return result;
+	}
+  
+	// Return a string that contains all key,value pairs in order,
+	// formatted like "(k1->v1)(k2->v2)".
+	std::string contents() {
+		std::vector <std::string> forward;
+		std::string result;
+		std::shared_ptr <Iterator> iter = db->newIterator(ReadOptions());
+		for (iter->seekToFirst(); iter->valid(); iter->next()) {
+			std::string s = iterStatus(iter);
+			result.push_back('(');
+			result.append(s);
+			result.push_back(')');
+			forward.push_back(s);
+		}
+
+		// Check reverse iteration results are the reverse of forward results
+		size_t matched = 0;
+		for (iter->seekToLast(); iter->valid(); iter->prev()) {
+			assert(matched < forward.size());
+			assert(iterStatus(iter) == forward[forward.size() - matched - 1]);
+			matched++;
+		}
+		
+		assert(matched == forward.size());
+		return result;
+	}
+
 };
 
 void bmLogAndApply(int iters, int numbasefiles) {
@@ -83,6 +219,7 @@ void bmLogAndApply(int iters, int numbasefiles) {
             buf, iters, us, ((float) us) / iters);
 }
 
+/*
 int main() {
     bmLogAndApply(1000, 1);
     bmLogAndApply(1000, 100);
@@ -90,3 +227,4 @@ int main() {
     bmLogAndApply(100, 100000);
     return 0;
 }
+*/

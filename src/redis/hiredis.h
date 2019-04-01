@@ -126,9 +126,9 @@ public:
     RedisContext(Buffer *buffer, int32_t sockfd);
 
     ~RedisContext();
-
-    void close();
-
+	
+	void close();
+	
     RedisReplyPtr redisCommand(const char *format, ...);
 
     RedisReplyPtr redisvCommand(const char *format, va_list ap);
@@ -174,7 +174,7 @@ private:
 
 public:
     std::string errstr; /* String representation of error when applicable */
-    std::string ip;
+	std::string ip;
     std::string path;
     int16_t port;
     int32_t err;    /* Error flags, 0 when there is no error */
@@ -245,19 +245,15 @@ public:
 
     int32_t redisAsyncCommand(const RedisCallbackFn &fn, const std::any &privdata, const char *format, ...);
 
-    int32_t
-    threadProxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data, int32_t len, const std::any &privdata);
+    int32_t threadProxyRedisvAsyncCommand(const RedisCallbackFn &fn, const char *data, int32_t len, const std::any &privdata);
 
     int32_t proxyAsyncCommand(const RedisAsyncCallbackPtr &asyncCallback);
 
-    int32_t
-    processCommand(const RedisCallbackFn &fn, const std::any &privdata, const std::vector <RedisObjectPtr> &commands);
+    int32_t processCommand(const RedisCallbackFn &fn, const std::any &privdata, const std::vector <RedisObjectPtr> &commands);
 
-    std::function<void()>
-    getRedisAsyncCommand(const RedisCallbackFn &fn, const std::any &privdata, const char *format, ...);
+    std::function<void()> getRedisAsyncCommand(const RedisCallbackFn &fn, const std::any &privdata, const char *format, ...);
 
-    std::function<void()>
-    getRedisvAsyncCommand(const RedisCallbackFn &fn, const std::any &privdata, const char *format, va_list ap);
+    std::function<void()> getRedisvAsyncCommand(const RedisCallbackFn &fn, const std::any &privdata, const char *format, va_list ap);
 
     std::any *getMutableContext() {
         return &context;
@@ -295,9 +291,9 @@ private:
     void operator=(const RedisAsyncContext &);
 };
 
-class Hiredis {
+class Hiredis : public std::enable_shared_from_this<Hiredis> {
 public:
-    Hiredis(EventLoop *loop, int16_t sessionCount, const char *ip, int16_t port, bool proxyMode = false);
+    Hiredis(EventLoop *loop, int16_t sessionCount, const char *ip, int16_t port, bool clusterMode = false);
 
     ~Hiredis();
 
@@ -321,7 +317,9 @@ public:
     void setConnectionCallback(const ConnectionCallback &&cb) {
         connectionCallback = std::move(cb);
     }
-
+	
+	void startTimer();
+	
     void redisContextTimer();
 
     void connect(EventLoop *loop, const TcpClientPtr &client, int32_t count = 0);
@@ -360,18 +358,21 @@ public:
 
     TcpConnectionPtr redirectySlot(int32_t sockfd, EventLoop *loop, const char *ip, int16_t port);
 
-    RedisAsyncContextPtr
-    getRedisAsyncContext(const RedisObjectPtr &command, const std::thread::id &threadId, int32_t sockfd);
+    RedisAsyncContextPtr getRedisAsyncContext(const RedisObjectPtr &command, const std::thread::id &threadId, int32_t sockfd);
 
     RedisAsyncContextPtr getRedisAsyncContext(const std::thread::id &threadId, int32_t sockfd);
 
     RedisAsyncContextPtr getRedisAsyncContext(int32_t sockfd);
 
     RedisAsyncContextPtr getRedisAsyncContext();
-
+	
+	std::vector <RedisAsyncContextPtr> getRedisAsyncContextVector(const std::thread::id &threadId);
+	
     std::vector <RedisContextPtr> getRedisContext(const std::thread::id &threadId);
 
     RedisContextPtr getRedisContext(const int32_t sockfd);
+	
+	RedisContextPtr getRedisContext();
 
     RedisAsyncContextPtr getClusterRedisAsyncContext(const std::thread::id &threadId);
 
@@ -385,15 +386,15 @@ private:
     Hiredis(const Hiredis &);
 
     void operator=(const Hiredis &);
-
+	
     std::vector <TcpClientPtr> tcpClients;
     std::vector <RedisContextPtr> redisContexts;
     std::vector <RedisContextPtr> tmpContexts;
     std::vector <TcpClientPtr> tmpClients;
     std::vector <RedisContextPtr> tmpAsync;
     std::map <int16_t, RedisContextPtr> tmpMaps;
-    std::unordered_map <std::thread::id, std::vector<TcpClientPtr>> threadMaps;
-    std::unordered_map <std::thread::id, std::vector<RedisContextPtr>> threadRedisContexts;
+    std::unordered_map <std::thread::id, std::vector <TcpClientPtr>> threadMaps;
+    std::unordered_map <std::thread::id, std::vector <RedisContextPtr>> threadRedisContexts;
     std::vector <TcpConnectionPtr> moveAskClients;
     std::vector <std::shared_ptr<ClusterNode>> clusterNodes;
     std::map <int16_t, std::string> clusterConnectInfos;
@@ -406,7 +407,10 @@ private:
     int32_t sessionCount;
     const char *ip;
     int16_t port;
-    bool proxyMode;
+    bool clusterMode;
+	
+	static const int32_t kTimer = 1;
+	static const int32_t kTimeOut = 10;
 };
 
 int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc, const char **argv, const int32_t *argvlen);

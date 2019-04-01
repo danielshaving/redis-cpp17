@@ -44,6 +44,8 @@ public:
 
     std::shared_ptr <ShardedLRUCache> getCache() { return cache; }
 
+    void evict(uint64_t fileNumber);
+
 private:
     TableCache(const TableCache &) = delete;
 

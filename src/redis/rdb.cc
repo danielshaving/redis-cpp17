@@ -943,14 +943,14 @@ int32_t Rdb::rdbLoadRio(Rio *rdb) {
 
         if (type == RDB_OPCODE_EXPIRETIME) {
             /* EXPIRETIME: load an expire associated with the next key
-            * to load. Note that after loading an expire we need to
-            * load the actual type, and continue. */
+			* to load. Note that after loading an expire we need to
+			* load the actual type, and continue. */
             expiretime = rdbLoadTime(rdb);
             expiretime *= 1000;
             continue;
         } else if (type == RDB_OPCODE_EXPIRETIME_MS) {
             /* EXPIRETIME_MS: milliseconds precision expire times introduced
-             * with RDB v3. Like EXPIRETIME but no with more precision. */
+			 * with RDB v3. Like EXPIRETIME but no with more precision. */
             expiretime = rdbLoadMillisecondTime(rdb);
             continue; /* Read next opcode. */
         } else if (type == RDB_OPCODE_EOF) {
@@ -981,10 +981,10 @@ int32_t Rdb::rdbLoadRio(Rio *rdb) {
             continue;
         } else if (type == RDB_OPCODE_AUX) {
             /* AUX: generic string-string fields. Use to add state to RDB
-             * which is backward compatible. Implementations of RDB loading
-             * are requierd to skip AUX fields they don't understand.
-             *
-             * An AUX field is composed of two strings: key and value. */
+			 * which is backward compatible. Implementations of RDB loading
+			 * are requierd to skip AUX fields they don't understand.
+			 *
+			 * An AUX field is composed of two strings: key and value. */
             RedisObjectPtr auxkey, auxval;
             if ((auxkey = rdbLoadStringObject(rdb)) == nullptr) {
                 return REDIS_ERR;
@@ -996,8 +996,8 @@ int32_t Rdb::rdbLoadRio(Rio *rdb) {
 
             if (((char *) auxkey->ptr)[0] == '%') {
                 /* All the fields with a name staring with '%' are considered
-                 * information fields and are logged at startup with a log
-                 * level of NOTICE. */
+				 * information fields and are logged at startup with a log
+				 * level of NOTICE. */
                 LOG_WARN << "RDB " << (char *) auxkey->ptr << " " << (char *) auxval->ptr;
             }
             continue; /* Read type again. */
@@ -1517,7 +1517,7 @@ ssize_t Rdb::rdbSaveRawString(Rio *rdb, uint8_t *s, size_t len) {
     }
 
     /* Try LZF compression - under 20 bytes it's unable to compress even
-     * aaaaaaaaaaaaaaaaaa so skip it */
+	 * aaaaaaaaaaaaaaaaaa so skip it */
     if (len > 20) {
         n = rdbSaveLzfStringObject(rdb, s, len);
         if (n == REDIS_ERR) return REDIS_ERR;
@@ -1647,8 +1647,8 @@ void Rdb::checkRdb(int32_t argc, char **argv, FILE *fp) {
     }
 
     /* In order to call the loading functions we need to create the shared
-    * integer objects, however since this function may be called from
-    * an already initialized Redis instance, check if we really need to. */
+	* integer objects, however since this function may be called from
+	* an already initialized Redis instance, check if we really need to. */
 
     if (shared.integers[0] == nullptr) {
         createSharedObjects();

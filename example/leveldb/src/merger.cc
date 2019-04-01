@@ -8,9 +8,9 @@ public:
               n(n),
               current(nullptr),
               direction(kForward) {
-        children.reserve(n);
-        for (int i = 0; i < n; i++) {
-            children[i]->set(child[i]);
+        for (int i = 0; i < child.size(); i++) {
+			std::shared_ptr<IteratorWrapper> iterWrap(new IteratorWrapper(child[i]));
+			children.push_back(iterWrap);
         }
     }
 

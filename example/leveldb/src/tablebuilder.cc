@@ -50,7 +50,7 @@ TableBuilder::TableBuilder(const Options &options, const std::shared_ptr <Writab
 }
 
 TableBuilder::~TableBuilder() {
-
+	assert(rep->closed);  // Catch errors where caller forgot to call Finish()
 }
 
 void TableBuilder::add(const std::string_view &key, const std::string_view &value) {

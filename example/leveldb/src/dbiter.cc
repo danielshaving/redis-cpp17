@@ -164,7 +164,7 @@ void DBIter::findNextUserEntry(bool skipping, std::string *skip) {
                     break;
                 case kTypeValue:
                     if (skipping &&
-                        comparator->compare(ikey.userKey, *skip) <= 0) {
+                        ikey.userKey.compare(std::string_view(*skip)) <= 0) {
                         // Entry hidden
                     } else {
                         vali = true;

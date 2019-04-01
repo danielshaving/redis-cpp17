@@ -161,7 +161,7 @@ public:
 
     virtual int compare(const std::string_view &a, const std::string_view &b) const;
 
-    virtual int compare1(const InternalKey &a, const InternalKey &b) const;
+    virtual int compare(const InternalKey &a, const InternalKey &b) const;
 
     const Comparator *getComparator() const { return comparator; }
 
@@ -201,7 +201,7 @@ public:
     void clear() { rep.clear(); }
 };
 
-inline int InternalKeyComparator::compare1(const InternalKey &a, const InternalKey &b) const {
+inline int InternalKeyComparator::compare(const InternalKey &a, const InternalKey &b) const {
     return compare(a.encode(), b.encode());
 }
 

@@ -10,7 +10,7 @@
 #endif
 
 #if USE_REP_MOVSB /* small win on amd, big loss on intel */
-#if (__i386 || __amd64) && __GNUC__ >= 3
+                                                                                                                        #if (__i386 || __amd64) && __GNUC__ >= 3
 # define lzf_movsb(dst, src, len)                \
    asm ("rep movsb"                              \
         : "=D" (dst), "=S" (src), "=c" (len)     \
@@ -152,8 +152,8 @@ unsigned int lzfDecompress(const void *const in_data, unsigned int in_len,
             }
 
 #ifdef lzf_movsb
-            len += 2;
-            lzf_movsb(op, ref, len);
+                                                                                                                                    len += 2;
+			lzf_movsb(op, ref, len);
 #else
             switch (len) {
                 default:
@@ -221,16 +221,16 @@ unsigned int lzfDecompress(const void *const in_data, unsigned int in_len,
 # endif
 #endif
 /*
- * IDX works because it is very similar to a multiplicative hash, e.g.
- * ((h * 57321 >> (3*8 - HLOG)) & (HSIZE - 1))
- * the latter is also quite fast on newer CPUs, and compresses similarly.
- *
- * the next one is also quite good, albeit slow ;)
- * (int)(cos(h & 0xffffff) * 1e6)
- */
+  * IDX works because it is very similar to a multiplicative hash, e.g.
+  * ((h * 57321 >> (3*8 - HLOG)) & (HSIZE - 1))
+  * the latter is also quite fast on newer CPUs, and compresses similarly.
+  *
+  * the next one is also quite good, albeit slow ;)
+  * (int)(cos(h & 0xffffff) * 1e6)
+  */
 
 #if 0
-/* original lzv-like hash function, much worse and thus slower */
+                                                                                                                        /* original lzv-like hash function, much worse and thus slower */
 # define FRST(p) (p[0] << 5) ^ p[1]
 # define NEXT(v,p) ((v) << 5) ^ p[2]
 # define IDX(h) ((h) & (HSIZE - 1))
@@ -241,7 +241,7 @@ unsigned int lzfDecompress(const void *const in_data, unsigned int in_len,
 #define        MAX_REF        ((1 << 8) + (1 << 3))
 
 #if __GNUC__ >= 3
-# define expect(expr,value)         __builtin_expect ((expr),(value))
+                                                                                                                        # define expect(expr,value)         __builtin_expect ((expr),(value))
 # define inline                     inline
 #else
 # define expect(expr, value)         (expr)
@@ -276,12 +276,12 @@ unsigned int lzfCompress(const void *const in_data, unsigned int in_len,
     const u8 *ref;
 
     /* off requires a type wide enough to hold a general pointer difference.
-     * ISO C doesn't have that (size_t might not be enough and ptrdiff_t only
-     * works for differences within a single object). We also assume that no
-     * no bit pattern traps. Since the only platform that is both non-POSIX
-     * and fails to support both assumptions is windows 64 bit, we make a
-     * special workaround for it.
-     */
+	 * ISO C doesn't have that (size_t might not be enough and ptrdiff_t only
+	 * works for differences within a single object). We also assume that no
+	 * no bit pattern traps. Since the only platform that is both non-POSIX
+	 * and fails to support both assumptions is windows 64 bit, we make a
+	 * special workaround for it.
+	 */
 #if defined (WIN32) && defined (_M_X64)
     unsigned _int64 off; /* workaround for missing POSIX compliance */
 #else
@@ -417,14 +417,14 @@ unsigned int lzfCompress(const void *const in_data, unsigned int in_len,
             ip++;
 # endif
 #else
-            ip -= len + 1;
+                                                                                                                                    ip -= len + 1;
 
-            do
-            {
-                hval = NEXT(hval, ip);
-                htab[IDX(hval)] = ip - LZF_HSLOT_BIAS;
-                ip++;
-            } while (len--);
+			do
+			{
+				hval = NEXT(hval, ip);
+				htab[IDX(hval)] = ip - LZF_HSLOT_BIAS;
+				ip++;
+			} while (len--);
 #endif
         } else {
             /* one more literal byte we must copy */
@@ -614,16 +614,16 @@ uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l) {
 
 /* Test main */
 #ifdef REDIS_TEST
-#include <stdio.h>
+                                                                                                                        #include <stdio.h>
 
 #define UNUSED(x) (void)(x)
 int crc64Test(int argc, char *argv[])
 {
-    UNUSED(argc);
-    UNUSED(argv);
-    printf("e9c6d914c4b8d9ca == %016llx\n",
-        (unsigned long long) crc64(0, (unsigned char*)"123456789", 9));
-    return 0;
+	UNUSED(argc);
+	UNUSED(argv);
+	printf("e9c6d914c4b8d9ca == %016llx\n",
+		(unsigned long long) crc64(0, (unsigned char*)"123456789", 9));
+	return 0;
 }
 
 #endif
@@ -637,7 +637,7 @@ int crc64Test(int argc, char *argv[])
 #define blk0(i) (block->l[i] = (rol(block->l[i],24)&0xFF00FF00) \
     |(rol(block->l[i],8)&0x00FF00FF))
 #elif BYTE_ORDER == BIG_ENDIAN
-#define blk0(i) block->l[i]
+                                                                                                                        #define blk0(i) block->l[i]
 #else
 #error "Endianness not defined!"
 #endif
@@ -664,12 +664,12 @@ void SHA1Transform(uint32_t state[5], const unsigned char buffer[64]) {
     CHAR64LONG16 block[1];  /* use array to appear as a pointer */
     memcpy(block, buffer, 64);
 #else
-    /* The following had better never be used because it causes the
-     * pointer-to-const buffer to be cast into a pointer to non-const.
-     * And the result is written through.  I threw a "const" in, hoping
-     * this will cause a diagnostic.
-     */
-    CHAR64LONG16* block = (const CHAR64LONG16*)buffer;
+                                                                                                                            /* The following had better never be used because it causes the
+	 * pointer-to-const buffer to be cast into a pointer to non-const.
+	 * And the result is written through.  I threw a "const" in, hoping
+	 * this will cause a diagnostic.
+	 */
+	CHAR64LONG16* block = (const CHAR64LONG16*)buffer;
 #endif
     /* Copy context->state[] to working vars */
     a = state[0];
@@ -815,21 +815,21 @@ void SHA1Final(unsigned char digest[20], SHA1_CTX *context) {
     unsigned char c;
 
 #if 0    /* untested "improvement" by DHR */
-    /* Convert context->count to a sequence of bytes
-     * in finalcount.  Second element first, but
-     * big-endian order within element.
-     * But we do it all backwards.
-     */
-    unsigned char *fcp = &finalcount[8];
+                                                                                                                            /* Convert context->count to a sequence of bytes
+	 * in finalcount.  Second element first, but
+	 * big-endian order within element.
+	 * But we do it all backwards.
+	 */
+	unsigned char *fcp = &finalcount[8];
 
-    for (i = 0; i < 2; i++)
-    {
-        uint32_t t = context->count[i];
-        int j;
+	for (i = 0; i < 2; i++)
+	{
+		uint32_t t = context->count[i];
+		int j;
 
-        for (j = 0; j < 4; t >>= 8, j++)
-            *--fcp = (unsigned char)t;
-    }
+		for (j = 0; j < 4; t >>= 8, j++)
+			*--fcp = (unsigned char)t;
+	}
 #else
     for (i = 0; i < 8; i++) {
         finalcount[i] = (unsigned char) ((context->count[(i >= 4 ? 0 : 1)]
@@ -854,31 +854,31 @@ void SHA1Final(unsigned char digest[20], SHA1_CTX *context) {
 
 
 #ifdef REDIS_TEST
-#define BUFSIZE 4096
+                                                                                                                        #define BUFSIZE 4096
 
 #define UNUSED(x) (void)(x)
 int sha1Test(int argc, char **argv)
 {
-    SHA1_CTX ctx;
-    unsigned char hash[20], buf[BUFSIZE];
-    int i;
+	SHA1_CTX ctx;
+	unsigned char hash[20], buf[BUFSIZE];
+	int i;
 
-    UNUSED(argc);
-    UNUSED(argv);
+	UNUSED(argc);
+	UNUSED(argv);
 
-    for (i = 0; i < BUFSIZE; i++)
-        buf[i] = i;
+	for (i = 0; i < BUFSIZE; i++)
+		buf[i] = i;
 
-    SHA1Init(&ctx);
-    for (i = 0; i < 1000; i++)
-        SHA1Update(&ctx, buf, BUFSIZE);
-    SHA1Final(hash, &ctx);
+	SHA1Init(&ctx);
+	for (i = 0; i < 1000; i++)
+		SHA1Update(&ctx, buf, BUFSIZE);
+	SHA1Final(hash, &ctx);
 
-    printf("SHA1=");
-    for (i = 0; i < 20; i++)
-        printf("%02x", hash[i]);
-    printf("\n");
-    return 0;
+	printf("SHA1=");
+	for (i = 0; i < 20; i++)
+		printf("%02x", hash[i]);
+	printf("\n");
+	return 0;
 }
 #endif
 
@@ -896,7 +896,7 @@ uint32_t dictGenCaseHashFunction(const char *buf, int32_t len) {
 
 uint32_t dictGenHashFunction(const void *key, int32_t len) {
     /* 'm' and 'r' are mixing constants generated offline.
-     They're no really 'magic', they just happen to work well.  */
+	 They're no really 'magic', they just happen to work well.  */
     uint32_t seed = dict_hash_function_seed;
     const uint32_t m = 0x5bd1e995;
     const int32_t r = 24;
@@ -933,7 +933,7 @@ uint32_t dictGenHashFunction(const void *key, int32_t len) {
     };
 
     /* Do a few final mixes of the hash to ensure the last few
-     * bytes are well-incorporated. */
+	 * bytes are well-incorporated. */
     h ^= h >> 13;
     h *= m;
     h ^= h >> 15;
@@ -1186,9 +1186,9 @@ void getRandomHexChars(char *p, uint32_t len) {
 
     if (!seedInitialized) {
         /* Initialize a seed and use SHA1 in counter mode, where we hash
-        * the same seed with a progressive counter. For the goals of this
-        * function we just need non-colliding strings, there are no
-        * cryptographic security needs. */
+		* the same seed with a progressive counter. For the goals of this
+		* function we just need non-colliding strings, there are no
+		* cryptographic security needs. */
         FILE *fp = fopen("/dev/urandom", "r");
         if (fp && fread(seed, sizeof(seed), 1, fp) == 1)
             seedInitialized = 1;
@@ -1215,8 +1215,8 @@ void getRandomHexChars(char *p, uint32_t len) {
         }
     } else {
         /* If we can't read from /dev/urandom, do some reasonable effort
-        * in order to create some entropy, since this function is used to
-        * generate run_id and cluster instance IDs */
+		* in order to create some entropy, since this function is used to
+		* generate run_id and cluster instance IDs */
         char *x = p;
         uint32_t l = len;
         struct timeval tv;
@@ -1240,7 +1240,7 @@ void getRandomHexChars(char *p, uint32_t len) {
             x += sizeof(pid);
         }
         /* Finally xor it with rand() output, that was already seeded with
-        * time() at startup, and convert to hex digits. */
+		* time() at startup, and convert to hex digits. */
         for (j = 0; j < len; j++) {
             p[j] ^= rand();
             p[j] = charset[p[j] & 0x0F];
@@ -1354,29 +1354,29 @@ uint64_t intrev64(uint64_t v) {
 }
 
 #ifdef REDIS_TEST
-#include <stdio.h>
+                                                                                                                        #include <stdio.h>
 
 #define UNUSED(x) (void)(x)
 int endianconvTest(int argc, char *argv[])
 {
-    char buf[32];
+	char buf[32];
 
-    UNUSED(argc);
-    UNUSED(argv);
+	UNUSED(argc);
+	UNUSED(argv);
 
-    sprintf(buf, "ciaoroma");
-    memrev16(buf);
-    printf("%s\n", buf);
+	sprintf(buf, "ciaoroma");
+	memrev16(buf);
+	printf("%s\n", buf);
 
-    sprintf(buf, "ciaoroma");
-    memrev32(buf);
-    printf("%s\n", buf);
+	sprintf(buf, "ciaoroma");
+	memrev32(buf);
+	printf("%s\n", buf);
 
-    sprintf(buf, "ciaoroma");
-    memrev64(buf);
-    printf("%s\n", buf);
+	sprintf(buf, "ciaoroma");
+	memrev64(buf);
+	printf("%s\n", buf);
 
-    return 0;
+	return 0;
 }
 #endif
 

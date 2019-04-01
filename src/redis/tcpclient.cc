@@ -79,6 +79,7 @@ void TcpClient::errorConnection() {
 }
 
 void TcpClient::newConnection(int32_t sockfd) {
+	loop->assertInLoopThread();
     TcpConnectionPtr conn(new TcpConnection(loop, sockfd, context));
     conn->setConnectionCallback(std::move(connectionCallback));
     conn->setMessageCallback(std::move(messageCallback));

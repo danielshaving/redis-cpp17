@@ -54,11 +54,10 @@ void ProxySession::proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffe
                                     "wrong number of arguments`%s`, for command", command->ptr);
             }
         } else {
-            if (redisCommands.empty()) {
-                redis->processCommand(command, conn, buf, len);
-            } else {
-                redis->processCommand(redisCommands[0], conn, buf, len);
-            }
+			if (redisCommands.empty()) {
+				redisCommands.push_back(command);
+			}
+            redis->processCommand(command, redisCommands, conn, buf, len);
         }
         reset();
     }

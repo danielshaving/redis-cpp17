@@ -1,16 +1,16 @@
 TARGET= ./leveldb
-CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17 #-I /usr/local/include/leveldb/
-ccfiles := $(shell ls *.cc)
+CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17
+cppfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
-OBJS := $(patsubst %.cc,./%.o, $(ccfiles) $(cfiles))
+OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))
 COBJS=${patsubst %.c,./%.o,$(cfiles)}
-CXXOBJS=${patsubst %.cc,./%.o,$(ccfiles)}
+CXXOBJS=${patsubst %.cc,./%.o,$(cppfiles)}
 
 DEPS=$(patsubst %.o,%.d,$(OBJS))
 
-LIB= #/usr/local/lib/libleveldb.a /usr/local/lib/libsnappy.a
+LIB= 
 
-SO_LIB= 
+SO_LIB=
 
 
 .PHONY: all clean
@@ -18,7 +18,7 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	g++ -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread
+	g++ -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread -lstdc++fs 
 ${CXXOBJS}:./%.o:./%.cc
 	g++ -MMD -c -o $@ $< ${CFLAGS} 
 
@@ -28,14 +28,14 @@ ${COBJS}:./%.o:./%.c
 -include $(DEPS)
 
 clean:
-	rm -f *.rdb *.log *.temp ${OBJS} ${TARGET} ${DEPS}
+	rm -rf ${OBJS} ${TARGET} ${DEPS}
 
 show:
 	@echo GPROF=$(GPROF)
 	@echo CFLAGS=$(CFLAGS)
 	@echo LDFLAGS=$(LDFLAGS)
 	@echo objs=$(OBJS)
-	@echo ccfiels=$(ccfiles)
+	@echo cppfiels=$(cppfiles)
 	@echo cfiels=$(cfiles)
 	@echo DEPS=$(DEPS)
 	@echo CXXOBJS=$(CXXOBJS)

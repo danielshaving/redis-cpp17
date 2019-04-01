@@ -88,8 +88,10 @@ void LRUCache::erase(const std::string_view &key, uint32_t hash) {
     memcpy(e->keyData, key.data(), key.size());
     e->hash = hash;
     auto it = tables.find(e);
-    assert(it != tables.end());
-    (*it)->deleter(std::string_view((*it)->keyData, (*it)->keyLength), (*it)->value);
-    size_t n = tables.erase(e);
-    assert(n == 1);
+    if (it != tables.end()) {
+		if ((*it)->deleter) {
+			(*it)->deleter(std::string_view((*it)->keyData, (*it)->keyLength), (*it)->value);
+		}
+		tables.erase(it);
+    }
 }

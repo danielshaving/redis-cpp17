@@ -1,43 +1,30 @@
-TARGET= ./proxy-server
-CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17
-cppfiles := $(shell ls *.cc)
-cfiles := $(-shell ls *.c)
-OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))
-COBJS=${patsubst %.c,./%.o,$(cfiles)}
-CXXOBJS=${patsubst %.cc,./%.o,$(cppfiles)}
-
-DEPS=$(patsubst %.o,%.d,$(OBJS))
-
-LIB= 
-
-SO_LIB= 
+TARGET = ../../lib/lib.a
+OBJPATH = ./
+CFLAGS = -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17  
 
 
-.PHONY: all clean
+LFLAGS = -lpthread -lstdc++fs
+LLIB = 
 
-all: ${TARGET}
+OBJS = $(patsubst %.cc,$(OBJPATH)/%.o, $(notdir $(wildcard *.cc)))
 
-${TARGET}: ${OBJS} ${LIB} 
-	g++ -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread -lstdc++fs #-lz -lcurl -lcrypto -ldl -lssl 
-${CXXOBJS}:./%.o:./%.cc
-	g++ -MMD -c -o $@ $< ${CFLAGS} 
+$(OBJPATH)/%.o : %.cc
+	g++ -c $(CFLAGS) $< -o $@
 
-${COBJS}:./%.o:./%.c
-	${CC} -MMD -c -o $@ $< ${CFLAGS} 
+all : $(TARGET)
 
--include $(DEPS)
+$(TARGET) : $(OBJS)
+	$(AR) -rcs $(OBJPATH)/$(TARGET) $(OBJS) 
 
+install:
+	@mkdir /usr/local/include/xredis
+	@cp *.h /usr/local/include/xredis
+	
 clean:
-	rm -rf redislog *.sock *.rdb *.log *.temp ${OBJS} ${TARGET} ${DEPS}
-
-show:
-	@echo GPROF=$(GPROF)
-	@echo CFLAGS=$(CFLAGS)
-	@echo LDFLAGS=$(LDFLAGS)
-	@echo objs=$(OBJS)
-	@echo cppfiels=$(cppfiles)
-	@echo cfiels=$(cfiles)
-	@echo DEPS=$(DEPS)
-	@echo CXXOBJS=$(CXXOBJS)
-	@echo COBJS=$(COBJS)
+	@rm -f $(OBJPATH)/*.o
+	@rm -f $(TARGET)
+	@rm -rf /usr/local/include/xredis
+	
+	
+	
 

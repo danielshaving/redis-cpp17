@@ -60,6 +60,7 @@ private:
 
     static const int kMaxRetryDelayMs = 30 * 1000;
     static const int kInitRetryDelayMs = 1000;
+	static const int kHeart = 5;
 
     EventLoop *loop;
     std::string ip;

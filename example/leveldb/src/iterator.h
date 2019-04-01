@@ -9,13 +9,13 @@
 
 class Iterator {
 public:
-    Iterator() {}
+    Iterator();
 
     Iterator(const Iterator &) = delete;
 
     Iterator &operator=(const Iterator &) = delete;
 
-    virtual ~Iterator() {}
+    virtual ~Iterator();
 
     // An iterator is either positioned at a key/value pair, or
     // not valid.  This method returns true iff the iterator is valid.

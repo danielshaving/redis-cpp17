@@ -11,8 +11,8 @@ class EventLoop;
 
 class Epoll {
 public:
-    typedef std::vector<struct epoll_event> EventList;
-    typedef std::vector<Channel *> ChannelList;
+    typedef std::vector<struct epoll_event>        EventList;
+    typedef std::vector<Channel *>                 ChannelList;
     typedef std::unordered_map<int32_t, Channel *> ChannelMap;
 
     Epoll(EventLoop *loop);
@@ -37,8 +37,9 @@ private:
     void operator=(const Epoll &);
 
     ChannelMap channels;
-    EventList events;
-    EventLoop *loop;
-    int32_t sockfd;
+    EventList  events;
+    EventLoop  *loop;
+    int32_t    sockfd;
 };
+
 #endif

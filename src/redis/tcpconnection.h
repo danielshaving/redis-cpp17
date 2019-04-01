@@ -13,7 +13,7 @@ public:
         kDisconnected, kConnecting, kConnected, kDisconnecting
     };
 
-    TcpConnection(EventLoop *loop, int32_t sockfd, const std::any &context);
+    TcpConnection(EventLoop *loop, int32_t sockfd, const std::any &);
 
     ~TcpConnection();
 
@@ -116,6 +116,20 @@ public:
 
     void setContext(const std::any &context) { this->context = context; }
 
+    std::any *getMutableContext1() { return &context1; }
+
+    const std::any &getContext1() const { return context1; }
+
+    void resetContext1() { context1.reset(); }
+
+    void setContext1(const std::any &context1) { this->context1 = context1; }
+	
+	const std::any &getContext2() const { return context2; }
+
+    void resetContext2() { context2.reset(); }
+
+    void setContext2(const std::any &context1) { this->context2 = context2; }
+
     Buffer *outputBuffer() { return &writeBuffer; }
 
     Buffer *intputBuffer() { return &readBuffer; }
@@ -141,4 +155,6 @@ private:
     StateE state;
     ChannelPtr channel;
     std::any context;
+    std::any context1;
+	std::any context2;
 };

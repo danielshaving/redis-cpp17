@@ -5,6 +5,8 @@
 #include <vector>
 #include <functional>
 #include <cassert>
+#include <iostream>
+
 /*
 #include <leveldb/db.h>
 
@@ -26,7 +28,8 @@ int main(int argc, char *argv[])
 }
  */
 
-/*
+
+
 int main(int argc, char *argv[])
 {
 	Options options;
@@ -38,25 +41,32 @@ int main(int argc, char *argv[])
 	{
 		printf("%s\n", s.toString().c_str());
 	}
-
-	for (int i = 0; i < 100; i++)
+	
+	
+	/*for (int i = 0; i < 1000000; i++)
 	{
 		std::string key = std::to_string(i);
 		std::string value = std::to_string(i);
-		//std::string v;
+		std::string v;
 		s = db.put(WriteOptions(), key, value);
 		assert(s.ok());
-		//s = db.get(ReadOptions(),key,&v);
-		//assert(s.ok());
-	}
-
-	for (int i = 101; i < 1010; i++)
-	{
-		std::string key = std::to_string(i);
-		std::string v;
 		s = db.get(ReadOptions(), key, &v);
 		assert(s.ok());
 	}
+	*/
+	
+	
+	/*std::shared_ptr <Iterator> it = db.newIterator(ReadOptions());
+	for (it->seekToFirst(); it->valid(); it->next()) {
+		std::string key(it->key().data(), it->key().size());
+		std::string value(it->value().data(), it->value().size());
+		std::cout << key << ": "  << value << std::endl;
+		sleep(1);
+	}
+	
+	assert(it->status().ok());  // Check for any errors found during the scan
+	*/
+	
+	
 	return 0;
 }
-*/

@@ -14,7 +14,8 @@ public:
 
     void proxyConnCallback(const TcpConnectionPtr &conn);
 
-    void processCommand(const RedisObjectPtr &command, const TcpConnectionPtr &conn, const char *buf, size_t len);
+    void processCommand(const RedisObjectPtr &command, const std::vector <RedisObjectPtr> &commands,
+			const TcpConnectionPtr &conn, const char *buf, size_t len);
 
     void run();
 
@@ -26,9 +27,9 @@ public:
 
     void redisContextTimer(const std::thread::id &threadId);
 
-    RedisAsyncContextPtr checkReply(const RedisObjectPtr &command, const TcpConnectionPtr &conn);
+    RedisAsyncContextPtr checkCommandToCluster(const RedisObjectPtr &command, const TcpConnectionPtr &conn, bool pubsub = false);
 
-    RedisAsyncContextPtr checkReply(const TcpConnectionPtr &conn);
+    RedisAsyncContextPtr checkCommandToCluster(const TcpConnectionPtr &conn, bool pubsub = false);
 
     bool getRedisCommand(const RedisObjectPtr &command);
 
@@ -38,7 +39,15 @@ public:
                             const TcpConnectionPtr &conn,
                             const char *buf,
                             const size_t len);
-
+							
+	bool subscribeCommand(const RedisObjectPtr &command, const std::vector <RedisObjectPtr> &commands,
+                     const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf,
+                     const size_t len);
+	
+	bool publishCommand(const RedisObjectPtr &command, const std::vector <RedisObjectPtr> &commands,
+                     const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf,
+                     const size_t len);
+							
 	bool monitorCommand(const RedisObjectPtr &command, const std::vector <RedisObjectPtr> &commands,
                      const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf,
                      const size_t len);
@@ -90,16 +99,23 @@ public:
 	void monitorConnCallback(const TcpConnectionPtr &conn);
 	
 	void monitorDisconnCallback(const TcpConnectionPtr &conn);
+	
+	void subscribeConnCallback(const TcpConnectionPtr &conn);
+	
+	void subscribeDisConnCallback(const TcpConnectionPtr &conn);
 
+	void monitorCallback(const RedisAsyncContextPtr &c,
+                       const RedisReplyPtr &reply, const std::any &privdata);
+	
+    void publishCallback(const RedisAsyncContextPtr &c,
+                       const RedisReplyPtr &reply, const std::any &privdata);
+					   
+	void subscribeCallback(const RedisAsyncContextPtr &c,
+                       const RedisReplyPtr &reply, const std::any &privdata);
+	
     void proxyCallback(const RedisAsyncContextPtr &c,
                        const RedisReplyPtr &reply, const std::any &privdata);
-
-    void flushdbCallback(const std::thread::id &threadId, const int32_t sockfd,
-                         const TcpConnectionPtr &conn);
-
-    void dbsizeCallback(const std::thread::id &threadId, const int32_t sockfd,
-                        const TcpConnectionPtr &conn);
-
+					   
     void delCallback(const std::thread::id &threadId, const int32_t sockfd,
                      const TcpConnectionPtr &conn, int32_t commandCount);
 
@@ -154,7 +170,6 @@ private:
     int16_t threadCount;
     int16_t sessionCount;
     bool clusterEnabled;
-	bool monitorEnabled;
 
     static const int32_t kHeart = 10;
     static const int32_t kHighWaterBytes = 1024 * 1024 * 64;
@@ -162,6 +177,7 @@ private:
 	std::unordered_map <std::thread::id, std::unordered_map <int32_t, TcpConnectionPtr>> threadMonitors;
     std::unordered_map <std::thread::id, std::unordered_map <int32_t, ProxySessionPtr>> threadSessions;
 	std::unordered_map <std::thread::id, std::shared_ptr<Hiredis>> threadMonitorHierdis;
+	std::unordered_map <std::thread::id, std::unordered_map <int32_t, std::shared_ptr<Hiredis>>> threadSubscribeHiredis;
     std::unordered_map <std::thread::id, std::shared_ptr<Hiredis>> threadHiredis;
     std::unordered_map <std::thread::id, std::unordered_map <int32_t, std::map <int64_t, RedisReplyPtr>>> threadProxyReplys;
     std::unordered_map <std::thread::id, std::unordered_map <int32_t, std::set <int64_t>>> threadProxySends;

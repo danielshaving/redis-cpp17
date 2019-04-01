@@ -1,14 +1,13 @@
 #include "acceptor.h"
 #include "log.h"
 
-Acceptor::Acceptor(EventLoop *loop, const char *ip, int16_t port)
-        : loop(loop),
-          channel(loop, Socket::createTcpSocket(ip, port)),
-          sockfd(channel.getfd()),
+Acceptor::Acceptor(EventLoop *loop, const char *ip, int16_t port) : loop(loop),
+                                                                    channel(loop, Socket::createTcpSocket(ip, port)),
+                                                                    sockfd(channel.getfd()),
 #ifndef _WIN64
-          idleFd(::open("/dev/null", O_RDONLY | O_CLOEXEC)),
+                                                                    idleFd(::open("/dev/null", O_RDONLY | O_CLOEXEC)),
 #endif
-          listenning(false) {
+                                                                    listenning(false) {
 #ifndef _WIN64
     assert(idleFd >= 0);
 #endif
@@ -23,15 +22,7 @@ Acceptor::~Acceptor() {
 
 void Acceptor::handleRead() {
     loop->assertInLoopThread();
-    struct sockaddr_in6 address;
-    socklen_t len = sizeof(address);
-#ifdef __linux__
-    int32_t connfd = ::accept4(sockfd, (struct sockaddr*)&address,
-        &len, SOCK_NONBLOCK | SOCK_CLOEXEC);
-#else
-    int32_t connfd = ::accept(sockfd, (struct sockaddr *) &address, &len);
-#endif
-
+	int32_t connfd = Socket::accept(sockfd);
     if (connfd >= 0) {
         if (newConnectionCallback) {
             Socket::setSocketNonBlock(connfd);

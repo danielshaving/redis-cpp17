@@ -23,6 +23,12 @@ TableCache::~TableCache() {
 
 }
 
+void TableCache::evict(uint64_t fileNumber) {
+	char buf[sizeof(fileNumber)];
+	encodeFixed64(buf, fileNumber);
+	cache->erase(std::string_view(buf, sizeof(buf)));
+}
+
 Status TableCache::findTable(uint64_t fileNumber, uint64_t fileSize,
                              std::shared_ptr <LRUHandle> &handle) {
     Status s;

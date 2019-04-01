@@ -1,20 +1,11 @@
 #include "session.h"
 #include "redis.h"
 
-Session::Session(Redis *redis, const TcpConnectionPtr &conn)
-        : reqtype(0),
-          multibulklen(0),
-          bulklen(-1),
-          argc(0),
-          redis(redis),
-          authEnabled(false),
-          replyBuffer(false),
-          fromMaster(false),
-          fromSlave(false),
-          pos(0) {
+Session::Session(Redis *redis, const TcpConnectionPtr &conn) : reqtype(0), multibulklen(0), bulklen(-1), argc(0),
+                                                               redis(redis), authEnabled(false), replyBuffer(false),
+                                                               fromMaster(false), fromSlave(false), pos(0) {
     cmd = createStringObject(nullptr, REDIS_COMMAND_LENGTH);
-    conn->setMessageCallback(std::bind(&Session::readCallback,
-                                       this, std::placeholders::_1, std::placeholders::_2));
+    conn->setMessageCallback(std::bind(&Session::readCallback, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 Session::~Session() {
@@ -133,15 +124,14 @@ int32_t Session::processCommand(const TcpConnectionPtr &conn) {
 
         auto it = redis->getCluster()->checkClusterSlot(hashslot);
         if (it == nullptr) {
-            redis->getCluster()->clusterRedirectClient(conn, shared_from_this(),
-                                                       nullptr, hashslot, CLUSTER_REDIR_DOWN_UNBOUND);
+            redis->getCluster()->clusterRedirectClient(conn, shared_from_this(), nullptr, hashslot,
+                                                       CLUSTER_REDIR_DOWN_UNBOUND);
             return REDIS_ERR;
         } else {
             if (redis->ip == it->ip && redis->port == it->port) {
                 //FIXME
             } else {
-                redis->getCluster()->clusterRedirectClient(conn, shared_from_this(),
-                                                           it, hashslot, CLUSTER_REDIR_MOVED);
+                redis->getCluster()->clusterRedirectClient(conn, shared_from_this(), it, hashslot, CLUSTER_REDIR_MOVED);
                 return REDIS_ERR;
             }
         }
@@ -180,13 +170,11 @@ int32_t Session::processCommand(const TcpConnectionPtr &conn) {
     auto &handlerCommands = redis->getHandlerCommandMap();
     auto it = handlerCommands.find(cmd);
     if (it == handlerCommands.end()) {
-        addReplyErrorFormat(conn->outputBuffer(),
-                            "unknown command `%s`, with args beginning", cmd->ptr);
+        addReplyErrorFormat(conn->outputBuffer(), "unknown command `%s`, with args beginning", cmd->ptr);
         return REDIS_ERR;
     } else {
         if (!it->second(redisCommands, shared_from_this(), conn)) {
-            addReplyErrorFormat(conn->outputBuffer(),
-                                "wrong number of arguments`%s`, for command", cmd->ptr);
+            addReplyErrorFormat(conn->outputBuffer(), "wrong number of arguments`%s`, for command", cmd->ptr);
         } else {
             if (redis->monitorEnabled) {
                 redisCommands.push_back(cmd);
@@ -349,16 +337,14 @@ int32_t Session::processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *bu
 
 
             if (queryBuf[pos] != '$') {
-                addReplyErrorFormat(conn->outputBuffer(),
-                                    "Protocol error: expected '$',got '%c'", queryBuf[pos]);
+                addReplyErrorFormat(conn->outputBuffer(), "Protocol error: expected '$',got '%c'", queryBuf[pos]);
                 conn->shutdown();
                 return REDIS_ERR;
             }
 
             ok = string2ll(queryBuf + pos + 1, newline - (queryBuf + pos + 1), &ll);
             if (!ok || ll < 0 || ll > REDIS_MBULK_BIG_ARG) {
-                addReplyError(conn->outputBuffer(),
-                              "Protocol error: invalid bulk length");
+                addReplyError(conn->outputBuffer(), "Protocol error: invalid bulk length");
                 conn->shutdown();
                 return REDIS_ERR;
             }

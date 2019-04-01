@@ -11,8 +11,7 @@ RedisProxy::RedisProxy(const char *ip, int16_t port, const char *redisIp,
           redisPort(redisPort),
           threadCount(threadCount),
           sessionCount(sessionCount),
-          clusterEnabled(true),
-		  monitorEnabled(true) {
+          clusterEnabled(false) {
     LOG_INFO << "Proxy initialized";
     initRedisPorxy();
     initRedisAsync();
@@ -31,7 +30,7 @@ void RedisProxy::initRedisPorxy() {
     server.setConnectionCallback(std::bind(&RedisProxy::proxyConnCallback,
                                            this, std::placeholders::_1));
     server.start();
-}
+}	
 
 void RedisProxy::initRedisAsync() {
     auto pools = server.getThreadPool()->getAllLoops();
@@ -40,28 +39,32 @@ void RedisProxy::initRedisAsync() {
         assert(it == threadHiredis.end());
 
 		{
-			std::shared_ptr <Hiredis> hiredis(new Hiredis(pools[i], sessionCount, redisIp, redisPort, true));
+			std::shared_ptr <Hiredis> hiredis(new Hiredis(pools[i], sessionCount, redisIp, redisPort, clusterEnabled));
 			hiredis->setConnectionCallback(std::bind(&RedisProxy::redisConnCallback,
 													 this, std::placeholders::_1));
 			hiredis->setDisconnectionCallback(std::bind(&RedisProxy::redisDisconnCallback,
 														this, std::placeholders::_1));
 			hiredis->start(pools[i], 0, redisIp, redisPort);
+			hiredis->startTimer();
 			threadHiredis[pools[i]->getThreadId()] = hiredis;
 		}
-		
+	
+		{
+			std::shared_ptr <Hiredis> hiredis(new Hiredis(pools[i], sessionCount, redisIp, redisPort, clusterEnabled));
+			hiredis->setConnectionCallback(std::bind(&RedisProxy::monitorConnCallback,
+													 this, std::placeholders::_1));
+			hiredis->setDisconnectionCallback(std::bind(&RedisProxy::monitorDisconnCallback,
+														this, std::placeholders::_1));
+			hiredis->start(pools[i], 0, redisIp, redisPort);
+			hiredis->startTimer();
+			threadMonitorHierdis[pools[i]->getThreadId()] = hiredis;
+		}
 		
 		{
-			if (monitorEnabled) {
-				std::shared_ptr <Hiredis> hiredis(new Hiredis(pools[i], sessionCount, redisIp, redisPort, true));
-				hiredis->setConnectionCallback(std::bind(&RedisProxy::monitorConnCallback,
-														 this, std::placeholders::_1));
-				hiredis->setDisconnectionCallback(std::bind(&RedisProxy::monitorDisconnCallback,
-															this, std::placeholders::_1));
-				hiredis->start(pools[i], 0, redisIp, redisPort);
-				threadMonitorHierdis[pools[i]->getThreadId()] = hiredis;
-			}
+			std::unordered_map <int32_t, std::shared_ptr<Hiredis>> m;
+			threadSubscribeHiredis[pools[i]->getThreadId()] = m;
 		}
-
+		
         {
             std::unordered_map <int32_t, std::map<int64_t, RedisReplyPtr>> m;
             threadProxyReplys[pools[i]->getThreadId()] = m;
@@ -111,30 +114,25 @@ void RedisProxy::initRedisCommand() {
                                                 std::placeholders::_3, std::placeholders::_4);
 												
     redisReplyCommands[shared.del] = std::bind(&RedisProxy::delCallback,
-                                               this, std::placeholders::_1, std::placeholders::_2,
-                                               std::placeholders::_3, std::placeholders::_4);
-
-    redisCommands[shared.publish] = std::bind(&RedisProxy::debugCommand,
-                                              this, std::placeholders::_1, std::placeholders::_2,
-                                              std::placeholders::_3, std::placeholders::_4,
-                                              std::placeholders::_5, std::placeholders::_6);
-											  
-    redisCommands[shared.subscribe] = std::bind(&RedisProxy::debugCommand,
+                                                this, std::placeholders::_1, std::placeholders::_2,
+                                                std::placeholders::_3, std::placeholders::_4);
+												  
+    redisCommands[shared.subscribe] = std::bind(&RedisProxy::subscribeCommand,
                                                 this, std::placeholders::_1, std::placeholders::_2,
                                                 std::placeholders::_3, std::placeholders::_4,
                                                 std::placeholders::_5, std::placeholders::_6);
 												
-    redisCommands[shared.unsubscribe] = std::bind(&RedisProxy::debugCommand,
+    redisCommands[shared.pubsub] = std::bind(&RedisProxy::debugCommand,
+												 this, std::placeholders::_1, std::placeholders::_2,
+												 std::placeholders::_3, std::placeholders::_4,
+												 std::placeholders::_5, std::placeholders::_6);
+											 
+	 redisCommands[shared.monitor] = std::bind(&RedisProxy::monitorCommand,
                                                   this, std::placeholders::_1, std::placeholders::_2,
                                                   std::placeholders::_3, std::placeholders::_4,
                                                   std::placeholders::_5, std::placeholders::_6);
 												  
-    redisCommands[shared.pubsub] = std::bind(&RedisProxy::debugCommand,
-                                             this, std::placeholders::_1, std::placeholders::_2,
-                                             std::placeholders::_3, std::placeholders::_4,
-                                             std::placeholders::_5, std::placeholders::_6);
-
-    if (clusterEnabled) {
+    if (clusterEnabled) {													  
 		redisCommands[shared.cluster] = std::bind(&RedisProxy::clusterCommand,
                                                this, std::placeholders::_1, std::placeholders::_2,
                                                std::placeholders::_3, std::placeholders::_4,
@@ -279,11 +277,6 @@ void RedisProxy::initRedisCommand() {
                                                std::placeholders::_3, std::placeholders::_4,
                                                std::placeholders::_5, std::placeholders::_6);
 
-        redisCommands[shared.monitor] = std::bind(&RedisProxy::debugCommand,
-                                                  this, std::placeholders::_1, std::placeholders::_2,
-                                                  std::placeholders::_3, std::placeholders::_4,
-                                                  std::placeholders::_5, std::placeholders::_6);
-
         redisCommands[shared.command] = std::bind(&RedisProxy::debugCommand,
                                                   this, std::placeholders::_1, std::placeholders::_2,
                                                   std::placeholders::_3, std::placeholders::_4,
@@ -319,6 +312,82 @@ void RedisProxy::run() {
     loop.run();
 }
 
+bool RedisProxy::subscribeCommand(const RedisObjectPtr &command, const std::vector <RedisObjectPtr> &commands,
+                     const ProxySessionPtr &session, const TcpConnectionPtr &conn, const char *buf,
+                     const size_t len) {
+	auto it = threadSubscribeHiredis.find(conn->getLoop()->getThreadId());
+	assert(it != threadSubscribeHiredis.end());
+	
+	std::shared_ptr <Hiredis> hiredis(new Hiredis(conn->getLoop(), sessionCount, redisIp, redisPort, clusterEnabled));
+	hiredis->setConnectionCallback(std::bind(&RedisProxy::subscribeConnCallback,
+											this, std::placeholders::_1));
+	hiredis->setDisconnectionCallback(std::bind(&RedisProxy::subscribeDisConnCallback,
+											this, std::placeholders::_1));
+	hiredis->start(conn->getLoop(), 1, redisIp, redisPort);
+	auto redis = hiredis->getRedisAsyncContext();
+	if (redis == nullptr) {
+		std::string reply = hiredis->getTcpClientInfo(conn->getLoop()->getThreadId(), conn->getSockfd());
+		conn->outputBuffer()->append(reply.c_str(), reply.size());
+		conn->sendPipe();
+		return true;
+	}
+	
+	auto iter = it->second.find(conn->getSockfd());
+	if (iter != it->second.end()) {
+		return false;
+	}
+	
+	it->second[conn->getSockfd()] = hiredis;
+	WeakTcpConnectionPtr weakConn = conn;
+	assert(redis->threadProxyRedisvAsyncCommand(std::bind(&RedisProxy::subscribeCallback,
+                                                                        this, std::placeholders::_1,
+                                                                        std::placeholders::_2,
+                                                                        std::placeholders::_3),
+                                                              buf, len, weakConn) == REDIS_OK);
+	
+	return true;					 
+}
+				   
+void RedisProxy::subscribeCallback(const RedisAsyncContextPtr &c,
+                       const RedisReplyPtr &reply, const std::any &privdata) {
+	LOG_INFO << "Subscribe callback ";
+	assert(privdata.has_value());
+	WeakTcpConnectionPtr weakConn = std::any_cast<WeakTcpConnectionPtr>(privdata);
+	const TcpConnectionPtr &conn = weakConn.lock();
+	if (conn == nullptr) {
+		return ;
+	}
+	
+	if (reply == nullptr) {
+		auto it = threadSubscribeHiredis.find(std::this_thread::get_id());
+		assert(it != threadSubscribeHiredis.end());
+		auto iter = it->second.find(conn->getSockfd());
+		if (iter == it->second.end()) {
+			return ;
+		}
+		
+		std::string reply = iter->second->getTcpClientInfo(
+                conn->getLoop()->getThreadId(), conn->getSockfd());
+        conn->outputBuffer()->append(reply.c_str(), reply.size());
+	} else {
+		conn->outputBuffer()->append(reply->buffer, sdslen(reply->buffer));
+	}
+	conn->sendPipe();
+}
+					   
+void RedisProxy::monitorCallback(const RedisAsyncContextPtr &c,
+                       const RedisReplyPtr &reply, const std::any &privdata) {
+	if (reply != nullptr) {
+		auto it = threadMonitors.find(std::this_thread::get_id());
+		assert(it != threadMonitors.end());
+		for (auto &iter : it->second) {
+			auto buffer = iter.second->outputBuffer();
+			buffer->append(reply->buffer, sdslen(reply->buffer));
+			iter.second->sendPipe();
+		}
+	}	
+}
+
 void RedisProxy::monitorConnCallback(const TcpConnectionPtr &conn) {
 	char buf[64] = "";
     uint16_t port = 0;
@@ -329,6 +398,12 @@ void RedisProxy::monitorConnCallback(const TcpConnectionPtr &conn) {
     conn->getLoop()->assertInLoopThread();
     LOG_INFO << "MonitorClient connect "
              << conn->getSockfd() << " " << buf << " " << port;
+			 
+	assert(conn->getContext().has_value());
+	const RedisAsyncContextPtr &ac = std::any_cast<RedisAsyncContextPtr>(conn->getContext());
+	assert(ac->redisAsyncCommand(std::bind(&RedisProxy::monitorCallback,
+		this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+		nullptr, "monitor") == REDIS_OK);
 }
 	
 void RedisProxy::monitorDisconnCallback(const TcpConnectionPtr &conn) {
@@ -343,6 +418,30 @@ void RedisProxy::monitorDisconnCallback(const TcpConnectionPtr &conn) {
              << conn->getSockfd() << " " << buf << " " << port;
 }
 
+void RedisProxy::subscribeConnCallback(const TcpConnectionPtr &conn) {
+	char buf[64] = "";
+    uint16_t port = 0;
+    auto addr = Socket::getPeerAddr(conn->getSockfd());
+    Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
+    Socket::toPort(&port, (const struct sockaddr *) &addr);
+
+    conn->getLoop()->assertInLoopThread();
+    LOG_INFO << "SubcribeClient connect "
+             << conn->getSockfd() << " " << buf << " " << port;
+}
+
+void RedisProxy::subscribeDisConnCallback(const TcpConnectionPtr &conn) {
+	char buf[64] = "";
+    uint16_t port = 0;
+    auto addr = Socket::getPeerAddr(conn->getSockfd());
+    Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
+    Socket::toPort(&port, (const struct sockaddr *) &addr);
+
+    conn->getLoop()->assertInLoopThread();
+    LOG_INFO << "SubcribeClient disconnect "
+             << conn->getSockfd() << " " << buf << " " << port;
+}
+	
 void RedisProxy::redisConnCallback(const TcpConnectionPtr &conn) {
     char buf[64] = "";
     uint16_t port = 0;
@@ -388,10 +487,12 @@ void RedisProxy::insertProxySend(const std::thread::id &threadId, const int32_t 
     }
 }
 
-void RedisProxy::processCommand(const RedisObjectPtr &command, const TcpConnectionPtr &conn, const char *buf,
+void RedisProxy::processCommand(const RedisObjectPtr &command, const std::vector <RedisObjectPtr> &commands, 
+		const TcpConnectionPtr &conn, const char *buf,
                                 size_t len) {
-    auto cmd = createStringObject(command->ptr, sdslen(command->ptr));
-    auto redis = checkReply(command, conn);
+	RedisObjectPtr cmd = createStringObject(command->ptr, sdslen(command->ptr));
+	assert(!commands.empty());
+    auto redis = checkCommandToCluster(commands[0], conn);
     if (redis) {
         int64_t proxyCount = insertProxyCount(conn->getLoop()->getThreadId(), conn->getSockfd());
         insertProxySend(conn->getLoop()->getThreadId(), conn->getSockfd(), proxyCount);
@@ -400,12 +501,11 @@ void RedisProxy::processCommand(const RedisObjectPtr &command, const TcpConnecti
         proxy->proxyCount = proxyCount;
         proxy->command = cmd;
         proxy->commandCount = proxyCount;
-        int32_t status = redis->threadProxyRedisvAsyncCommand(std::bind(&RedisProxy::proxyCallback,
+		assert(redis->threadProxyRedisvAsyncCommand(std::bind(&RedisProxy::proxyCallback,
                                                                         this, std::placeholders::_1,
                                                                         std::placeholders::_2,
                                                                         std::placeholders::_3),
-                                                              buf, len, proxy);
-        assert(status == REDIS_OK);
+                                                              buf, len, proxy) == REDIS_OK);
     }
 }
 
@@ -416,8 +516,8 @@ void RedisProxy::proxyCallback(const RedisAsyncContextPtr &c,
     std::shared_ptr <RedisCluster> proxy = std::any_cast < std::shared_ptr < RedisCluster >> (privdata);
     assert(proxy != nullptr);
 
-    LOG_INFO << "Callback command " << std::string(proxy->command->ptr, sdslen(proxy->command->ptr));
-    LOG_INFO << "Callback proxycount " << proxy->proxyCount;
+    LOG_INFO << "Callback command " << std::string(proxy->command->ptr, 
+		sdslen(proxy->command->ptr)) << " " << proxy->proxyCount;
 
     reply->commandCount = proxy->commandCount;
     reply->command = proxy->command;
@@ -635,7 +735,6 @@ void RedisProxy::proxyConnCallback(const TcpConnectionPtr &conn) {
     Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
     Socket::toPort(&port, (const struct sockaddr *) &addr);
 
-	
     if (conn->connected()) {
         Socket::setkeepAlive(conn->getSockfd(), kHeart);
         conn->setHighWaterMarkCallback(
@@ -658,34 +757,45 @@ void RedisProxy::proxyConnCallback(const TcpConnectionPtr &conn) {
 		
 		{
 			auto it = threadMonitors.find(conn->getLoop()->getThreadId());
+			assert(it != threadMonitors.end());
 			it->second.erase(conn->getSockfd());
 		}
-	
+		
+		{
+			auto it = threadSubscribeHiredis.find(conn->getLoop()->getThreadId());
+			assert(it != threadSubscribeHiredis.end());
+			auto iter = it->second.find(conn->getSockfd());
+			if (iter != it->second.end()) {
+				iter->second->diconnectTcpClient();
+				it->second.erase(iter);
+			}
+		}
+		
         clearProxy(conn->getLoop()->getThreadId(), conn->getSockfd());
         LOG_INFO << "Client diconnect " << buf << " " << port << " " << conn->getSockfd();
     }
 }
 
-RedisAsyncContextPtr RedisProxy::checkReply(const TcpConnectionPtr &conn) {
+RedisAsyncContextPtr RedisProxy::checkCommandToCluster(const TcpConnectionPtr &conn, bool pubsub) {
     auto it = threadHiredis.find(conn->getLoop()->getThreadId());
     assert(it != threadHiredis.end());
-    auto redis = it->second->getRedisAsyncContext(
+    auto redisAsync = it->second->getRedisAsyncContext(
             conn->getLoop()->getThreadId(), conn->getSockfd());
-    if (redis == nullptr) {
-        LOG_INFO << " redis == nullptr ";
+    if (redisAsync == nullptr) {
+        LOG_INFO << "RedisAsync is nullptr";
         clearProxy(conn->getLoop()->getThreadId(), conn->getSockfd());
         std::string reply = it->second->getTcpClientInfo(
                 conn->getLoop()->getThreadId(), conn->getSockfd());
         conn->sendPipe(reply.c_str(), reply.size());
     }
-    return redis;
+    return redisAsync;
 }
 
-RedisAsyncContextPtr RedisProxy::checkReply(const RedisObjectPtr &command, const TcpConnectionPtr &conn) {
-    auto it = threadHiredis.find(conn->getLoop()->getThreadId());
-    assert(it != threadHiredis.end());
+RedisAsyncContextPtr RedisProxy::checkCommandToCluster(const RedisObjectPtr &command, const TcpConnectionPtr &conn, bool pubsub) {
+	auto it = threadHiredis.find(conn->getLoop()->getThreadId());
+	assert(it != threadHiredis.end());
 
-    RedisAsyncContextPtr redisAsync = nullptr;
+    RedisAsyncContextPtr redisAsync;
     if (clusterEnabled) {
         redisAsync = it->second->getRedisAsyncContext(command,
                                                       conn->getLoop()->getThreadId(), conn->getSockfd());
@@ -695,7 +805,7 @@ RedisAsyncContextPtr RedisProxy::checkReply(const RedisObjectPtr &command, const
     }
 
     if (redisAsync == nullptr) {
-        LOG_INFO << " redisAsync == nullptr ";
+        LOG_INFO << "RedisAsync is nullptr";
         clearProxy(conn->getLoop()->getThreadId(), conn->getSockfd());
         std::string reply = it->second->getTcpClientInfo(
                 conn->getLoop()->getThreadId(), conn->getSockfd());
@@ -719,11 +829,7 @@ bool RedisProxy::monitorCommand(const RedisObjectPtr &command, const std::vector
 	}
 
 	auto it = threadMonitors.find(conn->getLoop()->getThreadId());
-	if (it->second.empty()) {
-		it->second[conn->getSockfd()] = conn;
-		
-	}
-	
+	it->second[conn->getSockfd()] = conn;
 	addReply(conn->outputBuffer(), shared.ok);
 	return true;
 }
@@ -795,7 +901,7 @@ bool RedisProxy::msetCommand(const RedisObjectPtr &command, const std::vector <R
     auto cmd = createStringObject(command->ptr, sdslen(command->ptr));
 
     for (int i = 0; i < commands.size(); i += 2) {
-        auto redis = checkReply(commands[i], conn);
+        auto redis = checkCommandToCluster(commands[i], conn);
         if (redis) {
             it->second.clear();
             int64_t proxyCount = insertProxyCount(conn->getLoop()->getThreadId(), conn->getSockfd());
@@ -884,7 +990,7 @@ bool RedisProxy::asyncCommand(const RedisObjectPtr &command, const std::vector <
     auto cmd = createStringObject(command->ptr, sdslen(command->ptr));
 
     for (int i = 0; i < commands.size(); i++) {
-        auto redis = checkReply(commands[i], conn);
+        auto redis = checkCommandToCluster(commands[i], conn);
         if (redis) {
             it->second.clear();
             int64_t proxyCount = insertProxyCount(conn->getLoop()->getThreadId(), conn->getSockfd());

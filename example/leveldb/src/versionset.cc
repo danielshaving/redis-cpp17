@@ -393,14 +393,14 @@ void Version::getOverlappingInputs(
         userBegin = begin->userKey();
     }
 
-    if (userEnd != nullptr) {
+    if (end != nullptr) {
         userEnd = end->userKey();
     }
 
     const Comparator *ucmp = vset->icmp.getComparator();
 
     for (size_t i = 0; i < files[level].size();) {
-        std::shared_ptr <FileMetaData> f = files[level][i++];
+        const std::shared_ptr <FileMetaData> &f = files[level][i++];
         const std::string_view fileStart = f->smallest.userKey();
         const std::string_view fileLimit = f->largest.userKey();
 
@@ -483,7 +483,7 @@ int Version::pickLevelForMemTableOutput(const std::string_view &smallestUserKey,
 }
 
 
-Builder::Builder(VersionSet *vset, Version *base)
+Builder::Builder(VersionSet *vset, const std::shared_ptr <Version> &base)
         : vset(vset),
           base(base) {
     BySmallestKey cmp;
@@ -519,25 +519,20 @@ VersionSet::~VersionSet() {
 
 }
 
-std::shared_ptr <Version> VersionSet::current() const {
-    assert(!versions.empty());
-    return versions.front();
-}
-
 Status VersionSet::recover(bool *manifest) {
     // Read "CURRENT" file, which contains a pointer to the current manifest file
-    std::string current;
-    Status s = readFileToString(options.env.get(), currentFileName(dbname), &current);
+    std::string cur;
+    Status s = readFileToString(options.env.get(), currentFileName(dbname), &cur);
     if (!s.ok()) {
         return s;
     }
 
-    if (current.empty() || current[current.size() - 1] != '\n') {
+    if (cur.empty() || cur[cur.size() - 1] != '\n') {
         return Status::corruption("CURRENT file does not end with newline");
     }
 
-    current.resize(current.size() - 1);
-    std::string dscname = dbname + "/" + current;
+    cur.resize(cur.size() - 1);
+    std::string dscname = dbname + "/" + cur;
     std::shared_ptr <PosixSequentialFile> file;
     s = options.env->newSequentialFile(dscname, file);
     if (!s.ok()) {
@@ -558,7 +553,7 @@ Status VersionSet::recover(bool *manifest) {
     uint64_t logNumber = 0;
     uint64_t prevLogNumber = 0;
 
-    Builder builder(this, versions.back().get());
+    Builder builder(this, current);
     LogReporter reporter;
     reporter.status = &s;
 
@@ -622,7 +617,7 @@ Status VersionSet::recover(bool *manifest) {
         this->logNumber = logNumber;
         this->prevLogNumber = prevLogNumber;
         //See if we can reuse the existing MANIFEST file.
-        if (reuseManifest(dscname, current)) {
+        if (reuseManifest(dscname, cur)) {
             // No need to save new manifest
         } else {
             *manifest = true;
@@ -632,14 +627,12 @@ Status VersionSet::recover(bool *manifest) {
 }
 
 void VersionSet::addLiveFiles(std::set <uint64_t> *live) {
-    for (auto &iter : versions) {
-        for (int level = 0; level < kNumLevels; level++) {
-            auto &files = iter->files[level];
-            for (size_t i = 0; i < files.size(); i++) {
-                live->insert(files[i]->number);
-            }
-        }
-    }
+	for (int level = 0; level < kNumLevels; level++) {
+		auto &files = current->files[level];
+		for (size_t i = 0; i < files.size(); i++) {
+			live->insert(files[i]->number);
+		}
+	}
 }
 
 std::shared_ptr <Iterator> VersionSet::makeInputIterator(Compaction *c) {
@@ -650,17 +643,19 @@ std::shared_ptr <Iterator> VersionSet::makeInputIterator(Compaction *c) {
     // we will make a concatenating iterator per level.
     // TODO(opt): use concatenating iterator for level-0 if there is no overlap
     const int space = (c->getLevel() == 0 ? c->inputs[0].size() + 1 : 2);
-    std::vector <std::shared_ptr<Iterator>> list;
-    list.reserve(space);
-
+	
+	std::vector <std::shared_ptr<Iterator>> list;
+	list.resize(space);
+   
     int num = 0;
     for (int which = 0; which < 2; which++) {
         if (!c->inputs[which].empty()) {
             if (c->getLevel() + which == 0) {
                 const auto &files = c->inputs[which];
                 for (size_t i = 0; i < files.size(); i++) {
-                    list[num++] = tableCache->newIterator(
+					std::shared_ptr <Iterator> iter = tableCache->newIterator(
                             ops, files[i]->number, files[i]->fileSize, nullptr);
+                    list[num++] = iter;
                 }
             } else {
                 // Create concatenating iterator for the files from this level
@@ -754,22 +749,17 @@ void VersionSet::markFileNumberUsed(uint64_t number) {
 int64_t VersionSet::numLevelBytes(int level) const {
     assert(level >= 0);
     assert(level < kNumLevels);
-    return totalFileSize(current()->files[level]);
+    return totalFileSize(current->files[level]);
 }
 
 int VersionSet::numLevelFiles(int level) const {
     assert(level >= 0);
     assert(level < kNumLevels);
-    return current()->files[level].size();
+    return current->files[level].size();
 }
 
 void VersionSet::appendVersion(const std::shared_ptr <Version> &v) {
-    if (!versions.empty()) {
-        if (versions.back()) {
-            versions.pop_back();
-        }
-    }
-    versions.push_back(v);
+	current = v;
 }
 
 Status VersionSet::logAndApply(VersionEdit *edit) {
@@ -789,7 +779,7 @@ Status VersionSet::logAndApply(VersionEdit *edit) {
 
     std::shared_ptr <Version> v(new Version(this));
     {
-        Builder builder(this, current().get());
+        Builder builder(this, current);
         builder.apply(edit);
         builder.saveTo(v.get());
     }
@@ -808,7 +798,7 @@ Status VersionSet::logAndApply(VersionEdit *edit) {
         s = options.env->newWritableFile(newManifestFile, descriptorFile);
         if (s.ok()) {
             descriptorLog.reset(new LogWriter(descriptorFile.get()));
-            //s = WriteSnapshot(descriptor_log_);
+            s = writeSnapshot();
         } else {
 
         }
@@ -828,8 +818,6 @@ Status VersionSet::logAndApply(VersionEdit *edit) {
         }
     }
 
-    descriptorLog.reset();
-    descriptorFile.reset();
     // If we just created a new descriptor file, install it by writing a
     // new CURRENT file that points to it.
     if (s.ok() && !newManifestFile.empty()) {
@@ -843,10 +831,42 @@ Status VersionSet::logAndApply(VersionEdit *edit) {
         prevLogNumber = edit->prevLogNumber;
     } else {
         if (!newManifestFile.empty()) {
+			descriptorLog.reset();
+			descriptorFile.reset();
             options.env->deleteFile(newManifestFile);
         }
     }
     return s;
+}
+
+Status VersionSet::writeSnapshot() {
+	// TODO: Break up into multiple records to reduce memory usage on recovery?
+
+	// Save metadata
+	VersionEdit edit;
+	edit.setComparatorName(icmp.getComparator()->name());
+
+	// Save compaction pointers
+	for (int level = 0; level < kNumLevels; level++) {
+		if (!compactPointer[level].empty()) {
+		  InternalKey key;
+		  key.decodeFrom(compactPointer[level]);
+		  edit.setCompactPointer(level, key);
+		}
+	}
+
+	// Save files
+	for (int level = 0; level < kNumLevels; level++) {
+		const auto &files = current->files[level];
+		for (size_t i = 0; i < files.size(); i++) {
+			const auto f = files[i];
+			edit.addFile(level, f->number, f->fileSize, f->smallest, f->largest);
+		}
+	}
+
+	std::string record;
+	edit.encodeTo(&record);
+	return descriptorLog->addRecord(record);
 }
 
 const char *VersionSet::levelSummary(LevelSummaryStorage *scratch) const {
@@ -854,33 +874,33 @@ const char *VersionSet::levelSummary(LevelSummaryStorage *scratch) const {
     assert(kNumLevels == 7);
     snprintf(scratch->buffer, sizeof(scratch->buffer),
              "files[ %d %d %d %d %d %d %d ]",
-             int(current()->files[0].size()),
-             int(current()->files[1].size()),
-             int(current()->files[2].size()),
-             int(current()->files[3].size()),
-             int(current()->files[4].size()),
-             int(current()->files[5].size()),
-             int(current()->files[6].size()));
+             int(current->files[0].size()),
+             int(current->files[1].size()),
+             int(current->files[2].size()),
+             int(current->files[3].size()),
+             int(current->files[4].size()),
+             int(current->files[5].size()),
+             int(current->files[6].size()));
     return scratch->buffer;
 }
 
 std::shared_ptr <Compaction> VersionSet::pickCompaction() {
-    std::shared_ptr <Compaction> c;
+    std::shared_ptr <Compaction> c; 
     int level;
     // We prefer compactions triggered by too much data in a level over
     // the compactions triggered by seeks.
 
-    const bool sizeCompaction = (current()->compactionScore >= 1);
-    const bool seekCompaction = (current()->fileToCompact != nullptr);
+    const bool sizeCompaction = (current->compactionScore >= 1);
+    const bool seekCompaction = (current->fileToCompact != nullptr);
     if (sizeCompaction) {
-        level = current()->compactionLevel;
+        level = current->compactionLevel;
         assert(level >= 0);
         assert(level + 1 < kNumLevels);
         c.reset(new Compaction(&options, level));
 
         // Pick the first file that comes after compact_pointer_[level]
-        for (size_t i = 0; i < current()->files[level].size(); i++) {
-            auto f = current()->files[level][i];
+        for (size_t i = 0; i < current->files[level].size(); i++) {
+            auto f = current->files[level][i];
             if (compactPointer[level].empty() ||
                 icmp.compare(f->largest.encode(), compactPointer[level]) > 0) {
                 c->inputs[0].push_back(f);
@@ -890,17 +910,17 @@ std::shared_ptr <Compaction> VersionSet::pickCompaction() {
 
         if (c->inputs[0].empty()) {
             // Wrap-around to the beginning of the key space
-            c->inputs[0].push_back(current()->files[level][0]);
+            c->inputs[0].push_back(current->files[level][0]);
         }
     } else if (seekCompaction) {
-        level = current()->fileToCompactLevel;
+        level = current->fileToCompactLevel;
         c.reset(new Compaction(&options, level));
-        c->inputs[0].push_back(current()->fileToCompact);
+        c->inputs[0].push_back(current->fileToCompact);
     } else {
         return nullptr;
     }
 
-    c->inputVersion = current().get();
+    c->inputVersion = current;
     // Files in level 0 may overlap each other, so pick up all overlapping ones
     if (level == 0) {
         InternalKey smallest, largest;
@@ -908,7 +928,7 @@ std::shared_ptr <Compaction> VersionSet::pickCompaction() {
         // Note that the next call will discard the file we placed in
         // c->inputs_[0] earlier and replace it with an overlapping set
         // which will include the picked file.
-        current()->getOverlappingInputs(0, &smallest, &largest, &c->inputs[0]);
+        current->getOverlappingInputs(0, &smallest, &largest, &c->inputs[0]);
         assert(!c->inputs[0].empty());
     }
 
@@ -921,7 +941,7 @@ std::shared_ptr <Compaction> VersionSet::compactRange(
         const InternalKey *begin,
         const InternalKey *end) {
     std::vector <std::shared_ptr<FileMetaData>> inputs;
-    current()->getOverlappingInputs(level, begin, end, &inputs);
+    current->getOverlappingInputs(level, begin, end, &inputs);
     if (inputs.empty()) {
         return nullptr;
     }
@@ -944,7 +964,7 @@ std::shared_ptr <Compaction> VersionSet::compactRange(
     }
 
     std::shared_ptr <Compaction> c(new Compaction(&options, level));
-    c->inputVersion = current().get();
+    c->inputVersion = current;
     c->inputs[0] = inputs;
     setupOtherInputs(c);
     return c;
@@ -965,11 +985,11 @@ void VersionSet::getRange(const std::vector <std::shared_ptr<FileMetaData>> &inp
             *smallest = f->smallest;
             *largest = f->largest;
         } else {
-            if (icmp.compare1(f->smallest, *smallest) < 0) {
+            if (icmp.compare(f->smallest, *smallest) < 0) {
                 *smallest = f->smallest;
             }
 
-            if (icmp.compare1(f->largest, *largest) > 0) {
+            if (icmp.compare(f->largest, *largest) > 0) {
                 *largest = f->largest;
             }
         }
@@ -990,7 +1010,7 @@ void VersionSet::setupOtherInputs(const std::shared_ptr <Compaction> &c) {
     InternalKey smallest, largest;
     getRange(c->inputs[0], &smallest, &largest);
 
-    current()->getOverlappingInputs(level + 1, &smallest, &largest, &c->inputs[1]);
+    current->getOverlappingInputs(level + 1, &smallest, &largest, &c->inputs[1]);
 
     // Get entire range covered by compaction
     InternalKey allStart, allLimit;
@@ -1000,7 +1020,7 @@ void VersionSet::setupOtherInputs(const std::shared_ptr <Compaction> &c) {
     // changing the number of "level+1" files we pick up.
     if (!c->inputs[1].empty()) {
         std::vector <std::shared_ptr<FileMetaData>> expanded0;
-        current()->getOverlappingInputs(level, &allStart, &allLimit, &expanded0);
+        current->getOverlappingInputs(level, &allStart, &allLimit, &expanded0);
         const int64_t inputs0Size = totalFileSize(c->inputs[0]);
         const int64_t inputs1Size = totalFileSize(c->inputs[1]);
         const int64_t expanded0Size = totalFileSize(expanded0);
@@ -1010,7 +1030,7 @@ void VersionSet::setupOtherInputs(const std::shared_ptr <Compaction> &c) {
             InternalKey newStart, newLimit;
             getRange(expanded0, &newStart, &newLimit);
             std::vector <std::shared_ptr<FileMetaData>> expanded1;
-            current()->getOverlappingInputs(level + 1, &newStart, &newLimit,
+            current->getOverlappingInputs(level + 1, &newStart, &newLimit,
                                             &expanded1);
             if (expanded1.size() == c->inputs[1].size()) {
                 printf("Expanding@%d %d+%d (%ld+%ld bytes) to %d+%d (%ld+%ld bytes)\n",
@@ -1033,7 +1053,7 @@ void VersionSet::setupOtherInputs(const std::shared_ptr <Compaction> &c) {
     // Compute the set of grandparent files that overlap this compaction
     // (parent == level+1; grandparent == level+2)
     if (level + 2 < kNumLevels) {
-        current()->getOverlappingInputs(level + 2, &allStart, &allLimit,
+        current->getOverlappingInputs(level + 2, &allStart, &allLimit,
                                         &c->grandparents);
     }
 
@@ -1145,7 +1165,7 @@ void Builder::maybeAddFile(Version *v, int level, const std::shared_ptr <FileMet
         auto &files = v->files[level];
         if (level > 0 && !files.empty()) {
             // Must not overlap
-            assert(vset->icmp.compare1(files[files.size() - 1]->largest,
+            assert(vset->icmp.compare(files[files.size() - 1]->largest,
                                        f->smallest) < 0);
         }
 
@@ -1233,6 +1253,6 @@ bool Compaction::shouldStopBefore(const std::string_view &internalKey) {
 }
 
 void Compaction::releaseInputs() {
-
+	inputVersion.reset();
 }
 
