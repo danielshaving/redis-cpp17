@@ -11,9 +11,9 @@ namespace Socket
 	uint16_t networkToHost16(uint16_t net16);
 
 	int32_t pipe(int32_t fildes[2]);
-	
+
 	int32_t accept(int32_t &sockfd);
-	
+
 	ssize_t read(int32_t sockfd, void *buf, int32_t count);
 	ssize_t readv(int32_t sockfd, IOV_TYPE *iov, int32_t iovcnt);
 	ssize_t write(int32_t sockfd, const void* buf, int32_t count);

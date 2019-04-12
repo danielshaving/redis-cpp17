@@ -6,77 +6,77 @@
 
 class TcpClient {
 public:
-    TcpClient(EventLoop *loop, const char *ip,
-              int16_t port, const std::any &context);
+	TcpClient(EventLoop *loop, const char *ip,
+		int16_t port, const std::any &context);
 
-    ~TcpClient();
+	~TcpClient();
 
-    void connect(bool s = false);
+	void connect(bool s = false);
 
-    void disConnect();
+	void disConnect();
 
-    void stop();
+	void stop();
 
-    bool getRetry() { return retry; }
+	bool getRetry() { return retry; }
 
-    void enableRetry() { retry = true; }
+	void enableRetry();
 
-    void closeRetry() { retry = false; }
+	void closeRetry();
 
-    void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb) {
-        connectionErrorCallBack = std::move(cb);
-    }
+	void setConnectionErrorCallBack(const ConnectionErrorCallback &&cb) {
+		connectionErrorCallBack = std::move(cb);
+	}
 
-    void setConnectionCallback(const ConnectionCallback &&cb) {
-        connectionCallback = std::move(cb);
-    }
+	void setConnectionCallback(const ConnectionCallback &&cb) {
+		connectionCallback = std::move(cb);
+	}
 
-    void setMessageCallback(const MessageCallback &&cb) {
-        messageCallback = std::move(cb);
-    }
+	void setMessageCallback(const MessageCallback &&cb) {
+		messageCallback = std::move(cb);
+	}
 
-    void setWriteCompleteCallback(const WriteCompleteCallback &&cb) {
-        writeCompleteCallback = std::move(cb);
-    }
+	void setWriteCompleteCallback(const WriteCompleteCallback &&cb) {
+		writeCompleteCallback = std::move(cb);
+	}
 
-    EventLoop *getLoop() { return loop; }
+	EventLoop *getLoop() { return loop; }
 
-    std::any *getContext() { return &context; }
+	std::any *getContext() { return &context; }
 
-    const std::any &getContext() const { return context; }
+	const std::any &getContext() const { return context; }
 
-    void setContext(const std::any &context) { this->context = context; }
+	void setContext(const std::any &context) { this->context = context; }
 
-    const char *getIp() { return ip; }
+	const char *getIp() { return ip; }
 
-    int16_t getPort() { return port; }
+	int16_t getPort() { return port; }
 
-    TcpConnectionPtr getConnection();
+	TcpConnectionPtr getConnection();
 
 private:
-    TcpClient(const TcpClient &);
+	TcpClient(const TcpClient &);
 
-    void operator=(const TcpClient &);
+	void operator=(const TcpClient &);
 
-    void errorConnection();
+	void errorConnection();
 
-    void newConnection(int32_t sockfd);
+	void newConnection(int32_t sockfd);
 
-    void removeConnection(const TcpConnectionPtr &conn);
+	void removeConnection(const TcpConnectionPtr &conn);
 
-    ConnectorPtr connector;
-    EventLoop *loop;
+	ConnectorPtr connector;
+	EventLoop *loop;
 
-    std::mutex mutex;
-    ConnectionErrorCallback connectionErrorCallBack;
-    ConnectionCallback connectionCallback;
-    MessageCallback messageCallback;
-    WriteCompleteCallback writeCompleteCallback;
+	std::mutex mutex;
+	ConnectionErrorCallback connectionErrorCallBack;
+	ConnectionCallback connectionCallback;
+	MessageCallback messageCallback;
+	WriteCompleteCallback writeCompleteCallback;
 
-    TcpConnectionPtr connection;
-    std::any context;
-    const char *ip;
-    int16_t port;
-    bool retry;
-    bool connecting;
+	TcpConnectionPtr connection;
+	std::any context;
+	const char *ip;
+	int16_t port;
+	bool retry;
+	bool connecting;
 };

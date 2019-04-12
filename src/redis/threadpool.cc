@@ -13,7 +13,8 @@ Thread::~Thread() {
 }
 
 EventLoop *Thread::startLoop() {
-    std::thread t(std::bind(&Thread::threadFunc, this));
+    std::thread
+    t(std::bind(&Thread::threadFunc, this));
     t.detach();
     {
         std::unique_lock <std::mutex> lk(mutex);
@@ -26,19 +27,19 @@ EventLoop *Thread::startLoop() {
 }
 
 void Thread::threadFunc() {
-    EventLoop loop;
+    EventLoop xloop;
 
     if (callback) {
-        callback(&loop);
+        callback(&xloop);
     }
 
     {
         std::unique_lock <std::mutex> lk(mutex);
-        this->loop = &loop;
+        loop = &xloop;
         condition.notify_one();
     }
 
-    loop.run();
+    xloop.run();
 }
 
 ThreadPool::ThreadPool(EventLoop *baseLoop)

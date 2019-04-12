@@ -1,41 +1,34 @@
 #pragma once
 
-#ifdef __APPLE__
+//#ifdef __APPLE__
 #include "all.h"
 #include "log.h"
 
 class Channel;
-
 class EventLoop;
 
-class Poll {
+class Poll
+{
 public:
-    typedef std::vector <pollfd>                   EventList;
-    typedef std::vector<Channel *>                 ChannelList;
-    typedef std::unordered_map<int32_t, Channel *> ChannelMap;
+	typedef std::vector<pollfd> EventList;
+	typedef std::vector<Channel*> ChannelList;
+	typedef std::unordered_map<int32_t, Channel*> ChannelMap;
 
-    Poll(EventLoop *loop);
+	Poll(EventLoop *loop);
+	~Poll();
 
-    ~Poll();
-
-    void epollWait(ChannelList *activeChannels, int32_t msTime = 100);
-
-    bool hasChannel(Channel *channel);
-
-    void updateChannel(Channel *channel);
-
-    void removeChannel(Channel *channel);
-
-    void fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const;
+	void epollWait(ChannelList *activeChannels, int32_t msTime = 100);
+	bool hasChannel(Channel *channel);
+	void updateChannel(Channel *channel);
+	void removeChannel(Channel *channel);
+	void fillActiveChannels(int32_t numEvents, ChannelList *activeChannels) const;
 
 private:
-    Poll(const Poll &);
+	Poll(const Poll&);
+	void operator=(const Poll&);
 
-    void operator=(const Poll &);
-
-    ChannelMap channels;
-    EventList  events;
-    EventLoop  *loop;
+	ChannelMap channels;
+	EventList events;
+	EventLoop *loop;
 };
-
 #endif

@@ -1,6 +1,6 @@
 #include "socket.h"
 #include "log.h"
- 
+
 bool Socket::resolve(std::string_view hostname, struct sockaddr_in6 *out)
 {
 #ifdef __linux__
@@ -22,7 +22,7 @@ bool Socket::resolve(std::string_view hostname, struct sockaddr_in6 *out)
 	{
 		if (ret)
 		{
-			
+
 		}
 		return false;
 	}
@@ -51,7 +51,7 @@ bool Socket::resolve(std::string_view hostname, struct sockaddr_in *out)
 	{
 		if (ret)
 		{
-			
+
 		}
 		return false;
 	}
@@ -59,7 +59,7 @@ bool Socket::resolve(std::string_view hostname, struct sockaddr_in *out)
 	return true;
 }
 
-ssize_t Socket::readv(int32_t sockfd,  IOV_TYPE *iov, int32_t iovcnt)
+ssize_t Socket::readv(int32_t sockfd, IOV_TYPE *iov, int32_t iovcnt)
 {
 #ifdef _WIN64
 	DWORD bytesRead;
@@ -114,10 +114,10 @@ int32_t Socket::accept(int32_t &sockfd) {
 	struct sockaddr_in6 address;
 	socklen_t len = sizeof(address);
 #ifdef __linux__
-    return ::accept4(sockfd, (struct sockaddr*)&address,
-        &len, SOCK_NONBLOCK | SOCK_CLOEXEC);
+	return ::accept4(sockfd, (struct sockaddr*)&address,
+		&len, SOCK_NONBLOCK | SOCK_CLOEXEC);
 #else
-   return ::accept(sockfd, (struct sockaddr *) &address, &len);
+	return ::accept(sockfd, (struct sockaddr *) &address, &len);
 #endif
 }
 
@@ -498,7 +498,7 @@ int32_t Socket::createTcpSocket(const char *ip, int16_t port)
 
 	int32_t optval = 1;
 #ifdef _WIN64
-	
+
 #else
 	if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
 	{

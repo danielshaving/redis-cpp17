@@ -7,34 +7,34 @@
 
 class Acceptor {
 public:
-    typedef std::function<void(int32_t)> NewConnectionCallback;
+	typedef std::function<void(int32_t)> NewConnectionCallback;
 
-    Acceptor(EventLoop *loop, const char *ip, int16_t port);
+	Acceptor(EventLoop *loop, const char *ip, int16_t port);
 
-    ~Acceptor();
+	~Acceptor();
 
-    void setNewConnectionCallback(const NewConnectionCallback &&cb) {
-        newConnectionCallback = std::move(cb);
-    }
+	void setNewConnectionCallback(const NewConnectionCallback &&cb) {
+		newConnectionCallback = std::move(cb);
+	}
 
-    bool getlistenning() const {
-        return listenning;
-    }
+	bool getlistenning() const {
+		return listenning;
+	}
 
-    void listen();
+	void listen();
 
-    void handleRead();
+	void handleRead();
 
 private:
-    Acceptor(const Acceptor &);
+	Acceptor(const Acceptor &);
 
-    void operator=(const Acceptor &);
+	void operator=(const Acceptor &);
 
-    EventLoop *loop;
-    Channel channel;
-    int32_t sockfd;
+	EventLoop *loop;
+	Channel channel;
+	int32_t sockfd;
 
-    NewConnectionCallback newConnectionCallback;
-    bool listenning;
-    bool idleFd;
+	NewConnectionCallback newConnectionCallback;
+	bool listenning;
+	bool idleFd;
 };

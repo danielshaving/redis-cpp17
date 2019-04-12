@@ -1,30 +1,43 @@
-TARGET = ../../lib/lib.a
-OBJPATH = ./
-CFLAGS = -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17  
+TARGET= ./redis-server
+CFLAGS := -Wall -w  -g -ggdb -O3 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17
+cppfiles := $(shell ls *.cc)
+cfiles := $(-shell ls *.c)
+OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))
+COBJS=${patsubst %.c,./%.o,$(cfiles)}
+CXXOBJS=${patsubst %.cc,./%.o,$(cppfiles)}
+
+DEPS=$(patsubst %.o,%.d,$(OBJS))
+
+LIB= #/usr/local/lib/liblua.a
+
+SO_LIB=
 
 
-LFLAGS = -lpthread -lstdc++fs
-LLIB = 
+.PHONY: all clean
 
-OBJS = $(patsubst %.cc,$(OBJPATH)/%.o, $(notdir $(wildcard *.cc)))
+all: ${TARGET}
 
-$(OBJPATH)/%.o : %.cc
-	g++ -c $(CFLAGS) $< -o $@
+${TARGET}: ${OBJS} ${LIB} 
+	g++-7 -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread -lstdc++fs  #-lz -lcurl -lcrypto -ldl -lssl  -llua
+${CXXOBJS}:./%.o:./%.cc
+	g++-7 -MMD -c -o $@ $< ${CFLAGS} 
 
-all : $(TARGET)
+${COBJS}:./%.o:./%.c
+	${CC} -MMD -c -o $@ $< ${CFLAGS} 
 
-$(TARGET) : $(OBJS)
-	$(AR) -rcs $(OBJPATH)/$(TARGET) $(OBJS) 
+-include $(DEPS)
 
-install:
-	@mkdir /usr/local/include/xredis
-	@cp *.h /usr/local/include/xredis
-	
 clean:
-	@rm -f $(OBJPATH)/*.o
-	@rm -f $(TARGET)
-	@rm -rf /usr/local/include/xredis
-	
-	
-	
+	rm -rf redislog *.sock *.rdb *.log *.temp ${OBJS} ${TARGET} ${DEPS}
+
+show:
+	@echo GPROF=$(GPROF)
+	@echo CFLAGS=$(CFLAGS)
+	@echo LDFLAGS=$(LDFLAGS)
+	@echo objs=$(OBJS)
+	@echo cppfiels=$(cppfiles)
+	@echo cfiels=$(cfiles)
+	@echo DEPS=$(DEPS)
+	@echo CXXOBJS=$(CXXOBJS)
+	@echo COBJS=$(COBJS)
 

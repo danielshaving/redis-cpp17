@@ -361,18 +361,18 @@ bool Redis::memoryCommand(const std::deque <RedisObjectPtr> &obj,
     }
 #ifdef USE_JEMALLOC
 
-                                                                                                                            char tmp[32];
-	unsigned narenas = 0;
-	size_t sz = sizeof(unsigned);
-	if (!je_mallctl("arenas.narenas", &narenas, &sz, nullptr, 0))
-	{
-		sprintf(tmp, "arena.%d.purge", narenas);
-		if (!je_mallctl(tmp, nullptr, 0, nullptr, 0))
-		{
-			addReply(conn->outputBuffer(), ok);
-			return  true;
-		}
-	}
+    char tmp[32];
+    unsigned narenas = 0;
+    size_t sz = sizeof(unsigned);
+    if (!je_mallctl("arenas.narenas", &narenas, &sz, nullptr, 0))
+    {
+        sprintf(tmp, "arena.%d.purge", narenas);
+        if (!je_mallctl(tmp, nullptr, 0, nullptr, 0))
+        {
+            addReply(conn->outputBuffer(), ok);
+            return  true;
+        }
+    }
 
 #endif
 
@@ -1492,8 +1492,8 @@ Redis::syncCommand(const std::deque <RedisObjectPtr> &obj, const SessionPtr &ses
     return true;
 }
 
-bool Redis::psyncCommand(const std::deque <RedisObjectPtr> &obj, const SessionPtr &session,
-                         const TcpConnectionPtr &conn) {
+bool
+Redis::psyncCommand(const std::deque <RedisObjectPtr> &obj, const SessionPtr &session, const TcpConnectionPtr &conn) {
     return false;
 }
 
@@ -1524,8 +1524,8 @@ size_t Redis::getDbsize() {
     return size;
 }
 
-bool Redis::dbsizeCommand(const std::deque <RedisObjectPtr> &obj, const SessionPtr &session,
-                          const TcpConnectionPtr &conn) {
+bool
+Redis::dbsizeCommand(const std::deque <RedisObjectPtr> &obj, const SessionPtr &session, const TcpConnectionPtr &conn) {
     if (obj.size() > 0) {
         return false;
     }
@@ -2763,44 +2763,44 @@ bool Redis::monitorCommand(const std::deque <RedisObjectPtr> &obj,
 }
 
 #ifdef _LUA
-                                                                                                                        int32_t Redis::luaCreateFunction(Buffer *buffer, lua_State *lua,
-	char *funcname, const RedisObjectPtr &body)
+int32_t Redis::luaCreateFunction(Buffer *buffer, lua_State *lua,
+    char *funcname, const RedisObjectPtr &body)
 {
-	sds funcdef = sdsempty();
-	funcdef = sdscat(funcdef, "function ");
+    sds funcdef = sdsempty();
+    funcdef = sdscat(funcdef, "function ");
     funcdef = sdscatlen(funcdef, funcname, 42);
     funcdef = sdscatlen(funcdef, "() ", 3);
     funcdef = sdscatlen(funcdef, body->ptr, sdslen(body->ptr));
     funcdef = sdscatlen(funcdef, " end", 4);
 
-	if (luaL_loadbuffer(lua, funcdef, sdslen(funcdef), "@user_script"))
-	{
-		addReplyErrorFormat(buffer, "Error compiling script (new function): %s\n",
-		lua_tostring(lua, -1));
-		lua_pop(lua, 1);
-		sdsfree(funcdef);
-		return REDIS_ERR;
-	}
+    if (luaL_loadbuffer(lua, funcdef, sdslen(funcdef), "@user_script"))
+    {
+        addReplyErrorFormat(buffer, "Error compiling script (new function): %s\n",
+        lua_tostring(lua, -1));
+        lua_pop(lua, 1);
+        sdsfree(funcdef);
+        return REDIS_ERR;
+    }
 
-	sdsfree(funcdef);
-	if (lua_pcall(lua, 0, 0, 0))
-	{
+    sdsfree(funcdef);
+    if (lua_pcall(lua, 0, 0, 0))
+    {
         addReplyErrorFormat(buffer, "Error running script (new function): %s\n",
             lua_tostring(lua, -1));
         lua_pop(lua, 1);
         return REDIS_ERR;
     }
-	return REDIS_OK;
+    return REDIS_OK;
 }
 
 void Redis::luaSetGlobalArray(lua_State *lua,
-	char *var, const std::deque<RedisObjectPtr> &elev, int32_t start, int32_t end)
+    char *var, const std::deque<RedisObjectPtr> &elev, int32_t start, int32_t end)
 {
-	int j;
+    int j;
 
     lua_newtable(lua);
     for (j = start; j < end; j++)
-	{
+    {
         lua_pushlstring(lua,(char*)elev[j]->ptr, sdslen(elev[j]->ptr));
         lua_rawseti(lua, -2, j + 1);
     }
@@ -2808,78 +2808,78 @@ void Redis::luaSetGlobalArray(lua_State *lua,
 }
 
 bool Redis::evalCommand(const std::deque<RedisObjectPtr> &obj,
-	const SessionPtr &session, const TcpConnectionPtr &conn)
+    const SessionPtr &session, const TcpConnectionPtr &conn)
 {
-	int delhook = 0, err;
-	int evalsha = 0;
-	char funcname[43];
-	int64_t numkeys;
-	/* Get the number of arguments that are keys */
+    int delhook = 0, err;
+    int evalsha = 0;
+    char funcname[43];
+    int64_t numkeys;
+    /* Get the number of arguments that are keys */
     if (getLongLongFromObjectOrReply(conn->outputBuffer(),
-		obj[1], &numkeys, nullptr) != REDIS_OK)
-	{
-		return false;
-	}
+        obj[1], &numkeys, nullptr) != REDIS_OK)
+    {
+        return false;
+    }
 
     if (numkeys > (obj.size() - 2))
-	{
+    {
         addReplyError(conn->outputBuffer(),
-			"Number of keys can't be greater than number of args");
+            "Number of keys can't be greater than number of args");
         return true;
     }
-	else if (numkeys < 0)
-	{
-		addReplyError(conn->outputBuffer(),
-			"Number of keys can't be negative");
-		return true;
+    else if (numkeys < 0)
+    {
+        addReplyError(conn->outputBuffer(),
+            "Number of keys can't be negative");
+        return true;
     }
 
-	/* We obtain the script SHA1, then check if this function is already
+    /* We obtain the script SHA1, then check if this function is already
      * defined into the Lua state */
     funcname[0] = 'f';
     funcname[1] = '_';
 
-	if (!evalsha)
-	{
-		/* Hash the code if this is an EVAL call */
-		sha1hex(funcname + 2, obj[0]->ptr, sdslen(obj[0]->ptr));
-	}
-	else
-	{
-		/* We already have the SHA if it is a EVALSHA */
-		int j;
-		char *sha = obj[0]->ptr;
+    if (!evalsha)
+    {
+        /* Hash the code if this is an EVAL call */
+        sha1hex(funcname + 2, obj[0]->ptr, sdslen(obj[0]->ptr));
+    }
+    else
+    {
+        /* We already have the SHA if it is a EVALSHA */
+        int j;
+        char *sha = obj[0]->ptr;
 
-		/* Convert to lowercase. We don't use tolower since the function
-		 * managed to always show up in the profiler output consuming
-		 * a non trivial amount of time. */
-		for (j = 0; j < 40; j++)
-			funcname[j + 2] = (sha[j] >= 'A' && sha[j] <= 'Z') ?
-				sha[j] + ('a'-'A') : sha[j];
-		funcname[42] = '\0';
-	}
+        /* Convert to lowercase. We don't use tolower since the function
+         * managed to always show up in the profiler output consuming
+         * a non trivial amount of time. */
+        for (j = 0; j < 40; j++)
+            funcname[j + 2] = (sha[j] >= 'A' && sha[j] <= 'Z') ?
+                sha[j] + ('a'-'A') : sha[j];
+        funcname[42] = '\0';
+    }
 
-	/* Push the pcall error handler function on the stack. */
+    /* Push the pcall error handler function on the stack. */
     lua_getglobal(lua, "__redis__err__handler");
 
-	/* Try to lookup the Lua function */
+    /* Try to lookup the Lua function */
     lua_getglobal(lua, funcname);
     if (lua_isnil(lua, -1))
-	{
+    {
         lua_pop(lua, 1); /* remove the nil from the stack */
         /* Function not defined... let's define it if we have the
          * body of the function. If this is an EVALSHA call we can just
          * return an error. */
         if (evalsha)
-		{
+        {
             lua_pop(lua, 1); /* remove the error handler from the stack. */
             addReply(conn->outputBuffer(), shared.noscripterr);
             return true;
         }
 
         if (luaCreateFunction(conn->outputBuffer(),
-			lua, funcname, obj[0]) == REDIS_ERR)
-		{
+            lua, funcname, obj[0]) == REDIS_ERR)
+        {
             lua_pop(lua, 1); /* remove the error handler from the stack. */
             /* The error is sent to the client by luaCreateFunction()
              * itself when it returns NULL. */
@@ -2891,119 +2891,119 @@ bool Redis::evalCommand(const std::deque<RedisObjectPtr> &obj,
         assert(!lua_isnil(lua, -1));
     }
 
-	luaSetGlobalArray(lua, "KEYS", obj, 2, numkeys);
-	luaSetGlobalArray(lua, "ARGV", obj, 2 + numkeys, obj.size() - 2 - numkeys);
-	err = lua_pcall(lua, 0, 1, -2);
+    luaSetGlobalArray(lua, "KEYS", obj, 2, numkeys);
+    luaSetGlobalArray(lua, "ARGV", obj, 2 + numkeys, obj.size() - 2 - numkeys);
+    err = lua_pcall(lua, 0, 1, -2);
 
-	if (err)
-	{
-		addReplyErrorFormat(conn->outputBuffer(), "Error running script (call to %s): %s\n",
-			funcname, lua_tostring(lua,-1));
-		lua_pop(lua,2); /* Consume the Lua reply and remove error handler. */
-	}
-	else
-	{
-		/* On success convert the Lua return value into Redis protocol, and
-		 * send it to * the client. */
-		luaReplyToRedisReply(conn->outputBuffer(), lua); /* Convert and consume the reply. */
-		lua_pop(lua, 1); /* Remove the error handler. */
-	}
-	return true;
+    if (err)
+    {
+        addReplyErrorFormat(conn->outputBuffer(), "Error running script (call to %s): %s\n",
+            funcname, lua_tostring(lua,-1));
+        lua_pop(lua,2); /* Consume the Lua reply and remove error handler. */
+    }
+    else
+    {
+        /* On success convert the Lua return value into Redis protocol, and
+         * send it to * the client. */
+        luaReplyToRedisReply(conn->outputBuffer(), lua); /* Convert and consume the reply. */
+        lua_pop(lua, 1); /* Remove the error handler. */
+    }
+    return true;
 }
 
 void Redis::luaReplyToRedisReply(Buffer *buffer, lua_State *lua)
 {
-	int t = lua_type(lua, -1);
+    int t = lua_type(lua, -1);
 
     switch(t)
-	{
-		case LUA_TSTRING:
-			addReplyBulkCBuffer(buffer, (char*)lua_tostring(lua, -1), lua_strlen(lua, -1));
-			break;
-		case LUA_TBOOLEAN:
-			addReply(buffer, lua_toboolean(lua,-1) ? shared.cone : shared.nullbulk);
-			break;
-		case LUA_TNUMBER:
-			addReplyLongLong(buffer, (int64_t)lua_tonumber(lua, -1));
-			break;
-		case LUA_TTABLE:
-			/* We need to check if it is an array, an error, or a status reply.
-			 * Error are returned as a single element table with 'err' field.
-			 * Status replies are returned as single element table with 'ok' field */
-			lua_pushstring(lua, "err");
-			lua_gettable(lua, -2);
-			t = lua_type(lua, -1);
-			if (t == LUA_TSTRING)
-			{
-				sds err = sdsnew(lua_tostring(lua, -1));
-				sdsmapchars(err, "\r\n","   ", 2);
-				addReplySds(buffer, sdscatprintf(sdsempty(), "-%s\r\n", err));
-				sdsfree(err);
-				lua_pop(lua, 2);
-				return;
-			}
+    {
+        case LUA_TSTRING:
+            addReplyBulkCBuffer(buffer, (char*)lua_tostring(lua, -1), lua_strlen(lua, -1));
+            break;
+        case LUA_TBOOLEAN:
+            addReply(buffer, lua_toboolean(lua,-1) ? shared.cone : shared.nullbulk);
+            break;
+        case LUA_TNUMBER:
+            addReplyLongLong(buffer, (int64_t)lua_tonumber(lua, -1));
+            break;
+        case LUA_TTABLE:
+            /* We need to check if it is an array, an error, or a status reply.
+             * Error are returned as a single element table with 'err' field.
+             * Status replies are returned as single element table with 'ok' field */
+            lua_pushstring(lua, "err");
+            lua_gettable(lua, -2);
+            t = lua_type(lua, -1);
+            if (t == LUA_TSTRING)
+            {
+                sds err = sdsnew(lua_tostring(lua, -1));
+                sdsmapchars(err, "\r\n","   ", 2);
+                addReplySds(buffer, sdscatprintf(sdsempty(), "-%s\r\n", err));
+                sdsfree(err);
+                lua_pop(lua, 2);
+                return;
+            }
 
-			lua_pop(lua, 1);
-			lua_pushstring(lua, "ok");
-			lua_gettable(lua, -2);
-			t = lua_type(lua, -1);
-			if (t == LUA_TSTRING)
-			{
-				sds ok = sdsnew(lua_tostring(lua, -1));
-				sdsmapchars(ok, "\r\n", "  ", 2);
-				addReplySds(buffer, sdscatprintf(sdsempty(), "+%s\r\n", ok));
-				sdsfree(ok);
-				lua_pop(lua, 1);
-			}
-			else
-			{
-				LOG_INFO << "lua table";
-				int j = 1, mbulklen = 0;
-				lua_pop(lua, 1); /* Discard the 'ok' field value we popped */
-				while(1)
-				{
-					lua_pushnumber(lua, j++);
-					lua_gettable(lua, -2);
-					t = lua_type(lua, -1);
-					if (t == LUA_TNIL)
-					{
-						lua_pop(lua, 1);
-						break;
-					}
+            lua_pop(lua, 1);
+            lua_pushstring(lua, "ok");
+            lua_gettable(lua, -2);
+            t = lua_type(lua, -1);
+            if (t == LUA_TSTRING)
+            {
+                sds ok = sdsnew(lua_tostring(lua, -1));
+                sdsmapchars(ok, "\r\n", "  ", 2);
+                addReplySds(buffer, sdscatprintf(sdsempty(), "+%s\r\n", ok));
+                sdsfree(ok);
+                lua_pop(lua, 1);
+            }
+            else
+            {
+                LOG_INFO << "lua table";
+                int j = 1, mbulklen = 0;
+                lua_pop(lua, 1); /* Discard the 'ok' field value we popped */
+                while(1)
+                {
+                    lua_pushnumber(lua, j++);
+                    lua_gettable(lua, -2);
+                    t = lua_type(lua, -1);
+                    if (t == LUA_TNIL)
+                    {
+                        lua_pop(lua, 1);
+                        break;
+                    }
 
-					luaReplyToRedisReply(buffer, lua);
-					mbulklen++;
-				}
+                    luaReplyToRedisReply(buffer, lua);
+                    mbulklen++;
+                }
 
-				int32_t len;
-				char buf[128];
-				buf[0] = '*';
-				len = ll2string(buf + 1, sizeof(buf) - 1, mbulklen);
-				buf[len + 1] = '\r';
-				buf[len + 2] = '\n';
-				buffer->prepend(buf, len + 3);
-			}
-			break;
-		default:
-			addReply(buffer, shared.nullbulk);
+                int32_t len;
+                char buf[128];
+                buf[0] = '*';
+                len = ll2string(buf + 1, sizeof(buf) - 1, mbulklen);
+                buf[len + 1] = '\r';
+                buf[len + 2] = '\n';
+                buffer->prepend(buf, len + 3);
+            }
+            break;
+        default:
+            addReply(buffer, shared.nullbulk);
     }
     lua_pop(lua,1);
 }
 
 void Redis::luaLoadLib(lua_State *lua, const char *libname, lua_CFunction luafunc)
 {
-	lua_pushcfunction(lua, luafunc);
-	lua_pushstring(lua, libname);
-	lua_call(lua, 1, 0);
+    lua_pushcfunction(lua, luafunc);
+    lua_pushstring(lua, libname);
+    lua_call(lua, 1, 0);
 }
 
 void Redis::luaLoadLibraries(lua_State *lua)
 {
-	luaLoadLib(lua, "", luaopen_base);
-	luaLoadLib(lua, LUA_TABLIBNAME, luaopen_table);
-	luaLoadLib(lua, LUA_STRLIBNAME, luaopen_string);
-	luaLoadLib(lua, LUA_MATHLIBNAME, luaopen_math);
-	luaLoadLib(lua, LUA_DBLIBNAME, luaopen_debug);
+    luaLoadLib(lua, "", luaopen_base);
+    luaLoadLib(lua, LUA_TABLIBNAME, luaopen_table);
+    luaLoadLib(lua, LUA_STRLIBNAME, luaopen_string);
+    luaLoadLib(lua, LUA_MATHLIBNAME, luaopen_math);
+    luaLoadLib(lua, LUA_DBLIBNAME, luaopen_debug);
 #if 0 /* Stuff that we don't load currently, for sandboxing concerns. */
     luaLoadLib(lua, LUA_LOADLIBNAME, luaopen_package);
     luaLoadLib(lua, LUA_OSLIBNAME, luaopen_os);
@@ -3027,63 +3027,63 @@ int32_t Redis::luaRedisGenericCommand(lua_State *lua, int32_t raise)
 
 int Redis::luaRedisCallCommand(lua_State *lua)
 {
-	int j, argc = lua_gettop(lua);
-	/* Require at least one argument */
-	if (argc == 0)
-	{
-		luaPushError(lua,
-			"Please specify at least one argument for redis.call()");
-		return 1;
-	}
-
-	std::deque<RedisObjectPtr> argv;
-	argv.resize(argc - 1);
-
-	char *objs;
-	size_t objlen;
-	objs = (char*)lua_tolstring(lua, 1, &objlen);
-
-	RedisObjectPtr cmd = createStringObject(objs, objlen);
-	for (j = 1; j < argc; j++)
-	{
-		char *objs;
-		size_t objlen;
-
-		objs = (char*)lua_tolstring(lua, j + 1, &objlen);
-		if (objs == nullptr) break; /* Not a string. */
-		argv[j] = createStringObject(objs, objlen);
+    int j, argc = lua_gettop(lua);
+    /* Require at least one argument */
+    if (argc == 0)
+    {
+        luaPushError(lua,
+            "Please specify at least one argument for redis.call()");
+        return 1;
     }
 
-	/* Check if one of the arguments passed by the Lua script
-	* is not a string or an integer (lua_isstring() return true for
-	* integers as well). */
+    std::deque<RedisObjectPtr> argv;
+    argv.resize(argc - 1);
+
+    char *objs;
+    size_t objlen;
+    objs = (char*)lua_tolstring(lua, 1, &objlen);
+
+    RedisObjectPtr cmd = createStringObject(objs, objlen);
+    for (j = 1; j < argc; j++)
+    {
+        char *objs;
+        size_t objlen;
+
+        objs = (char*)lua_tolstring(lua, j + 1, &objlen);
+        if (objs == nullptr) break; /* Not a string. */
+        argv[j] = createStringObject(objs, objlen);
+    }
+
+    /* Check if one of the arguments passed by the Lua script
+    * is not a string or an integer (lua_isstring() return true for
+    * integers as well). */
 
    /* auto it = handlerCommands.find(cmd);
-	if (it == handlerCommands.end())
-	{
-		luaPushError(lua, "Unknown Redis command called from Lua script");
-		goto cleanup;
-	}
+    if (it == handlerCommands.end())
+    {
+        luaPushError(lua, "Unknown Redis command called from Lua script");
+        goto cleanup;
+    }
 
-	if (!it->second(argv, nullptr, conn))
-	{
-		luaPushError(lua,
+    if (!it->second(argv, nullptr, conn))
+    {
+        luaPushError(lua,
                 "Wrong number of args calling Redis command From Lua script");
-		goto cleanup;
-	}
+        goto cleanup;
+    }
 
 
-	*/
+    */
 
-	return 1;
+    return 1;
 cleanup:
-	 /* If we are here we should have an error in the stack, in the
+     /* If we are here we should have an error in the stack, in the
          * form of a table with an "err" field. Extract the string to
          * return the plain error. */
 
-	lua_pushstring(lua,"err");
-	lua_gettable(lua,-2);
-	return lua_error(lua);
+    lua_pushstring(lua,"err");
+    lua_gettable(lua,-2);
+    return lua_error(lua);
 }
 
 int Redis::luaRedisPCallCommand(lua_State *lua)
@@ -3098,7 +3098,7 @@ int Redis::luaRedisPCallCommand(lua_State *lua)
  * sequence, because it may interact with creation of globals. */
 void Redis::scriptingEnableGlobalsProtection(lua_State *lua)
 {
-	char *s[32];
+    char *s[32];
     sds code = sdsempty();
     int j = 0;
 
@@ -3133,13 +3133,13 @@ void Redis::scriptingEnableGlobalsProtection(lua_State *lua)
 
 void Redis::scriptingInit()
 {
-	lua = lua_open();
-	luaLoadLibraries(lua);
-	luaRemoveUnsupportedFunctions(lua);
-	/* Register the redis commands table and fields */
+    lua = lua_open();
+    luaLoadLibraries(lua);
+    luaRemoveUnsupportedFunctions(lua);
+    /* Register the redis commands table and fields */
     lua_newtable(lua);
 
-	 /* redis.call */
+     /* redis.call */
     lua_pushstring(lua, "call");
     lua_pushcfunction(lua, luaRedisCallCommand);
     lua_settable(lua,-3);
@@ -3149,7 +3149,7 @@ void Redis::scriptingInit()
     lua_pushcfunction(lua, luaRedisPCallCommand);
     lua_settable(lua, -3);
 
-	 /* Add a helper function that we use to sort the multi bulk output of non
+     /* Add a helper function that we use to sort the multi bulk output of non
      * deterministic commands, when containing 'false' elements. */
     {
         char *func = "function __redis__compare_helper(a,b)\n"
@@ -3161,7 +3161,7 @@ void Redis::scriptingInit()
         lua_pcall(lua, 0, 0, 0);
     }
 
-	 /* Add a helper function we use for pcall error reporting.
+     /* Add a helper function we use for pcall error reporting.
      * Note that when the error is in the C function we want to report the
      * information about the caller, that's what makes sense from the point
      * of view of the user debugging a script. */
@@ -3182,7 +3182,7 @@ void Redis::scriptingInit()
         lua_pcall(lua, 0, 0, 0);
     }
 
-	/* Lua beginners often don't use "local", this is likely to introduce
+    /* Lua beginners often don't use "local", this is likely to introduce
      * subtle bugs in their code. To prevent problems we protect accesses
      * to global variables. */
     scriptingEnableGlobalsProtection(lua);
@@ -3190,24 +3190,24 @@ void Redis::scriptingInit()
 
 void Redis::luaPushError(lua_State *lua, char *error)
 {
-	lua_Debug dbg;
+    lua_Debug dbg;
 
-	lua_newtable(lua);
-	lua_pushstring(lua,"err");
+    lua_newtable(lua);
+    lua_pushstring(lua,"err");
 
-	/* Attempt to figure out where this function was called, if possible */
-	if(lua_getstack(lua, 1, &dbg) && lua_getinfo(lua, "nSl", &dbg))
-	{
-		sds msg = sdscatprintf(sdsempty(), "%s: %d: %s",
-			dbg.source, dbg.currentline, error);
-		lua_pushstring(lua, msg);
-		sdsfree(msg);
-	}
-	else
-	{
-		lua_pushstring(lua, error);
-	}
-	lua_settable(lua, -3);
+    /* Attempt to figure out where this function was called, if possible */
+    if(lua_getstack(lua, 1, &dbg) && lua_getinfo(lua, "nSl", &dbg))
+    {
+        sds msg = sdscatprintf(sdsempty(), "%s: %d: %s",
+            dbg.source, dbg.currentline, error);
+        lua_pushstring(lua, msg);
+        sdsfree(msg);
+    }
+    else
+    {
+        lua_pushstring(lua, error);
+    }
+    lua_settable(lua, -3);
 }
 #endif
 

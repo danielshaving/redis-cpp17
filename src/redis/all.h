@@ -46,7 +46,7 @@
 #include <ratio>
 #include <chrono>
 #include <random>
-
+#include <cstring>
 #ifdef _LUA
 #include <lua.hpp>
 #endif

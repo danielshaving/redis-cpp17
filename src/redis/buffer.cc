@@ -1,7 +1,7 @@
 #include "buffer.h"
 
-const char    Buffer::kCRLF[] = "\r\n";
-const char    Buffer::CONTENT[] = "Content-Length";
+const char Buffer::kCRLF[] = "\r\n";
+const char Buffer::CONTENT[] = "Content-Length";
 const int32_t Buffer::kCheapPrepend;
 const int32_t Buffer::kInitialSize;
 

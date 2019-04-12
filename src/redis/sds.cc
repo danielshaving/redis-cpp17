@@ -339,15 +339,13 @@ void sdsIncrLen(sds s, ssize_t incr) {
         }
         case SDS_TYPE_8: {
             SDS_HDR_VAR8(8, s);
-            assert((incr >= 0 && sh->alloc - sh->len >= incr) ||
-                   (incr < 0 && sh->len >= (unsigned int) (-incr)));
+            assert((incr >= 0 && sh->alloc - sh->len >= incr) || (incr < 0 && sh->len >= (unsigned int) (-incr)));
             len = (sh->len += incr);
             break;
         }
         case SDS_TYPE_16: {
             SDS_HDR_VAR16(16, s);
-            assert((incr >= 0 && sh->alloc - sh->len >= incr) ||
-                   (incr < 0 && sh->len >= (unsigned int) (-incr)));
+            assert((incr >= 0 && sh->alloc - sh->len >= incr) || (incr < 0 && sh->len >= (unsigned int) (-incr)));
             len = (sh->len += incr);
             break;
         }
@@ -360,8 +358,7 @@ void sdsIncrLen(sds s, ssize_t incr) {
         }
         case SDS_TYPE_64: {
             SDS_HDR_VAR64(64, s);
-            assert((incr >= 0 && sh->alloc - sh->len >= (uint64_t) incr) ||
-                   (incr < 0 && sh->len >= (uint64_t)(-incr)));
+            assert((incr >= 0 && sh->alloc - sh->len >= (uint64_t) incr) || (incr < 0 && sh->len >= (uint64_t)(-incr)));
             len = (sh->len += incr);
             break;
         }
