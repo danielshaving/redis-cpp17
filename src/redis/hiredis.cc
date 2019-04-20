@@ -1470,12 +1470,8 @@ std::function<void()> RedisAsyncContext::getRedisvAsyncCommand(const RedisCallba
 	asyncCallback->data = cmd;
 	asyncCallback->len = len;
 	asyncCallback->cb = std::move(cb);
-
+	
 	return std::bind(&RedisAsyncContext::__redisAsyncCommand, shared_from_this(), asyncCallback);
-}
-
-void RedisAsyncContext::clearSubscribe() {
-
 }
 
 int32_t RedisAsyncContext::processCommand(const RedisCallbackFn &fn, const std::any &privdata,
@@ -1782,10 +1778,40 @@ RedisAsyncContextPtr Hiredis::getRedisAsyncContext(const RedisObjectPtr &command
 
 	tmpClients.clear();
 	int32_t hashslot = keyHashSlot(command->ptr, sdslen(command->ptr));
+	auto migrateIter = clusterMigrate.find(hashslot);
+	if (migrateIter != clusterMigrate.end()) {
+		for (auto &it : clusterNodes) {
+			if (it->id == migrateIter->second) {
+				auto iter = redisClientMaps.find(threadId);
+				assert(iter != redisClientMaps.end());
+
+				for (auto &iterr : iter->second) {
+					if (iterr->getPort() == it->port) {
+						tmpClients.push_back(iterr);
+					}
+				}
+
+				if (tmpClients.empty()) {
+					return nullptr;
+				}
+
+				int32_t index = ((tmpClients.size() - 1) % sockfd);
+				const TcpConnectionPtr &conn = tmpClients[index]->getConnection();
+				if (conn == nullptr) {
+					return nullptr;
+				}
+				else {
+					assert(conn->getContext().has_value());
+					const RedisAsyncContextPtr &ac = std::any_cast<RedisAsyncContextPtr>(conn->getContext());
+					return ac;
+				}
+			}
+		}
+	}
+	
 	for (auto &it : clusterNodes) {
-		for (auto iter : it->slots) {
-			if (((hashslot >= iter.first && hashslot <= iter.second) || it->migrate)
-				&& it->master == "master" && it->status == 1) {
+		for (auto iter : it->slots) {	
+			if (hashslot >= iter.first && hashslot <= iter.second && it->master == "master" && it->status == 1) {
 				auto iter = redisClientMaps.find(threadId);
 				assert(iter != redisClientMaps.end());
 
@@ -2127,7 +2153,9 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer) {
 		if (reply == nullptr) {
 			/* When the connection is being disconnected and there are
 				 * no more replies, this is the cue to really disconnect. */
-			if (ac->redisContext->flags == REDIS_DISCONNECTING) {
+			if (ac->redisContext->flags == REDIS_DISCONNECTING && buffer->readableBytes() == 0
+				&& ac->repliesCb.empty()) {
+				LOG_DEBUG << "";
 				redisAsyncDisconnect(ac, nullptr);
 				return;
 			}
@@ -2141,6 +2169,7 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer) {
 		   * get a reply before pub/sub messages arrive. */
 		RedisAsyncCallbackPtr repliesCb = nullptr;
 		if (ac->repliesCb.empty()) {
+			LOG_DEBUG << "";
 			/*
 			* A spontaneous reply in a not-subscribed context can be the error
 			* reply that is sent when a new connection exceeds the maximum
@@ -2239,6 +2268,7 @@ void Hiredis::redisReadCallback(const TcpConnectionPtr &conn, Buffer *buffer) {
 
 	/* Disconnect when there was an error reading the reply */
 	if (status != REDIS_OK) {
+		LOG_DEBUG << "";
 		redisAsyncDisconnect(ac, nullptr);
 	}
 }
@@ -2261,7 +2291,6 @@ TcpConnectionPtr Hiredis::redirectySlot(int32_t sockfd, EventLoop *loop, const c
 	}
 	else {
 		int32_t index = (moveAskClients.size() - 1) % sockfd;
-
 		conn = moveAskClients[index];
 		moveAskClients.clear();
 	}
@@ -2275,6 +2304,8 @@ void Hiredis::redisContextTimer() {
 		return;
 	}
 
+	clusterMigrate.clear();
+	bool node = false;
 	for (auto &iter : it->second) {
 		RedisReplyPtr reply = iter->redisCommand("PING");
 		if (reply == nullptr || !(strcmp(reply->str, "PONG") == 0)
@@ -2289,107 +2320,139 @@ void Hiredis::redisContextTimer() {
 			return ;
 		}
 		
-		reply = iter->redisCommand("cluster nodes");
-		if (reply != nullptr && reply->type == REDIS_REPLY_STRING) {
-			clusterNodes.clear();
-			int32_t index = 0;
-			while (index < sdslen(reply->str)) {
-				std::shared_ptr <ClusterNode> node(new ClusterNode());
-				const char *id = strchr(reply->str + index, ' ');
-				assert(id != nullptr);
+		if (!node) {
+			node = true;
+			reply = iter->redisCommand("cluster nodes");
+			if (reply != nullptr && reply->type == REDIS_REPLY_STRING) {
+				clusterNodes.clear();
+				//LOG_INFO << reply->str;
+				int32_t index = 0;
+				while (index < sdslen(reply->str)) {
+					std::shared_ptr <ClusterNode> node(new ClusterNode());
+					const char *id = strchr(reply->str + index, ' ');
+					assert(id != nullptr);
 
-				node->id = std::string(reply->str + index, id - (reply->str + index));
-				const char *ip = strchr(id + 1, ':');
-				assert(ip != nullptr);
+					node->id = std::string(reply->str + index, id - (reply->str + index));
+					const char *ip = strchr(id + 1, ':');
+					assert(ip != nullptr);
 
-				node->ip = std::string(id + 1, ip - id - 1);
-				const char *port = strchr(ip + 1, '@');
-				assert(port != nullptr);
+					node->ip = std::string(id + 1, ip - id - 1);
+					const char *port = strchr(ip + 1, '@');
+					assert(port != nullptr);
 
-				int16_t p = atoi(ip + 1);
-				node->port = p;
-				const char *p1 = strchr(port + 1, ' ');
-				assert(p1 != nullptr);
-
-				const char *myself = strchr(p1 + 1, ' ');
-				std::string m = std::string(p1 + 1, myself - p1 - 1);
-				if (m == "myself,master" || m == "master") {
-					node->master = "master";
-					const char *end = strchr(myself + 1, '\n');
-					assert(end != nullptr);
-					index = end + 1 - reply->str;
-					
-					const char *p1 = strchr(myself + 1, ' ');
+					int16_t p = atoi(ip + 1);
+					node->port = p;
+					const char *p1 = strchr(port + 1, ' ');
 					assert(p1 != nullptr);
-					const char *p2 = strchr(p1 + 1, ' ');
-					assert(p2 != nullptr);
-					const char *p3 = strchr(p2 + 1, ' ');
-					assert(p3 != nullptr);
-					const char *p4 = strchr(p3 + 1, ' ');
-					assert(p4 != nullptr);
-					const char *p5 = strchr(p4 + 1, ' ');
-					if (p5 == nullptr || ((p5 - reply->str) > index)) {
-						if (MEMCMP(p4 + 1, "connected", end - (p4 + 1)) == 0) {
+
+					const char *myself = strchr(p1 + 1, ' ');
+					std::string m = std::string(p1 + 1, myself - p1 - 1);
+					if (m == "myself,master" || m == "master") {
+						node->master = "master";
+						const char *end = strchr(myself + 1, '\n');
+						assert(end != nullptr);
+						index = end + 1 - reply->str;
+						
+						const char *p1 = strchr(myself + 1, ' ');
+						assert(p1 != nullptr);
+						const char *p2 = strchr(p1 + 1, ' ');
+						assert(p2 != nullptr);
+						const char *p3 = strchr(p2 + 1, ' ');
+						assert(p3 != nullptr);
+						const char *p4 = strchr(p3 + 1, ' ');
+						assert(p4 != nullptr);
+						const char *p5 = strchr(p4 + 1, ' ');
+						if (p5 == nullptr || ((p5 - reply->str) > index)) {
+							if (MEMCMP(p4 + 1, "connected", end - (p4 + 1)) == 0) {
+								node->status = 1;
+							} else {
+								node->status = 0;
+							}
+							
+							clusterNodes.push_back(node);
+							continue;
+						}
+						
+						assert(p5 != nullptr);
+						if (MEMCMP(p4 + 1, "connected", p5 - p4 - 1) == 0) {
 							node->status = 1;
 						} else {
 							node->status = 0;
 						}
 						
+						const char *slot = p5;
+						while (1) {
+							int16_t startSlot = atoi(slot + 1);
+							const char *p6 = std::find(slot, end, ' ');
+							if (p6 == end) {
+								node->migrate = false;	
+								const char *p7 = std::find(p6 + 1, end, '-');
+								if (p7 != nullptr) {
+									int16_t endSlot = atoi(p7 + 1);
+									node->slots[startSlot] = endSlot;
+								} else {
+									node->slots[startSlot] = startSlot;
+								}
+								break;
+							}
+							
+							if (*(p6 + 1) == '[') {
+								node->migrate = true;
+								const char *p7 = strchr(slot, '[');
+								assert(p7 != nullptr);
+								int16_t migrateSlot = atoi(p7 + 1);
+								const char *p8= strchr(p7 + 1, '-');
+								assert(p8 != nullptr);
+								const char *p9 = strchr(p8 + 1, '-');
+								assert(p9 != nullptr);
+								const char *p10 = strchr(p9+ 1, ']');
+								assert(p10 != nullptr);
+								std::string migrateId = std::string(p9 + 1, p10 - p9 - 1);
+								clusterMigrate[migrateSlot] = migrateId;
+								break;
+							}
+							
+							const char *p7 = std::find(p6 + 1, end, '-');
+							if (p7 == end) {
+								slot = p6 + 1 + std::to_string(startSlot).size();
+								continue;
+							}
+							
+							int16_t endSlot = atoi(p7 + 1);
+							const char *p8 = strchr(p7 + 1, '\n');			
+							node->slots[startSlot] = endSlot;
+							size_t size = std::to_string(endSlot).size();
+							if (std::to_string(endSlot).size() >= end - p7 - 1) {
+								break;
+							}
+							slot = p7 + 1 + size;
+						}
 						clusterNodes.push_back(node);
-						continue;
 					}
-					
-					assert(p5 != nullptr);
-					if (MEMCMP(p4 + 1, "connected", p5 - p4 - 1) == 0) {
-						node->status = 1;
-					} else {
-						node->status = 0;
+					else {
+						node->slave = m;
+						const char *p1 = strchr(myself + 1, ' ');
+						assert(p1 != nullptr);
+						std::string master = std::string(myself + 1, p1 - myself - 1);
+						const char *p2 = strchr(p1 + 1, ' ');
+						assert(p2 != nullptr);
+						const char *p3 = strchr(p2 + 1, ' ');
+						assert(p3 != nullptr);
+						const char *p4 = strchr(p3 + 1, ' ');
+						assert(p4 != nullptr);
+						const char *p5 = strchr(p4 + 1, '\n');
+						assert(p5 != nullptr);
+						index = p5 + 1 - reply->str;
+						clusterNodes.push_back(node);
 					}
-					
-					const char *slot = p5;
-					while (1) {
-						int16_t startSlot = atoi(slot + 1);
-						const char *p6 = strchr(slot + 1, '-');
-						if (p6 == nullptr) {
-							node->migrate = true;
-							break;
-						}
-						
-						node->migrate = false;
-						int16_t endSlot = atoi(p6 + 1);
-						std::string slotstr = std::to_string(endSlot);
-						node->slots[startSlot] = endSlot;
-						const char *p7 = p6 + 1 + slotstr.size();
-						if (p7 == end) {
-							break;
-						}
-						slot = p7;
-					}
-					clusterNodes.push_back(node);
-				}
-				else {
-					node->slave = "slave";
-					const char *p1 = strchr(myself + 1, ' ');
-					assert(p1 != nullptr);
-					std::string master = std::string(myself + 1, p1 - myself - 1);
-					const char *p2 = strchr(p1 + 1, ' ');
-					assert(p2 != nullptr);
-					const char *p3 = strchr(p2 + 1, ' ');
-					assert(p3 != nullptr);
-					const char *p4 = strchr(p3 + 1, ' ');
-					assert(p4 != nullptr);
-					const char *p5 = strchr(p4 + 1, '\n');
-					assert(p5 != nullptr);
-					index = p5 + 1 - reply->str;
-					clusterNodes.push_back(node);
 				}
 			}
+			else {
+				LOG_WARN << "Redis cluster nodes error ";
+				return;
+			}
 		}
-		else {
-			LOG_WARN << "Redis cluster nodes error ";
-			return;
-		}
-		
+				
 		clusterConnectInfos.clear();
 		clusterDelNodes.clear();
 
@@ -2414,15 +2477,25 @@ void Hiredis::redisContextTimer() {
 	if (!clusterMode) {
 		return ;
 	}
-		
+	
+	/*LOG_INFO << "---------------";
+	for (auto &it : clusterNodes) {
+		LOG_INFO << "id:" << it->id << " ip:" << it->ip << " port:" << it->port << " master: " <<it->master << " slave:" << it->slave;
+		for (auto &iter : it->slots) {
+			LOG_INFO << iter.first << " " << iter.second;
+		}
+	}
+	*/
+			
 	for (auto &it : clusterConnectInfos) {
-		start(loop, 0, it.second.c_str(), it.first);
+		//LOG_INFO << "ip " << it.second << " " << it.first;
+		start(loop, 1, it.second.c_str(), it.first);
 	}
 	
 	if (clusterNodes.empty()) {
 		return ;
 	}
-	
+
 	for (auto it = redisClients.begin(); it != redisClients.end();) {
 		bool mark = false;
 		for (auto &iter : clusterDelNodes) {

@@ -56,7 +56,9 @@ AppendFile::~AppendFile() {
 }
 
 bool AppendFile::exists(const std::string &filename) {
+#ifndef __APPLE__
 	return std::experimental::filesystem::exists(filename.c_str());
+#endif
 }
 
 bool AppendFile::lockFile(const std::string &fname) {
@@ -146,7 +148,11 @@ LogFile::LogFile(const std::string &filePath, const std::string &basename,
 	lastRoll(0),
 	lastFlush(0) {
 	assert(basename.find('/') == std::string::npos);
+#ifdef __APPLE__
+	::mkdir(filePath.c_str(), 0755);
+#else
 	std::experimental::filesystem::create_directories(filePath);
+#endif
 	rollFile(true);
 }
 
@@ -176,7 +182,11 @@ void LogFile::appendUnlocked(const char *logline, int32_t len) {
 	*/
 	
 	if (!file->exists(filePath + basename + ".log")) {
+#ifdef __APPLE__
+		::mkdir(filePath.c_str(), 0755);
+#else
 		std::experimental::filesystem::create_directories(filePath);
+#endif
 		filename.clear();
 		count = 0;
 		startOfPeriod = 0;
@@ -217,7 +227,12 @@ bool LogFile::rollFile(bool mask) {
 		if (!mask) {
 			if (!filename.empty()) {
 				file.reset();
+#ifdef __APPLE__
+				std::string name = filePath + basename + ".log";
+				std::rename(name.c_str(), filename.c_str());
+#else
 				std::experimental::filesystem::rename(filePath + basename + ".log", filename);
+#endif
 			}
 		}
 	
@@ -433,8 +448,8 @@ Logger::LogLevel g_logLevel = initLogLevel();
 const char *LogLevelName[Logger::NUM_LOG_LEVELS] = {
 	"TRACE ",
 	"DEBUG ",
-	"INFO ",
-	"WARN ",
+	"INFO  ",
+	"WARN  ",
 	"ERRORR ",
 	"FATAL ",
 };

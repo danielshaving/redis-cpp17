@@ -9,31 +9,31 @@ class RedisProxy;
 
 class ProxySession : public std::enable_shared_from_this<ProxySession> {
 public:
-    ProxySession(RedisProxy *redis, const TcpConnectionPtr &conn);
+	ProxySession(RedisProxy *redis, const TcpConnectionPtr &conn);
 
-    ~ProxySession();
+	~ProxySession();
 
-    void proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffer);
+	void proxyReadCallback(const TcpConnectionPtr &conn, Buffer *buffer);
 
-    int32_t processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *buffer);
+	int32_t processMultibulkBuffer(const TcpConnectionPtr &conn, Buffer *buffer);
 
-    int32_t processInlineBuffer(const TcpConnectionPtr &conn, Buffer *buffer);
+	int32_t processInlineBuffer(const TcpConnectionPtr &conn, Buffer *buffer);
 
-    void reset();
+	void reset();
 
 private:
-    ProxySession(const ProxySession &);
+	ProxySession(const ProxySession &);
 
-    void operator=(const ProxySession &);
+	void operator=(const ProxySession &);
 
-    RedisProxy *redis;
-    RedisObjectPtr command;
-    std::vector<RedisObjectPtr> redisCommands;
-    const char *buf;
-    size_t len;
-    int32_t pos;
-    int32_t reqtype;
-    int32_t multibulklen;
-    int32_t bulklen;
-    int32_t argc;
+	RedisProxy *redis;
+	RedisObjectPtr command;
+	std::vector <RedisObjectPtr> redisCommands;
+	const char *buf;
+	size_t len;
+	int32_t pos;
+	int32_t reqtype;
+	int32_t multibulklen;
+	int32_t bulklen;
+	int32_t argc;
 };

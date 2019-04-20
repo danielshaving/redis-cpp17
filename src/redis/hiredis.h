@@ -279,8 +279,6 @@ public:
 		return weakRedisConn;
 	}
 
-	void clearSubscribe();
-
 	int32_t err;
 	std::string errstr;
 	std::any context;
@@ -404,6 +402,7 @@ private:
 	std::vector <std::shared_ptr<ClusterNode>> clusterNodes;
 	std::map <int16_t, std::string> clusterConnectInfos;
 	std::map <int16_t, std::string> clusterDelNodes;
+	std::map <int16_t, std::string> clusterMigrate;
 
 	ConnectionCallback connectionCallback;
 	DisConnectionCallback disConnectionCallback;
