@@ -87,6 +87,7 @@ private:
     size_t usage;
     mutable std::mutex mutex;
     std::list <std::shared_ptr<LRUHandle>> lru;
+	std::list <std::shared_ptr<LRUHandle>> uselru;
     std::unordered_set <std::shared_ptr<LRUHandle>, Hash, Equal> tables;
 };
 

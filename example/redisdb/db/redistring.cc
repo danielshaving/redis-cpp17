@@ -162,7 +162,7 @@ Status RedisString::mset(const std::vector<KeyValue> &kvs) {
 	return db->write(WriteOptions(), &batch);
 }
 
-Status RedisString::mget(const std::vector<std::string> &keys, std::vector<ValueStatus> *vss) {
+Status RedisString::mget(const std::vector <std::string> &keys, std::vector <ValueStatus> *vss) {
 	vss->clear();
 
 	Status s;
@@ -184,4 +184,210 @@ Status RedisString::mget(const std::vector<std::string> &keys, std::vector<Value
 		}
 	}
 	return Status::OK();
+}
+
+Status RedisString::setnx(const std::string_view &key, const std::string &value, int32_t *ret, const int32_t ttl) {
+	*ret = 0;
+	std::string oldValue;
+	Status s = db->get(ReadOptions(), key, &oldValue);
+	if (s.ok()) {
+		ParsedStringsValue pstringsvalue(&oldValue);
+		if (pstringsvalue.isStale()) {
+			StringsValue stringsvalue(value);
+			if (ttl > 0) {
+				stringsvalue.setRelativeTimestamp(ttl);
+			}
+
+			s = db->put(WriteOptions(), key, stringsvalue.encode());
+			if (s.ok()) {
+				*ret = 1;
+			}
+		}
+	} else if (s.isNotFound()) {
+		StringsValue stringsvalue(value);
+		if (ttl > 0) {
+			stringsvalue.setRelativeTimestamp(ttl);
+		}
+
+		s = db->put(WriteOptions(), key, stringsvalue.encode());
+		if (s.ok()) {
+			*ret = 1;
+		}
+	}
+	return s;
+}
+
+Status RedisString::msetnx(const std::vector <KeyValue>& kvs, int32_t *ret) {
+	Status s;
+	bool exists = false;
+	*ret = 0;
+	std::string value;
+	for (size_t i = 0; i < kvs.size(); i++) {
+		s = db->get(ReadOptions(), kvs[i].key, &value);
+		if (s.ok()) {
+			ParsedStringsValue pstringsvalue(&value);
+			if (!pstringsvalue.isStale()) {
+				exists = true;
+				break;
+			}
+		}
+	}
+
+	if (!exists) {
+		s = mset(kvs);
+		if (s.ok()) {
+		  *ret = 1;
+		}
+	}
+	return s;
+}
+
+Status RedisString::setvx(const std::string_view &key, const std::string_view &value, const std::string_view &newValue, int32_t *ret, const int32_t ttl) {
+	*ret = 0;
+	std::string oldValue;
+	Status s = db->get(ReadOptions(), key, &oldValue);
+	if (s.ok()) {
+		ParsedStringsValue pstringsvalue(&oldValue);
+		if (pstringsvalue.isStale()) {
+			*ret = 0;
+		} else {
+			if (!value.compare(pstringsvalue.getValue())) {
+				StringsValue stringsvalue(newValue);
+				if (ttl > 0) {
+					stringsvalue.setRelativeTimestamp(ttl);
+				}
+
+				s = db->put(WriteOptions(), key, stringsvalue.encode());
+				if (!s.ok()) {
+					return s;
+				}
+
+				*ret = 1;
+			} else {
+				*ret = -1;
+			}
+		}
+	} else if (s.isNotFound()) {
+		*ret = 0;
+	} else {
+		return s;
+	}
+	return Status::OK();
+}
+
+Status RedisString::del(const std::string_view &key) {
+	std::string value;
+	Status s = db->get(ReadOptions(), key, &value);
+	if (s.ok()) {
+		ParsedStringsValue pstringsvalue(&value);
+		if (pstringsvalue.isStale()) {
+			return Status::notFound("Stale");
+		}
+		return db->del(WriteOptions(), key);
+	}
+	return s;
+}
+
+Status RedisString::delvx(const std::string_view &key, const std::string_view &value, int32_t *ret) {
+	*ret = 0;
+	std::string oldValue;
+	Status s = db->get(ReadOptions(), key, &oldValue);
+	if (s.ok()) {
+		ParsedStringsValue pstringsvalue(&oldValue);
+		if (pstringsvalue.isStale()) {
+			*ret = 0;
+			return Status::notFound("Stale");
+		} else {
+			if (!value.compare(pstringsvalue.getValue())) {
+			*ret = 1;
+			return db->del(WriteOptions(), key);
+		} else {
+			*ret = -1;
+		}
+	}
+	} else if (s.isNotFound()) {
+		*ret = 0;
+	}
+	return s;
+}
+
+Status RedisString::setrange(const std::string_view &key, int64_t startOffset, const std::string_view &value, int32_t *ret) {
+	std::string oldValue;
+	std::string newValue;
+	if (startOffset < 0) {
+		return Status::invalidArgument("offset < 0");
+	}
+
+	Status s = db->get(ReadOptions(), key, &oldValue);
+	if (s.ok()) {
+		ParsedStringsValue pstringsvalue(&oldValue);
+		pstringsvalue.stripSuffix();
+		if (pstringsvalue.isStale()) {
+			std::string tmp(startOffset, '\0');
+			newValue = tmp.append(value.data());
+			*ret = newValue.length();
+		} else {
+			if (static_cast<size_t>(startOffset) > oldValue.length()) {
+				oldValue.resize(startOffset);
+				newValue = oldValue.append(value.data());
+			} else {
+				std::string head = oldValue.substr(0, startOffset);
+				std::string tail;
+				if (startOffset + value.size() - 1 < oldValue.length() - 1) {
+					tail = oldValue.substr(startOffset + value.size());
+				}
+				newValue = head + value.data() + tail;
+			}
+		}
+
+		*ret = newValue.length();
+		StringsValue stringsvalue(newValue);
+		return db->put(WriteOptions(), key, stringsvalue.encode());
+	} else if (s.isNotFound()) {
+		std::string tmp(startOffset, '\0');
+		newValue = tmp.append(value.data());
+		*ret = newValue.length();
+		StringsValue stringsvalue(newValue);
+		return db->put(WriteOptions(), key, stringsvalue.encode());
+	}
+	return s;
+}
+
+Status RedisString::getrange(const std::string_view &key, int64_t startOffset, int64_t endOffset, std::string *ret) {
+	*ret = "";
+	std::string value;
+	Status s = db->get(ReadOptions(), key, &value);
+	if (s.ok()) {
+		ParsedStringsValue pstringsvalue(&value);
+		if (pstringsvalue.isStale()) {
+			return Status::notFound("Stale");
+		} else {
+			pstringsvalue.stripSuffix();
+			int64_t size = value.size();
+			int64_t start = startOffset >= 0 ? startOffset : size + startOffset;
+			int64_t endt = endOffset >= 0 ? endOffset : size + endOffset;
+			if (start > size - 1 ||
+			  (start != 0 && start > endt) ||
+			  (start != 0 && endt < 0)) {
+				return Status::OK();
+			}
+
+			if (start < 0) {
+				start  = 0;
+			}
+
+			if (endt >= size) {
+				endt = size - 1;
+			}
+
+			if (start == 0 && endt < 0) {
+				endt = 0;
+			}
+
+			*ret = value.substr(start, endt - start + 1);
+			return Status::OK();
+		}
+	} else {
+		return s;
+	}
 }

@@ -12,7 +12,6 @@ int main() {
 		return -1;
 	}
 	
-	
 	int32_t ret;
 	// Set
 	s = db.set("TEST_KEY", "TEST_VALUE");

@@ -178,3 +178,12 @@ struct ValueStatus {
 		return (vs.value == value && vs.status == status);
 	}
 };
+
+enum DataType {
+	kAll,
+	kStrings,
+	kHashes,
+	kLists,
+	kZSets,
+	kSets
+};
