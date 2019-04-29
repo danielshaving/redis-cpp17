@@ -14,9 +14,17 @@ Redis::~Redis() {
 Status Redis::open() {
 	env->createDir(path);
 	
-	redisString.reset(new RedisString(this, options, path + "/strings"));
-	Status s = redisString->open();
-	assert(s.ok());
+	{
+		redisString.reset(new RedisString(this, options, path + "/strings"));
+		Status s = redisString->open();
+		assert(s.ok());
+	}
+	
+	{
+		redisHash.reset(new RedisHash(this, options, path + "/hash"));
+		Status s = redisHash->open();
+		assert(s.ok());
+	}
 	
 	return Status::OK();
 }
@@ -103,3 +111,10 @@ Status Redis::getrange(const std::string_view &key, int64_t startOffset, int64_t
 	return redisString->getrange(key, startOffset, endOffset, ret);
 }
 
+Status Redis::hset(const std::string_view &key, const std::string_view &field, const std::string_view &value, int32_t *res) {
+	return redisHash->hset(key, field, value, res);
+}
+
+Status Redis::hgetall(const std::string_view &key, std::vector <FieldValue> *fvs) {
+	return redisHash->hgetall(key, fvs);
+}

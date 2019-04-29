@@ -21,12 +21,7 @@ int main() {
 	std::string value;
 	s = db.get("TEST_KEY", &value);
 	printf("Get return: %s, value: %s\n", s.toString().c_str(), value.c_str());
-
-	// SetBit
-	s = db.setBit("SETBIT_KEY", 7, 1, &ret);
-	printf("SetBit return: %s, ret: %d\n",
-	  s.toString().c_str(), ret);
-
+	
 	// GetSet
 	s = db.getSet("TEST_KEY", "Hello", &value);
 	printf("GetSet return: %s, old_value: %s",
@@ -58,6 +53,16 @@ int main() {
 		printf("idx = %d, keys = %s, value = %s\n",
 			idx, keys[idx].c_str(), values[idx].value.c_str());
 	}
+
+	// HSet
+	int32_t res;
+	s = db.hset("TEST_KEY1", "TEST_FIELD1", "TEST_VALUE1", &res);
+	printf("HSet return: %s, res = %d\n", s.toString().c_str(), res);
+	s = db.hset("TEST_KEY1", "TEST_FIELD2", "TEST_VALUE2", &res);
+	printf("HSet return: %s, res = %d\n", s.toString().c_str(), res);
+  
+	std::vector <FieldValue> fvs;
+	s = db.hgetall("TEST_KEY1", &fvs);
 
 	return 0;
 }
