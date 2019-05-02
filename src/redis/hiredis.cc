@@ -1392,6 +1392,7 @@ int32_t RedisContext::redisReconnect() {
 
 	int32_t ret = Socket::connect(sockfd, ip.c_str(), port);
 	if (ret == REDIS_ERR) {
+		Socket::close(sockfd);
 		redisSetError(REDIS_ERR_IO, nullptr);
 		return REDIS_ERR;
 	}
@@ -1413,6 +1414,7 @@ int32_t RedisContext::redisContextConnectTcp(const char *addr, int16_t p, const 
 
 	int32_t ret = Socket::connect(sockfd, ip.c_str(), port);
 	if (ret == REDIS_ERR) {
+		Socket::close(sockfd);
 		redisSetError(REDIS_ERR_IO, nullptr);
 		return REDIS_ERR;
 	}
@@ -2310,6 +2312,13 @@ void Hiredis::redisContextTimer() {
 		RedisReplyPtr reply = iter->redisCommand("PING");
 		if (reply == nullptr || !(strcmp(reply->str, "PONG") == 0)
 			|| reply->type != REDIS_REPLY_STATUS) {
+			if (reply != nullptr) {
+				LOG_WARN << "Redis reply error :" << reply->str;
+			}
+			else {
+				LOG_WARN << "Redis reply error :" << iter->errstr;
+			}
+			
 			if (iter->redisReconnect() == REDIS_ERR) {
 				LOG_WARN << "RedisContext reconnect err " << iter->errstr;
 				continue ;
