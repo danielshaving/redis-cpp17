@@ -14,25 +14,25 @@
 
 class Block {
 public:
-    // Initialize the block with the specified contents.
-    Block(const BlockContents &contents);
+	// Initialize the block with the specified contents.
+	Block(const BlockContents& contents);
 
-    ~Block();
+	~Block();
 
-    size_t getSize() const { return size; }
+	size_t getSize() const { return size; }
 
-    std::shared_ptr <Iterator> newIterator(const Comparator *comparator);
+	std::shared_ptr<Iterator> newIterator(const Comparator* comparator);
 
 private:
-    uint32_t numRestarts() const;
+	uint32_t numRestarts() const;
 
-    const char *data;
-    size_t size;
-    uint32_t restartOffset;     // Offset in data_ of restart array
-    bool owned;                  // Block owns data_[]
+	const char* data;
+	size_t size;
+	uint32_t restartOffset;     // Offset in data_ of restart array
+	bool owned;                  // Block owns data_[]
 
-    // No copying allowed
-    Block(const Block &);
+	// No copying allowed
+	Block(const Block&);
 
-    void operator=(const Block &);
+	void operator=(const Block&);
 };

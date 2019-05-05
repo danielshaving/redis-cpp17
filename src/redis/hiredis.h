@@ -415,9 +415,6 @@ private:
 	const char *ip;
 	int16_t port;
 	bool clusterMode;
-
-	static const int32_t kTimer = 1;
-	static const int32_t kTimeOut = 10;
 };
 
 int32_t redisFormatSdsCommandArgv(sds *target, int32_t argc, const char **argv, const int32_t *argvlen);

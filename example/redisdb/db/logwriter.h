@@ -6,32 +6,32 @@
 
 class LogWriter {
 public:
-    // Create a writer that will append data to "*dest".
-    // "*dest" must be initially empty.
-    // "*dest" must remain live while this Writer is in use.
-    explicit LogWriter(WritableFile *dest);
+	// Create a writer that will append data to "*dest".
+	// "*dest" must be initially empty.
+	// "*dest" must remain live while this Writer is in use.
+	explicit LogWriter(WritableFile* dest);
 
-    // Create a writer that will append data to "*dest".
-    // "*dest" must have initial length "dest_length".
-    // "*dest" must remain live while this Writer is in use.
-    LogWriter(WritableFile *dest, uint64_t destLength);
+	// Create a writer that will append data to "*dest".
+	// "*dest" must have initial length "dest_length".
+	// "*dest" must remain live while this Writer is in use.
+	LogWriter(WritableFile* dest, uint64_t destLength);
 
-    Status addRecord(const std::string_view &slice);
+	Status addRecord(const std::string_view& slice);
 
 private:
-    WritableFile *dest;
-    int blockOffset;       // Current offset in block
-    // crc32c values for all supported record types.  These are
-    // pre-computed to reduce the overhead of computing the crc of the
-    // record type stored in the header.
-    uint32_t typeCrc[kMaxRecordType + 1];
+	WritableFile* dest;
+	int blockOffset;       // Current offset in block
+	// crc32c values for all supported record types.  These are
+	// pre-computed to reduce the overhead of computing the crc of the
+	// record type stored in the header.
+	uint32_t typeCrc[kMaxRecordType + 1];
 
-    Status emitPhysicalRecord(RecordType type, const char *ptr, size_t length);
+	Status emitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 
-    // No copying allowed
-    LogWriter(const LogWriter &);
+	// No copying allowed
+	LogWriter(const LogWriter&);
 
-    void operator=(const LogWriter &);
+	void operator=(const LogWriter&);
 };
 
 

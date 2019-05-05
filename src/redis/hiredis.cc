@@ -1,5 +1,7 @@
 #include "hiredis.h"
-
+static const int32_t kTimer = 1;
+static const int32_t kTimeOut = 10;
+	
 RedisCluster::RedisCluster() : proxyCount(-1), commandCount(-1), command(nullptr) {
 
 }
@@ -1386,6 +1388,7 @@ int32_t RedisContext::redisReconnect() {
 
 	int32_t sockfd = Socket::createSocket();
 	if (sockfd == REDIS_ERR) {
+		Socket::close(sockfd);
 		redisSetError(REDIS_ERR_OTHER, nullptr);
 		return REDIS_ERR;
 	}
@@ -1396,7 +1399,10 @@ int32_t RedisContext::redisReconnect() {
 		redisSetError(REDIS_ERR_IO, nullptr);
 		return REDIS_ERR;
 	}
-
+	
+	struct timeval tv = { kTimeOut, 0 };
+	Socket::setTimeOut(sockfd, tv);
+	
 	fd = sockfd;
 	flags = REDIS_BLOCK;
 	return REDIS_OK;
@@ -1418,7 +1424,9 @@ int32_t RedisContext::redisContextConnectTcp(const char *addr, int16_t p, const 
 		redisSetError(REDIS_ERR_IO, nullptr);
 		return REDIS_ERR;
 	}
-
+	
+	struct timeval tv = { kTimeOut, 0 };
+	Socket::setTimeOut(sockfd, tv);
 	fd = sockfd;
 	flags = REDIS_BLOCK;
 	return REDIS_OK;
@@ -2086,10 +2094,6 @@ void Hiredis::connect(EventLoop *loop, const TcpClientPtr &client, int32_t count
 		if (c) {
 			LOG_WARN << "Hiredis connection error: " << c->errstr;
 		}
-	}
-	else {
-		struct timeval tv = { kTimeOut, 0 };
-		Socket::setTimeOut(c->fd, tv);
 	}
 
 	std::unique_lock <std::mutex> lk(mutex);

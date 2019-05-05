@@ -20,6 +20,7 @@ RedisProxy::RedisProxy(const char *ip, int16_t port, const char *redisIp,
 }
 
 RedisProxy::~RedisProxy() {
+	tcpConnInfos.clear();
 	threadSessions.clear();
 	threadHiredis.clear();
 	threadProxyReplys.clear();
@@ -48,7 +49,12 @@ void RedisProxy::initRedisAsync() {
 	for (int i = 0; i < pools.size(); i++) {
 		auto it = threadHiredis.find(pools[i]->getThreadId());
 		assert(it == threadHiredis.end());
-
+		
+		{
+			std::unordered_map <int32_t, std::string> m;
+			tcpConnInfos[pools[i]->getThreadId()] = m; 
+		}
+		
 		{
 			std::shared_ptr <Hiredis> hiredis(new Hiredis(pools[i], sessionCount, redisIp, redisPort, clusterEnabled));
 			hiredis->setConnectionCallback(std::bind(&RedisProxy::redisConnCallback,
@@ -403,7 +409,7 @@ void RedisProxy::monitorConnCallback(const TcpConnectionPtr &conn) {
 	auto addr = Socket::getPeerAddr(conn->getSockfd());
 	Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
 	Socket::toPort(&port, (const struct sockaddr *) &addr);
-
+	Socket::setkeepAlive(conn->getSockfd(), kHeart);
 	conn->getLoop()->assertInLoopThread();
 	LOG_INFO << "MonitorClient connect "
 		<< conn->getSockfd() << " " << buf << " " << port;
@@ -421,7 +427,6 @@ void RedisProxy::monitorDisconnCallback(const TcpConnectionPtr &conn) {
 	auto addr = Socket::getPeerAddr(conn->getSockfd());
 	Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
 	Socket::toPort(&port, (const struct sockaddr *) &addr);
-
 	conn->getLoop()->assertInLoopThread();
 	LOG_INFO << "MonitorClient disconnect "
 		<< conn->getSockfd() << " " << buf << " " << port;
@@ -433,7 +438,7 @@ void RedisProxy::subscribeConnCallback(const TcpConnectionPtr &conn) {
 	auto addr = Socket::getPeerAddr(conn->getSockfd());
 	Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
 	Socket::toPort(&port, (const struct sockaddr *) &addr);
-
+	Socket::setkeepAlive(conn->getSockfd(), kHeart);
 	conn->getLoop()->assertInLoopThread();
 	LOG_INFO << "SubcribeClient connect "
 		<< conn->getSockfd() << " " << buf << " " << port;
@@ -445,7 +450,7 @@ void RedisProxy::subscribeDisConnCallback(const TcpConnectionPtr &conn) {
 	auto addr = Socket::getPeerAddr(conn->getSockfd());
 	Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
 	Socket::toPort(&port, (const struct sockaddr *) &addr);
-
+	
 	conn->getLoop()->assertInLoopThread();
 	LOG_INFO << "SubcribeClient disconnect "
 		<< conn->getSockfd() << " " << buf << " " << port;
@@ -457,7 +462,7 @@ void RedisProxy::redisConnCallback(const TcpConnectionPtr &conn) {
 	auto addr = Socket::getPeerAddr(conn->getSockfd());
 	Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
 	Socket::toPort(&port, (const struct sockaddr *) &addr);
-
+	Socket::setkeepAlive(conn->getSockfd(), kHeart);
 	conn->getLoop()->assertInLoopThread();
 	LOG_INFO << "RedisClient connect "
 		<< conn->getSockfd() << " " << buf << " " << port;
@@ -741,13 +746,12 @@ void RedisProxy::writeCompleteCallback(const TcpConnectionPtr &conn) {
 }
 
 void RedisProxy::proxyConnCallback(const TcpConnectionPtr &conn) {
-	char buf[64] = "";
-	uint16_t port = 0;
-	auto addr = Socket::getPeerAddr(conn->getSockfd());
-	Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
-	Socket::toPort(&port, (const struct sockaddr *) &addr);
-
 	if (conn->connected()) {
+		char buf[64] = "";
+		uint16_t port = 0;
+		auto addr = Socket::getPeerAddr(conn->getSockfd());
+		Socket::toIp(buf, sizeof(buf), (const struct sockaddr *) &addr);
+		Socket::toPort(&port, (const struct sockaddr *) &addr);
 		Socket::setkeepAlive(conn->getSockfd(), kHeart);
 		conn->setHighWaterMarkCallback(
 			std::bind(&RedisProxy::highWaterCallback,
@@ -755,10 +759,19 @@ void RedisProxy::proxyConnCallback(const TcpConnectionPtr &conn) {
 			kHighWaterBytes);
 
 		ProxySessionPtr session(new ProxySession(this, conn));
-		auto it = threadSessions.find(conn->getLoop()->getThreadId());
-		assert(it != threadSessions.end());
-		it->second[conn->getSockfd()] = session;
-		LOG_INFO << "Client connect success " << buf << " " << port << " " << conn->getSockfd();
+		{
+			auto it = threadSessions.find(conn->getLoop()->getThreadId());
+			assert(it != threadSessions.end());
+			it->second[conn->getSockfd()] = session;
+		}
+		
+		std::string addrinfo = std::string(buf) + ":" + std::to_string(port);
+		{
+			auto it = tcpConnInfos.find(conn->getLoop()->getThreadId());
+			assert(it != tcpConnInfos.end());
+			it->second[conn->getSockfd()] = addrinfo;
+		}
+		LOG_INFO << "Client connect success " << addrinfo << " " << conn->getSockfd();
 	}
 	else {
 		{
@@ -783,9 +796,16 @@ void RedisProxy::proxyConnCallback(const TcpConnectionPtr &conn) {
 				it->second.erase(iter);
 			}
 		}
-
-		clearProxy(conn->getLoop()->getThreadId(), conn->getSockfd());
-		LOG_INFO << "Client diconnect " << buf << " " << port << " " << conn->getSockfd();
+		
+		{
+			auto it = tcpConnInfos.find(conn->getLoop()->getThreadId());
+			assert(it != tcpConnInfos.end());
+			auto iter = it->second.find(conn->getSockfd());
+			if (iter != it->second.end()) {
+				LOG_INFO << "Client disconnect " << iter->second << " " << conn->getSockfd();
+				it->second.erase(iter);
+			}
+		}
 	}
 }
 
