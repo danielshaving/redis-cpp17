@@ -169,6 +169,7 @@ private:
 	static const int32_t kRollSize = 5000 * 100;
 
 	std::shared_ptr <AsyncLogging> asyncLog;
+	std::unordered_map <std::thread::id, std::unordered_map<int32_t, std::string>> tcpConnInfos;
 	std::unordered_map <std::thread::id, std::unordered_map <int32_t, TcpConnectionPtr>> threadMonitors;
 	std::unordered_map <std::thread::id, std::unordered_map <int32_t, ProxySessionPtr>> threadSessions;
 	std::unordered_map <std::thread::id, std::shared_ptr<Hiredis>> threadMonitorHierdis;
