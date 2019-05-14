@@ -1,120 +1,148 @@
 #include "redishash.h"
-#include "redis.h"
+#include "redisdb.h"
 
-RedisHash::RedisHash(Redis *redis, const Options &options, const std::string &path)
+RedisHash::RedisHash(RedisDB* redis, const Options& options, const std::string& path)
 	:redis(redis),
-	db(new DBImpl(options, path)) {
-	
+	db(new DB(options, path)) {
+
 }
 
 RedisHash::~RedisHash() {
-	
+
 }
 
-Status RedisHash::open() {
-	return db->open();
+Status RedisHash::Open() {
+	return db->Open();
 }
 
-Status RedisHash::hset(const std::string_view &key, const std::string_view &field, const std::string_view &value, int32_t *res) {
+Status RedisHash::Hset(const std::string_view& key, 
+	const std::string_view& field, const std::string_view& value, int32_t* res) {
 	WriteBatch batch;
 
+	HashLock hashlock(&lockmgr, key);
 	int32_t version = 0;
 	uint32_t statistic = 0;
 	std::string metaValue;
-	Status s = db->get(ReadOptions(), key, &metaValue);
+	Status s = db->Get(ReadOptions(), key, &metaValue);
 	if (s.ok()) {
 		ParsedHashesMetaValue pmetavalue(&metaValue);
-		if (pmetavalue.isStale() || pmetavalue.getCount() == 0) {
-			version = pmetavalue.initialMetaValue();
-			pmetavalue.setCount(1);
-			batch.put(key, metaValue);
+		if (pmetavalue.IsStale() || pmetavalue.GetCount() == 0) {
+			version = pmetavalue.InitialMetaValue();
+			pmetavalue.SetCount(1);
+			batch.Put(key, metaValue);
 			HashesDataKey dataKey(key, version, field);
-			batch.put(dataKey.encode(), value);
+			batch.Put(dataKey.Encode(), value);
 			*res = 1;
-		} else {
-			version = pmetavalue.getVersion();
+		}
+		else {
+			version = pmetavalue.GetVersion();
 			std::string dataValue;
 			HashesDataKey hashDataKey(key, version, field);
-			s = db->get(ReadOptions(), hashDataKey.encode(), &dataValue);
+			s = db->Get(ReadOptions(), hashDataKey.Encode(), &dataValue);
 			if (s.ok()) {
 				*res = 0;
 				if (dataValue == std::string(value.data(), value.size())) {
 					return Status::OK();
-				} else {
-					batch.put(hashDataKey.encode(), value);
+				}
+				else {
+					batch.Put(hashDataKey.Encode(), value);
 					statistic++;
-				}	
-			} else if (s.isNotFound()) {
-				pmetavalue.modifyCount(1);
-				batch.put(key, metaValue);
-				batch.put(hashDataKey.encode(), value);
+				}
+			}
+			else if (s.IsNotFound()) {
+				pmetavalue.ModifyCount(1);
+				batch.Put(key, metaValue);
+				batch.Put(hashDataKey.Encode(), value);
 				*res = 1;
-			} else {
+			}
+			else {
 				return s;
 			}
 		}
-	} else if (s.isNotFound()) {
+	}
+	else if (s.IsNotFound()) {
 		char str[4];
-		encodeFixed32(str, 1);
+		EncodeFixed32(str, 1);
 		HashesMetaValue metaValue(std::string(str, sizeof(int32_t)));
-		version = metaValue.updateVersion();
-		batch.put(key, metaValue.encode());
+		version = metaValue.UpdateVersion();
+		batch.Put(key, metaValue.Encode());
 		HashesDataKey dataKey(key, version, field);
-		batch.put(dataKey.encode(), value);
+		batch.Put(dataKey.Encode(), value);
 		*res = 1;
-	} else {
+	}
+	else {
 		return s;
 	}
-	
-	s = db->write(WriteOptions(), &batch);
+
+	s = db->Write(WriteOptions(), &batch);
 	return s;
 }
 
-Status RedisHash::hget(const std::string_view &key, const std::string_view &field, std::string *value) {
+Status RedisHash::Hget(const std::string_view& key, 
+	const std::string_view& field, std::string* value) {
 	std::string metaValue;
+	ReadOptions readopts;
+	std::shared_ptr<Snapshot> snapshot;
+	SnapshotLock ss(db, snapshot);
+	readopts.snapshot = snapshot;
+
 	int32_t version = 0;
-	Status s = db->get(ReadOptions(), key, &metaValue);
+	Status s = db->Get(readopts, key, &metaValue);
 	if (s.ok()) {
 		ParsedHashesMetaValue phashmetavalue(&metaValue);
-		if (phashmetavalue.isStale()) {
-			return Status::notFound("Stale");
-		} else if (phashmetavalue.getCount() == 0) {
-			return Status::notFound("");
-		} else {
-			version = phashmetavalue.getVersion();
+		if (phashmetavalue.IsStale()) {
+			return Status::NotFound("Stale");
+		}
+		else if (phashmetavalue.GetCount() == 0) {
+			return Status::NotFound("");
+		}
+		else {
+			version = phashmetavalue.GetVersion();
 			HashesDataKey datakey(key, version, field);
-			s = db->get(ReadOptions(), datakey.encode(), value);
+			s = db->Get(readopts, datakey.Encode(), value);
 		}
 	}
 	return s;
 }
 
-Status RedisHash::hmset(const std::string_view &key, const std::vector <FieldValue> &fvs) {
-		   
+Status RedisHash::Hmset(const std::string_view& key,
+	const std::vector<FieldValue>& fvs) {
+
 }
 
-Status RedisHash::hmget(const std::string_view &key, const std::vector <std::string> &fields, std::vector <ValueStatus> *vss) {
-		   
+Status RedisHash::Hmget(const std::string_view& key,
+	const std::vector<std::string>& fields, std::vector<ValueStatus>* vss) {
+
 }
 
-Status RedisHash::hgetall(const std::string_view &key, std::vector <FieldValue> *fvs) {
+Status RedisHash::Hgetall(const std::string_view& key,
+	std::vector<FieldValue>* fvs) {
 	std::string metaValue;
+	ReadOptions readopts;
+	std::shared_ptr<Snapshot> snapshot;
+	SnapshotLock ss(db, snapshot);
+	readopts.snapshot = snapshot;
+
 	int32_t version = 0;
-	Status s = db->get(ReadOptions(), key, &metaValue);
+	Status s = db->Get(readopts, key, &metaValue);
 	if (s.ok()) {
 		ParsedHashesMetaValue phashmedatavalue(&metaValue);
-		if (phashmedatavalue.isStale()) {
-			return Status::notFound("Stale");
-		} else if (phashmedatavalue.getVersion() == 0) {
-			return Status::notFound("");
-		} else {
-			version = phashmedatavalue.getVersion();
+		if (phashmedatavalue.IsStale()) {
+			return Status::NotFound("Stale");
+		}
+		else if (phashmedatavalue.GetVersion() == 0) {
+			return Status::NotFound("");
+		}
+		else {
+			version = phashmedatavalue.GetVersion();
 			HashesDataKey hdatakey(key, version, "");
-			std::string_view prefix = hdatakey.encode();
-			auto iter = db->newIterator(ReadOptions());
-			for (iter->seek(prefix); iter->valid() && StartsWith(iter->key(), prefix); iter->next()) {
+			std::string_view prefix = hdatakey.Encode();
+			auto iter = db->NewIterator(ReadOptions());
+			for (iter->Seek(prefix); iter->Valid() && 
+				StartsWith(iter->key(), prefix); iter->Next()) {
 				ParsedDataKey pdatakey(iter->key());
-				fvs->push_back({ pdatakey.getDataToString(), std::string(iter->value().data(), iter->value().size()) });
+				fvs->push_back({ pdatakey.GetDataToString(), 
+					std::string(iter->value().data(), iter->value().size()) });
 			}
 		}
 	}

@@ -17,5 +17,5 @@ class Iterator;
 // key is present in K child iterators, it will be yielded K times.
 //
 // REQUIRES: n >= 0
-std::shared_ptr <Iterator> newMergingIterator(
-        const Comparator *cmp, std::vector <std::shared_ptr<Iterator>> &list, int n);
+std::shared_ptr<Iterator> NewMergingIterator(
+	const Comparator* cmp, std::vector<std::shared_ptr<Iterator>>& list, int n);

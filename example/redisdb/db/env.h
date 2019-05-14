@@ -1,8 +1,4 @@
 #pragma once
-#ifdef _WIN64
-#include <winsock2.h>
-#include <windows.h>
-#else
 #include <unistd.h>
 #include <dirent.h>
 #include <pthread.h>
@@ -21,7 +17,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <exception>
 #include <atomic>
 #include <cerrno>
 #include <cstddef>
@@ -32,12 +28,10 @@
 #include <limits>
 #include <queue>
 #include <set>
-#include <string>
 #include <thread>
 #include <type_traits>
 #include <utility>
-#endif
-
+#include <iostream> 
 #include <inttypes.h>
 #include <fstream>
 #include <iostream>
@@ -68,7 +62,6 @@
 #include <string>
 #include <iosfwd>
 #include <string>
-#include <set>
 #include <errno.h>
 #include <array>
 #include <utility>
@@ -95,14 +88,15 @@
 #include <time.h>
 #include <deque>
 #include <limits>
-#include <set>
 #include <string_view>
 #include <memory>
 #include <vector>
 #include <mutex>
 #include <thread>
 #include <atomic>
+
 #include "status.h"
+#include "util.h"
 
 static const size_t kWritableFileBufferSize = 65536;
 
@@ -110,10 +104,6 @@ static const size_t kWritableFileBufferSize = 65536;
 static int kDefaultMmapLimit = sizeof(void*) >= 8 ? 1000 : 0;
 
 static const size_t kBufSize = 65536;
-static bool StartsWith(const std::string_view &x, const std::string_view &y) {
-	return ((x.size() >= y.size()) && (memcmp(x.data(), y.data(), y.size()) == 0));
-}
-
 
 // Helper class to limit resource usage to avoid exhaustion.
 // Currently used to limit read-only file descriptors and mmap file usage
@@ -127,9 +117,9 @@ public:
 	Limiter(const Limiter&) = delete;
 	Limiter operator=(const Limiter&) = delete;
 
-	// If another resource is available, acquire it and return true.
+	// If another resource is available, Acquire it and return true.
 	// Else return false.
-	bool acquire() {
+	bool Acquire() {
 		int oldacquiresAllowed =
 			acquiresAllowed.fetch_sub(1, std::memory_order_relaxed);
 
@@ -142,7 +132,7 @@ public:
 
 	// Release a resource acquired by a previous call to Acquire() that returned
 	// true.
-	void release() {
+	void Release() {
 		acquiresAllowed.fetch_add(1, std::memory_order_relaxed);
 	}
 
@@ -151,10 +141,10 @@ private:
 	//
 	// This is a counter and is not tied to the invariants of any other class, so
 	// it can be operated on safely using std::memory_order_relaxed.
-	std::atomic <int> acquiresAllowed;
+	std::atomic<int> acquiresAllowed;
 };
 
-// A file abstraction for randomly reading the contents of a file.
+// A file abstraction for randomly reading the Contents of a file.
 class RandomAccessFile {
 public:
 	RandomAccessFile() = default;
@@ -169,610 +159,22 @@ public:
 	// Read up to "n" bytes from the file starting at "offset".
 	// "scratch[0..n-1]" may be written by this routine.  Sets "*result"
 	// to the data that was read (including if fewer than "n" bytes were
-	// successfully read).  May set "*result" to point at data in
+	// successfully read).  May Set "*result" to point at data in
 	// "scratch[0..n-1]", so "scratch[0..n-1]" must be live when
 	// "*result" is used.  If an error was encountered, returns a non-OK
 	// status.
 	//
 	// Safe for concurrent use by multiple threads.
-	virtual Status read(uint64_t offset, size_t n, std::string_view *result,
-					  char *scratch) const = 0;
+	virtual Status read(uint64_t offset, size_t n, std::string_view* result,
+		char* scratch) const = 0;
 };
 
-#ifdef _WIN64
-// Lock or unlock the entire file as specified by |lock|. Returns true
-// when successful, false upon failure. Caller should call ::GetLastError()
-// to determine cause of failure
-bool LockOrUnlock(HANDLE handle, bool lock) {
-	if (lock) {
-		return ::LockFile(handle,
-			/*dwFileOffsetLow=*/0, /*dwFileOffsetHigh=*/0,
-			/*nNumberOfBytesToLockLow=*/MAXDWORD,
-			/*nNumberOfBytesToLockHigh=*/MAXDWORD);
-	}
-	else {
-		return ::UnlockFile(handle,
-			/*dwFileOffsetLow=*/0, /*dwFileOffsetHigh=*/0,
-			/*nNumberOfBytesToLockLow=*/MAXDWORD,
-			/*nNumberOfBytesToLockHigh=*/MAXDWORD);
-	}
-}
-
-static std::string GetWindowsErrorMessage(DWORD code) {
-	std::string message;
-	char *error = nullptr;
-	// Use MBCS version of FormatMessage to match return value.
-	size_t size = ::FormatMessageA(
-	  FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER |
-		  FORMAT_MESSAGE_IGNORE_INSERTS,
-	  nullptr, code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-	  reinterpret_cast<char*>(&error), 0, nullptr);
-	if (!error) {
-		return message;
-	}
-	
-	message.assign(error, size);
-	::LocalFree(error);
-	return message;
-}
-
-static Status WindowsError(const std::string &context, DWORD code) {
-	if (code == ERROR_FILE_NOT_FOUND || code == ERROR_PATH_NOT_FOUND)
-		return Status::notFound(context, GetWindowsErrorMessage(code));
-	return Status::ioError(context, GetWindowsErrorMessage(code));
-}
-
-class ScopedHandle {
-public:
-	ScopedHandle(HANDLE handle) : handle(handle) {}
-	ScopedHandle(ScopedHandle &&other) noexcept : handle(other.release()) {}
-	~ScopedHandle() { close(); }
-
-	ScopedHandle &operator=(ScopedHandle &&rhs) noexcept {
-		if (this != &rhs) handle = rhs.release();
-		return *this;
-	}
-
-	bool close() {
-		if (!valid()) {
-			return true;
-		}
-		
-		HANDLE h = handle;
-		handle = INVALID_HANDLE_VALUE;
-		return ::CloseHandle(h);
-	}
-
-	bool valid() const {
-		return handle != INVALID_HANDLE_VALUE && handle != nullptr;
-	}
-
-	HANDLE get() const { return handle; }
-
-	HANDLE release() {
-		HANDLE h = handle;
-		handle = INVALID_HANDLE_VALUE;
-		return h;
-	}
-
-private:
-	HANDLE handle;
-};
-
-class SequentialFile {
-public:
-	SequentialFile(std::string fname, ScopedHandle file)
-	  : filename(fname), file(std::move(file)) {}
-	~SequentialFile() {}
-
-	Status read(size_t n, std::string_view *result, char *scratch) {
-		Status s;
-		DWORD bytesRead;
-		// DWORD is 32-bit, but size_t could technically be larger. However leveldb
-		// files are limited to leveldb::Options::max_file_size which is clamped to
-		// 1<<30 or 1 GiB.
-		assert(n <= (std::numeric_limits<DWORD>::max)());
-		if (!::ReadFile(file.get(), scratch, static_cast<DWORD>(n), &bytesRead,
-						nullptr)) {
-		  s = WindowsError(filename, ::GetLastError());
-		} else {
-		  *result = std::string_view(scratch, bytesRead);
-		}
-		return s;
-	}
-
-	Status skip(uint64_t n) {
-		LARGE_INTEGER distance;
-		distance.QuadPart = n;
-		if (!::SetFilePointerEx(file.get(), distance, nullptr, FILE_CURRENT)) {
-			return WindowsError(filename, ::GetLastError());
-		}
-		return Status::OK();
-	}
-
-private:
-	std::string filename;
-	ScopedHandle file;
-};
-
-class WindowsRandomAccessFile : public RandomAccessFile{
-public:
-	WindowsRandomAccessFile(std::string fname, ScopedHandle handle)
-	  : filename(fname), handle(std::move(handle)) {}
-
-	~WindowsRandomAccessFile() {
-
-	}
-
-	Status read(uint64_t offset, size_t n, std::string_view *result,
-			char *scratch) const {
-		DWORD bytesRead = 0;
-		OVERLAPPED overlapped = {0};
-
-		overlapped.OffsetHigh = static_cast<DWORD>(offset >> 32);
-		overlapped.Offset = static_cast<DWORD>(offset);
-		if (!::ReadFile(handle.get(), scratch, static_cast<DWORD>(n), &bytesRead,
-						&overlapped)) {
-			DWORD code = ::GetLastError();
-			if (code != ERROR_HANDLE_EOF) {
-				*result = std::string_view(scratch, 0);
-				return Status::ioError(filename, GetWindowsErrorMessage(code));
-			}
-		}
-
-		*result = std::string_view(scratch, bytesRead);
-		return Status::OK();
-	}
-
-private:
-	std::string filename;
-	ScopedHandle handle;
-};
-
-class WindowsMmapReadableFile : public RandomAccessFile {
-public:
-	// base[0,length-1] contains the mmapped contents of the file.
-	WindowsMmapReadableFile(std::string fname, void *base, size_t length, Limiter *limiter)
-		: filename(std::move(fname)),
-		mmappedregion(base),
-		length(length),
-		limiter(limiter) {
-
-	}
-
-	~WindowsMmapReadableFile() {
-		::UnmapViewOfFile(mmappedregion);
-	    limiter->release();
-	}
-
-	Status read(uint64_t offset, size_t n, std::string_view *result,
-			  char *scratch) const {
-		Status s;
-		if (offset + n > length) {
-			*result = std::string_view();
-			s = WindowsError(filename, ERROR_INVALID_PARAMETER);
-		} else {
-		  *result = std::string_view(reinterpret_cast<char*>(mmappedregion) + offset, n);
-		}
-		return s;
-	}
-
-private:
-	std::string filename;
-	void *mmappedregion;
-	size_t length;
-	 Limiter *limiter;
-};
-
-class WritableFile {
-public:
-	WritableFile(std::string fname, ScopedHandle handle) :
-		filename(std::move(fname)), handle(std::move(handle)), pos(0) {}
-
-	~WritableFile() { }
-
-	Status append(const std::string_view &data) {
-		size_t n = data.size();
-		const char *p = data.data();
-
-		// Fit as much as possible into buffer.
-
-		size_t copy = min(n, kWritableFileBufferSize - pos);
-
-		memcpy(buf + pos, p, copy);
-		p += copy;
-		n -= copy;
-		pos += copy;
-		if (n == 0) {
-			return Status::OK();
-		}
-
-		// Can't fit in buffer, so need to do at least one write.
-		Status s = flushBuffered();
-		if (!s.ok()) {
-			return s;
-		}
-
-		// Small writes go to buffer, large writes are written directly.
-		if (n < kWritableFileBufferSize) {
-			memcpy(buf, p, n);
-			pos = n;
-			return Status::OK();
-		}
-		return writeRaw(p, n);
-	}
-
-	Status close() {
-		Status result = flushBuffered();
-		if (!handle.close() && result.ok()) {
-			result = WindowsError(filename, ::GetLastError());
-		}
-		return result;
-	}
-
-	Status flush() { return flushBuffered(); }
-
-	Status sync() {
-		// On Windows no need to sync parent directory. It's metadata will be
-		// updated via the creation of the new file, without an explicit sync.
-		return flushBuffered();
-	}
-
-private:
-	Status flushBuffered() {
-		Status s = writeRaw(buf, pos);
-		pos = 0;
-		return s;
-	}
-
-	Status writeRaw(const char *p, size_t n) {
-		DWORD bytesWritten;
-		if (!::WriteFile(handle.get(), p, static_cast<DWORD>(n), &bytesWritten,
-						 nullptr)) {
-		  return Status::ioError(filename,
-								 GetWindowsErrorMessage(::GetLastError()));
-		}
-		return Status::OK();
-	}
-
-	// buf_[0, pos_-1] contains data to be written to handle_.
-	const std::string filename;
-	ScopedHandle handle;
-	char buf[kWritableFileBufferSize];
-	size_t pos;
-};
-
-class FileLock {
-public:
-	FileLock(ScopedHandle handle, std::string name)
-		: handle(std::move(handle)), name(std::move(name)) {}
-
-	ScopedHandle &gethandle() { return handle; }
-	const std::string &getname() const { return name; }
-
-private:
-	ScopedHandle handle;
-	std::string name;
-};
-
-class Env {
-public:
-	typedef std::function<void()> Functor;
-
-	Env():startbgThread(false), shuttingdown(false), mmaplimiter(kDefaultMmapLimit) {
-
-	}
-
-	~Env() {
-	
-	}
-
-	Status lockFile(const std::string& fname, std::shared_ptr <FileLock> lock) {
-		Status result;
-		ScopedHandle handle = ::CreateFileA(
-			fname.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ,
-			/*lpSecurityAttributes=*/nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL,
-			nullptr);
-		if (!handle.valid()) {
-			result = WindowsError(fname, ::GetLastError());
-		}
-		else if (!LockOrUnlock(handle.get(), true)) {
-			result = WindowsError("lock " + fname, ::GetLastError());
-		}
-		else {
-			lock.reset(new FileLock(std::move(handle), std::move(fname)));
-		}
-		return result;
-	}
-
-	Status unlockFile(std::shared_ptr <FileLock> lock) {
-		Status result;
-		if (!LockOrUnlock(lock->gethandle().get(), false)) {
-			result = WindowsError("unlock", ::GetLastError());
-		}
-		return result;
-	}
-
-	Status newSequentialFile(const std::string &fname,
-		std::shared_ptr <SequentialFile> &result) {
-		result = nullptr;
-		DWORD access = GENERIC_READ;
-		DWORD mode = FILE_SHARE_READ;
-		ScopedHandle handle =
-			::CreateFileA(fname.c_str(), access, mode, nullptr,
-				OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-		if (!handle.valid()) {
-			return WindowsError(fname, ::GetLastError());
-		}
-
-		result.reset(new SequentialFile(fname, std::move(handle)));
-		return Status::OK();
-	}
-
-	Status newRandomAccessFile(const std::string &fname,
-		std::shared_ptr <RandomAccessFile> result) {
-		result = nullptr;
-		DWORD access = GENERIC_READ;
-		DWORD mode = FILE_SHARE_READ;
-		DWORD falgs = FILE_ATTRIBUTE_READONLY;
-
-		ScopedHandle handle =
-			::CreateFileA(fname.c_str(), access, mode, nullptr,
-				OPEN_EXISTING, falgs, nullptr);
-		if (!handle.valid()) {
-			return WindowsError(fname, ::GetLastError());
-		}
-
-		if (!mmaplimiter.acquire()) {
-			result.reset(new WindowsRandomAccessFile(fname, std::move(handle)));
-			return Status::OK();
-		}
-
-		LARGE_INTEGER fileSize;
-		if (!::GetFileSizeEx(handle.get(), &fileSize)) {
-			return WindowsError(fname, ::GetLastError());
-		}
-
-		ScopedHandle mapping =
-			::CreateFileMappingA(handle.get(),
-				/*security attributes=*/nullptr, PAGE_READONLY,
-				/*dwMaximumSizeHigh=*/0,
-				/*dwMaximumSizeLow=*/0, nullptr);
-		if (mapping.valid()) {
-			void *base = MapViewOfFile(mapping.get(), FILE_MAP_READ, 0, 0, 0);
-			if (base) {
-				result.reset(new WindowsMmapReadableFile(
-					fname, base, static_cast<size_t>(fileSize.QuadPart), &mmaplimiter));
-				return Status::OK();
-			}
-		}
-
-		Status s = WindowsError(fname, ::GetLastError());
-
-		if (!s.ok()) {
-		  mmaplimiter.release();
-		}
-		return s;
-	}
-
-	Status newWritableFile(const std::string &fname,
-		std::shared_ptr <WritableFile> &result) {
-		DWORD access = GENERIC_WRITE;
-		DWORD mode = 0;
-
-		ScopedHandle handle =
-			::CreateFileA(fname.c_str(), access, mode, nullptr,
-				CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-		if (!handle.valid()) {
-			result = nullptr;
-			return WindowsError(fname, ::GetLastError());
-		}
-
-		result.reset(new WritableFile(fname, std::move(handle)));
-		return Status::OK();
-	}
-
-	Status newAppendableFile(const std::string &fname,
-		std::shared_ptr <WritableFile> &result) {
-		ScopedHandle handle =
-			::CreateFileA(fname.c_str(), FILE_APPEND_DATA, 0, nullptr, OPEN_ALWAYS,
-				FILE_ATTRIBUTE_NORMAL, nullptr);
-		if (!handle.valid()) {
-			result = nullptr;
-			return WindowsError(fname, ::GetLastError());
-		}
-
-		result.reset(new WritableFile(fname, std::move(handle)));
-		return Status::OK();
-	}
-
-	bool fileExists(const std::string &fname) {
-		return GetFileAttributesA(fname.c_str()) != INVALID_FILE_ATTRIBUTES;
-	}
-
-	Status getChildren(const std::string &dir,
-		std::vector <std::string> *result) {
-		const std::string pattern = dir + "\\*";
-		WIN32_FIND_DATAA findData;
-		HANDLE dir_handle = ::FindFirstFileA(pattern.c_str(), &findData);
-		if (dir_handle == INVALID_HANDLE_VALUE) {
-			DWORD error = ::GetLastError();
-			if (error == ERROR_FILE_NOT_FOUND) {
-				return Status::OK();
-			}
-			return WindowsError(dir, error);
-		}
-		do {
-			char base_name[_MAX_FNAME];
-			char ext[_MAX_EXT];
-
-			if (!_splitpath_s(findData.cFileName, nullptr, 0, nullptr, 0, base_name,
-				ARRAYSIZE(base_name), ext, ARRAYSIZE(ext))) {
-				result->emplace_back(std::string(base_name) + ext);
-			}
-		} while (::FindNextFileA(dir_handle, &findData));
-
-		DWORD error = ::GetLastError();
-		::FindClose(dir_handle);
-		if (error != ERROR_NO_MORE_FILES) {
-			return WindowsError(dir, error);
-		}
-		return Status::OK();
-	}
-
-	Status deleteFile(const std::string &fname) {
-		if (!::DeleteFileA(fname.c_str())) {
-			return WindowsError(fname, ::GetLastError());
-		}
-		return Status::OK();
-	}
-
-	Status createDir(const std::string &name) {
-		if (!::CreateDirectoryA(name.c_str(), nullptr)) {
-			return WindowsError(name, ::GetLastError());
-		}
-		return Status::OK();
-	}
-
-	Status deleteDir(const std::string &name) {
-		if (!::RemoveDirectoryA(name.c_str())) {
-			return WindowsError(name, ::GetLastError());
-		}
-		return Status::OK();
-	}
-
-	Status getFileSize(const std::string &fname, uint64_t *size) {
-		WIN32_FILE_ATTRIBUTE_DATA attrs;
-		if (!::GetFileAttributesExA(fname.c_str(), GetFileExInfoStandard, &attrs)) {
-			return WindowsError(fname, ::GetLastError());
-		}
-
-		ULARGE_INTEGER file_size;
-		file_size.HighPart = attrs.nFileSizeHigh;
-		file_size.LowPart = attrs.nFileSizeLow;
-		*size = file_size.QuadPart;
-		return Status::OK();
-	}
-
-	Status renameFile(const std::string &src,
-		const std::string &target) {
-		// Try a simple move first.  It will only succeed when |to_path| doesn't
-		// already exist.
-		if (::MoveFileA(src.c_str(), target.c_str())) {
-			return Status::OK();
-		}
-		DWORD merror = ::GetLastError();
-
-		// Try the full-blown replace if the move fails, as ReplaceFile will only
-		// succeed when |to_path| does exist. When writing to a network share, we
-		// may not be able to change the ACLs. Ignore ACL errors then
-		// (REPLACEFILE_IGNORE_MERGE_ERRORS).
-		if (::ReplaceFileA(target.c_str(), src.c_str(), nullptr,
-			REPLACEFILE_IGNORE_MERGE_ERRORS, nullptr, nullptr)) {
-			return Status::OK();
-		}
-		DWORD error = ::GetLastError();
-		// In the case of FILE_ERROR_NOT_FOUND from ReplaceFile, it is likely
-		// that |to_path| does not exist. In this case, the more relevant error
-		// comes from the call to MoveFile.
-		if (error == ERROR_FILE_NOT_FOUND ||
-			error == ERROR_PATH_NOT_FOUND) {
-			return WindowsError(src, merror);
-		}
-		else {
-			return WindowsError(src, error);
-		}
-	}
-
-	Status getTestDirectory(std::string *result) {
-		const char *env = getenv("TEST_TMPDIR");
-		if (env && env[0] != '\0') {
-			*result = env;
-			return Status::OK();
-		}
-
-		char path[MAX_PATH];
-		if (!GetTempPathA(ARRAYSIZE(path), path)) {
-			return WindowsError("GetTempPath", ::GetLastError());
-		}
-
-		// Directory may already exist
-		createDir(*result);
-		return Status::OK();
-	}
-
-	uint64_t nowMicros() {
-		// GetSystemTimeAsFileTime typically has a resolution of 10-20 msec.
-		// TODO(cmumford): Switch to GetSystemTimePreciseAsFileTime which is
-		// available in Windows 8 and later.
-		FILETIME ft;
-		::GetSystemTimeAsFileTime(&ft);
-		// Each tick represents a 100-nanosecond intervals since January 1, 1601
-		// (UTC).
-		uint64_t ticks =
-			(static_cast<uint64_t>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
-		return ticks / 10;
-	}
-
-	void sleepForMicroseconds(int micros) {
-		std::this_thread::sleep_for(std::chrono::microseconds(micros));
-	}
-
-	void exitSchedule() {
-		shuttingdown.store(true, std::memory_order_release);
-		schedule(std::bind(&Env::exitScheduleCallback, this));
-	}
-
-	void exitScheduleCallback() {
-
-	}
-
-	void schedule(Functor && func) {
-		std::unique_lock<std::mutex> lk(bgmutex);
-		// Start the background thread, if we haven't done so already.
-		if (!startbgThread) {
-			startbgThread = true;
-			std::thread th(std::bind(&Env::backgroundThreadMain, this));
-			th.detach();
-		}
-
-		bgcond.notify_one();
-		bgqueue.push_back(func);
-	}
-private:
-	void backgroundThreadMain() {
-		while (!shuttingdown.load(std::memory_order_acquire)) {
-			std::unique_lock<std::mutex> lk(bgmutex);
-
-			// Wait until there is work to be done.
-			while (bgqueue.empty()) {
-				bgcond.wait(lk);
-			}
-
-			assert(!bgqueue.empty());
-
-			auto func = bgqueue.front();
-			bgqueue.pop_front();
-			bgmutex.unlock();
-			func();
-		}
-	}
-
-	Limiter mmaplimiter;
-	std::atomic<bool> shuttingdown;
-	bool startbgThread;
-	std::mutex bgmutex;
-	std::condition_variable bgcond;
-	std::deque <Functor> bgqueue;
-};
-#else 
-
-static Status PosixError(const std::string &context, int error) {
+static Status PosixError(const std::string & context, int error) {
 	if (error == ENOENT) {
-		return Status::notFound(context, std::strerror(error));
+		return Status::NotFound(context, std::strerror(error));
 	}
 	else {
-		return Status::ioError(context, std::strerror(error));
+		return Status::IOError(context, std::strerror(error));
 	}
 }
 
@@ -787,7 +189,7 @@ public:
 		: fd(fd), filename(filename) {}
 	~SequentialFile() { close(fd); }
 
-	Status read(size_t n, std::string_view *result, char *scratch) {
+	Status read(size_t n, std::string_view* result, char* scratch) {
 		Status status;
 		while (true) {
 			::ssize_t readSize = ::read(fd, scratch, n);
@@ -804,7 +206,7 @@ public:
 		return status;
 	}
 
-	Status skip(uint64_t n) {
+	Status Skip(uint64_t n) {
 		if (::lseek(fd, n, SEEK_CUR) == static_cast<off_t>(-1)) {
 			return PosixError(filename, errno);
 		}
@@ -825,8 +227,8 @@ class PosixRandomAccessFile : public RandomAccessFile {
 public:
 	// The new instance takes ownership of |fd|. |fd_limiter| must outlive this
 	// instance, and will be used to determine if .
-	PosixRandomAccessFile(std::string filename, int fd, Limiter *limiter)
-		: has(limiter->acquire()),
+	PosixRandomAccessFile(std::string filename, int fd, Limiter* limiter)
+		: has(limiter->Acquire()),
 		fd(has ? fd : -1),
 		limiter(limiter),
 		filename(std::move(filename)) {
@@ -840,12 +242,12 @@ public:
 		if (has) {
 			assert(fd != -1);
 			::close(fd);
-			limiter->release();
+			limiter->Release();
 		}
 	}
 
-	Status read(uint64_t offset, size_t n, std::string_view *result,
-		char *scratch) const {
+	Status read(uint64_t offset, size_t n, std::string_view * result,
+		char* scratch) const {
 
 		int ffd;
 		if (!has) {
@@ -876,7 +278,7 @@ public:
 private:
 	const bool has;  // If false, the file is opened on every read.
 	const int fd;  // -1 if has_permanent_fd_ is false.
-	Limiter *const limiter;
+	Limiter* const limiter;
 	const std::string filename;
 };
 
@@ -887,25 +289,25 @@ private:
 // functions.
 class PosixMmapReadableFile : public RandomAccessFile {
 public:
-	// mmap_base[0, length-1] points to the memory-mapped contents of the file. It
+	// mmap_base[0, length-1] points to the memory-mapped Contents of the file. It
 	// must be the result of a successful call to mmap(). This instances takes
 	// over the ownership of the region.
 	//
 	// |mmap_limiter| must outlive this instance. The caller must have already
 	// aquired the right to use one mmap region, which will be released when this
 	// instance is destroyed.
-	PosixMmapReadableFile(std::string filename, char *mmapbase, size_t length,
-		Limiter *limiter)
+	PosixMmapReadableFile(std::string filename, char* mmapbase, size_t length,
+		Limiter* limiter)
 		: mmapbase(mmapbase), length(length), limiter(limiter),
 		filename(std::move(filename)) {}
 
 	~PosixMmapReadableFile() {
 		::munmap(static_cast<void*>(mmapbase), length);
-		limiter->release();
+		limiter->Release();
 	}
 
-	Status read(uint64_t offset, size_t n, std::string_view *result,
-		char *scratch) const {
+	Status read(uint64_t offset, size_t n, std::string_view* result,
+		char* scratch) const {
 		if (offset + n > length) {
 			*result = std::string_view();
 			return PosixError(filename, EINVAL);
@@ -916,9 +318,9 @@ public:
 	}
 
 private:
-	char *const mmapbase;
+	char* const mmapbase;
 	const size_t length;
-	Limiter *const limiter;
+	Limiter* const limiter;
 	const std::string filename;
 };
 
@@ -926,7 +328,7 @@ class WritableFile {
 public:
 	WritableFile(std::string filename, int fd)
 		: pos(0), fd(fd), manifest(isManifest(filename)),
-		filename(std::move(filename)), dirname(dirName(filename)) {}
+		filename(std::move(filename)), dirname(DirName(filename)) {}
 
 	~WritableFile() {
 		if (fd >= 0) {
@@ -935,9 +337,9 @@ public:
 		}
 	}
 
-	Status append(const std::string_view &data) {
+	Status append(const std::string_view& data) {
 		size_t writeSize = data.size();
-		const char *writeData = data.data();
+		const char* writeData = data.data();
 
 		// Fit as much as possible into buffer.
 		size_t copySize = std::min(writeSize, kWritableFileBufferSize - pos);
@@ -949,8 +351,8 @@ public:
 			return Status::OK();
 		}
 
-		// Can't fit in buffer, so need to do at least one write.
-		Status status = flushBuffer();
+		// Can't fit in buffer, so need to do at least one Write.
+		Status status = FlushBuffer();
 		if (!status.ok()) {
 			return status;
 		}
@@ -961,11 +363,11 @@ public:
 			pos = writeSize;
 			return Status::OK();
 		}
-		return writeUnbuffered(writeData, writeSize);
+		return WriteUnbuffered(writeData, writeSize);
 	}
 
 	Status close() {
-		Status status = flushBuffer();
+		Status status = FlushBuffer();
 		const int result = ::close(fd);
 		if (result < 0 && status.ok()) {
 			status = PosixError(filename, errno);
@@ -976,7 +378,7 @@ public:
 	}
 
 	Status flush() {
-		return flushBuffer();
+		return FlushBuffer();
 	}
 
 	Status sync() {
@@ -985,27 +387,27 @@ public:
 		// This needs to happen before the manifest file is flushed to disk, to
 		// avoid crashing in a state where the manifest refers to files that are not
 		// yet on disk.
-		Status status = syncDirIfManifest();
+		Status status = SyncDirIfManifest();
 		if (!status.ok()) {
 			return status;
 		}
 
-		status = flushBuffer();
+		status = FlushBuffer();
 		if (!status.ok()) {
 			return status;
 		}
 
-		return syncFd(fd, filename);
-  }
+		return SyncFd(fd, filename);
+	}
 
 private:
-	Status flushBuffer() {
-		Status status = writeUnbuffered(buf, pos);
+	Status FlushBuffer() {
+		Status status = WriteUnbuffered(buf, pos);
 		pos = 0;
 		return status;
 	}
 
-	Status writeUnbuffered(const char *data, size_t size) {
+	Status WriteUnbuffered(const char* data, size_t size) {
 		while (size > 0) {
 			ssize_t result = ::write(fd, data, size);
 			if (result < 0) {
@@ -1021,7 +423,7 @@ private:
 		return Status::OK();
 	}
 
-	Status syncDirIfManifest() {
+	Status SyncDirIfManifest() {
 		Status status;
 		if (!manifest) {
 			return status;
@@ -1032,7 +434,7 @@ private:
 			status = PosixError(dirname, errno);
 		}
 		else {
-			status = syncFd(fd, dirname);
+			status = SyncFd(fd, dirname);
 			::close(fd);
 		}
 		return status;
@@ -1044,7 +446,7 @@ private:
 	//
 	// The path argument is only used to populate the description string in the
 	// returned Status if an error occurs.
-	static Status syncFd(int fd, const std::string &path) {
+	static Status SyncFd(int fd, const std::string& path) {
 #if HAVE_FULLFSYNC
 		// On macOS and iOS, fsync() doesn't guarantee durability past power
 		// failures. fcntl(F_FULLFSYNC) is required for that purpose. Some
@@ -1070,7 +472,7 @@ private:
 	// Returns the directory name in a path pointing to a file.
 	//
 	// Returns "." if the path does not contain any directory separator.
-	static std::string dirName(const std::string &filename) {
+	static std::string DirName(const std::string& filename) {
 		std::string::size_type pos = filename.rfind('/');
 		if (pos == std::string::npos) {
 			return std::string(".");
@@ -1084,9 +486,9 @@ private:
 
 	// Extracts the file name from a path pointing to a file.
 	//
-	// The returned Slice points to |filename|'s data buffer, so it is only valid
+	// The returned Slice points to |filename|'s data buffer, so it is only Valid
 	// while |filename| is alive and unchanged.
-	static std::string_view basename(const std::string &filename) {
+	static std::string_view Basename(const std::string & filename) {
 		std::string::size_type pos = filename.rfind('/');
 		if (pos == std::string::npos) {
 			return std::string_view(filename);
@@ -1100,11 +502,11 @@ private:
 	}
 
 	// True if the given file is a manifest file.
-	static bool isManifest(const std::string &filename) {
-		return StartsWith(basename(filename), "MANIFEST");
+	static bool isManifest(const std::string & filename) {
+		return StartsWith(Basename(filename), "MANIFEST");
 	}
 
-	// buf_[0, pos_ - 1] contains data to be written to fd_.
+	// buf_[0, pos_ - 1] Contains data to be written to fd_.
 	char buf[kWritableFileBufferSize];
 	size_t pos;
 	int fd;
@@ -1132,7 +534,7 @@ public:
 		: fd(fd), filename(std::move(filename)) { }
 
 	int getfd() const { return fd; }
-	const std::string &getfilename() const { return filename; }
+	const std::string& getfilename() const { return filename; }
 
 private:
 	const int fd;
@@ -1141,31 +543,31 @@ private:
 
 // Tracks the files locked by PosixEnv::LockFile().
 //
-// We maintain a separate set instead of relying on fcntrl(F_SETLK) because
+// We maintain a separate Set instead of relying on fcntrl(F_SETLK) because
 // fcntl(F_SETLK) does not provide any protection against multiple uses from the
 // same process.
 //
 // Instances are thread-safe because all member data is guarded by a mutex.
 class LockTable {
 public:
-	bool insert(const std::string &fname) {
-		std::unique_lock <std::mutex> lck(mutex);
+	bool insert(const std::string& fname) {
+		std::unique_lock<std::mutex> lck(mutex);
 		bool succeeded = lockedFiles.insert(fname).second;
 		return succeeded;
 	}
 
-	void remove(const std::string &fname) {
-		std::unique_lock <std::mutex> lck(mutex);
+	void remove(const std::string& fname) {
+		std::unique_lock<std::mutex> lck(mutex);
 		lockedFiles.erase(fname);
 	}
 
 private:
 	std::mutex mutex;
-	std::set <std::string> lockedFiles;
+	std::set<std::string> lockedFiles;
 };
 
-// Return the maximum number of read-only files to keep open.
-static int maxOpenFiles() {
+// Return the maximum number of read-only files to keep Open.
+static int MaxOpenFiles() {
 	int limit;
 	struct ::rlimit rlim;
 	if (::getrlimit(RLIMIT_NOFILE, &rlim)) {
@@ -1182,15 +584,17 @@ static int maxOpenFiles() {
 	return limit;
 }
 
+class Logger;
+
 class Env {
 public:
 	typedef std::function<void()> Functor;
 
 	Env()
-	:limiter(kDefaultMmapLimit), 
-	fdlimiter(maxOpenFiles()),
-	startbgThread(false),
-	shuttingdown(false) {
+		:limiter(kDefaultMmapLimit),
+		fdlimiter(MaxOpenFiles()),
+		startbgthread(false),
+		shuttingdown(false) {
 
 	}
 
@@ -1198,8 +602,8 @@ public:
 
 	}
 
-	Status newSequentialFile(const std::string &filename,
-		std::shared_ptr <SequentialFile> &result) {
+	Status NewSequentialFile(const std::string& filename,
+		std::shared_ptr<SequentialFile>& result) {
 		int fd = ::open(filename.c_str(), O_RDONLY);
 		if (fd < 0) {
 			result = nullptr;
@@ -1210,27 +614,27 @@ public:
 		return Status::OK();
 	}
 
-	Status newRandomAccessFile(const std::string &filename,
-		std::shared_ptr <RandomAccessFile> &result) {
+	Status NewRandomAccessFile(const std::string& filename,
+		std::shared_ptr<RandomAccessFile>& result) {
 		result = nullptr;
 		int fd = ::open(filename.c_str(), O_RDONLY);
 		if (fd < 0) {
 			return PosixError(filename, errno);
 		}
 
-		if (!limiter.acquire()) {
+		if (!limiter.Acquire()) {
 			result.reset(new PosixRandomAccessFile(filename, fd, &fdlimiter));
 			return Status::OK();
 		}
 
-		uint64_t fileSize;
-		Status status = getFileSize(filename, &fileSize);
+		uint64_t FileSize;
+		Status status = GetFileSize(filename, &FileSize);
 		if (status.ok()) {
-			void *base = ::mmap(/*addr=*/nullptr, fileSize, PROT_READ,
+			void* base = ::mmap(/*addr=*/nullptr, FileSize, PROT_READ,
 				MAP_SHARED, fd, 0);
 			if (base != MAP_FAILED) {
 				result.reset(new PosixMmapReadableFile(
-					filename, reinterpret_cast<char*>(base), fileSize, &limiter));
+					filename, reinterpret_cast<char*>(base), FileSize, &limiter));
 			}
 			else {
 				status = PosixError(filename, errno);
@@ -1239,13 +643,13 @@ public:
 
 		::close(fd);
 		if (!status.ok()) {
-			limiter.release();
+			limiter.Release();
 		}
 		return status;
 	}
 
-	Status newWritableFile(const std::string &filename,
-		std::shared_ptr <WritableFile> &result) {
+	Status NewWritableFile(const std::string& filename,
+		std::shared_ptr<WritableFile>& result) {
 		int fd = ::open(filename.c_str(), O_TRUNC | O_WRONLY | O_CREAT, 0644);
 		if (fd < 0) {
 			result = nullptr;
@@ -1256,8 +660,8 @@ public:
 		return Status::OK();
 	}
 
-	Status newAppendableFile(const std::string &filename,
-		std::shared_ptr <WritableFile> &result) {
+	Status NewAppendableFile(const std::string& filename,
+		std::shared_ptr<WritableFile>& result) {
 		int fd = ::open(filename.c_str(), O_APPEND | O_WRONLY | O_CREAT, 0644);
 		if (fd < 0) {
 			result = nullptr;
@@ -1268,19 +672,19 @@ public:
 		return Status::OK();
 	}
 
-	bool fileExists(const std::string &filename) {
+	bool FileExists(const std::string& filename) {
 		return ::access(filename.c_str(), F_OK) == 0;
 	}
 
-	Status getChildren(const std::string &path,
-		std::vector <std::string> *result) {
+	Status GetChildren(const std::string& path,
+		std::vector<std::string>* result) {
 		result->clear();
-		::DIR *dir = ::opendir(path.c_str());
+		::DIR* dir = ::opendir(path.c_str());
 		if (dir == nullptr) {
 			return PosixError(path, errno);
 		}
 
-		struct ::dirent *entry;
+		struct ::dirent* entry;
 		while ((entry = ::readdir(dir)) != nullptr) {
 			result->emplace_back(entry->d_name);
 		}
@@ -1288,28 +692,28 @@ public:
 		return Status::OK();
 	}
 
-	Status deleteFile(const std::string &filename) {
+	Status DeleteFile(const std::string& filename) {
 		if (::unlink(filename.c_str()) != 0) {
 			return PosixError(filename, errno);
 		}
 		return Status::OK();
 	}
 
-	Status createDir(const std::string &dirname) {
+	Status CreateDir(const std::string& dirname) {
 		if (::mkdir(dirname.c_str(), 0755) != 0) {
 			return PosixError(dirname, errno);
 		}
 		return Status::OK();
 	}
 
-	Status deleteDir(const std::string &dirname) {
+	Status DeleteDir(const std::string& dirname) {
 		if (::rmdir(dirname.c_str()) != 0) {
 			return PosixError(dirname, errno);
 		}
 		return Status::OK();
 	}
 
-	Status getFileSize(const std::string &filename, uint64_t *size) {
+	Status GetFileSize(const std::string& filename, uint64_t* size) {
 		struct ::stat fileStat;
 		if (::stat(filename.c_str(), &fileStat) != 0) {
 			*size = 0;
@@ -1320,14 +724,14 @@ public:
 		return Status::OK();
 	}
 
-	Status renameFile(const std::string &from, const std::string &to) {
+	Status RenameFile(const std::string& from, const std::string& to) {
 		if (std::rename(from.c_str(), to.c_str()) != 0) {
 			return PosixError(from, errno);
 		}
 		return Status::OK();
 	}
 
-	Status lockFile(const std::string &filename, std::shared_ptr <FileLock> &lock) {
+	Status LockFile(const std::string& filename, std::shared_ptr<FileLock>& lock) {
 		lock = nullptr;
 
 		int fd = ::open(filename.c_str(), O_RDWR | O_CREAT, 0644);
@@ -1337,7 +741,7 @@ public:
 
 		if (!locks.insert(filename)) {
 			::close(fd);
-			return Status::ioError("lock " + filename, "already held by process");
+			return Status::IOError("lock " + filename, "already held by process");
 		}
 
 		if (LockOrUnlock(fd, true) == -1) {
@@ -1351,7 +755,7 @@ public:
 		return Status::OK();
 	}
 
-	Status unlockFile(const std::shared_ptr <FileLock> &lock) {
+	Status UnlockFile(const std::shared_ptr<FileLock>& lock) {
 		if (LockOrUnlock(lock->getfd(), false) == -1) {
 			return PosixError("unlock " + lock->getfilename(), errno);
 		}
@@ -1361,8 +765,8 @@ public:
 		return Status::OK();
 	}
 
-	Status getTestDirectory(std::string *result) {
-		const char *env = std::getenv("TEST_TMPDIR");
+	Status GetTestDirectory(std::string* result) {
+		const char* env = std::getenv("TEST_TMPDIR");
 		if (env && env[0] != '\0') {
 			*result = env;
 		}
@@ -1374,46 +778,46 @@ public:
 		}
 
 		// The CreateDir status is ignored because the directory may already exist.
-		createDir(*result);
-
+		CreateDir(*result);
 		return Status::OK();
 	}
 
-	uint64_t nowMicros() {
+	uint64_t NowMicros() {
 		static constexpr uint64_t kUsecondsPerSecond = 1000000;
 		struct ::timeval tv;
 		::gettimeofday(&tv, nullptr);
-		return static_cast<uint64_t>(tv.tv_sec) * kUsecondsPerSecond + tv.tv_usec;
+		return static_cast<uint64_t>(tv.tv_sec)* kUsecondsPerSecond + tv.tv_usec;
 	}
 
-	//auto time_now = chrono::system_clock::now();
-	//auto duration_in_ms = chrono::duration_cast<chrono::milliseconds>(time_now.time_since_epoch());
-	//return duration_in_ms.count()
+	Status NewLogger(const std::string& fname, std::shared_ptr<Logger>& result);
 
-	void sleepForMicroseconds(int micros) {
+	void SleepForMicroseconds(int micros) {
 		std::this_thread::sleep_for(std::chrono::microseconds(micros));
 	}
 
-	void exitSchedule() {
-		shuttingdown.store(true, std::memory_order_release);
-		schedule(Functor());
-		sleepForMicroseconds(1000);
+	void ExitSchedule() {
+		if (startbgthread) {
+			shuttingdown.store(true, std::memory_order_release);
+			Schedule(Functor());
+			if (bgthread->joinable()) {
+				bgthread->join();
+			}
+		}
 	}
 
-	void schedule(Functor &&func) {
+	void Schedule(Functor&& func) {
 		std::unique_lock<std::mutex> lk(bgmutex);
 		// Start the background thread, if we haven't done so already.
-		if (!startbgThread) {
-			startbgThread = true;
-			std::thread th(std::bind(&Env::backgroundThreadMain, this));
-			th.detach();
+		if (!startbgthread) {
+			startbgthread = true;
+			bgthread.reset(new std::thread(std::bind(&Env::BackgroundThreadMain, this)));
 		}
 
-		bgcond.notify_one();
 		bgqueue.emplace(func);
+		bgcond.notify_one();
 	}
 private:
-	void backgroundThreadMain() {
+	void BackgroundThreadMain() {
 		while (!shuttingdown.load(std::memory_order_acquire)) {
 			std::unique_lock<std::mutex> lk(bgmutex);
 
@@ -1426,25 +830,136 @@ private:
 
 			auto func = bgqueue.front();
 			bgqueue.pop();
-			bgmutex.unlock();
-			func();
+			if (func) {
+				func();
+			}
 		}
 	}
 
 private:
-	LockTable locks;  // Thread-safe.
-	Limiter limiter;  // Thread-safe.
-	Limiter fdlimiter;  // Thread-safe.
+	LockTable locks;  
+	Limiter limiter;  
+	Limiter fdlimiter;
 
 	std::atomic<bool> shuttingdown;
-	bool startbgThread;
+	std::atomic<bool> startbgthread;
 	std::mutex bgmutex;
 	std::condition_variable bgcond;
-	std::queue <Functor> bgqueue;
+	std::queue<Functor> bgqueue;
+	std::unique_ptr<std::thread> bgthread;
 };
 
-#endif
+enum InfoLogLevel {
+	DEBUG_LEVEL = 0,
+	INFO_LEVEL,
+	WARN_LEVEL,
+	ERROR_LEVEL,
+	FATAL_LEVEL,
+	HEADER_LEVEL,
+	NUM_INFO_LOG_LEVELS,
+};
 
+// An interface for writing log messages.
+class Logger {
+public:
+	size_t kDoNotSupportGetLogFileSize = (std::numeric_limits<size_t>::max)();
+
+	explicit Logger(const InfoLogLevel level = InfoLogLevel::INFO_LEVEL)
+		: closed(false), loglevel(level) {}
+	virtual ~Logger();
+
+	// Close the log file. Must be called before destructor. If the return
+	// status is NotSupported(), it means the implementation does cleanup in
+	// the destructor
+	virtual Status close();
+
+	// Write a header to the log file with the specified format
+	// It is recommended that you log all header information at the start of the
+	// application. But it is not enforced.
+	virtual void LogHeader(const char* format, va_list ap) {
+		// Default implementation does a simple INFO level log Write.
+		// Please override as per the logger class requirement.
+		Logv(format, ap);
+	}
+
+	// Write an entry to the log file with the specified format.
+	virtual void Logv(const char* format, va_list ap) = 0;
+
+	// Write an entry to the log file with the specified log level
+	// and format.  Any log with level under the internal log level
+	// of *this (see @SetInfoLogLevel and @GetInfoLogLevel) will not be
+	// printed.
+	virtual void Logv(const InfoLogLevel log_level, const char* format, va_list ap);
+
+	virtual size_t GetLogFileSize() const { return kDoNotSupportGetLogFileSize; }
+	// Flush to the OS buffers
+	virtual void flush() {}
+
+	virtual InfoLogLevel GetInfoLogLevel() const { return loglevel; }
+
+	virtual void SetInfoLogLevel(const InfoLogLevel level) {
+		loglevel = level;
+	}
+
+protected:
+	virtual Status CloseImpl();
+	bool closed;
+
+private:
+	// No copying allowed
+	Logger(const Logger&);
+	void operator=(const Logger&);
+	InfoLogLevel loglevel;
+};
+
+extern void LogFlush(const std::shared_ptr<Logger>& infolog);
+
+extern void Log(const InfoLogLevel level,
+	const std::shared_ptr<Logger>& infolog, const char* format,
+	...);
+
+// a Set of log functions with different log levels.
+extern void Header(const std::shared_ptr<Logger>& infolog, const char* format,
+	...);
+extern void Debug(const std::shared_ptr<Logger>& infolog, const char* format,
+	...);
+extern void Info(const std::shared_ptr<Logger>& infolog, const char* format,
+	...);
+extern void Warn(const std::shared_ptr<Logger>& infolog, const char* format,
+	...);
+extern void Error(const std::shared_ptr<Logger>& infolog, const char* format,
+	...);
+extern void Fatal(const std::shared_ptr<Logger>& infolog, const char* format,
+	...);
+
+// Log the specified data to *infolog if infolog is non-nullptr.
+// The default info log level is InfoLogLevel::INFO_LEVEL.
+extern void Log(const std::shared_ptr<Logger>& infolog, const char* format,
+	...)
+#   if defined(__GNUC__) || defined(__clang__)
+	__attribute__((__format__(__printf__, 2, 3)))
+#   endif
+	;
+
+extern void LogFlush(Logger* infolog);
+
+extern void Log(const InfoLogLevel log_level, Logger* infolog,
+	const char* format, ...);
+
+// The default info log level is InfoLogLevel::INFO_LEVEL.
+extern void Log(Logger* infolog, const char* format, ...)
+#   if defined(__GNUC__) || defined(__clang__)
+__attribute__((__format__(__printf__, 2, 3)))
+#   endif
+;
+
+// a Set of log functions with different log levels.
+extern void Header(Logger* infolog, const char* format, ...);
+extern void Debug(Logger* infolog, const char* format, ...);
+extern void Info(Logger* infolog, const char* format, ...);
+extern void Warn(Logger* infolog, const char* format, ...);
+extern void Error(Logger* infolog, const char* format, ...);
+extern void Fatal(Logger* infolog, const char* format, ...);
 
 
 

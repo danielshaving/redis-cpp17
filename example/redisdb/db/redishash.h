@@ -1,39 +1,43 @@
 #pragma once
 #include <memory>
 #include <string>
-
-#include "dbimpl.h"
-#include "option.h"
-#include "redisdb.h"
-
-#include <string>
 #include <ratio>
 #include <chrono>
 #include <string_view>
+
+#include "option.h"
 #include "coding.h"
+#include "db.h"
+#include "redis.h"
 
-
-class Redis;
+class RedisDB;
 
 class RedisHash {
 public:
-	RedisHash(Redis *redis, const Options &options, const std::string &path);
+	RedisHash(RedisDB* redis, 
+		const Options& options, const std::string& path);
 	~RedisHash();
-	
-	Status open();
-	
-	Status hset(const std::string_view &key, const std::string_view &field, const std::string_view &value, int32_t *res);
 
-	Status hget(const std::string_view &key, const std::string_view &field, std::string *value);
+	Status Open();
 
-	Status hmset(const std::string_view &key, const std::vector <FieldValue> &fvs);
-		   
-	Status hmget(const std::string_view &key, const std::vector <std::string> &fields, std::vector <ValueStatus> *vss);
+	Status Hset(const std::string_view& key, 
+		const std::string_view& field, const std::string_view& value, int32_t* res);
 
-	Status hgetall(const std::string_view &key, std::vector <FieldValue> *fvs);
+	Status Hget(const std::string_view& key,
+		const std::string_view& field, std::string* value);
 
-		   
+	Status Hmset(const std::string_view& key, 
+		const std::vector<FieldValue>& fvs);
+
+	Status Hmget(const std::string_view& key,
+		const std::vector<std::string>& fields, std::vector<ValueStatus>* vss);
+
+	Status Hgetall(const std::string_view& key,
+		std::vector<FieldValue>* fvs);
+
+
 private:
-	Redis *redis;
-	std::shared_ptr <DBImpl> db;
+	RedisDB* redis;
+	std::shared_ptr<DB> db;
+	LockMgr lockmgr;
 };
