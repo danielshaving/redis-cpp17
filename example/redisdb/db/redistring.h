@@ -4,7 +4,7 @@
 #include <ratio>
 #include <chrono>
 #include <string_view>
-
+#include "lockmgr.h"
 #include "coding.h"
 #include "db.h"
 #include "option.h"

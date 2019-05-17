@@ -9,6 +9,7 @@
 #include "coding.h"
 #include "db.h"
 #include "redis.h"
+#include "lockmgr.h"
 
 class RedisDB;
 

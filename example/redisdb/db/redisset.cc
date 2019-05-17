@@ -2,8 +2,9 @@
 #include "redisdb.h"
 
 RedisSet::RedisSet(RedisDB* redis, 
-    const Options& options, const std::string& path) {
-
+    const Options& options, const std::string& path) 
+    :redis(redis),
+	db(new DB(options, path)) {
 }
 
 RedisSet::~RedisSet() {

@@ -53,8 +53,8 @@ Status RedisDB::Open() {
 	}
 
 	{
-		rediszset.reset(new RedisZset(this, options, path + "/set"));
-		Status s = rediszset->Open();
+		redisset.reset(new RedisSet(this, options, path + "/set"));
+		Status s = redisset->Open();
 		assert(s.ok());
 	}
 
