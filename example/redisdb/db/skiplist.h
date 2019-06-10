@@ -21,6 +21,8 @@ public:
 	// Returns true iff an entry that compares Equal to key is in the list.
 	bool Contains(const Key& key) const;
 
+	void SetComparator(Comparator cmp);
+
 	// Iteration over the Contents of a Skip list
 	class Iterator {
 	public:
@@ -113,6 +115,9 @@ template<typename Key, class Comparator>
 struct SkipList<Key, Comparator>::Node {
 	explicit Node(const Key& k) : key(k) { }
 
+	~Node() {
+		delete[] key;
+	}
 	Key const key;
 
 	// Accessors/mutators for links.  Wrapped in methods so we can
@@ -309,6 +314,11 @@ SkipList<Key, Comparator>::SkipList(Comparator cmp)
 }
 
 template<typename Key, class Comparator>
+void SkipList<Key, Comparator>::SetComparator(Comparator cmp) {
+	compare = cmp;
+}
+
+template<typename Key, class Comparator>
 void SkipList<Key, Comparator>::Insert(const Key& key) {
 	// TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual()
 	// here since Insert() is externally synchronized.
@@ -320,7 +330,7 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
 
 	int height = RandomHeight();
 	if (height > GetMaxHeight()) {
-		for (int i = GetMaxHeight(); i< height; i++) {
+		for (int i = GetMaxHeight(); i < height; i++) {
 			Prev[i] = head;
 		}
 		// It is ok to mutate max_height_ without any synchronization
@@ -334,7 +344,7 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
 	}
 
 	x = NewNode(key, height);
-	for (int i = 0; i< height; i++) {
+	for (int i = 0; i < height; i++) {
 		// NoBarrier_SetNext() suffices since we will Add a barrier when
 		// we publish a pointer to "x" in Prev[i].
 		x->noBarrierSetNext(i, Prev[i]->noBarrierNext(i));
@@ -343,7 +353,7 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
 }
 
 template<typename Key, class Comparator>
-bool SkipList<Key, Comparator>::Contains(const Key & key) const {
+bool SkipList<Key, Comparator>::Contains(const Key& key) const {
 	Node* x = FindGreaterOrEqual(key, nullptr);
 	if (x != nullptr && Equal(key, x->key)) {
 		return true;

@@ -7,14 +7,14 @@
 
 struct TableBuilder::Rep {
 	Options options;
-	Options indexBlockOptions;
+	Options indexblockoptions;
 	std::shared_ptr<WritableFile> file;
 	uint64_t offset;
 	Status status;
-	BlockBuilder dataBlock;
-	BlockBuilder indexBlock;
-	std::string lastKey;
-	int64_t NumEntries;
+	BlockBuilder datablock;
+	BlockBuilder indexblock;
+	std::string lastkey;
+	int64_t pendinghandle;
 	bool closed;          // Either Finish() or Abandon() has been called.
 
 	// We do not emit the index entry for a block until we have seen the
@@ -26,21 +26,21 @@ struct TableBuilder::Rep {
 	// blocks.
 	//
 	// Invariant: rep->pending_index_entry is true only if data_block is empty.
-	bool pendingIndexEntry;
-	BlockHandle pendingHandle;  // Handle to Add to index block
-	std::string compressedOutPut;
+	bool pendingindexentry;
+	BlockHandle blockhandle;  // Handle to Add to index block
+	std::string compressedoutput;
 
 	Rep(const Options& opt, const std::shared_ptr<WritableFile>& f)
 		: options(opt),
-		indexBlockOptions(opt),
+		indexblockoptions(opt),
 		file(f),
 		offset(0),
-		dataBlock(&options),
-		indexBlock(&indexBlockOptions),
-		NumEntries(0),
+		datablock(&options),
+		indexblock(&indexblockoptions),
+		pendinghandle(0),
 		closed(false),
-		pendingIndexEntry(false) {
-		indexBlockOptions.blockrestartinterval = 1;
+		pendingindexentry(false) {
+		indexblockoptions.blockrestartinterval = 1;
 	}
 };
 
@@ -57,25 +57,25 @@ void TableBuilder::Add(const std::string_view& key, const std::string_view& valu
 	assert(!rep->closed);
 	if (!ok()) return;
 
-	if (rep->NumEntries > 0) {
-		std::string_view lastKey(rep->lastKey.data(), rep->lastKey.size());
-		assert(rep->options.comparator->Compare(key, lastKey) > 0);
+	if (rep->pendinghandle > 0) {
+		std::string_view lastkey(rep->lastkey.data(), rep->lastkey.size());
+		assert(rep->options.comparator->Compare(key, lastkey) > 0);
 	}
 
-	if (rep->pendingIndexEntry) {
-		assert(rep->dataBlock.empty());
-		rep->options.comparator->FindShortestSeparator(&rep->lastKey, key);
-		std::string handleEncoding;
-		rep->pendingHandle.EncodeTo(&handleEncoding);
-		rep->indexBlock.Add(rep->lastKey, std::string_view(handleEncoding));
-		rep->pendingIndexEntry = false;
+	if (rep->pendingindexentry) {
+		assert(rep->datablock.empty());
+		rep->options.comparator->FindShortestSeparator(&rep->lastkey, key);
+		std::string handleencoding;
+		rep->blockhandle.EncodeTo(&handleencoding);
+		rep->indexblock.Add(rep->lastkey, std::string_view(handleencoding));
+		rep->pendingindexentry = false;
 	}
 
-	rep->lastKey.assign(key.data(), key.size());
-	rep->NumEntries++;
-	rep->dataBlock.Add(key, value);
+	rep->lastkey.assign(key.data(), key.size());
+	rep->pendinghandle++;
+	rep->datablock.Add(key, value);
 
-	const size_t estimatedBlockSize = rep->dataBlock.CurrentSizeEstimate();
+	const size_t estimatedBlockSize = rep->datablock.CurrentSizeEstimate();
 	if (estimatedBlockSize >= rep->options.blocksize) {
 		flush();
 	}
@@ -95,14 +95,14 @@ Status TableBuilder::Finish() {
 
 	// Write index block
 	if (ok()) {
-		if (rep->pendingIndexEntry) {
-			rep->options.comparator->FindShortSuccessor(&rep->lastKey);
+		if (rep->pendingindexentry) {
+			rep->options.comparator->FindShortSuccessor(&rep->lastkey);
 			std::string handleEncoding;
-			rep->pendingHandle.EncodeTo(&handleEncoding);
-			rep->indexBlock.Add(rep->lastKey, std::string_view(handleEncoding));
-			rep->pendingIndexEntry = false;
+			rep->blockhandle.EncodeTo(&handleEncoding);
+			rep->indexblock.Add(rep->lastkey, std::string_view(handleEncoding));
+			rep->pendingindexentry = false;
 		}
-		WriteBlock(&rep->indexBlock, &indexBlockHandle);
+		WriteBlock(&rep->indexblock, &indexBlockHandle);
 	}
 
 	// Write footer
@@ -123,11 +123,11 @@ Status TableBuilder::Finish() {
 void TableBuilder::flush() {
 	assert(!rep->closed);
 
-	if (rep->dataBlock.empty()) return;
-	assert(!rep->pendingIndexEntry);
-	WriteBlock(&rep->dataBlock, &rep->pendingHandle);
+	if (rep->datablock.empty()) return;
+	assert(!rep->pendingindexentry);
+	WriteBlock(&rep->datablock, &rep->blockhandle);
 
-	rep->pendingIndexEntry = true;
+	rep->pendingindexentry = true;
 	rep->status = rep->file->flush();
 }
 
@@ -155,22 +155,30 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
 	//    type: uint8
 	//    crc: uint32
 	std::string_view raw = block->Finish();
-
-	std::string_view blockContents;
+	std::string_view blockcontents;
 	CompressionType type = rep->options.compression;
 	// TODO(postrelease): Support more compression options: zlib?
 	switch (type) {
 		case kNoCompression:
-			blockContents = raw;
+			blockcontents = raw;
 			break;
 
 		case kSnappyCompression: {
-
+			std::string* compressed = &rep->compressedoutput;
+			if (Snappy_Compress(raw.data(), raw.size(), compressed) &&
+				compressed->size() < raw.size() - (raw.size() / 8u)) {
+				blockcontents = *compressed;
+			} else {
+				// Snappy not supported, or compressed less than 12.5%, so just
+				// store uncompressed form
+				blockcontents = raw;
+				type = kNoCompression;
+			}
 		}
 	}
 
-	WriteRawBlock(blockContents, type, handle);
-	rep->compressedOutPut.clear();
+	WriteRawBlock(blockcontents, type, handle);
+	rep->compressedoutput.clear();
 	block->reset();
 }
 
@@ -179,11 +187,11 @@ void TableBuilder::Abandon() {
 	rep->closed = true;
 }
 
-uint64_t TableBuilder::NumEntries() const {
-	return rep->NumEntries;
+uint64_t TableBuilder::pendinghandle() const {
+	return rep->pendinghandle;
 }
 
-uint64_t TableBuilder::FileSize() const {
+uint64_t TableBuilder::filesize() const {
 	return rep->offset;
 }
 

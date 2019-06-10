@@ -1,5 +1,5 @@
 TARGET= ./leveldb
-CFLAGS := -Wall -w  -g -ggdb -O2 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17 
+CFLAGS := -Wall -w  -g -ggdb -O0 -Wno-unused -Wno-sign-compare -Wno-deprecated-declarations -Wno-deprecated -Wl,--no-as-needed -std=c++17 #-DHAVE_SNAPPY 
 cppfiles := $(shell ls *.cc)
 cfiles := $(-shell ls *.c)
 OBJS := $(patsubst %.cc,./%.o, $(cppfiles) $(cfiles))
@@ -18,7 +18,7 @@ SO_LIB=
 all: ${TARGET}
 
 ${TARGET}: ${OBJS} ${LIB} 
-	g++ -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread
+	g++ -o $@ $^ ${LDFLAGS}${LIB} ${LIB64}  -lpthread #-lsnappy
 ${CXXOBJS}:./%.o:./%.cc
 	g++ -MMD -c -o $@ $< ${CFLAGS} 
 

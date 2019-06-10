@@ -67,10 +67,10 @@ public:
 	// Recover the descriptor from persistent storage.  May do a significant
 	// amount of work to Recover recently logged updates.  Any changes to
 	// be made to the descriptor are added to *edit.
-	Status Recover(VersionEdit* edit, bool* saveManifest);
+	Status Recover(VersionEdit* edit, bool* savemanifest);
 
-	Status RecoverLogFile(uint64_t logNumber, bool lastLog,
-		bool* saveManifest, VersionEdit* edit, uint64_t* maxSequence);
+	Status RecoverLogFile(uint64_t lognumber, bool lastLog,
+		bool* savemanifest, VersionEdit* edit, uint64_t* maxsequence);
 
 	Status WriteLevel0Table(const std::shared_ptr<MemTable>& mem, VersionEdit* edit, Version* base);
 
@@ -83,7 +83,7 @@ public:
 	void CompactMemTable();
 
 	std::shared_ptr<Iterator> NewInternalIterator(const ReadOptions& options,
-		uint64_t* latestSnapshot, uint32_t* seed);
+		uint64_t* latestsnapshot, uint32_t* seed);
 
 	// Return a heap-allocated iterator over the Contents of the database.
 	// The result of NewIterator() is initially invalid (caller must
@@ -163,7 +163,7 @@ private:
 
 	Status MakeRoomForWrite(std::unique_lock<std::mutex>& lk, bool force /* compact even if there is room? */);
 
-	WriteBatch* BuildBatchGroup(Writer** lastWriter);
+	WriteBatch* BuildBatchGroup(Writer** lastwriter);
 
 	Status DoCompactionWork(CompactionState* compact);
 
@@ -176,10 +176,14 @@ private:
 
 	void CleanupCompaction(CompactionState* compact);
 
+	const Comparator* GetComparator() const {
+		return internalcomparator.GetComparator();
+	}
+
 	std::atomic<bool> shuttingdown;
 	std::atomic<bool> hasimm;         // So bg thread can detect non-null imm_
 	// Has a background compaction been scheduled or is running?
-	bool backgroundCompactionScheduled;
+	bool bgcompactionscheduled;
 
 	// Queue of writers.
 	std::deque<Writer*> writers;
@@ -196,14 +200,14 @@ private:
 	std::shared_ptr<FileLock> dblock;
 
 	const Options options;
-	uint64_t logfileNumber;
+	uint64_t logfilenumber;
 	const std::string dbname;
 	uint32_t seed;
 
 	// Set of table files to protect from deletion because they are
 	// part of ongoing compactions.
 	std::set<uint64_t> pendingoutputs;
-	const InternalKeyComparator comparator;
+	const InternalKeyComparator internalcomparator;
 
 	// Per level compaction stats.  stats_[level] stores the stats for
 	// compactions that produced data for the specified "level".
@@ -234,6 +238,6 @@ private:
 
 	ManualCompaction* manualcompaction;
 	std::mutex mutex;
-	std::condition_variable backgroundworkFinishedSignal;
+	std::condition_variable bgfinishedsignal;
 	Status bgerror;
 };

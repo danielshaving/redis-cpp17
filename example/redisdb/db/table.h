@@ -37,7 +37,7 @@ public:
 	// *file must remain live while this Table is in use.
 	static Status Open(const Options& options,
 		const std::shared_ptr<RandomAccessFile>& file,
-		uint64_t FileSize,
+		uint64_t filesize,
 		std::shared_ptr<Table>& table);
 
 	~Table();
@@ -67,7 +67,7 @@ public:
 
 	// Convert an index iterator value (i.e., an encoded BlockHandle)
 	// into an iterator over the Contents of the corresponding block.
-	std::shared_ptr<Iterator> BlockReader(const ReadOptions& options, const std::string_view& indexValue);
+	std::shared_ptr<Iterator> BlockReader(const ReadOptions& options, const std::string_view& indexvalue);
 
 private:
 

@@ -137,7 +137,7 @@ struct ReadOptions {
 	// If true, all data read from underlying storage will be
 	// verified against corresponding checksums.
 	// Default: false
-	bool verifyChecksums;
+	bool verifychecksums;
 
 	// Should the data read for this iteration be cached in memory?
 	// Callers may wish to Set this field to false for bulk scans.
@@ -151,7 +151,7 @@ struct ReadOptions {
 	std::shared_ptr<Snapshot> snapshot;
 
 	ReadOptions()
-		: verifyChecksums(true),
+		: verifychecksums(true),
 		fillcache(true) {
 
 	}

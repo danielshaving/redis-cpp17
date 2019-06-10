@@ -10,17 +10,23 @@ Transaction::~Transaction() {
 }
 
 Status Transaction::Put(const WriteOptions& options, const std::string_view& key, const std::string_view& value) {
-    HashLock l(db->GetLockMgr(), key);
+    if (writelock == nullptr) {
+        writelock.reset(new WriteSharedHashLock(db->GetLockMgr(), key));
+    }
     return db->GetDB()->Put(options, key, value);
 }
 
 Status Transaction::Delete(const WriteOptions& options, const std::string_view& key) {
-    HashLock l(db->GetLockMgr(), key);
+    if (writelock == nullptr) {
+        writelock.reset(new WriteSharedHashLock(db->GetLockMgr(), key));
+    }
     return db->GetDB()->Delete(options, key);
 }
 
 Status Transaction::Get(const ReadOptions& options, const std::string_view& key, std::string* value) {
-    HashLock l(db->GetLockMgr(), key);
+    if (readlock == nullptr) {
+        readlock.reset(new ReadSharedHashLock(db->GetLockMgr(), key));
+    }
     return db->GetDB()->Get(options, key, value);
 }
 
@@ -30,6 +36,8 @@ Status Transaction::Commit() {
 
 Status Transaction::Rollback() {
     writebatch.clear();
+    writelock.reset();
+    readlock.reset();
 }
 
 TransactionDB::TransactionDB(const Options& options, const std::string& path):
@@ -51,7 +59,7 @@ Status TransactionDB::Put(const WriteOptions& options, const std::string_view& k
 }
 
 Status TransactionDB::Delete(const WriteOptions& options, const std::string_view& key) {
-    HashLock l(&lockmgr, key);
+    WriteSharedHashLock l(&lockmgr, key);
     return db->Delete(options, key);
 }
 
@@ -60,7 +68,7 @@ Status TransactionDB::Write(const WriteOptions& options, WriteBatch* updates) {
 }
 
 Status TransactionDB::Get(const ReadOptions& options, const std::string_view& key, std::string* value) {
-    HashLock l(&lockmgr, key);
+    ReadSharedHashLock l(&lockmgr, key);
     return db->Get(options, key, value);
 }
 

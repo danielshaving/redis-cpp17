@@ -15,6 +15,10 @@ Status RedisSet::Open() {
     return db->Open();
 }
 
+Status RedisSet::DestroyDB(const std::string path, const Options& options) {
+    return db->DestroyDB(path, options);
+}
+
 Status RedisSet::SAdd(const std::string_view& key,
         const std::vector<std::string>& members, int32_t* ret) {
     std::unordered_set<std::string> unique;
@@ -88,7 +92,6 @@ Status RedisSet::SAdd(const std::string_view& key,
      return db->Write(WriteOptions(), &batch);
 }
 
-
 Status RedisSet::SCard(const std::string_view& key, int32_t* ret) {
     *ret = 0;
     std::string metavalue;
@@ -154,4 +157,87 @@ Status RedisSet::SIsmember(const std::string_view& key,
     else {
 
     }
+}
+
+Status RedisSet::ScanKeyNum(KeyInfo* keyinfo) {
+	uint64_t keys = 0;
+	uint64_t expires = 0;
+	uint64_t ttlsum = 0;
+	uint64_t invaildkeys = 0;
+
+	std::string key;
+	ReadOptions iteratoroptions;
+	std::shared_ptr<Snapshot> snapshot;
+	SnapshotLock ss(db, snapshot);
+	iteratoroptions.snapshot = snapshot;
+	iteratoroptions.fillcache = false;
+	int64_t curtime = time(0);
+
+	std::shared_ptr<Iterator> iter = db->NewIterator(iteratoroptions);
+	for (iter->SeekToFirst(); iter->Valid(); iter->Next()) {
+		ParsedSetsMetaValue psetsmetavalue(iter->value());
+		if (psetsmetavalue.IsStale()) {
+			invaildkeys++;
+		}
+		else {
+			if (!psetsmetavalue.IsPermanentSurvival()) {
+				expires++;
+				ttlsum += psetsmetavalue.GetTimestamp() - curtime;
+			}
+		}
+	}
+
+	keyinfo->keys = keys;
+	keyinfo->expires = expires;
+	keyinfo->avgttl = (expires != 0) ? ttlsum / expires : 0;
+	keyinfo->invaildkeys = invaildkeys;
+	return Status::OK();
+}
+
+Status RedisSet::ScanKeys(const std::string& pattern,
+			std::vector<std::string>* keys) {
+	std::string key;
+	ReadOptions iteratoroptions;
+	std::shared_ptr<Snapshot> snapshot;
+	SnapshotLock ss(db, snapshot);
+	iteratoroptions.snapshot = snapshot;
+	iteratoroptions.fillcache = false;
+
+	std::shared_ptr<Iterator> iter = db->NewIterator(iteratoroptions);
+	for (iter->SeekToFirst(); iter->Valid(); iter->Next()) {
+		ParsedSetsMetaValue psetsmetavalue(iter->value());
+		if (!psetsmetavalue.IsStale()
+			&& psetsmetavalue.GetCount() != 0) {
+			key =ToString(iter->key());
+			if (StringMatchLen(pattern.data(),
+					pattern.size(), key.data(), key.size(), 0)) {
+				keys->push_back(key);
+			}
+		}
+	}
+	return Status::OK();
+}
+
+Status RedisSet::Expire(const std::string_view& key, int32_t ttl) {
+    Status s;
+	return s;
+}
+
+Status RedisSet::Del(const std::string_view& key) {
+    std::string metavalue;
+    HashLock l(&lockmgr, key);
+    Status s = db->Get(ReadOptions(),  key, &metavalue);
+    if (s.ok()) {
+        ParsedSetsMetaValue psetsmetavalue(&metavalue);
+        if (psetsmetavalue.IsStale()) {
+            return Status::NotFound("Stale");
+        } else if (psetsmetavalue.GetCount() == 0) {
+            return Status::NotFound("");
+        } else {
+            uint32_t statistic = psetsmetavalue.GetCount();
+            psetsmetavalue.InitialMetaValue();
+            s = db->Put(WriteOptions(), key, metavalue);
+        }
+    }
+    return s;
 }

@@ -70,7 +70,7 @@ public:
 
 	// Return a string representation of this status suitable for printing.
 	// Returns the string "OK" for success.
-	std::string toString() const;
+	std::string ToString() const;
 
 private:
 	const char* state;
@@ -90,19 +90,19 @@ private:
 
 	Status(Code code, const std::string_view& msg, const std::string_view& msg2);
 
-	static const char* copyState(const char* s);
+	static const char* CopyState(const char* s);
 };
 
 inline Status::Status(const Status& rhs) {
-	state = (rhs.state == nullptr) ? nullptr : copyState(rhs.state);
+	state = (rhs.state == nullptr) ? nullptr : CopyState(rhs.state);
 }
 
-inline Status & Status::operator=(const Status& rhs) {
+inline Status& Status::operator=(const Status& rhs) {
 	// The following condition catches both aliasing (when this == &rhs),
 	// and the common case where both rhs and *this are ok.
 	if (state != rhs.state) {
-		free((void*)state);
-		state = (rhs.state == nullptr) ? nullptr : copyState(rhs.state);
+		delete[] state;
+		state = (rhs.state == nullptr) ? nullptr : CopyState(rhs.state);
 	}
 	return *this;
 }
@@ -113,6 +113,6 @@ inline Status& Status::operator=(Status&& rhs) noexcept {
 }
 
 inline bool Status::operator==(const Status& rhs) const {
-	return toString() == rhs.toString();
+	return ToString() == rhs.ToString();
 }
 

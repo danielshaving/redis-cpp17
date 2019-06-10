@@ -9,7 +9,7 @@ static uint64_t packSequenceAndType(uint64_t seq, ValueType t) {
 }
 
 void AppendInternalKey(std::string* result, const ParsedInternalKey& key) {
-	result->append(key.userKey.data(), key.userKey.size());
+	result->append(key.userkey.data(), key.userkey.size());
 	PutFixed64(result, packSequenceAndType(key.sequence, key.type));
 }
 
@@ -20,7 +20,7 @@ bool ParseInternalKey(const std::string_view& internalKey, ParsedInternalKey* re
 	unsigned char c = num & 0xff;
 	result->sequence = num >> 8;
 	result->type = static_cast<ValueType>(c);
-	result->userKey = std::string_view(internalKey.data(), n - 8);
+	result->userkey = std::string_view(internalKey.data(), n - 8);
 	return (c<= static_cast<unsigned char>(kTypeValue));
 }
 
@@ -30,7 +30,7 @@ std::string ParsedInternalKey::DebugString() const {
 		(uint64_t)sequence,
 		int(type));
 	std::string result = "'";
-	result += EscapeString(std::string(userKey.data(), userKey.size()));
+	result += EscapeString(std::string(userkey.data(), userkey.size()));
 	result += buf;
 	return result;
 }
@@ -67,7 +67,7 @@ void BytewiseComparatorImpl::FindShortestSeparator(
 }
 
 const char* InternalKeyComparator::Name() const {
-	return "redisdb.InternalKeyComparator";
+	return "leveldb.InternalKeyComparator";
 }
 
 void BytewiseComparatorImpl::FindShortSuccessor(std::string* key) const {
@@ -85,12 +85,12 @@ void BytewiseComparatorImpl::FindShortSuccessor(std::string* key) const {
 
 void InternalKeyComparator::FindShortestSeparator(std::string* start, const std::string_view& limit) const {
 	// Attempt to shorten the user portion of the key
-	std::string_view userStart = ExtractUserKey(*start);
-	std::string_view userLimit = ExtractUserKey(limit);
-	std::string tmp(userStart.data(), userStart.size());
-	comparator->FindShortestSeparator(&tmp, userLimit);
-	if (tmp.size()< userStart.size() &&
-		comparator->Compare(userStart, tmp)< 0) {
+	std::string_view userstart = ExtractUserKey(*start);
+	std::string_view userlimit = ExtractUserKey(limit);
+	std::string tmp(userstart.data(), userstart.size());
+	comparator->FindShortestSeparator(&tmp, userlimit);
+	if (tmp.size()< userstart.size() &&
+		comparator->Compare(userstart, tmp)< 0) {
 		// User key has become shorter physically, but larger logically.
 		// Tack on the earliest possible number to the shortened user key.
 		PutFixed64(&tmp, packSequenceAndType(kMaxSequenceNumber, kValueTypeForSeek));
@@ -101,11 +101,11 @@ void InternalKeyComparator::FindShortestSeparator(std::string* start, const std:
 }
 
 void InternalKeyComparator::FindShortSuccessor(std::string* key) const {
-	std::string_view userKey = ExtractUserKey(*key);
-	std::string tmp(userKey.data(), userKey.size());
+	std::string_view userkey = ExtractUserKey(*key);
+	std::string tmp(userkey.data(), userkey.size());
 	comparator->FindShortSuccessor(&tmp);
-	if (tmp.size()< userKey.size() &&
-		comparator->Compare(userKey, tmp)< 0) {
+	if (tmp.size()< userkey.size() &&
+		comparator->Compare(userkey, tmp)< 0) {
 		// User key has become shorter physically, but larger logically.
 		// Tack on the earliest possible number to the shortened user key.
 		PutFixed64(&tmp, packSequenceAndType(kMaxSequenceNumber, kValueTypeForSeek));
@@ -147,8 +147,8 @@ std::string InternalKey::DebugString() const {
 	return result;
 }
 
-LookupKey::LookupKey(const std::string_view& userKey, uint64_t s) {
-	size_t usize = userKey.size();
+LookupKey::LookupKey(const std::string_view& userkey, uint64_t s) {
+	size_t usize = userkey.size();
 	size_t needed = usize + 13;  // A conservative estimate
 	char* dst;
 	if (needed<= sizeof(space)) {
@@ -161,7 +161,7 @@ LookupKey::LookupKey(const std::string_view& userKey, uint64_t s) {
 	start = dst;
 	dst = EncodeVarint32(dst, usize + 8);
 	kstart = dst;
-	memcpy(dst, userKey.data(), usize);
+	memcpy(dst, userkey.data(), usize);
 	dst += usize;
 	EncodeFixed64(dst, packSequenceAndType(s, kValueTypeForSeek));
 	dst += 8;

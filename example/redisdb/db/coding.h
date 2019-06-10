@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-static const bool kLittleEndian = true /* or some other expression */;
+static const bool kLittleEndian = false /* or some other expression */;
 
 // Standard Put... routines append to a string
 void PutFixed32(std::string* dst, uint32_t value);

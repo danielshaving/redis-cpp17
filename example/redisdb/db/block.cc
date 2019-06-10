@@ -2,7 +2,7 @@
 #include <vector>
 #include <algorithm>
 
-inline uint32_t Block::NumRestarts() const {
+inline uint32_t Block::numrestarts() const {
 	assert(size >= sizeof(uint32_t));
 	return DecodeFixed32(data + size - sizeof(uint32_t));
 }
@@ -43,7 +43,7 @@ private:
 	const Comparator* const comparator;
 	const char* const data;      // underlying block Contents
 	uint32_t const restarts;     // Offset of restart array (list of fixed32)
-	uint32_t const NumRestarts; // Number of uint32_t entries in restart array
+	uint32_t const numrestarts; // Number of uint32_t entries in restart array
 
 	// current_ is offset in data_ of current entry.  >= restarts_ if !Valid
 	uint32_t current;
@@ -63,7 +63,7 @@ private:
 	}
 
 	uint32_t getRestartPoint(uint32_t index) {
-		assert(index< NumRestarts);
+		assert(index< numrestarts);
 		return DecodeFixed32(data + restarts + index * sizeof(uint32_t));
 	}
 
@@ -81,15 +81,15 @@ public:
 	BlockIterator(const Comparator* comparator,
 		const char* data,
 		uint32_t restarts,
-		uint32_t NumRestarts)
+		uint32_t numrestarts)
 		: comparator(comparator),
 		data(data),
 		restarts(restarts),
-		NumRestarts(NumRestarts),
+		numrestarts(numrestarts),
 		current(restarts),
-		restartIndex(NumRestarts) {
+		restartIndex(numrestarts) {
 
-		assert(NumRestarts > 0);
+		assert(numrestarts > 0);
 	}
 
 	virtual ~BlockIterator() {
@@ -128,7 +128,7 @@ public:
 			if (restartIndex == 0) {
 				// No more entries
 				current = restarts;
-				restartIndex = NumRestarts;
+				restartIndex = numrestarts;
 				return;
 			}
 			restartIndex--;
@@ -144,7 +144,7 @@ public:
 		// Binary search in restart array to find the last restart point
 		// with a key< target
 		uint32_t left = 0;
-		uint32_t right = NumRestarts - 1;
+		uint32_t right = numrestarts - 1;
 		while (left< right) {
 			uint32_t mid = (left + right + 1) / 2;
 			uint32_t regionOffset = getRestartPoint(mid);
@@ -189,7 +189,7 @@ public:
 	}
 
 	virtual void SeekToLast() {
-		seekToRestartPoint(NumRestarts - 1);
+		seekToRestartPoint(numrestarts - 1);
 		while (parseNextKey() && nextEntryOffset()< restarts) {
 			// Keep skipping
 		}
@@ -197,7 +197,7 @@ public:
 
 	virtual void corruptionError() {
 		current = restarts;
-		restartIndex = NumRestarts;
+		restartIndex = numrestarts;
 		s = Status::Corruption("bad entry in block");
 		k.clear();
 		v = std::string_view();
@@ -210,7 +210,7 @@ public:
 		if (p >= limit) {
 			// No more entries to return.  Mark as invalid.
 			current = restarts;
-			restartIndex = NumRestarts;
+			restartIndex = numrestarts;
 			return false;
 		}
 
@@ -225,7 +225,7 @@ public:
 			k.resize(shared);
 			k.append(p, nonShared);
 			v = std::string_view(p + nonShared, valueLength);
-			while (restartIndex + 1< NumRestarts &&
+			while (restartIndex + 1< numrestarts &&
 				getRestartPoint(restartIndex + 1)< current) {
 				++restartIndex;
 			}
@@ -234,21 +234,21 @@ public:
 	}
 };
 
-Block::Block(const BlockContents& Contents)
-	: data(Contents.data.data()),
-	size(Contents.data.size()),
-	owned(Contents.heapAllocated) {
+Block::Block(const BlockContents& contents)
+	: data(contents.data.data()),
+	size(contents.data.size()),
+	owned(contents.heapallocated) {
 	if (size< sizeof(uint32_t)) {
 		size = 0;  // Error marker
 	}
 	else {
 		size_t maxRestartsAllowed = (size - sizeof(uint32_t)) / sizeof(uint32_t);
-		if (NumRestarts() > maxRestartsAllowed) {
-			// The size is too small for NumRestarts()
+		if (numrestarts() > maxRestartsAllowed) {
+			// The size is too small for numrestarts()
 			size = 0;
 		}
 		else {
-			restartOffset = size - (1 + NumRestarts()) * sizeof(uint32_t);
+			restartoffset = size - (1 + numrestarts()) * sizeof(uint32_t);
 		}
 	}
 }
@@ -261,15 +261,15 @@ Block::~Block() {
 
 std::shared_ptr<Iterator> Block::NewIterator(const Comparator* cmp) {
 	if (size< sizeof(uint32_t)) {
-		return NewErrorIterator(Status::Corruption("bad block Contents"));
+		return NewErrorIterator(Status::Corruption("bad block contents"));
 	}
 
-	const uint32_t restarts = NumRestarts();
+	const uint32_t restarts = numrestarts();
 	if (restarts == 0) {
 		return NewEmptyIterator();
 	}
 	else {
-		std::shared_ptr<Iterator> iter(new BlockIterator(cmp, data, restartOffset, restarts));
+		std::shared_ptr<Iterator> iter(new BlockIterator(cmp, data, restartoffset, restarts));
 		return iter;
 	}
 }

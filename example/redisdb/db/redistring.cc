@@ -2,7 +2,7 @@
 #include "redisdb.h"
 #include "util.h"
 
-RedisString::RedisString(RedisDB* redis, 
+RedisString::RedisString(RedisDB* redis,
 	const Options& options, const std::string& path)
 	:redis(redis),
 	db(new DB(options, path)) {
@@ -17,39 +17,43 @@ Status RedisString::Open() {
 	return db->Open();
 }
 
-Status RedisString::Set(const std::string_view& key, 
+Status RedisString::DestroyDB(const std::string path, const Options& options) {
+	return db->DestroyDB(path, options);
+}
+
+Status RedisString::Set(const std::string_view& key,
 	const std::string_view& value) {
-	StringsValue stringsvalue(value);
+	StringsMetaValue stringsvalue(value);
 	HashLock l(&lockmgr, key);
 	return db->Put(WriteOptions(), key, stringsvalue.Encode());
 }
 
-Status RedisString::Get(const std::string_view& key, 
+Status RedisString::Get(const std::string_view& key,
 	std::string* value) {
 	value->clear();
 	Status s = db->Get(ReadOptions(), key, value);
 	if (s.ok()) {
-		ParsedStringsValue stringsvalue(value);
-		if (stringsvalue.IsStale()) {
+		ParsedStringsMetaValue pstringsvalue(value);
+		if (pstringsvalue.IsStale()) {
 			value->clear();
 			return Status::NotFound("Stale");
 		}
 		else {
-			stringsvalue.StripSuffix();
+			pstringsvalue.StripSuffix();
 		}
 	}
 	return s;
 }
 
-Status RedisString::Setxx(const std::string_view& key, 
+Status RedisString::Setxx(const std::string_view& key,
 	const std::string_view& value, int32_t* ret, const int32_t ttl) {
 	bool notfound = true;
 	std::string oldValue;
-	StringsValue stringsvalue(value);
-	HashLock hashlock(&lockmgr, key);
+	StringsMetaValue stringsvalue(value);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &oldValue);
 	if (s.ok()) {
-		ParsedStringsValue pstringvalue(oldValue);
+		ParsedStringsMetaValue pstringvalue(oldValue);
 		if (!pstringvalue.IsStale()) {
 			notfound = false;
 		}
@@ -72,13 +76,13 @@ Status RedisString::Setxx(const std::string_view& key,
 }
 
 Status RedisString::GetSet(const std::string_view& key,
-	const std::string_view& value, std::string* oldValue) {
-	HashLock hashlock(&lockmgr, key);
-	Status s = db->Get(ReadOptions(), key, oldValue);
+	const std::string_view& value, std::string* oldvalue) {
+	HashLock l(&lockmgr, key);
+	Status s = db->Get(ReadOptions(), key, oldvalue);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(oldValue);
+		ParsedStringsMetaValue pstringsvalue(oldvalue);
 		if (pstringsvalue.IsStale()) {
-			*oldValue = "";
+			*oldvalue = "";
 		}
 		else {
 			pstringsvalue.StripSuffix();
@@ -88,38 +92,38 @@ Status RedisString::GetSet(const std::string_view& key,
 		return s;
 	}
 
-	StringsValue stringsvalue(value);
+	StringsMetaValue stringsvalue(value);
 	return db->Put(WriteOptions(), key, stringsvalue.Encode());
 }
 
 Status RedisString::SetBit(const std::string_view& key,
 	int64_t offset, int32_t value, int32_t* ret) {
-	std::string metaValue;
+	std::string metavalue;
 	if (offset < 0) {
 		return Status::InvalidArgument("offset< 0");
 	}
 
-	HashLock hashlock(&lockmgr, key);
-	Status s = db->Get(ReadOptions(), key, &metaValue);
+	HashLock l(&lockmgr, key);
+	Status s = db->Get(ReadOptions(), key, &metavalue);
 	if (s.ok() || s.IsNotFound()) {
-		std::string dataValue;
+		std::string datavalue;
 		if (s.ok()) {
-			ParsedStringsValue pstringsvalue(&metaValue);
+			ParsedStringsMetaValue pstringsvalue(&metavalue);
 			if (!pstringsvalue.IsStale()) {
-				dataValue = pstringsvalue.GetValueToString();
+				datavalue = pstringsvalue.GetValueToString();
 			}
 		}
 		size_t byte = offset >> 3;
 		size_t bit = 7 - (offset & 0x7);
 		char byteVal;
-		size_t valueLength = dataValue.length();
+		size_t valueLength = datavalue.length();
 		if (byte + 1 > valueLength) {
 			*ret = 0;
 			byteVal = 0;
 		}
 		else {
-			*ret = ((dataValue[byte] & (1 << bit)) >> bit);
-			byteVal = dataValue[byte];
+			*ret = ((datavalue[byte] & (1 << bit)) >> bit);
+			byteVal = datavalue[byte];
 		}
 
 		if (*ret == value) {
@@ -129,14 +133,14 @@ Status RedisString::SetBit(const std::string_view& key,
 		byteVal &= static_cast<char>(~(1 << bit));
 		byteVal |= static_cast<char>((value & 0x1) << bit);
 		if (byte + 1 <= valueLength) {
-			dataValue.replace(byte, 1, &byteVal, 1);
+			datavalue.replace(byte, 1, &byteVal, 1);
 		}
 		else {
-			dataValue.append(byte + 1 - valueLength - 1, 0);
-			dataValue.append(1, byteVal);
+			datavalue.append(byte + 1 - valueLength - 1, 0);
+			datavalue.append(1, byteVal);
 		}
 
-		StringsValue stringsvalue(dataValue);
+		StringsMetaValue stringsvalue(datavalue);
 		return db->Put(WriteOptions(), key, stringsvalue.Encode());
 	}
 	else {
@@ -144,14 +148,14 @@ Status RedisString::SetBit(const std::string_view& key,
 	}
 }
 
-Status RedisString::GetBit(const std::string_view& key, 
+Status RedisString::GetBit(const std::string_view& key,
 	int64_t offset, int32_t* ret) {
-	std::string metaValue;
-	Status s = db->Get(ReadOptions(), key, &metaValue);
+	std::string metavalue;
+	Status s = db->Get(ReadOptions(), key, &metavalue);
 	if (s.ok() || s.IsNotFound()) {
 		std::string dataValue;
 		if (s.ok()) {
-			ParsedStringsValue pstringsvalue(&metaValue);
+			ParsedStringsMetaValue pstringsvalue(&metavalue);
 			if (pstringsvalue.IsStale()) {
 				*ret = 0;
 				return Status::OK();
@@ -176,35 +180,37 @@ Status RedisString::GetBit(const std::string_view& key,
 	return Status::OK();
 }
 
-Status RedisString::Mset(const std::vector<KeyValue>& kvs) {
+Status RedisString::MSet(const std::vector<KeyValue>& kvs) {
 	std::vector<std::string> keys;
 	for (const auto& kv : kvs) {
 		keys.push_back(kv.key);
 	}
 
-	MultiHashLock mulihashlock(&lockmgr, keys);
+	MultiHashLock l(&lockmgr, keys);
 	WriteBatch batch;
 	for (const auto& kv : kvs) {
-		StringsValue stringsvalue(kv.value);
+		StringsMetaValue stringsvalue(kv.value);
 		batch.Put(kv.key, stringsvalue.Encode());
 	}
 	return db->Write(WriteOptions(), &batch);
 }
 
-Status RedisString::Mget(const std::vector<std::string>& keys, std::vector<ValueStatus>* vss) {
+Status RedisString::MGet(const std::vector<std::string>& keys,
+	std::vector<ValueStatus>* vss) {
 	vss->clear();
 
 	ReadOptions readopts;
 	std::shared_ptr<Snapshot> snapshot;
 	SnapshotLock sl(db, snapshot);
 	readopts.snapshot = snapshot;
+	readopts.fillcache = false;
 
 	Status s;
 	std::string value;
 	for (const auto& key : keys) {
 		s = db->Get(readopts, key, &value);
 		if (s.ok()) {
-			ParsedStringsValue pstringsvalue(&value);
+			ParsedStringsMetaValue pstringsvalue(&value);
 			if (pstringsvalue.IsStale()) {
 				vss->push_back({ std::string(), Status::NotFound("Stale") });
 			}
@@ -223,16 +229,21 @@ Status RedisString::Mget(const std::vector<std::string>& keys, std::vector<Value
 	return Status::OK();
 }
 
+Status RedisString::Setex(const std::string_view& key,
+	const std::string_view & value, int32_t ttl) {
+
+}
+
 Status RedisString::Setnx(const std::string_view& key,
-	const std::string& value, int32_t* ret, const int32_t ttl) {
+	const std::string_view& value, int32_t* ret, const int32_t ttl) {
 	*ret = 0;
 	std::string oldValue;
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &oldValue);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&oldValue);
+		ParsedStringsMetaValue pstringsvalue(&oldValue);
 		if (pstringsvalue.IsStale()) {
-			StringsValue stringsvalue(value);
+			StringsMetaValue stringsvalue(value);
 			if (ttl > 0) {
 				stringsvalue.SetRelativeTimestamp(ttl);
 			}
@@ -244,7 +255,7 @@ Status RedisString::Setnx(const std::string_view& key,
 		}
 	}
 	else if (s.IsNotFound()) {
-		StringsValue stringsvalue(value);
+		StringsMetaValue stringsvalue(value);
 		if (ttl > 0) {
 			stringsvalue.SetRelativeTimestamp(ttl);
 		}
@@ -257,7 +268,8 @@ Status RedisString::Setnx(const std::string_view& key,
 	return s;
 }
 
-Status RedisString::Msetnx(const std::vector<KeyValue>& kvs, int32_t* ret) {
+Status RedisString::MSetnx(const std::vector<KeyValue>& kvs,
+	int32_t * ret) {
 	Status s;
 	bool exists = false;
 	*ret = 0;
@@ -265,7 +277,7 @@ Status RedisString::Msetnx(const std::vector<KeyValue>& kvs, int32_t* ret) {
 	for (size_t i = 0; i < kvs.size(); i++) {
 		s = db->Get(ReadOptions(), kvs[i].key, &value);
 		if (s.ok()) {
-			ParsedStringsValue pstringsvalue(&value);
+			ParsedStringsMetaValue pstringsvalue(&value);
 			if (!pstringsvalue.IsStale()) {
 				exists = true;
 				break;
@@ -274,7 +286,7 @@ Status RedisString::Msetnx(const std::vector<KeyValue>& kvs, int32_t* ret) {
 	}
 
 	if (!exists) {
-		s = Mset(kvs);
+		s = MSet(kvs);
 		if (s.ok()) {
 			*ret = 1;
 		}
@@ -283,21 +295,21 @@ Status RedisString::Msetnx(const std::vector<KeyValue>& kvs, int32_t* ret) {
 }
 
 Status RedisString::Setvx(const std::string_view& key,
-	const std::string_view& value, 
-	const std::string_view& newValue, 
-	int32_t* ret, const int32_t ttl) {
+	const std::string_view& value,
+	const std::string_view& newvalue,
+	int32_t * ret, const int32_t ttl) {
 	*ret = 0;
-	std::string oldValue;
-	HashLock hashlock(&lockmgr, key);
-	Status s = db->Get(ReadOptions(), key, &oldValue);
+	std::string oldvalue;
+	HashLock l(&lockmgr, key);
+	Status s = db->Get(ReadOptions(), key, &oldvalue);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&oldValue);
+		ParsedStringsMetaValue pstringsvalue(&oldvalue);
 		if (pstringsvalue.IsStale()) {
 			*ret = 0;
 		}
 		else {
 			if (!value.compare(pstringsvalue.GetValue())) {
-				StringsValue stringsvalue(newValue);
+				StringsMetaValue stringsvalue(newvalue);
 				if (ttl > 0) {
 					stringsvalue.SetRelativeTimestamp(ttl);
 				}
@@ -323,12 +335,12 @@ Status RedisString::Setvx(const std::string_view& key,
 	return Status::OK();
 }
 
-Status RedisString::Delete(const std::string_view& key) {
+Status RedisString::Del(const std::string_view& key) {
 	std::string value;
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &value);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&value);
+		ParsedStringsMetaValue pstringsvalue(&value);
 		if (pstringsvalue.IsStale()) {
 			return Status::NotFound("Stale");
 		}
@@ -340,11 +352,11 @@ Status RedisString::Delete(const std::string_view& key) {
 Status RedisString::Delvx(const std::string_view& key,
 	const std::string_view& value, int32_t* ret) {
 	*ret = 0;
-	std::string oldValue;
-	HashLock hashlock(&lockmgr, key);
-	Status s = db->Get(ReadOptions(), key, &oldValue);
+	std::string oldvalue;
+	HashLock ll(&lockmgr, key);
+	Status s = db->Get(ReadOptions(), key, &oldvalue);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&oldValue);
+		ParsedStringsMetaValue pstringsvalue(&oldvalue);
 		if (pstringsvalue.IsStale()) {
 			*ret = 0;
 			return Status::NotFound("Stale");
@@ -366,66 +378,66 @@ Status RedisString::Delvx(const std::string_view& key,
 }
 
 Status RedisString::Setrange(const std::string_view& key,
-	int64_t startOffset, const std::string_view& value, int32_t* ret) {
-	std::string oldValue;
-	std::string newValue;
-	if (startOffset < 0) {
+	int64_t startoffset, const std::string_view& value, int32_t* ret) {
+	std::string oldvalue;
+	std::string newvalue;
+	if (startoffset < 0) {
 		return Status::InvalidArgument("offset< 0");
 	}
 
-	Status s = db->Get(ReadOptions(), key, &oldValue);
+	Status s = db->Get(ReadOptions(), key, &oldvalue);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&oldValue);
+		ParsedStringsMetaValue pstringsvalue(&oldvalue);
 		pstringsvalue.StripSuffix();
 		if (pstringsvalue.IsStale()) {
-			std::string tmp(startOffset, '\0');
-			newValue = tmp.append(value.data());
-			*ret = newValue.length();
+			std::string tmp(startoffset, '\0');
+			newvalue = tmp.append(value.data());
+			*ret = newvalue.length();
 		}
 		else {
-			if (static_cast<size_t>(startOffset) > oldValue.length()) {
-				oldValue.resize(startOffset);
-				newValue = oldValue.append(value.data());
+			if (static_cast<size_t>(startoffset) > oldvalue.length()) {
+				oldvalue.resize(startoffset);
+				newvalue = oldvalue.append(value.data());
 			}
 			else {
-				std::string head = oldValue.substr(0, startOffset);
+				std::string head = oldvalue.substr(0, startoffset);
 				std::string tail;
-				if (startOffset + value.size() - 1 < oldValue.length() - 1) {
-					tail = oldValue.substr(startOffset + value.size());
+				if (startoffset + value.size() - 1 < oldvalue.length() - 1) {
+					tail = oldvalue.substr(startoffset + value.size());
 				}
-				newValue = head + value.data() + tail;
+				newvalue = head + value.data() + tail;
 			}
 		}
 
-		*ret = newValue.length();
-		StringsValue stringsvalue(newValue);
+		*ret = newvalue.length();
+		StringsMetaValue stringsvalue(newvalue);
 		return db->Put(WriteOptions(), key, stringsvalue.Encode());
 	}
 	else if (s.IsNotFound()) {
-		std::string tmp(startOffset, '\0');
-		newValue = tmp.append(value.data());
-		*ret = newValue.length();
-		StringsValue stringsvalue(newValue);
+		std::string tmp(startoffset, '\0');
+		newvalue = tmp.append(value.data());
+		*ret = newvalue.length();
+		StringsMetaValue stringsvalue(newvalue);
 		return db->Put(WriteOptions(), key, stringsvalue.Encode());
 	}
 	return s;
 }
 
 Status RedisString::Getrange(const std::string_view& key,
-	int64_t startOffset, int64_t endOffset, std::string* ret) {
+	int64_t startoffset, int64_t endoffset, std::string* ret) {
 	*ret = "";
 	std::string value;
 	Status s = db->Get(ReadOptions(), key, &value);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&value);
+		ParsedStringsMetaValue pstringsvalue(&value);
 		if (pstringsvalue.IsStale()) {
 			return Status::NotFound("Stale");
 		}
 		else {
 			pstringsvalue.StripSuffix();
 			int64_t size = value.size();
-			int64_t start = startOffset >= 0 ? startOffset : size + startOffset;
-			int64_t endt = endOffset >= 0 ? endOffset : size + endOffset;
+			int64_t start = startoffset >= 0 ? startoffset : size + startoffset;
+			int64_t endt = endoffset >= 0 ? endoffset : size + endoffset;
 			if (start > size - 1 ||
 				(start != 0 && start > endt) ||
 				(start != 0 && endt < 0)) {
@@ -465,13 +477,13 @@ Status RedisString::Strlen(const std::string_view& key, int32_t* len) {
 	return s;
 }
 
-Status RedisString::Expire(const std::string_view& key,
+Status RedisString::Expire(const std::string_view & key,
 	int32_t ttl) {
 	std::string value;
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &value);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&value);
+		ParsedStringsMetaValue pstringsvalue(&value);
 		if (pstringsvalue.IsStale()) {
 			return Status::NotFound("Stale");
 		}
@@ -487,21 +499,21 @@ Status RedisString::Expire(const std::string_view& key,
 	return s;
 }
 
-bool RedisString::Scan(const std::string &startkey, const std::string& pattern,
-	std::vector<std::string> * keys,
-	int64_t * Count, std::string * nextkey) {
+bool RedisString::Scan(const std::string& startkey, const std::string& pattern,
+	std::vector<std::string>* keys,
+	int64_t* count, std::string* nextkey) {
 	std::string key;
 	bool isfinish = true;
 	ReadOptions iteratoroptions;
 	std::shared_ptr<Snapshot> snapshot;
 	SnapshotLock sl(db, snapshot);
 	iteratoroptions.snapshot = snapshot;
-
+	iteratoroptions.fillcache = false;
 	auto it = db->NewIterator(iteratoroptions);
 
 	it->Seek(startkey);
-	while (it->Valid() && (*Count) > 0) {
-		ParsedStringsValue pstringsvalue(it->value());
+	while (it->Valid() && (*count) > 0) {
+		ParsedStringsMetaValue pstringsvalue(it->value());
 		if (pstringsvalue.IsStale()) {
 			it->Next();
 			continue;
@@ -512,7 +524,7 @@ bool RedisString::Scan(const std::string &startkey, const std::string& pattern,
 				key.data(), key.size(), 0)) {
 				keys->push_back(key);
 			}
-			(*Count)--;
+			(*count)--;
 			it->Next();
 		}
 	}
@@ -532,10 +544,10 @@ bool RedisString::Scan(const std::string &startkey, const std::string& pattern,
 Status RedisString::Expireat(const std::string_view& key,
 	int32_t timestamp) {
 	std::string value;
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &value);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvlaue(&value);
+		ParsedStringsMetaValue pstringsvlaue(&value);
 		if (pstringsvlaue.IsStale()) {
 			return Status::NotFound("Stale");
 		}
@@ -554,10 +566,10 @@ Status RedisString::Expireat(const std::string_view& key,
 
 Status RedisString::Persist(const std::string_view& key) {
 	std::string value;
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &value);
 	if (s.ok()) {
-		ParsedStringsValue pstringvalues(&value);
+		ParsedStringsMetaValue pstringvalues(&value);
 		if (pstringvalues.IsStale()) {
 			return Status::NotFound("Stale");
 		}
@@ -578,10 +590,10 @@ Status RedisString::Persist(const std::string_view& key) {
 Status RedisString::TTL(const std::string_view& key,
 	int64_t* timestamp) {
 	std::string value;
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &value);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&value);
+		ParsedStringsMetaValue pstringsvalue(&value);
 		if (pstringsvalue.IsStale()) {
 			*timestamp = -2;
 			return Status::NotFound("Stale");
@@ -603,17 +615,17 @@ Status RedisString::TTL(const std::string_view& key,
 	return s;
 }
 
-Status RedisString::Incrby(const std::string_view &key, 
+Status RedisString::Incrby(const std::string_view& key,
 	int64_t value, int64_t* ret) {
 	std::string oldvalue;
 	std::string newvalue;
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &oldvalue);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&oldvalue);
+		ParsedStringsMetaValue pstringsvalue(&oldvalue);
 		if (pstringsvalue.IsStale()) {
 			*ret = value;
-			StringsValue stringsvalue(std::to_string(value));
+			StringsMetaValue stringsvalue(std::to_string(value));
 			return db->Put(WriteOptions(), key, stringsvalue.Encode());
 		}
 		else {
@@ -632,14 +644,14 @@ Status RedisString::Incrby(const std::string_view &key,
 
 			*ret = ival + value;
 			newvalue = std::to_string(*ret);
-			StringsValue stringsvalue(newvalue);
+			StringsMetaValue stringsvalue(newvalue);
 			stringsvalue.SetTimestamp(timestamp);
 			return db->Put(WriteOptions(), key, stringsvalue.Encode());
 		}
 	}
 	else if (s.IsNotFound()) {
 		*ret = value;
-		StringsValue stringsvalue(std::to_string(value));
+		StringsMetaValue stringsvalue(std::to_string(value));
 		return db->Put(WriteOptions(), key, stringsvalue.Encode());
 	}
 	else {
@@ -655,14 +667,14 @@ Status RedisString::Incrbyfloat(const std::string_view& key,
 		return Status::Corruption("Value is not a vaild float");
 	}
 
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &oldvalue);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&oldvalue);
+		ParsedStringsMetaValue pstringsvalue(&oldvalue);
 		if (pstringsvalue.IsStale()) {
 			LongDoubleToStr(longdoubleby, &newvalue);
 			*ret = newvalue;
-			StringsValue stringsvalue(newvalue);
+			StringsMetaValue stringsvalue(newvalue);
 			return db->Put(WriteOptions(), key, stringsvalue.Encode());
 		}
 		else {
@@ -679,7 +691,7 @@ Status RedisString::Incrbyfloat(const std::string_view& key,
 			}
 
 			*ret = newvalue;
-			StringsValue stringsvalue(newvalue);
+			StringsMetaValue stringsvalue(newvalue);
 			stringsvalue.SetTimestamp(timestamp);
 			return db->Put(WriteOptions(), key, stringsvalue.Encode());
 		}
@@ -687,7 +699,7 @@ Status RedisString::Incrbyfloat(const std::string_view& key,
 	else if (s.IsNotFound()) {
 		LongDoubleToStr(longdoubleby, &newvalue);
 		*ret = newvalue;
-		StringsValue stringsvalue(newvalue);
+		StringsMetaValue stringsvalue(newvalue);
 		return db->Put(WriteOptions(), key, stringsvalue.Encode());
 	}
 	else {
@@ -702,53 +714,16 @@ Status RedisString::GetProperty(const std::string& property, uint64_t* out) {
 	return Status::OK();
 }
 
-Status RedisString::ScanKeyNum(KeyInfo* keyinfo) {
-	uint64_t keys = 0;
-	uint64_t expires = 0;
-	uint64_t ttlsum = 0;
-	uint64_t invaildkeys = 0;
-
-	ReadOptions iteratoropts;
-	std::shared_ptr<Snapshot> snapshot;
-	SnapshotLock sl(db, snapshot);
-	iteratoropts.snapshot = snapshot;
-
-	int64_t curtime = time(0);
-
-	auto iter = db->NewIterator(iteratoropts);
-	for (iter->SeekToFirst();
-		iter->Valid();
-		iter->Next()) {
-		ParsedStringsValue pstringsvalue(iter->value());
-		if (pstringsvalue.IsStale()) {
-			invaildkeys++;
-		}
-		else {
-			keys++;
-			if (!pstringsvalue.IsPermanentSurvival()) {
-				expires++;
-				ttlsum += pstringsvalue.GetTimestamp() - curtime;
-			}
-		}
-	}
-
-	keyinfo->keys = keys;
-	keyinfo->expires = expires;
-	keyinfo->avgttl = (expires != 0) ? ttlsum / expires : 0;
-	keyinfo->invaildkeys = invaildkeys;
-	return Status::OK();
-}
-
 Status RedisString::Decrby(const std::string_view& key, int64_t value, int64_t* ret) {
 	std::string oldvalue;
 	std::string newvalue;
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &oldvalue);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&oldvalue);
+		ParsedStringsMetaValue pstringsvalue(&oldvalue);
 		if (pstringsvalue.IsStale()) {
 			*ret = -value;
-			StringsValue stringsvalue(std::to_string(value));
+			StringsMetaValue stringsvalue(std::to_string(value));
 			return db->Put(WriteOptions(), key, stringsvalue.Encode());
 		}
 		else {
@@ -767,14 +742,14 @@ Status RedisString::Decrby(const std::string_view& key, int64_t value, int64_t* 
 
 			*ret = ival - value;
 			newvalue = std::to_string(*ret);
-			StringsValue stringsvalue(newvalue);
+			StringsMetaValue stringsvalue(newvalue);
 			stringsvalue.SetTimestamp(timestamp);
 			return db->Put(WriteOptions(), key, stringsvalue.Encode());
 		}
 	}
 	else if (s.IsNotFound()) {
 		*ret = -value;
-		StringsValue stringsvalue(std::to_string(value));
+		StringsMetaValue stringsvalue(std::to_string(value));
 		return db->Put(WriteOptions(), key, stringsvalue.Encode());
 	}
 	else {
@@ -786,20 +761,20 @@ Status RedisString::Append(const std::string_view& key,
 	const std::string_view& value, int32_t* ret) {
 	std::string oldvalue;
 	*ret = 0;
-	HashLock hashlock(&lockmgr, key);
+	HashLock l(&lockmgr, key);
 	Status s = db->Get(ReadOptions(), key, &oldvalue);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&oldvalue);
+		ParsedStringsMetaValue pstringsvalue(&oldvalue);
 		if (pstringsvalue.IsStale()) {
 			*ret = value.size();
-			StringsValue stringsvalue(value);
+			StringsMetaValue stringsvalue(value);
 			return db->Put(WriteOptions(), key, stringsvalue.Encode());
 		}
 		else {
 			int32_t timestamp = pstringsvalue.GetTimestamp();
 			std::string olduservalue = pstringsvalue.GetValueToString();
 			std::string newvalue = olduservalue + std::string(value.data(), value.size());
-			StringsValue stringsvalue(newvalue);
+			StringsMetaValue stringsvalue(newvalue);
 			stringsvalue.SetTimestamp(timestamp);
 			*ret = newvalue.size();
 			return db->Put(WriteOptions(), key, stringsvalue.Encode());
@@ -807,7 +782,7 @@ Status RedisString::Append(const std::string_view& key,
 	}
 	else if (s.IsNotFound()) {
 		*ret = value.size();
-		StringsValue stringsvalue(value);
+		StringsMetaValue stringsvalue(value);
 		return db->Put(WriteOptions(), key, stringsvalue.Encode());
 	}
 	return s;
@@ -844,7 +819,7 @@ Status RedisString::BitCount(const std::string_view& key, int64_t startoffset, i
 	std::string value;
 	Status s = db->Get(ReadOptions(), key, &value);
 	if (s.ok()) {
-		ParsedStringsValue pstringsvalue(&value);
+		ParsedStringsMetaValue pstringsvalue(&value);
 		if (pstringsvalue.IsStale()) {
 			return Status::NotFound("Stale");
 		}
@@ -897,4 +872,82 @@ Status RedisString::CompactRange(const std::string_view* begin,
 	const std::string_view* end) {
 	db->CompactRange(begin, end);
 	return Status::OK();
+}
+
+
+Status RedisString::BitPos(const std::string_view& key, int32_t bit, int64_t* ret) {
+
+}
+
+Status RedisString::BitPos(const std::string_view& key, int32_t bit,
+	int64_t startoffset, int64_t * ret) {
+
+}
+
+Status RedisString::BitPos(const std::string_view& key, int32_t bit,
+	int64_t startoffset, int64_t endoffset,
+	int64_t* ret) {
+
+}
+
+Status RedisString::ScanKeyNum(KeyInfo* keyinfo) {
+	uint64_t keys = 0;
+	uint64_t expires = 0;
+	uint64_t ttlsum = 0;
+	uint64_t invaildkeys = 0;
+
+	std::string key;
+	ReadOptions iteratoroptions;
+	std::shared_ptr<Snapshot> snapshot;
+	SnapshotLock ss(db, snapshot);
+	iteratoroptions.snapshot = snapshot;
+	iteratoroptions.fillcache = false;
+	int64_t curtime = time(0);
+
+	std::shared_ptr<Iterator> iter = db->NewIterator(iteratoroptions);
+	for (iter->SeekToFirst(); iter->Valid(); iter->Next()) {
+		ParsedStringsMetaValue pstringsvalue(iter->value());
+		if (pstringsvalue.IsStale()) {
+			invaildkeys++;
+		}
+		else {
+			if (!pstringsvalue.IsPermanentSurvival()) {
+				expires++;
+				ttlsum += pstringsvalue.GetTimestamp() - curtime;
+			}
+		}
+	}
+
+	keyinfo->keys = keys;
+	keyinfo->expires = expires;
+	keyinfo->avgttl = (expires != 0) ? ttlsum / expires : 0;
+	keyinfo->invaildkeys = invaildkeys;
+	return Status::OK();
+}
+
+Status RedisString::ScanKeys(const std::string& pattern,
+	std::vector<std::string>* keys) {
+	std::string key;
+	ReadOptions iteratoroptions;
+	std::shared_ptr<Snapshot> snapshot;
+	SnapshotLock ss(db, snapshot);
+	iteratoroptions.snapshot = snapshot;
+	iteratoroptions.fillcache = false;
+
+	// Note: This is a string type and does not need to pass the column family as
+	// a parameter, use the default column family
+	std::shared_ptr<Iterator> iter = db->NewIterator(iteratoroptions);
+	for (iter->SeekToFirst();
+		iter->Valid();
+		iter->Next()) {
+		ParsedStringsMetaValue pstringsvalue(iter->value());
+		if (!pstringsvalue.IsStale()) {
+			key = ToString(iter->key());
+			if (StringMatchLen(pattern.data(),
+				pattern.size(), key.data(), key.size(), 0)) {
+				keys->push_back(key);
+			}
+		}
+	}
+  	return Status::OK();
 }

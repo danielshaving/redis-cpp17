@@ -42,12 +42,12 @@ public:
 
 	virtual std::string_view key() const {
 		assert(vali);
-		return (direction == kForward) ? ExtractUserKey(iter->key()) : savedKey;
+		return (direction == kForward) ? ExtractUserKey(iter->key()) : savedkey;
 	}
 
 	virtual std::string_view value() const {
 		assert(vali);
-		return (direction == kForward) ? iter->value() : savedValue;
+		return (direction == kForward) ? iter->value() : savedvalue;
 	}
 
 	virtual Status status() const {
@@ -72,23 +72,23 @@ public:
 	virtual void RegisterCleanup(const std::any& arg) {}
 
 private:
-	void findNextUserEntry(bool skipping, std::string* Skip);
+	void FindNextUserEntry(bool skipping, std::string* Skip);
 
-	void findPrevUserEntry();
+	void FindPrevUserEntry();
 
-	bool parseKey(ParsedInternalKey* key);
+	bool ParseKey(ParsedInternalKey* key);
 
-	inline void saveKey(const std::string_view& k, std::string* dst) {
+	inline void SaveKey(const std::string_view& k, std::string* dst) {
 		dst->assign(k.data(), k.size());
 	}
 
-	inline void clearSavedValue() {
-		if (savedValue.capacity() > 1048576) {
+	inline void ClearSavedValue() {
+		if (savedvalue.capacity() > 1048576) {
 			std::string empty;
-			std::swap(empty, savedValue);
+			std::swap(empty, savedvalue);
 		}
 		else {
-			savedValue.clear();
+			savedvalue.clear();
 		}
 	}
 
@@ -98,8 +98,8 @@ private:
 	uint64_t const sequence;
 
 	Status s;
-	std::string savedKey;     // == curren-t key when direction_==kReverse
-	std::string savedValue;   // == current raw value when direction_==kReverse
+	std::string savedkey;     // == curren-t key when direction_==kReverse
+	std::string savedvalue;   // == current raw value when direction_==kReverse
 	Direction direction;
 	bool vali;
 
@@ -112,7 +112,7 @@ private:
 };
 
 
-inline bool DBIter::parseKey(ParsedInternalKey* ikey) {
+inline bool DBIter::ParseKey(ParsedInternalKey* ikey) {
 	std::string_view k = iter->key();
 	if (!ParseInternalKey(k, ikey)) {
 		s = Status::Corruption("corrupted internal key in DBIter");
@@ -141,41 +141,48 @@ void DBIter::Next() {
 
 		if (!iter->Valid()) {
 			vali = false;
-			savedKey.clear();
+			savedkey.clear();
 			return;
 		}
 		// saved_key_ already Contains the key to Skip past.
 	}
 	else {
 		// Store in saved_key_ the current key so we Skip it below.
-		saveKey(ExtractUserKey(iter->key()), &savedKey);
+		SaveKey(ExtractUserKey(iter->key()), &savedkey);
+		// iter_ is pointing to current key. We can now safely move to the next to
+		// avoid checking current key.
+		iter->Next();
+		if (!iter->Valid()) {
+			vali = false;
+			savedkey.clear();
+			return;
+		}
 	}
-
-	findNextUserEntry(true, &savedKey);
+	FindNextUserEntry(true, &savedkey);
 }
 
-void DBIter::findNextUserEntry(bool skipping, std::string* Skip) {
+void DBIter::FindNextUserEntry(bool skipping, std::string* skip) {
 	// Loop until we hit an acceptable entry to yield
 	assert(iter->Valid());
 	assert(direction == kForward);
 	do {
 		ParsedInternalKey ikey;
-		if (parseKey(&ikey) && ikey.sequence<= sequence) {
+		if (ParseKey(&ikey) && ikey.sequence <= sequence) {
 			switch (ikey.type) {
 			case kTypeDeletion:
 				// Arrange to Skip all upcoming entries for this key since
 				// they are hidden by this deletion.
-				saveKey(ikey.userKey, Skip);
+				SaveKey(ikey.userkey, skip);
 				skipping = true;
 				break;
 			case kTypeValue:
 				if (skipping &&
-					ikey.userKey.compare(std::string_view(*Skip))<= 0) {
+					comparator->Compare(ikey.userkey, std::string_view(*skip))<= 0) {
 					// Entry hidden
 				}
 				else {
 					vali = true;
-					savedKey.clear();
+					savedkey.clear();
 					return;
 				}
 				break;
@@ -184,7 +191,7 @@ void DBIter::findNextUserEntry(bool skipping, std::string* Skip) {
 		iter->Next();
 	} while (iter->Valid());
 
-	savedKey.clear();
+	savedkey.clear();
 	vali = false;
 }
 
@@ -195,54 +202,53 @@ void DBIter::Prev() {
 		// iter_ is pointing at the current entry.  Scan backwards until
 		// the key changes so we can use the normal reverse scanning code.
 		assert(iter->Valid());  // Otherwise valid_ would have been false
-		saveKey(ExtractUserKey(iter->key()), &savedKey);
+		SaveKey(ExtractUserKey(iter->key()), &savedkey);
 		while (true) {
 			iter->Prev();
 			if (!iter->Valid()) {
 				vali = false;
-				savedKey.clear();
-				clearSavedValue();
+				savedkey.clear();
+				ClearSavedValue();
 				return;
 			}
 			if (comparator->Compare(ExtractUserKey(iter->key()),
-				savedKey)< 0) {
+				savedkey) < 0) {
 				break;
 			}
 		}
 		direction = kReverse;
 	}
-
-	findPrevUserEntry();
+	FindPrevUserEntry();
 }
 
-void DBIter::findPrevUserEntry() {
+void DBIter::FindPrevUserEntry() {
 	assert(direction == kReverse);
 
 	ValueType valueType = kTypeDeletion;
 	if (iter->Valid()) {
 		do {
 			ParsedInternalKey ikey;
-			if (parseKey(&ikey) && ikey.sequence<= sequence) {
+			if (ParseKey(&ikey) && ikey.sequence<= sequence) {
 				if ((valueType != kTypeDeletion) &&
-					comparator->Compare(ikey.userKey, savedKey)< 0) {
+					comparator->Compare(ikey.userkey, savedkey) < 0) {
 					// We encountered a non-deleted value in entries for previous keys,
 					break;
 				}
 
 				valueType = ikey.type;
 				if (valueType == kTypeDeletion) {
-					savedKey.clear();
-					clearSavedValue();
+					savedkey.clear();
+					ClearSavedValue();
 				}
 				else {
-					std::string_view rawValue = iter->value();
-					if (savedValue.capacity() > rawValue.size() + 1048576) {
+					std::string_view rawvalue = iter->value();
+					if (savedvalue.capacity() > rawvalue.size() + 1048576) {
 						std::string empty;
-						std::swap(empty, savedValue);
+						std::swap(empty, savedvalue);
 					}
 
-					saveKey(ExtractUserKey(iter->key()), &savedKey);
-					savedValue.assign(rawValue.data(), rawValue.size());
+					SaveKey(ExtractUserKey(iter->key()), &savedkey);
+					savedvalue.assign(rawvalue.data(), rawvalue.size());
 				}
 			}
 			iter->Prev();
@@ -252,8 +258,8 @@ void DBIter::findPrevUserEntry() {
 	if (valueType == kTypeDeletion) {
 		// End
 		vali = false;
-		savedKey.clear();
-		clearSavedValue();
+		savedkey.clear();
+		ClearSavedValue();
 		direction = kForward;
 	}
 	else {
@@ -263,13 +269,12 @@ void DBIter::findPrevUserEntry() {
 
 void DBIter::Seek(const std::string_view& target) {
 	direction = kForward;
-	clearSavedValue();
-	savedKey.clear();
-	AppendInternalKey(
-		&savedKey, ParsedInternalKey(target, sequence, kValueTypeForSeek));
-	iter->Seek(savedKey);
+	ClearSavedValue();
+	savedkey.clear();
+	AppendInternalKey(&savedkey, ParsedInternalKey(target, sequence, kValueTypeForSeek));
+	iter->Seek(savedkey);
 	if (iter->Valid()) {
-		findNextUserEntry(false, &savedKey /* temporary storage */);
+		FindNextUserEntry(false, &savedkey /* temporary storage */);
 	}
 	else {
 		vali = false;
@@ -278,10 +283,10 @@ void DBIter::Seek(const std::string_view& target) {
 
 void DBIter::SeekToFirst() {
 	direction = kForward;
-	clearSavedValue();
+	ClearSavedValue();
 	iter->SeekToFirst();
 	if (iter->Valid()) {
-		findNextUserEntry(false, &savedKey /* temporary storage */);
+		FindNextUserEntry(false, &savedkey /* temporary storage */);
 	}
 	else {
 		vali = false;
@@ -290,17 +295,17 @@ void DBIter::SeekToFirst() {
 
 void DBIter::SeekToLast() {
 	direction = kReverse;
-	clearSavedValue();
+	ClearSavedValue();
 	iter->SeekToLast();
-	findPrevUserEntry();
+	FindPrevUserEntry();
 }
 
 std::shared_ptr<Iterator> NewDBIterator(DB* db,
-	const Comparator* userCmp,
-	std::shared_ptr<Iterator> internalIter,
+	const Comparator* usercmp,
+	std::shared_ptr<Iterator> internaliter,
 	uint64_t sequence,
 	uint32_t seed) {
-	std::shared_ptr<Iterator> iter(new DBIter(db, userCmp, internalIter, sequence, seed));
+	std::shared_ptr<Iterator> iter(new DBIter(db, usercmp, internaliter, sequence, seed));
 	return iter;
 }
 

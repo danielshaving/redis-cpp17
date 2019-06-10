@@ -8,7 +8,7 @@ namespace crc32c {
 	// Return the crc32c of concat(A, data[0,n-1]) where init_crc is the
 	// crc32c of some string A.  Extend() is often used to maintain the
 	// crc32c of a stream of data.
-	uint32_t Extend(uint32_t initCrc, const char* data, size_t n);
+	uint32_t Extend(uint32_t initcrc, const char* data, size_t n);
 
 	// Return the crc32c of data[0,n-1]
 	inline uint32_t Value(const char* data, size_t n) {
@@ -28,8 +28,8 @@ namespace crc32c {
 	}
 
 	// Return the crc whose masked representation is masked_crc.
-	inline uint32_t Unmask(uint32_t masked_crc) {
-		uint32_t rot = masked_crc - kMaskDelta;
+	inline uint32_t Unmask(uint32_t maskedcrc) {
+		uint32_t rot = maskedcrc - kMaskDelta;
 		return ((rot >> 17) | (rot<< 15));
 	}
 }  // namespace crc32c

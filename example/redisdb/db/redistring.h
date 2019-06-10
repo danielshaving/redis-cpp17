@@ -8,6 +8,7 @@
 #include "coding.h"
 #include "db.h"
 #include "option.h"
+#include "serialize.h"
 #include "redis.h"
 
 class RedisDB;
@@ -20,12 +21,17 @@ public:
 
 	Status Open();
 
+	Status DestroyDB(const std::string path, const Options& options);
+
 	Status Set(const std::string_view& key,
 		const std::string_view& value);
 
 	Status Setnx(const std::string_view& key,
-		const std::string& value, int32_t* ret, 
+		const std::string_view& value, int32_t* ret,
 		const int32_t ttl = 0);
+
+	Status Setex(const std::string_view& key,
+		const std::string_view& value, int32_t ttl);
 
 	Status Setvx(const std::string_view& key,
 		const std::string_view& value,
@@ -33,14 +39,14 @@ public:
 		int32_t* ret, const int32_t ttl = 0);
 
 	Status Setxx(const std::string_view& key,
-		const std::string_view& value, int32_t* ret, 
+		const std::string_view& value, int32_t* ret,
 		const int32_t ttl = 0);
 
 	Status Get(const std::string_view& key,
 		std::string* value);
 
 	Status GetSet(const std::string_view& key,
-		const std::string_view& value, std::string* oldValue);
+		const std::string_view& value, std::string* oldvalue);
 
 	Status SetBit(const std::string_view& key,
 		int64_t offset, int32_t value, int32_t* ret);
@@ -48,15 +54,15 @@ public:
 	Status GetBit(const std::string_view& key,
 		int64_t offset, int32_t* ret);
 
-	Status Mset(const std::vector<KeyValue>& kvs);
+	Status MSet(const std::vector<KeyValue>& kvs);
 
-	Status Msetnx(const std::vector<KeyValue>& kvs,
+	Status MSetnx(const std::vector<KeyValue>& kvs,
 		int32_t* ret);
 
-	Status Mget(const std::vector<std::string>& keys,
+	Status MGet(const std::vector<std::string>& keys,
 		std::vector<ValueStatus>* vss);
 
-	Status Delete(const std::string_view& key);
+	Status Del(const std::string_view& key);
 
 	Status Delvx(const std::string_view& key,
 		const std::string_view& value, int32_t* ret);
@@ -78,7 +84,7 @@ public:
 	bool Scan(const std::string& startkey,
 		const std::string& pattern,
 		std::vector<std::string>* keys,
-		int64_t* Count, std::string* nextkey);
+		int64_t* count, std::string* nextkey);
 
 	Status Expireat(const std::string_view& key,
 		int32_t timestamp);
@@ -94,10 +100,8 @@ public:
 	Status Incrbyfloat(const std::string_view& key,
 		const std::string_view& value, std::string* ret);
 
-	Status GetProperty(const std::string& property, 
+	Status GetProperty(const std::string& property,
 		uint64_t* out);
-
-	Status ScanKeyNum(KeyInfo* keyinfo);
 
 	Status Decrby(const std::string_view& key,
 		int64_t value, int64_t* ret);
@@ -105,15 +109,31 @@ public:
 	Status Append(const std::string_view& key,
 		const std::string_view& value, int32_t* ret);
 
-	Status BitCount(const std::string_view& key, 
+	Status BitCount(const std::string_view& key,
 		int64_t startoffset, int64_t endoffset,
 		int32_t* ret, bool haverange);
+
+	Status BitPos(const std::string_view& key, int32_t bit,
+		int64_t* ret);
+
+	Status BitPos(const std::string_view& key, int32_t bit,
+		int64_t startoffset, int64_t* ret);
+
+	Status BitPos(const std::string_view& key, int32_t bit,
+		int64_t startoffset, int64_t endoffset,
+		int64_t* ret);
 
 	Status BitOp(BitOpType op, const std::string& destkey,
 		const std::vector<std::string>& srckeys, int64_t* ret);
 
 	Status CompactRange(const std::string_view* begin,
 		const std::string_view* end);
+
+	Status ScanKeyNum(KeyInfo* keyinfo);
+
+	Status ScanKeys(const std::string& pattern,
+		std::vector<std::string>* keys);
+
 private:
 	RedisDB* redis;
 	std::shared_ptr<DB> db;

@@ -36,7 +36,7 @@ public:
 	// The Reader will start reading at the first record located at physical
 	// position >= initial_offset within the file.
 	LogReader(const std::shared_ptr<SequentialFile>& file, LogReporter* reporter, bool checksum,
-		uint64_t initialOffset);
+		uint64_t initialoffset);
 
 	~LogReader();
 
@@ -56,17 +56,17 @@ private:
 	std::shared_ptr<SequentialFile> file;
 	LogReporter* const reporter;
 	bool const checksum;
-	char* const backingStore;
+	char* const backingstore;
 	std::string_view buffer;
 	bool eof;   // Last Read() indicated EOF by returning< kBlockSize
 
 	// Offset of the last record returned by ReadRecord.
-	uint64_t lastRecordOffset;
+	uint64_t lastrecordoffset;
 	// Offset of the first location past the end of buffer_.
-	uint64_t endofBufferOffset;
+	uint64_t endofbufferoffset;
 
 	// Offset at which to start looking for the first record to return
-	uint64_t const initialOffset;
+	uint64_t const initialoffset;
 
 	// True if we are resynchronizing after a Seek (initial_offset_ > 0). In
 	// particular, a run of kMiddleType and kLastType records can be silently

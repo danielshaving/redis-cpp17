@@ -28,16 +28,15 @@ public:
 		const std::any& value)> deleter;
 
 	size_t charge;      // TODO(opt): Only allow uint32_t?
-	size_t keyLength;
-	bool inCache;      // Whether entry is in the cache.
-	uint32_t refs;      // References, including cache reference, if present.
-	uint32_t hash;      // Hash of key(); used for fast sharding and comparisons
-	char* keyData;   // Beginning of key
+	size_t keylength;
+	bool incache;      // Whether entry is in the cache.
+	size_t hash;      // Hash of key(); used for fast sharding and comparisons
+	char* keydata;   // Beginning of key
 
 	std::string_view key() const {
 		// next_ is only Equal to this if the LRU handle is the list head of an
 		// empty list. List heads never have meaningful keys.
-		return std::string_view(keyData, keyLength);
+		return std::string_view(keydata, keylength);
 	}
 };
 
@@ -52,15 +51,15 @@ public:
 	void SetCapacity(size_t capacity) { this->capacity = capacity; }
 
 	// Like Cache methods, but with an extra "hash" parameter.
-	std::shared_ptr<LRUHandle> Insert(const std::string_view& key, uint32_t hash,
+	std::shared_ptr<LRUHandle> Insert(const std::string_view& key, size_t hash,
 		const std::any& value, size_t charge,
 		std::function<void(const std::string_view& k, const std::any& value)>& deleter);
 
-	std::shared_ptr<LRUHandle> Lookup(const std::string_view& key, uint32_t hash);
+	std::shared_ptr<LRUHandle> Lookup(const std::string_view& key, size_t hash);
 
 	void Release(const std::shared_ptr<LRUHandle>& handle);
 
-	void Erase(const std::string_view& key, uint32_t hash);
+	void Erase(const std::string_view& key, size_t hash);
 
 	size_t TotalCharge() const {
 		std::unique_lock<std::mutex> lk(mutex);
@@ -111,7 +110,7 @@ public:
 	explicit ShardedLRUCache(size_t capacity)
 		: lastId(0) {
 		const size_t perShard = (capacity + (kNumShards - 1)) / kNumShards;
-		for (int s = 0; s< kNumShards; s++) {
+		for (int s = 0; s < kNumShards; s++) {
 			shards[s].SetCapacity(perShard);
 		}
 	}
@@ -157,6 +156,5 @@ public:
 		return total;
 	}
 };
-
 
 std::shared_ptr<ShardedLRUCache> NewLRUCache(size_t capacity);

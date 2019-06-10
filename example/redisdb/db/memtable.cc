@@ -2,7 +2,7 @@
 #include "coding.h"
 
 MemTable::MemTable(const InternalKeyComparator& comparator)
-	: memoryUsage(0),
+	: memoryusage(0),
 	kcmp(comparator),
 	table(comparator) {
 
@@ -28,15 +28,15 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
 		// all entries with overly large sequence numbers.
 
 		const char* entry = iter.key();
-		uint32_t keyLength;
-		const char* keyPtr = GetVarint32Ptr(entry, entry + 5, &keyLength);
+		uint32_t keylength;
+		const char* keyptr = GetVarint32Ptr(entry, entry + 5, &keylength);
 
-		if (kcmp.icmp.GetComparator()->Compare(std::string_view(keyPtr, keyLength - 8),
+		if (kcmp.icmp.GetComparator()->Compare(std::string_view(keyptr, keylength - 8),
 			key.UserKey()) == 0) {
-			const uint64_t tag = DecodeFixed64(keyPtr + keyLength - 8);
+			const uint64_t tag = DecodeFixed64(keyptr + keylength - 8);
 			switch (static_cast<ValueType>(tag & 0xff)) {
 			case kTypeValue: {
-				std::string_view v = GetLengthPrefixedSlice(keyPtr + keyLength);
+				std::string_view v = GetLengthPrefixedSlice(keyptr + keylength);
 				value->assign(v.data(), v.size());
 				return true;
 			}
@@ -58,25 +58,25 @@ void MemTable::Add(uint64_t seq, ValueType type, const std::string_view& key,
 	//  value_size   : varint32 of value.size()
 	//  value bytes : char[value.size()]
 
-	size_t keySize = key.size();
-	size_t valSize = value.size();
-	size_t internalKeySize = keySize + 8;
+	size_t keysize = key.size();
+	size_t valsize = value.size();
+	size_t internalkeysize = keysize + 8;
 
-	const size_t encodedLen =
-		VarintLength(internalKeySize) + internalKeySize +
-		VarintLength(valSize) + valSize;
+	const size_t encodedlen =
+		VarintLength(internalkeysize) + internalkeysize +
+		VarintLength(valsize) + valsize;
 
-	char* buf = (char*)malloc(encodedLen);
-	char* p = EncodeVarint32(buf, internalKeySize);
-	memcpy(p, key.data(), keySize);
-	p += keySize;
-	EncodeFixed64(p, (seq<< 8) | type);
+	char* buf = new char[encodedlen];
+	char* p = EncodeVarint32(buf, internalkeysize);
+	memcpy(p, key.data(), keysize);
+	p += keysize;
+	EncodeFixed64(p, (seq << 8) | type);
 	p += 8;
-	p = EncodeVarint32(p, valSize);
-	memcpy(p, value.data(), valSize);
-	assert(p + valSize == buf + encodedLen);
+	p = EncodeVarint32(p, valsize);
+	memcpy(p, value.data(), valsize);
+	assert(p + valsize == buf + encodedlen);
 	table.Insert(buf);
-	memoryUsage += encodedLen;
+	memoryusage += encodedlen;
 }
 
 int MemTable::KeyComparator::operator()(const char* aptr, const char* bptr) const {
@@ -91,13 +91,13 @@ void MemTable::ClearTable() {
 	for (iter.SeekToFirst(); iter.Valid(); iter.Next()) {
 		delete[] iter.key();
 	}
-	memoryUsage = 0;
+	memoryusage = 0;
 }
 
 // Encode a suitable internal key target for "target" and return it.
 // Uses *scratch as scratch space, and the returned pointer will point
 // into this scratch space.
-static const char* encodeKey(std::string* scratch, const std::string_view& target) {
+static const char* EncodeKey(std::string* scratch, const std::string_view& target) {
 	scratch->clear();
 	PutVarint32(scratch, target.size());
 	scratch->append(target.data(), target.size());
@@ -110,7 +110,7 @@ public:
 
 	virtual bool Valid() const { return iter.Valid(); }
 
-	virtual void Seek(const std::string_view& k) { iter.Seek(encodeKey(&tmp, k)); }
+	virtual void Seek(const std::string_view& k) { iter.Seek(EncodeKey(&tmp, k)); }
 
 	virtual void SeekToFirst() { iter.SeekToFirst(); }
 

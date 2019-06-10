@@ -18,7 +18,7 @@ void BlockBuilder::reset() {
 	restarts.push_back(0);       // First restart point is at offset 0
 	counter = 0;
 	finished = false;
-	lastKey.clear();
+	lastkey.clear();
 }
 
 size_t BlockBuilder::CurrentSizeEstimate() const {
@@ -39,7 +39,7 @@ std::string_view BlockBuilder::Finish() {
 }
 
 void BlockBuilder::Add(const std::string_view& key, const std::string_view& value) {
-	std::string_view lastKeyPiece(lastKey);
+	std::string_view lastKeyPiece(lastkey);
 	assert(!finished);
 	assert(counter<= options->blockrestartinterval);
 	assert(buffer.empty() // No values yet?
@@ -76,8 +76,8 @@ void BlockBuilder::Add(const std::string_view& key, const std::string_view& valu
 	buffer.append(value.data(), value.size());
 
 	// Update state
-	lastKey.resize(shared);
-	lastKey.append(key.data() + shared, nonShared);
-	assert(std::string_view(lastKey) == key);
+	lastkey.resize(shared);
+	lastkey.append(key.data() + shared, nonShared);
+	assert(std::string_view(lastkey) == key);
 	counter++;
 }

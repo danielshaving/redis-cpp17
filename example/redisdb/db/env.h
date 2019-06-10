@@ -595,7 +595,7 @@ public:
 		fdlimiter(MaxOpenFiles()),
 		startbgthread(false),
 		shuttingdown(false) {
-
+			
 	}
 
 	~Env() {
@@ -627,14 +627,14 @@ public:
 			return Status::OK();
 		}
 
-		uint64_t FileSize;
-		Status status = GetFileSize(filename, &FileSize);
+		uint64_t filesize;
+		Status status = GetFileSize(filename, &filesize);
 		if (status.ok()) {
-			void* base = ::mmap(/*addr=*/nullptr, FileSize, PROT_READ,
+			void* base = ::mmap(/*addr=*/nullptr, filesize, PROT_READ,
 				MAP_SHARED, fd, 0);
 			if (base != MAP_FAILED) {
 				result.reset(new PosixMmapReadableFile(
-					filename, reinterpret_cast<char*>(base), FileSize, &limiter));
+					filename, reinterpret_cast<char*>(base), filesize, &limiter));
 			}
 			else {
 				status = PosixError(filename, errno);
@@ -797,28 +797,30 @@ public:
 
 	void ExitSchedule() {
 		if (startbgthread) {
-			shuttingdown.store(true, std::memory_order_release);
+			shuttingdown = true;
 			Schedule(Functor());
 			if (bgthread->joinable()) {
 				bgthread->join();
 			}
+			startbgthread = false;
 		}
 	}
 
 	void Schedule(Functor&& func) {
-		std::unique_lock<std::mutex> lk(bgmutex);
 		// Start the background thread, if we haven't done so already.
+		std::unique_lock<std::mutex> lk(bgmutex);
 		if (!startbgthread) {
 			startbgthread = true;
 			bgthread.reset(new std::thread(std::bind(&Env::BackgroundThreadMain, this)));
 		}
-
-		bgqueue.emplace(func);
+		
+		// If the queue is empty, the background thread may be waiting for work.
+		bgqueue.emplace_back(func);
 		bgcond.notify_one();
 	}
 private:
 	void BackgroundThreadMain() {
-		while (!shuttingdown.load(std::memory_order_acquire)) {
+		while (!shuttingdown) {
 			std::unique_lock<std::mutex> lk(bgmutex);
 
 			// Wait until there is work to be done.
@@ -827,9 +829,8 @@ private:
 			}
 
 			assert(!bgqueue.empty());
-
 			auto func = bgqueue.front();
-			bgqueue.pop();
+			bgqueue.pop_front();
 			if (func) {
 				func();
 			}
@@ -845,8 +846,8 @@ private:
 	std::atomic<bool> startbgthread;
 	std::mutex bgmutex;
 	std::condition_variable bgcond;
-	std::queue<Functor> bgqueue;
-	std::unique_ptr<std::thread> bgthread;
+	std::deque<Functor> bgqueue;
+	std::shared_ptr<std::thread> bgthread;
 };
 
 enum InfoLogLevel {

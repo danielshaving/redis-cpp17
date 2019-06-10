@@ -2,6 +2,7 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
 #include <memory>
 #include "status.h"
 #include "memtable.h"

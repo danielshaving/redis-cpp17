@@ -50,9 +50,9 @@ public:
 	Footer() {}
 
 	// The block handle for the metaindex block of the table
-	const BlockHandle& GetMetaindexHandle() const { return metaindexHandle; }
+	const BlockHandle& GetMetaindexHandle() const { return metaindexhandle; }
 
-	void SetMetaindexHandle(const BlockHandle& h) { metaindexHandle = h; }
+	void SetMetaindexHandle(const BlockHandle& h) { metaindexhandle = h; }
 
 	// The block handle for the index block of the tabdle
 	const BlockHandle& GetIndexHandle() const { return indexHandle; }
@@ -71,7 +71,7 @@ public:
 	};
 
 private:
-	BlockHandle metaindexHandle;
+	BlockHandle metaindexhandle;
 	BlockHandle indexHandle;
 };
 
@@ -85,7 +85,7 @@ static const size_t kBlockTrailerSize = 5;
 struct BlockContents {
 	std::string_view data; // Actual Contents of data
 	bool cachable;        // True iff data can be cached
-	bool heapAllocated;  // True iff caller should delete[] data.data()
+	bool heapallocated;  // True iff caller should delete[] data.data()
 };
 
 // Read the block identified by "handle" from "file".  On failure

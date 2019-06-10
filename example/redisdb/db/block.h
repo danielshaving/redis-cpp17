@@ -15,7 +15,7 @@
 class Block {
 public:
 	// Initialize the block with the specified Contents.
-	Block(const BlockContents& Contents);
+	Block(const BlockContents& contents);
 
 	~Block();
 
@@ -24,11 +24,11 @@ public:
 	std::shared_ptr<Iterator> NewIterator(const Comparator* comparator);
 
 private:
-	uint32_t NumRestarts() const;
+	uint32_t numrestarts() const;
 
 	const char* data;
 	size_t size;
-	uint32_t restartOffset;     // Offset in data_ of restart array
+	uint32_t restartoffset;     // Offset in data_ of restart array
 	bool owned;                  // Block owns data_[]
 
 	// No copying allowed

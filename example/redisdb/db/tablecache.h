@@ -22,20 +22,20 @@ public:
 	// returned iterator is live.
 	std::shared_ptr<Iterator> NewIterator(const ReadOptions& options,
 		uint64_t fileNumber,
-		uint64_t FileSize,
+		uint64_t filesize,
 		std::shared_ptr<Table> tableptr = nullptr);
 
 	// If a Seek to internal key "k" in specified file finds an entry,
 	// call (*handle_result)(arg, found_key, found_value).
 	Status Get(const ReadOptions& options,
 		uint64_t fileNumber,
-		uint64_t FileSize,
+		uint64_t filesize,
 		const std::string_view& k,
 		const std::any& arg,
 		std::function<void(const std::any&,
 			const std::string_view&, const std::string_view&)>&& callback);
 
-	Status FindTable(uint64_t fileNumber, uint64_t FileSize,
+	Status FindTable(uint64_t fileNumber, uint64_t filesize,
 		std::shared_ptr<LRUHandle>& handle);
 
 	std::shared_ptr<ShardedLRUCache> GetCache() { return cache; }

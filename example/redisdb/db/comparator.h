@@ -88,10 +88,12 @@ public:
 class ZSetsScoreKeyComparatorImpl : public Comparator {
 public:
     const char* Name() const override {
-        return "redisdb.ZSetsScoreKeyComparator";
+        return "leveldb.BytewiseComparator";
     }
 
     int Compare(const std::string_view& a, const std::string_view& b) const override {
+        ParsedZSetsScoreKey pascorekey(a);
+        ParsedZSetsScoreKey pbscorekey(b);
         assert(a.size() > sizeof(int32_t));
         assert(a.size() >= DecodeFixed32(a.data())
                 + 2 * sizeof(int32_t) + sizeof(uint64_t));
@@ -137,7 +139,7 @@ public:
             } else if (ptra - a.data() == asize) {
                 return -1;
             } else if (ptrb - b.data() == bsize) {
-             return 1;
+                return 1;
             } else {
                 std::string_view keyamember(ptra, asize - (ptra - a.data()));
                 std::string_view keybmember(ptrb, bsize - (ptrb - b.data()));
@@ -149,7 +151,6 @@ public:
         }
         return 0;
     }
-
     bool Equal(const std::string_view& a, const std::string_view& b) const override {
         return !Compare(a, b);
     }
@@ -185,6 +186,7 @@ public:
     // i.e., an implementation of this method that does nothing is correct.
     void FindShortestSeparator(std::string* start,
                                 const std::string_view& limit) const override {
+        
     }
 
     // Changes *key to a short string >= *key.

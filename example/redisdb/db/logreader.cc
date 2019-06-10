@@ -11,40 +11,40 @@ void LogReporter::Corruption(size_t bytes, const Status& status) {
 }
 
 LogReader::LogReader(const std::shared_ptr<SequentialFile>& file, LogReporter* reporter, bool checksum,
-	uint64_t initialOffset)
+	uint64_t initialoffset)
 	: file(file),
 	reporter(reporter),
 	checksum(checksum),
-	backingStore((char*)malloc(kBlockSize)),
+	backingstore((char*)malloc(kBlockSize)),
 	buffer(),
 	eof(false),
-	lastRecordOffset(0),
-	endofBufferOffset(0),
-	initialOffset(initialOffset),
-	resyncing(initialOffset > 0) {
+	lastrecordoffset(0),
+	endofbufferoffset(0),
+	initialoffset(initialoffset),
+	resyncing(initialoffset > 0) {
 
 }
 
 LogReader::~LogReader() {
-	free(backingStore);
+	free(backingstore);
 }
 
 bool LogReader::SkipToInitialBlock() {
-	const size_t offsetInBlock = initialOffset % kBlockSize;
-	uint64_t blockStartLocation = initialOffset - offsetInBlock;
+	const size_t offsetInblock = initialoffset % kBlockSize;
+	uint64_t blockstartlocation = initialoffset - offsetInblock;
 
 	// Don't search a block if we'd be in the trailer
-	if (offsetInBlock > kBlockSize - 6) {
-		blockStartLocation += kBlockSize;
+	if (offsetInblock > kBlockSize - 6) {
+		blockstartlocation += kBlockSize;
 	}
 
-	endofBufferOffset = blockStartLocation;
+	endofbufferoffset = blockstartlocation;
 
 	// Skip to start of first block that can contain the initial record
-	if (blockStartLocation > 0) {
-		Status skipStatus = file->Skip(blockStartLocation);
+	if (blockstartlocation > 0) {
+		Status skipStatus = file->Skip(blockstartlocation);
 		if (!skipStatus.ok()) {
-			ReportDrop(blockStartLocation, skipStatus);
+			ReportDrop(blockstartlocation, skipStatus);
 			return false;
 		}
 	}
@@ -52,7 +52,7 @@ bool LogReader::SkipToInitialBlock() {
 }
 
 bool LogReader::ReadRecord(std::string_view* record, std::string* scratch) {
-	if (lastRecordOffset< initialOffset) {
+	if (lastrecordoffset < initialoffset) {
 		if (!SkipToInitialBlock()) {
 			return false;
 		}
@@ -60,10 +60,10 @@ bool LogReader::ReadRecord(std::string_view* record, std::string* scratch) {
 
 	scratch->clear();
 	*record = "";
-	bool inFragmentedRecord = false;
+	bool infragmentedrecord = false;
 	// Record offset of the logical record that we're reading
 	// 0 is a dummy value to make compilers happy
-	uint64_t prospectiveRecordOffset = 0;
+	uint64_t prospectiverecordoffset = 0;
 
 	std::string_view fragment;
 	while (true) {
@@ -72,7 +72,7 @@ bool LogReader::ReadRecord(std::string_view* record, std::string* scratch) {
 		// ReadPhysicalRecord may have only had an empty trailer remaining in its
 		// internal buffer. Calculate the offset of the Next physical record now
 		// that it has returned, properly accounting for its header size.
-		uint64_t physicalRecordOffset = endofBufferOffset - buffer.size() - kHeaderSize - fragment.size();
+		uint64_t physicalrecordoffset = endofbufferoffset - buffer.size() - kHeaderSize - fragment.size();
 
 		if (resyncing) {
 			if (recordType == kMiddleType) {
@@ -88,90 +88,90 @@ bool LogReader::ReadRecord(std::string_view* record, std::string* scratch) {
 		}
 
 		switch (recordType) {
-		case kFullType:
-			if (inFragmentedRecord) {
-				// Handle bug in earlier versions of log::Writer where
-				// it could emit an empty kFirstType record at the tail end
-				// of a block followed by a kFullType or kFirstType record
-				// at the beginning of the Next block.
-				if (!scratch->empty()) {
-					ReportCorruption(scratch->size(), "partial record without end(1)");
+			case kFullType:
+				if (infragmentedrecord) {
+					// Handle bug in earlier versions of log::Writer where
+					// it could emit an empty kFirstType record at the tail end
+					// of a block followed by a kFullType or kFirstType record
+					// at the beginning of the Next block.
+					if (!scratch->empty()) {
+						ReportCorruption(scratch->size(), "partial record without end(1)");
+					}
 				}
-			}
-			prospectiveRecordOffset = physicalRecordOffset;
-			scratch->clear();
-			*record = fragment;
-			lastRecordOffset = prospectiveRecordOffset;
-			return true;
-
-		case kFirstType:
-			if (inFragmentedRecord) {
-				// Handle bug in earlier versions of log::Writer where
-				// it could emit an empty kFirstType record at the tail end
-				// of a block followed by a kFullType or kFirstType record
-				// at the beginning of the Next block.
-				if (!scratch->empty()) {
-					ReportCorruption(scratch->size(), "partial record without end(2)");
-				}
-			}
-			prospectiveRecordOffset = physicalRecordOffset;
-			scratch->assign(fragment.data(), fragment.size());
-			inFragmentedRecord = true;
-			break;
-
-		case kMiddleType:
-			if (!inFragmentedRecord) {
-				ReportCorruption(fragment.size(), "missing start of fragmented record(1)");
-			}
-			else {
-				scratch->append(fragment.data(), fragment.size());
-			}
-			break;
-
-		case kLastType:
-			if (!inFragmentedRecord) {
-				ReportCorruption(fragment.size(), "missing start of fragmented record(2)");
-			}
-			else {
-				scratch->append(fragment.data(), fragment.size());
-				*record = std::string_view(*scratch);
-				lastRecordOffset = prospectiveRecordOffset;
+				prospectiverecordoffset = physicalrecordoffset;
+				scratch->clear();
+				*record = fragment;
+				lastrecordoffset = prospectiverecordoffset;
 				return true;
-			}
-			break;
 
-		case kEof:
-			if (inFragmentedRecord) {
-				// This can be caused by the writer dying immediately after
-				// writing a physical record but before completing the Next; don't
-				// treat it as a Corruption, just ignore the entire logical record.
+			case kFirstType:
+				if (infragmentedrecord) {
+					// Handle bug in earlier versions of log::Writer where
+					// it could emit an empty kFirstType record at the tail end
+					// of a block followed by a kFullType or kFirstType record
+					// at the beginning of the Next block.
+					if (!scratch->empty()) {
+						ReportCorruption(scratch->size(), "partial record without end(2)");
+					}
+				}
+				prospectiverecordoffset = physicalrecordoffset;
+				scratch->assign(fragment.data(), fragment.size());
+				infragmentedrecord = true;
+				break;
+
+			case kMiddleType:
+				if (!infragmentedrecord) {
+					ReportCorruption(fragment.size(), "missing start of fragmented record(1)");
+				}
+				else {
+					scratch->append(fragment.data(), fragment.size());
+				}
+				break;
+
+			case kLastType:
+				if (!infragmentedrecord) {
+					ReportCorruption(fragment.size(), "missing start of fragmented record(2)");
+				}
+				else {
+					scratch->append(fragment.data(), fragment.size());
+					*record = std::string_view(*scratch);
+					lastrecordoffset = prospectiverecordoffset;
+					return true;
+				}
+				break;
+
+			case kEof:
+				if (infragmentedrecord) {
+					// This can be caused by the writer dying immediately after
+					// writing a physical record but before completing the Next; don't
+					// treat it as a Corruption, just ignore the entire logical record.
+					scratch->clear();
+				}
+				return false;
+
+			case kBadRecord:
+				if (infragmentedrecord) {
+					ReportCorruption(scratch->size(), "error in middle of record");
+					infragmentedrecord = false;
+					scratch->clear();
+				}
+				break;
+
+			default: {
+				char buf[40];
+				snprintf(buf, sizeof(buf), "unknown record type %u", recordType);
+				ReportCorruption((fragment.size() + (infragmentedrecord ? scratch->size() : 0)), buf);
+				infragmentedrecord = false;
 				scratch->clear();
+				break;
 			}
-			return false;
-
-		case kBadRecord:
-			if (inFragmentedRecord) {
-				ReportCorruption(scratch->size(), "error in middle of record");
-				inFragmentedRecord = false;
-				scratch->clear();
-			}
-			break;
-
-		default: {
-			char buf[40];
-			snprintf(buf, sizeof(buf), "unknown record type %u", recordType);
-			ReportCorruption((fragment.size() + (inFragmentedRecord ? scratch->size() : 0)), buf);
-			inFragmentedRecord = false;
-			scratch->clear();
-			break;
-		}
 		}
 	}
 	return false;
 }
 
 uint64_t LogReader::GetLastRecordOffset() {
-	return lastRecordOffset;
+	return lastrecordoffset;
 }
 
 void LogReader::ReportCorruption(uint64_t bytes, const char* reason) {
@@ -180,7 +180,7 @@ void LogReader::ReportCorruption(uint64_t bytes, const char* reason) {
 
 void LogReader::ReportDrop(uint64_t bytes, const Status& reason) {
 	if (reporter != nullptr &&
-		endofBufferOffset - buffer.size() - bytes >= initialOffset) {
+		endofbufferoffset - buffer.size() - bytes >= initialoffset) {
 		reporter->Corruption(static_cast<size_t>(bytes), reason);
 	}
 }
@@ -191,8 +191,8 @@ unsigned int LogReader::ReadPhysicalRecord(std::string_view* result) {
 			if (!eof) {
 				// Last read was a full read, so this is a trailer to Skip
 				buffer = "";
-				Status status = file->read(kBlockSize, &buffer, backingStore);
-				endofBufferOffset += buffer.size();
+				Status status = file->read(kBlockSize, &buffer, backingstore);
+				endofbufferoffset += buffer.size();
 				if (!status.ok()) {
 					buffer = "";
 					ReportDrop(kBlockSize, status);
@@ -260,8 +260,8 @@ unsigned int LogReader::ReadPhysicalRecord(std::string_view* result) {
 		buffer.remove_prefix(kHeaderSize + length);
 
 		// Skip physical record that started before initial_offset_
-		if (endofBufferOffset - buffer.size() - kHeaderSize - length<
-			initialOffset) {
+		if (endofbufferoffset - buffer.size() - kHeaderSize - length<
+			initialoffset) {
 			*result = "";
 			return kBadRecord;
 		}

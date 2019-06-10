@@ -1,6 +1,6 @@
 #include "writebatch.h"
 #include "coding.h"
-
+#include "util.h"
 
 // WriteBatch header has an 8-byte sequence number followed by a 4-byte Count.
 static const size_t kHeader = 12;

@@ -50,13 +50,13 @@ static const ValueType kValueTypeForSeek = kTypeValue;
 static const uint64_t kMaxSequenceNumber = ((0x1ull<< 56) - 1);
 
 struct ParsedInternalKey {
-	std::string_view userKey;
+	std::string_view userkey;
 	uint64_t sequence;
 	ValueType type;
 
 	ParsedInternalKey() {}  // Intentionally left uninitialized (for speed)
 	ParsedInternalKey(const std::string_view& u, const uint64_t& seq, ValueType t)
-		: userKey(u),
+		: userkey(u),
 		sequence(seq),
 		type(t) {}
 
@@ -64,7 +64,7 @@ struct ParsedInternalKey {
 };
 
 // Return the length of the encoding of "key".
-inline size_t InternalKeyEncodingLength(const ParsedInternalKey& key) { return key.userKey.size() + 8; }
+inline size_t InternalKeyEncodingLength(const ParsedInternalKey& key) { return key.userkey.size() + 8; }
 
 // Append the serialization of "key" to *result.
 void AppendInternalKey(std::string* result, const ParsedInternalKey& key);
@@ -139,7 +139,7 @@ public:
 
 	}
 
-	virtual const char* Name() const { return "redisdb.BytewiseComparator"; }
+	virtual const char* Name() const { return "leveldb.BytewiseComparator"; }
 
 	virtual int Compare(const std::string_view& a, const std::string_view& b) const {
 		return a.compare(b);
@@ -188,8 +188,8 @@ private:
 	std::string rep;
 public:
 	InternalKey() {}   // Leave rep_ as empty to indicate it is invalid
-	InternalKey(const std::string_view& userKey, uint64_t s, ValueType t) {
-		AppendInternalKey(&rep, ParsedInternalKey(userKey, s, t));
+	InternalKey(const std::string_view& userkey, uint64_t s, ValueType t) {
+		AppendInternalKey(&rep, ParsedInternalKey(userkey, s, t));
 	}
 
 	void DecodeFrom(const std::string_view& s) { rep.assign(s.data(), s.size()); }
@@ -220,7 +220,7 @@ class LookupKey {
 public:
 	// Initialize *this for looking up user_key at a snapshot with
 	// the specified sequence number.
-	LookupKey(const std::string_view& userKey, uint64_t sequence);
+	LookupKey(const std::string_view& userkey, uint64_t sequence);
 
 	~LookupKey();
 

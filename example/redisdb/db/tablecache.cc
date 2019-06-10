@@ -27,9 +27,10 @@ void TableCache::evict(uint64_t fileNumber) {
 	char buf[sizeof(fileNumber)];
 	EncodeFixed64(buf, fileNumber);
 	cache->Erase(std::string_view(buf, sizeof(buf)));
+	Debug(options.infolog, "Table cache evict filenumber:%lld\n", fileNumber);
 }
 
-Status TableCache::FindTable(uint64_t fileNumber, uint64_t FileSize,
+Status TableCache::FindTable(uint64_t fileNumber, uint64_t filesize,
 	std::shared_ptr<LRUHandle>& handle) {
 	Status s;
 	char buf[sizeof(fileNumber)];
@@ -42,7 +43,7 @@ Status TableCache::FindTable(uint64_t fileNumber, uint64_t FileSize,
 		std::shared_ptr<Table> table = nullptr;
 		s = options.env->NewRandomAccessFile(fname, file);
 		if (s.ok()) {
-			s = Table::Open(options, file, FileSize, table);
+			s = Table::Open(options, file, filesize, table);
 		}
 
 		if (!s.ok()) {
@@ -55,7 +56,7 @@ Status TableCache::FindTable(uint64_t fileNumber, uint64_t FileSize,
 			tf->file = file;
 			tf->table = table;
 			handle = cache->Insert(key, tf, 1, nullptr);
-			printf("Table cache is Open %s\n", fname.c_str());
+			Debug(options.infolog, "Table cache is Open %s\n", fname.c_str());
 		}
 	}
 	return s;
@@ -68,11 +69,11 @@ static void UnrefEntry(const std::any &arg1, const std::any &arg2) {
 }
 
 std::shared_ptr<Iterator> TableCache::NewIterator(const ReadOptions& options,
-	uint64_t fileNumber,
-	uint64_t FileSize,
+	uint64_t filenumber,
+	uint64_t filesize,
 	std::shared_ptr<Table> tableptr) {
 	std::shared_ptr<LRUHandle> handle;
-	Status s = FindTable(fileNumber, FileSize, handle);
+	Status s = FindTable(filenumber, filesize, handle);
 	if (!s.ok()) {
 		return NewErrorIterator(s);
 	}
@@ -86,29 +87,29 @@ std::shared_ptr<Iterator> TableCache::NewIterator(const ReadOptions& options,
 	return result;
 }
 
-std::shared_ptr<Iterator> TableCache::GetFileIterator(const ReadOptions& options, const std::string_view& fileValue) {
-	if (fileValue.size() != 16) {
+std::shared_ptr<Iterator> TableCache::GetFileIterator(const ReadOptions& options, const std::string_view& filevalue) {
+	if (filevalue.size() != 16) {
 		return NewErrorIterator(
 			Status::Corruption("FileReader invoked with unexpected value"));
 	}
 	else {
 		return NewIterator(options,
-			DecodeFixed64(fileValue.data()),
-			DecodeFixed64(fileValue.data() + 8));
+			DecodeFixed64(filevalue.data()),
+			DecodeFixed64(filevalue.data() + 8));
 	}
 }
 
 Status TableCache::Get(const ReadOptions& options,
-	uint64_t fileNumber,
-	uint64_t FileSize,
+	uint64_t filenumber,
+	uint64_t filesize,
 	const std::string_view & k,
 	const std::any & arg,
 	std::function<void(const std::any&,
 		const std::string_view&, const std::string_view&)> && callback) {
 	std::shared_ptr<LRUHandle> handle;
-	Status s = FindTable(fileNumber, FileSize, handle);
+	Status s = FindTable(filenumber, filesize, handle);
 	if (s.ok()) {
-		//printf("Table cache get file number :%d bytes %lld\n", fileNumber, FileSize);
+		//printf("Table cache get file number :%d bytes %lld\n", filenumber, filesize);
 		std::shared_ptr<Table> table = std::any_cast<std::shared_ptr<TableAndFile>>(handle->value)->table;
 		s = table->InternalGet(options, k, arg, callback);
 	}

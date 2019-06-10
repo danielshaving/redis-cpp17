@@ -75,7 +75,7 @@ std::shared_ptr<Iterator> NewEmptyIterator();
 std::shared_ptr<Iterator> NewErrorIterator(const Status& status);
 
 typedef std::function<std::shared_ptr<Iterator>(
-	const ReadOptions& options, const std::string_view& indexValue)> Callback;
+	const ReadOptions& options, const std::string_view& indexvalue)> Callback;
 
 std::shared_ptr<Iterator> NewTwoLevelIterator(
 	const std::shared_ptr<Iterator>& indexIter, const ReadOptions& options, const Callback& callback);
@@ -298,12 +298,12 @@ private:
 		}
 		else {
 			std::string_view handle = indexIter.value();
-			if (dataIter.GetIter() != nullptr && handle.compare(dataBlockHandle) == 0) {
+			if (dataIter.GetIter() != nullptr && handle.compare(datablockhandle) == 0) {
 
 			}
 			else {
 				std::shared_ptr<Iterator> iter = callback(options, handle);
-				dataBlockHandle.assign(handle.data(), handle.size());
+				datablockhandle.assign(handle.data(), handle.size());
 				SetDataIterator(iter);
 			}
 		}
@@ -316,7 +316,7 @@ private:
 	IteratorWrapper dataIter; // May be nullptr
 	// If data_iter_ is non-null, then "data_block_handle_" holds the
 	// "index_value" passed to block_function_ to create the data_iter_.
-	std::string dataBlockHandle;
+	std::string datablockhandle;
 };
 
 

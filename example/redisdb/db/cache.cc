@@ -20,13 +20,13 @@
 // external reference.
 
 LRUHandle::LRUHandle()
-	: keyData(nullptr) {
+	: keydata(nullptr) {
 
 }
 
 LRUHandle::~LRUHandle() {
-	if (keyData != nullptr) {
-		free(keyData);
+	if (keydata != nullptr) {
+		free(keydata);
 	}
 }
 
@@ -39,11 +39,12 @@ LRUCache::~LRUCache() {
 
 }
 
-std::shared_ptr<LRUHandle> LRUCache::Lookup(const std::string_view& key, uint32_t hash) {
+std::shared_ptr<LRUHandle> LRUCache::Lookup(const std::string_view& key, size_t hash) {
 	std::unique_lock<std::mutex> lk(mutex);
 	std::shared_ptr<LRUHandle> e(new LRUHandle);
-	e->keyData = (char*)malloc(key.size());
-	memcpy(e->keyData, key.data(), key.size());
+	e->keydata = (char*)malloc(key.size());
+	e->keylength = key.size();
+	memcpy(e->keydata, key.data(), key.size());
 	e->hash = hash;
 	auto it = tables.find(e);
 	if (it == tables.end()) {
@@ -54,39 +55,36 @@ std::shared_ptr<LRUHandle> LRUCache::Lookup(const std::string_view& key, uint32_
 	}
 }
 
-std::shared_ptr<LRUHandle> LRUCache::Insert(const std::string_view& key, uint32_t hash,
+std::shared_ptr<LRUHandle> LRUCache::Insert(const std::string_view& key, size_t hash,
 	const std::any& value, size_t charge, 
 	std::function<void(const std::string_view& k, const std::any& value)>& deleter) {
-
 	std::unique_lock<std::mutex> lk(mutex);
 	assert(tables.size() == lru.size());
 
 	assert(value.has_value());
 	std::shared_ptr<LRUHandle> e(new LRUHandle);
+	e->hash = hash;
 	e->value = value;
 	e->deleter = deleter;
 	e->charge = charge;
-	e->keyLength = key.size();
-	e->inCache = false;
-	e->keyData = (char*)malloc(key.size());
-	memcpy(e->keyData, key.data(), key.size());
+	e->keylength = key.size();
+	e->incache = false;
+	e->keydata = (char*)malloc(key.size());
+	memcpy(e->keydata, key.data(), key.size());
 
-	if (capacity > 0) {
-		e->inCache = true;
-		usage += charge;
-		tables.insert(e);
-		lru.push_back(e);
-	}
-	else {
+	e->incache = true;
+	usage += charge;
+	tables.insert(e);
+	lru.push_back(e);
+	assert(tables.size() == lru.size());
 
-	}
-
-	while (usage > capacity&& !lru.empty()) {
+	while (usage > capacity && !lru.empty()) {
 		auto front = lru.front();
 		lru.pop_front();
 		usage -= front->charge;
 		size_t n = tables.erase(front);
 		assert(n == 1);
+		break;
 	}
 
 	assert(tables.size() == lru.size());
@@ -95,21 +93,29 @@ std::shared_ptr<LRUHandle> LRUCache::Insert(const std::string_view& key, uint32_
 
 void LRUCache::Release(const std::shared_ptr<LRUHandle>& handle) {
 	std::unique_lock<std::mutex> lk(mutex);
+	assert(tables.size() == lru.size());
 	for (auto it = lru.begin(); it != lru.end(); ) {
 		if ((*it)->key() == handle->key()) {
+			usage -= (*it)->charge;
+			auto iter = tables.find((*it));
+			assert(iter != tables.end());
+			if ((*iter)->deleter) {
+				(*iter)->deleter(std::string_view((*iter)->keydata,
+					(*iter)->keylength), (*iter)->value);
+			}
+
 			lru.erase(it);
+			tables.erase(iter);
 			break;
 		}
 		else {
 			++it;
 		}
 	}
-
-	size_t n = tables.erase(handle);
-	assert(n == 1);
+	assert(tables.size() == lru.size());
 }
 
-void LRUCache::Erase(const std::string_view& key, uint32_t hash) {
+void LRUCache::Erase(const std::string_view& key, size_t hash) {
 	std::unique_lock<std::mutex> lk(mutex);
 	assert(tables.size() == lru.size());
 	for (auto it = lru.begin(); it != lru.end(); ) {
@@ -118,8 +124,8 @@ void LRUCache::Erase(const std::string_view& key, uint32_t hash) {
 			auto iter = tables.find((*it));
 			assert(iter != tables.end());
 			if ((*iter)->deleter) {
-				(*iter)->deleter(std::string_view((*iter)->keyData,
-					(*iter)->keyLength), (*iter)->value);
+				(*iter)->deleter(std::string_view((*iter)->keydata,
+					(*iter)->keylength), (*iter)->value);
 			}
 
 			lru.erase(it);

@@ -51,12 +51,12 @@ public:
 	void Abandon();
 
 	// Number of calls to Add() so far.
-	uint64_t NumEntries() const;
+	uint64_t pendinghandle() const;
 
 	// Size of the file generated so far.  If invoked after a successful
 	// Finish() call, returns the size of the final generated file.
 
-	uint64_t FileSize() const;
+	uint64_t filesize() const;
 
 private:
 	bool ok() const { return status().ok(); }

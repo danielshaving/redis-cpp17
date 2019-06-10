@@ -34,7 +34,7 @@ private:
 	std::vector<uint32_t> restarts;    // Restart points
 	int counter;     // Number of entries emitted since restart
 	bool finished;    // Has Finish() been called?
-	std::string lastKey;
+	std::string lastkey;
 
 	// No copying allowed
 	BlockBuilder(const BlockBuilder&);

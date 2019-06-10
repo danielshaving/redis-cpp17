@@ -17,8 +17,8 @@ class DB;
 // "*internal_iter") that were live at the specified "sequence" number
 // into appropriate user keys.
 std::shared_ptr<Iterator> NewDBIterator(DB* db,
-	const Comparator* userCmp,
-	std::shared_ptr<Iterator> internalIter,
+	const Comparator* usercmp,
+	std::shared_ptr<Iterator> internaliter,
 	uint64_t sequence,
 	uint32_t seed);
 

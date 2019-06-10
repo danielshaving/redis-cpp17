@@ -15,7 +15,7 @@ public:
 
 	~MemTable();
 
-	size_t GetMemoryUsage() { return memoryUsage; }
+	size_t GetMemoryUsage() { return memoryusage; }
 
 	// Return an iterator that yields the Contents of the memtable.
 	//
@@ -50,7 +50,7 @@ private:
 	typedef SkipList<const char*, KeyComparator> Table;
 	Table table;
 	KeyComparator kcmp;
-	size_t memoryUsage;
+	size_t memoryusage;
 public:
 	Table& GetTable() { return table; }
 };

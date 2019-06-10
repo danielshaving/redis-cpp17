@@ -24,7 +24,7 @@ Status BlockHandle::DecodeFrom(std::string_view* input) {
 
 void Footer::EncodeTo(std::string* dst) const {
 	const size_t originalSize = dst->size();
-	metaindexHandle.EncodeTo(dst);
+	metaindexhandle.EncodeTo(dst);
 	indexHandle.EncodeTo(dst);
 	dst->resize(2 * BlockHandle::kMaxEncodedLength);  // Padding
 	PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber & 0xffffffffu));
@@ -43,7 +43,7 @@ Status Footer::DecodeFrom(std::string_view* input) {
 		return Status::Corruption("not an sstable (bad magic number)");
 	}
 
-	Status result = metaindexHandle.DecodeFrom(input);
+	Status result = metaindexhandle.DecodeFrom(input);
 	if (result.ok()) {
 		result = indexHandle.DecodeFrom(input);
 	}
@@ -62,27 +62,27 @@ Status ReadBlock(const std::shared_ptr<RandomAccessFile>& file,
 	BlockContents* result) {
 	result->data = std::string_view();
 	result->cachable = false;
-	result->heapAllocated = false;
+	result->heapallocated = false;
 
 	// Read the block Contents as well as the type/crc footer.
 	// See table_builder.cc for the code that built this structure.
 	size_t n = static_cast<size_t>(handle.GetSize());
 	char* buf = (char*)malloc(n + kBlockTrailerSize);
-	std::string_view Contents;
-	Status s = file->read(handle.GetOffset(), n + kBlockTrailerSize, &Contents, buf);
+	std::string_view contents;
+	Status s = file->read(handle.GetOffset(), n + kBlockTrailerSize, &contents, buf);
 	if (!s.ok()) {
 		free(buf);
 		return s;
 	}
 
-	if (Contents.size() != n + kBlockTrailerSize) {
+	if (contents.size() != n + kBlockTrailerSize) {
 		free(buf);
 		return Status::Corruption("truncated block read");
 	}
 
 	// Check the crc of the type and the block Contents
-	const char* data = Contents.data();    // Pointer to where Read Put the data
-	if (options.verifyChecksums) {
+	const char* data = contents.data();    // Pointer to where Read Put the data
+	if (options.verifychecksums) {
 		const uint32_t crc = crc32c::Unmask(DecodeFixed32(data + n + 1));
 		const uint32_t actual = crc32c::Value(data, n + 1);
 		if (actual != crc) {
@@ -100,19 +100,34 @@ Status ReadBlock(const std::shared_ptr<RandomAccessFile>& file,
 			// while the file is Open.
 			free(buf);
 			result->data = std::string_view(data, n);
-			result->heapAllocated = false;
+			result->heapallocated = false;
 			result->cachable = false;  // Do not double-cache
 		}
 		else {
 			result->data = std::string_view(buf, n);
-			result->heapAllocated = true;
+			result->heapallocated = true;
 			result->cachable = true;
 		}
 
 		// Ok
 		break;
 	case kSnappyCompression: {
-
+		size_t ulength = 0;
+		if (!Snappy_GetUncompressedLength(data, n, &ulength)) {
+			free(buf);
+			return Status::Corruption("corrupted compressed block contents");
+		}
+		char* ubuf = (char*)malloc(ulength);
+		if (!Snappy_Uncompress(data, n, ubuf)) {
+			free(buf);
+			free(ubuf);
+			return Status::Corruption("corrupted compressed block contents");
+		}
+		delete[] buf;
+		result->data = std::string_view(ubuf, ulength);
+		result->heapallocated = true;
+		result->cachable = true;
+		break;
 	}
 	default:
 		free(buf);

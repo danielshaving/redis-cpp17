@@ -2,23 +2,23 @@
 #include "crc32c.h"
 #include "coding.h"
 
-static void initTypeCrc(uint32_t* typeCrc) {
+static void initTypeCrc(uint32_t* typecrc) {
 	for (int i = 0; i<= kMaxRecordType; i++) {
 		char t = static_cast<char>(i);
-		typeCrc[i] = crc32c::Value(&t, 1);
+		typecrc[i] = crc32c::Value(&t, 1);
 	}
 }
 
 LogWriter::LogWriter(WritableFile* dest)
 	: dest(dest),
-	blockOffset(0) {
-	initTypeCrc(typeCrc);
+	blockoffset(0) {
+	initTypeCrc(typecrc);
 }
 
-LogWriter::LogWriter(WritableFile* dest, uint64_t destLength)
+LogWriter::LogWriter(WritableFile* dest, uint64_t destlength)
 	: dest(dest),
-	blockOffset(destLength% kBlockSize) {
-	initTypeCrc(typeCrc);
+	blockoffset(destlength % kBlockSize) {
+	initTypeCrc(typecrc);
 }
 
 Status LogWriter::AddRecord(const std::string_view& slice) {
@@ -30,7 +30,7 @@ Status LogWriter::AddRecord(const std::string_view& slice) {
 	Status s;
 	bool begin = true;
 	do {
-		const int leftover = kBlockSize - blockOffset;
+		const int leftover = kBlockSize - blockoffset;
 		assert(leftover >= 0);
 		if (leftover< kHeaderSize) {
 			// Switch to a new block
@@ -39,17 +39,17 @@ Status LogWriter::AddRecord(const std::string_view& slice) {
 				assert(kHeaderSize == 7);
 				dest->append(std::string_view("\x00\x00\x00\x00\x00\x00", leftover));
 			}
-			blockOffset = 0;
+			blockoffset = 0;
 		}
 
 		// Invariant: we never leave< kHeaderSize bytes in a block.
-		assert(kBlockSize - blockOffset - kHeaderSize >= 0);
+		assert(kBlockSize - blockoffset - kHeaderSize >= 0);
 
-		const size_t avail = kBlockSize - blockOffset - kHeaderSize;
-		const size_t fragmentLength = (left< avail) ? left : avail;
+		const size_t avail = kBlockSize - blockoffset - kHeaderSize;
+		const size_t fragmentlength = (left< avail) ? left : avail;
 
 		RecordType type;
-		const bool end = (left == fragmentLength);
+		const bool end = (left == fragmentlength);
 		if (begin && end) {
 			type = kFullType;
 		}
@@ -63,9 +63,9 @@ Status LogWriter::AddRecord(const std::string_view& slice) {
 			type = kMiddleType;
 		}
 
-		s = EmitPhysicalRecord(type, ptr, fragmentLength);
-		ptr += fragmentLength;
-		left -= fragmentLength;
+		s = EmitPhysicalRecord(type, ptr, fragmentlength);
+		ptr += fragmentlength;
+		left -= fragmentlength;
 		begin = false;
 	} while (s.ok() && left > 0);
 	return s;
@@ -73,7 +73,7 @@ Status LogWriter::AddRecord(const std::string_view& slice) {
 
 Status LogWriter::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 	assert(n<= 0xffff);  // Must fit in two bytes
-	assert(blockOffset + kHeaderSize + n<= kBlockSize);
+	assert(blockoffset + kHeaderSize + n <= kBlockSize);
 
 	// Format the header
 	char buf[kHeaderSize];
@@ -82,7 +82,7 @@ Status LogWriter::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 	buf[6] = static_cast<char>(t);
 
 	// Compute the crc of the record type and the payload.
-	uint32_t crc = crc32c::Extend(typeCrc[t], ptr, n);
+	uint32_t crc = crc32c::Extend(typecrc[t], ptr, n);
 	crc = crc32c::Mask(crc); // Adjust for storage
 	EncodeFixed32(buf, crc);
 
@@ -94,6 +94,6 @@ Status LogWriter::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 			s = dest->flush();
 		}
 	}
-	blockOffset += kHeaderSize + n;
+	blockoffset += kHeaderSize + n;
 	return s;
 }

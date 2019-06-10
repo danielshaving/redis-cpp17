@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <limits.h>
+#include "coding.h"
 
 bool IsTailWildcard(const std::string& pattern) {
 	if (pattern.size() < 2) {
@@ -154,8 +155,12 @@ int32_t StringMatch(const char* pattern, const char* string, int32_t nocase) {
 	return StringMatchLen(pattern, strlen(pattern), string, strlen(string), nocase);
 }
 
-bool StartsWith(const std::string_view & x, const std::string_view & y) {
-	return ((x.size() >= y.size()) && (memcmp(x.data(), y.data(), y.size()) == 0));
+std::string ToString(const std::string_view &view) {
+	return std::string(view.data(), view.size());
+}
+
+bool StartsWith(const std::string_view& x, const std::string_view& y) {
+	return ((x.size() >= y.size()) && (memcmp(x.data(), y.data(), y.size())== 0));
 }
 
 int StrToLongDouble(const char* s, size_t slen, long double* ldval) {
@@ -168,7 +173,7 @@ int StrToLongDouble(const char* s, size_t slen, long double* ldval) {
 	if (pEnd != s + slen)
 		return -1;
 
-	if (ldval != NULL) * ldval = d;
+	if (ldval != nullptr) * ldval = d;
 	return 0;
 }
 
@@ -199,7 +204,7 @@ int LongDoubleToStr(long double ldval, std::string* value) {
 		 * back into a string are exactly the same as what the user typed.) */
 		len = snprintf(buf, sizeof(buf), "%.17Lf", ldval);
 		/* Now remove trailing zeroes after the '.' */
-		if (strchr(buf, '.') != NULL) {
+		if (strchr(buf, '.') != nullptr) {
 			char* p = buf + len - 1;
 			while (*p == '0') {
 				p--;
@@ -212,3 +217,72 @@ int LongDoubleToStr(long double ldval, std::string* value) {
 	}
 }
 
+std::string_view RandomString(std::default_random_engine* rnd, 
+	int len, std::string* dst) {
+	dst->resize(len);
+	for (int i = 0; i < len; i++) {
+		(*dst)[i] = static_cast<char>(' ' + (*rnd)() % 95);  // ' ' .. '~'
+	}
+	return std::string_view(*dst);
+}
+	
+std::string RandomKey(std::default_random_engine* rnd, int len) {
+	// Make sure to generate a wide variety of characters so we
+	// test the boundary conditions for short-key optimizations.
+	static const char kTestChars[] = {'\0', '\1', 'a',    'b',    'c',
+								'd',  'e',  '\xfd', '\xfe', '\xff'};
+	std::string result;
+	for (int i = 0; i < len; i++) {
+		result += kTestChars[(*rnd)() % (sizeof(kTestChars))];
+	}
+	return result;
+}
+
+std::string_view CompressibleString(std::default_random_engine* rnd,
+	double compressedfraction, size_t len, std::string* dst) {
+	int raw = static_cast<int>(len * compressedfraction);
+	if (raw < 1) raw = 1;
+	std::string rawdata;
+	RandomString(rnd, raw, &rawdata);
+
+	// Duplicate the random data until we have filled "len" bytes
+	dst->clear();
+	while (dst->size() < len) {
+		dst->append(rawdata);
+	}
+	
+	dst->resize(len);
+	return std::string_view(*dst);	
+}
+
+int CalculateMetaStartAndEndKey(const std::string& key,
+                                std::string* metastartkey,
+                                std::string* metaendkey) {
+	size_t needed = key.size() + 1;
+	char* dst = new char[needed];
+	const char* start = dst;
+	memcpy(dst, key.data(), key.size());
+	dst += key.size();
+	metastartkey->assign(start, key.size());
+	*dst = static_cast<uint8_t>(0xff);
+	metaendkey->assign(start, key.size() + 1);
+	delete[] start;
+	return 0;
+}
+
+int CalculateDataStartAndEndKey(const std::string& key,
+                                std::string* datastartkey,
+                                std::string* dataendkey) {
+	size_t needed = sizeof(int32_t) + key.size() + 1;
+	char* dst = new char[needed];
+	const char* start = dst;
+	EncodeFixed32(dst, key.size());
+	dst += sizeof(int32_t);
+	memcpy(dst, key.data(), key.size());
+	dst += key.size();
+	datastartkey->assign(start, sizeof(int32_t) + key.size());
+	*dst = static_cast<uint8_t>(0xff);
+	dataendkey->assign(start, sizeof(int32_t) + key.size() + 1);
+	delete[] start;
+	return 0;
+}

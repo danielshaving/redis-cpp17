@@ -13,7 +13,11 @@ Status RedisZset::Open() {
 	return db->Open();
 }
 
-Status RedisZset::Zadd(const std::string_view& key,
+Status RedisZset::DestroyDB(const std::string path, const Options& options) {
+	return db->DestroyDB(path, options);
+}
+
+Status RedisZset::ZAdd(const std::string_view& key,
 	const std::vector<ScoreMember>& scoremembers, int32_t* ret) {
 	*ret = 0;
 	uint32_t statistic = 0;
@@ -26,15 +30,17 @@ Status RedisZset::Zadd(const std::string_view& key,
 		}
 	}
 
+	ZSetsScoreKey zkey(key, 0, 0, 0);
 	char scorebuf[8];
 	int32_t version = 0;
-	std::string metaValue;
+	std::string metavalue;
 	WriteBatch batch;
+
 	HashLock l(&lockmgr, key);
-	Status s = db->Get(ReadOptions(), key, &metaValue);
+	Status s = db->Get(ReadOptions(), zkey.Encode(), &metavalue);
 	if (s.ok()) {
 		bool vaild = true;
-		ParsedZSetsMetaValue pzsetmetavalue(&metaValue);
+		ParsedZSetsMetaValue pzsetmetavalue(&metavalue);
 		if (pzsetmetavalue.IsStale() || pzsetmetavalue.GetCount() == 0) {
 			vaild = false;
 			version = pzsetmetavalue.InitialMetaValue();
@@ -45,15 +51,15 @@ Status RedisZset::Zadd(const std::string_view& key,
 		}
 
 		int32_t cnt = 0;
-		std::string dataValue;
+		std::string datavalue;
 		for (const auto& sm : filteredscoremembers) {
 			bool notfound = true;
-			ZSetsMemberKey zmemberkey(key, version, sm.member);
+			ZSetsScoreKey zmemberkey(key, 0, version, sm.member);
 			if (vaild) {
-				s = db->Get(ReadOptions(), zmemberkey.Encode(), &dataValue);
+				s = db->Get(ReadOptions(), zmemberkey.Encode(), &datavalue);
 				if (s.ok()) {
 					notfound = false;
-					uint64_t tmp = DecodeFixed64(dataValue.data());
+					uint64_t tmp = DecodeFixed64(datavalue.data());
 					const void* ptrtmp = reinterpret_cast<const void*>(&tmp);
 					double oldscore = *reinterpret_cast<const double*>(ptrtmp);
 					if (oldscore == sm.score) {
@@ -82,7 +88,7 @@ Status RedisZset::Zadd(const std::string_view& key,
 		}
 
 		pzsetmetavalue.ModifyCount(cnt);
-		batch.Put(key, metaValue);
+		batch.Put(zkey.Encode(), metavalue);
 		*ret = cnt;
 	}
 	else if (s.IsNotFound()) {
@@ -90,14 +96,16 @@ Status RedisZset::Zadd(const std::string_view& key,
 		EncodeFixed32(buf, filteredscoremembers.size());
 		ZSetsMetaValue zmetavalue(std::string_view(buf, sizeof(int32_t)));
 		version = zmetavalue.UpdateVersion();
-		batch.Put(key, zmetavalue.Encode());
 
+		batch.Put(zkey.Encode(), zmetavalue.Encode());
+		
 		for (const auto& sm : filteredscoremembers) {
-			ZSetsMemberKey zmemberkey(key, version, sm.member);
 			const void* ptrscore = reinterpret_cast<const void*>(&sm.score);
 			EncodeFixed64(scorebuf, *reinterpret_cast<const uint64_t*>(ptrscore));
-			batch.Put(zmemberkey.Encode(), std::string_view(scorebuf, sizeof(uint64_t)));
 
+			ZSetsScoreKey zmemberkey(key, 0, version, sm.member);
+			batch.Put(zmemberkey.Encode(), std::string_view(scorebuf, sizeof(uint64_t)));
+			
 			ZSetsScoreKey zsetscorekey(key, version, sm.score, sm.member);
 			batch.Put(zsetscorekey.Encode(), std::string_view());
 		}
@@ -106,22 +114,25 @@ Status RedisZset::Zadd(const std::string_view& key,
 	else {
 		return s;
 	}
+	
 	s = db->Write(WriteOptions(), &batch);
+	return s;
 }
 
-Status RedisZset::Zrange(const std::string_view& key,
+Status RedisZset::ZRange(const std::string_view& key,
 	int32_t start, int32_t stop, std::vector<ScoreMember>* scoremembers) {
 	scoremembers->clear();
-
 	ReadOptions readopts;
 	std::shared_ptr<Snapshot> snapshot;
 	SnapshotLock sl(db, snapshot);
 	readopts.snapshot = snapshot;
+	readopts.fillcache = false;
 
-	std::string metaValue;
-	Status s = db->Get(ReadOptions(), key, &metaValue);
+	ZSetsScoreKey zkey(key, 0, 0, 0);
+	std::string metavalue;
+	Status s = db->Get(readopts, zkey.Encode(), &metavalue);
 	if (s.ok()) {
-		ParsedZSetsMetaValue pzsetmetavalue(&metaValue);
+		ParsedZSetsMetaValue pzsetmetavalue(&metavalue);
 		if (pzsetmetavalue.IsStale()) {
 			return Status::NotFound("Stale");
 		}
@@ -131,25 +142,26 @@ Status RedisZset::Zrange(const std::string_view& key,
 		else {
 			int32_t count = pzsetmetavalue.GetCount();
 			int32_t version = pzsetmetavalue.GetVersion();
-			int32_t startIndex = start >= 0 ? start : count + start;
-			int32_t stopIndex = stop >= 0 ? stop : count + stop;
-			startIndex = startIndex <= 0 ? 0 : startIndex;
-			stopIndex = stopIndex >= count ? count - 1 : stopIndex;
-			if (startIndex > stopIndex
-				|| startIndex >= count
-				|| stopIndex < 0) {
+			int32_t startindex = start >= 0 ? start : count + start;
+			int32_t stopindex = stop >= 0 ? stop : count + stop;
+			startindex = startindex <= 0 ? 0 : startindex;
+			stopindex = stopindex >= count ? count - 1 : stopindex;
+			if (startindex > stopindex
+				|| startindex >= count
+				|| stopindex < 0) {
 				return s;
 			}
 
-			int32_t curIndex = 0;
+			int32_t curindex = 0;
 			ScoreMember scoremember;
 			ZSetsScoreKey zscorekey(key, version,
 				std::numeric_limits<double>::lowest(), std::string_view());
-			auto iter = db->NewIterator(ReadOptions());
-			for (iter->Seek(zscorekey.Encode());
-				iter->Valid() && curIndex <= stopIndex;
-				iter->Next(), ++curIndex) {
-				if (curIndex >= startIndex) {
+
+			auto iter = db->NewIterator(readopts);
+			for (iter->Seek(zscorekey.Encode()); iter->Valid()
+				&& curindex <= stopindex;
+				iter->Next(), ++curindex) {
+				if (curindex >= startindex) {
 					ParsedZSetsScoreKey pscorekey(iter->key());
 					scoremember.score = pscorekey.GetScore();
 					scoremember.member = pscorekey.GetMemberToString();
@@ -161,7 +173,7 @@ Status RedisZset::Zrange(const std::string_view& key,
 	return s;
 }
 
-Status RedisZset::Zrank(const std::string_view& key,
+Status RedisZset::ZRank(const std::string_view& key,
 	const std::string_view& member, int32_t* rank) {
 	*rank = -1;
 
@@ -170,8 +182,10 @@ Status RedisZset::Zrank(const std::string_view& key,
 	std::shared_ptr<Snapshot> snapshot;
 	SnapshotLock sl(db, snapshot);
 	readopts.snapshot = snapshot;
+	readopts.fillcache = false;
 
-	Status s = db->Get(readopts, key, &metavalue);
+	ZSetsScoreKey zkey(key, 0, 0, 0);
+	Status s = db->Get(readopts, zkey.Encode(), &metavalue);
 	if (s.ok()) {
 		ParsedZSetsMetaValue pzsetmetavalue(&metavalue);
 		if (pzsetmetavalue.IsStale()) {
@@ -185,9 +199,8 @@ Status RedisZset::Zrank(const std::string_view& key,
 			int32_t version = pzsetmetavalue.GetVersion();
 			int32_t index = 0;
 			int32_t stopindex = pzsetmetavalue.GetCount() - 1;
-			ScoreMember scoremember;
 			ZSetsScoreKey zsetscorekey(key, version,
-				std::numeric_limits<double>::lowest(), std::string_view());
+				std::numeric_limits<double>::lowest(), "");
 			auto iter = db->NewIterator(readopts);
 			for (iter->Seek(zsetscorekey.Encode());
 				iter->Valid() && index <= stopindex;
@@ -211,11 +224,12 @@ Status RedisZset::Zrank(const std::string_view& key,
 	return s;
 }
 
-Status RedisZset::Zcard(const std::string_view& key, int32_t* card) {
+Status RedisZset::ZCard(const std::string_view& key, int32_t* card) {
 	*card = 0;
 	std::string metavalue;
+	ZSetsScoreKey zkey(key, 0, 0, 0);
 
-	Status s = db->Get(ReadOptions(), key, &metavalue);
+	Status s = db->Get(ReadOptions(), zkey.Encode(), &metavalue);
 	if (s.ok()) {
 		ParsedZSetsMetaValue pzetmetavalue(&metavalue);
 		if (pzetmetavalue.IsStale()) {
@@ -233,10 +247,8 @@ Status RedisZset::Zcard(const std::string_view& key, int32_t* card) {
 	return s;
 }
 
-Status RedisZset::Zincrby(const std::string_view& key,
-	const std::string_view& member,
-	double increment,
-	double* ret) {
+Status RedisZset::ZIncrby(const std::string_view& key,
+	const std::string_view& member, double increment, double* ret) {
 	*ret = 0;
 	uint32_t statistic = 0;
 	double score = 0;
@@ -245,7 +257,9 @@ Status RedisZset::Zincrby(const std::string_view& key,
 	std::string metavalue;
 	WriteBatch batch;
 	HashLock l(&lockmgr, key);
-	Status s = db->Get(ReadOptions(), key, &metavalue);
+	
+	ZSetsScoreKey zkey(key, 0, 0, 0);
+	Status s = db->Get(ReadOptions(), zkey.Encode(), &metavalue);
 	if (s.ok()) {
 		ParsedZSetsMetaValue pzsetmetavalue(&metavalue);
 		if (pzsetmetavalue.IsStale()
@@ -257,7 +271,7 @@ Status RedisZset::Zincrby(const std::string_view& key,
 		}
 
 		std::string datavalue;
-		ZSetsMemberKey zmemberkey(key, version, member);
+		ZSetsScoreKey zmemberkey(key, 0, version, member);
 		s = db->Get(ReadOptions(), zmemberkey.Encode(), &datavalue);
 		if (s.ok()) {
 			uint64_t tmp = DecodeFixed64(datavalue.data());
@@ -271,7 +285,7 @@ Status RedisZset::Zincrby(const std::string_view& key,
 		else if (s.IsNotFound()) {
 			score = increment;
 			pzsetmetavalue.ModifyCount(1);
-			batch.Put(key, metavalue);
+			batch.Put(zkey.Encode(), metavalue);
 		}
 		else {
 			return s;
@@ -289,14 +303,126 @@ Status RedisZset::Zincrby(const std::string_view& key,
 		return s;
 	}
 
-	ZSetsMemberKey zmemberkey(key, version, member);
+	ZSetsScoreKey zmemberkey(key, 0, version, member);
 	const void* ptrscore = reinterpret_cast<const void*>(&score);
 	EncodeFixed64(scorebuf, *reinterpret_cast<const uint64_t*>(ptrscore));
 	batch.Put(zmemberkey.Encode(), std::string_view(scorebuf, sizeof(uint64_t)));
 
 	ZSetsScoreKey zscorekey(key, version, score, member);
-	batch.Put(zscorekey.Encode(), std::string_view());
+	batch.Put(zscorekey.Encode(), "");
 	*ret = score;
 	s = db->Write(WriteOptions(), &batch);
+	return s;
+}
+
+Status RedisZset::ScanKeyNum(KeyInfo* keyinfo) {
+	uint64_t keys = 0;
+	uint64_t expires = 0;
+	uint64_t ttlsum = 0;
+	uint64_t invaildkeys = 0;
+
+	std::string key;
+	ReadOptions iteropts;
+	std::shared_ptr<Snapshot> snapshot;
+	SnapshotLock ss(db, snapshot);
+	iteropts.snapshot = snapshot;
+	iteropts.fillcache = false;
+	int64_t curtime = time(0);
+
+	std::shared_ptr<Iterator> iter = db->NewIterator(iteropts);
+	for (iter->SeekToFirst(); iter->Valid(); iter->Next()) {
+		ParsedStringsMetaValue pstringsvalue(iter->value());
+		if (pstringsvalue.IsStale()) {
+			invaildkeys++;
+		}
+		else {
+			if (!pstringsvalue.IsPermanentSurvival()) {
+				expires++;
+				ttlsum += pstringsvalue.GetTimestamp() - curtime;
+			}
+		}
+	}
+
+	keyinfo->keys = keys;
+	keyinfo->expires = expires;
+	keyinfo->avgttl = (expires != 0) ? ttlsum / expires : 0;
+	keyinfo->invaildkeys = invaildkeys;
+	return Status::OK();
+}
+
+Status RedisZset::ScanKeys(const std::string& pattern,
+			std::vector<std::string>* keys) {
+	std::string key;
+	ReadOptions iteropts;
+	std::shared_ptr<Snapshot> snapshot;
+	SnapshotLock ss(db, snapshot);
+	iteropts.snapshot = snapshot;
+	iteropts.fillcache = false;
+	
+	std::shared_ptr<Iterator> iter = db->NewIterator(iteropts);
+	for (iter->SeekToFirst(); iter->Valid(); iter->Next()) {
+		ParsedHashesMetaValue phashesmetavalue(iter->value());
+		if (!phashesmetavalue.IsStale()
+			&& phashesmetavalue.GetCount() != 0) {
+			key =ToString(iter->key());
+
+			ZSetsScoreKey zkey(pattern, 0, 0, 0);
+			const std::string_view keyview = zkey.Encode();
+			if (StringMatchLen(keyview.data(),
+					keyview.size(), key.data(), key.size(), 0)) {
+				keys->push_back(key);
+			}
+		}
+	}
+	return Status::OK();
+}
+
+
+Status RedisZset::ZCount(const std::string_view& key, double min, double max,
+	bool leftclose, bool rightclose, int32_t* ret) {
+		
+}
+
+Status RedisZset::Expire(const std::string_view& key, int32_t ttl) {
+	std::string metavalue;
+	ZSetsScoreKey zkey(key, 0, 0, 0);
+
+	HashLock l(&lockmgr, key);
+	Status s = db->Get(ReadOptions(), zkey.Encode(), &metavalue);
+	if (s.ok()) {
+		ParsedZSetsMetaValue pzsetsmetavalue(&metavalue);
+		if (pzsetsmetavalue.IsStale()) {
+			return Status::NotFound("Stale");
+		} else if (pzsetsmetavalue.GetCount() == 0) {
+			return Status::NotFound("");
+		}
+
+		if (ttl > 0) {
+			pzsetsmetavalue.SetRelativeTimestamp(ttl);
+		} else {
+			pzsetsmetavalue.InitialMetaValue();
+		}
+		s = db->Put(WriteOptions(), zkey.Encode(), metavalue);
+	}
+	return s;
+}
+
+Status RedisZset::Del(const std::string_view& key) {
+	ZSetsScoreKey zkey(key, 0, 0, 0);
+	std::string metavalue;
+	HashLock l(&lockmgr, key);
+	Status s = db->Get(ReadOptions(), zkey.Encode(), &metavalue);
+	if (s.ok()) {
+		ParsedZSetsMetaValue pzsetsmetavalue(&metavalue);
+		if (pzsetsmetavalue.IsStale()) {
+			return Status::NotFound("Stale");
+		} else if (pzsetsmetavalue.GetCount() == 0) {
+			return Status::NotFound("");
+		} else {
+			uint32_t statistic = pzsetsmetavalue.GetCount();
+			pzsetsmetavalue.InitialMetaValue();
+			s = db->Put(WriteOptions(), zkey.Encode(), metavalue);
+		}
+	}
 	return s;
 }

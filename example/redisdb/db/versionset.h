@@ -45,8 +45,8 @@ public:
 
 	// Return the level at which we should place a new memtable compaction
 	// result that covers the range [smallest_user_key,largest_user_key].
-	int PickLevelForMemTableOutput(const std::string_view& smallestUserKey,
-		const std::string_view& largestUserKey);
+	int PickLevelForMemTableOutput(const std::string_view& smallestuserkey,
+		const std::string_view& largestuserkey);
 
 
 	void GetOverlappingInputs(
@@ -61,8 +61,8 @@ public:
 	// smallest_user_key==nullptr represents a key smaller than all the DB's keys.
 	// largest_user_key==nullptr represents a key largest than all the DB's keys.
 
-	bool OverlapInLevel(int level, const std::string_view* smallestUserKey,
-		const std::string_view* largestUserKey);
+	bool OverlapInLevel(int level, const std::string_view* smallestuserkey,
+		const std::string_view* largestuserkey);
 
 	// Adds "stats" into the version state.  Returns true if a new
 	// compaction may need to be triggered, false otherwise.
@@ -89,14 +89,14 @@ public:
 	std::vector<std::shared_ptr<FileMetaData>> files[kNumLevels];
 
 	// Next file to compact based on Seek stats.
-	std::shared_ptr<FileMetaData> fileToCompact;
-	int fileToCompactLevel;
+	std::shared_ptr<FileMetaData> filetocompact;
+	int filetocompactlevel;
 
 	// Level that should be compacted Next and its compaction score.
 	// Score< 1 means compaction is not strictly needed.  These fields
 	// are initialized by Finalize().
-	double compactionScore;
-	int compactionLevel;
+	double compactionscore;
+	int compactionlevel;
 };
 
 class Builder {
@@ -133,7 +133,7 @@ private:
 
 	typedef std::set<std::shared_ptr<FileMetaData>, BySmallestKey> FileSet;
 	struct LevelState {
-		std::set<uint64_t> deletedFiles;
+		std::set<uint64_t> deletedfiles;
 		std::shared_ptr<FileSet> addedFiles;
 	};
 
@@ -154,24 +154,24 @@ public:
 		return dummyversions.back();
 	}
 
-	uint64_t GetLastSequence() const { return lastSequence; }
+	uint64_t GetLastSequence() const { return lastsequence; }
 
 	void SetLastSequence(uint64_t s) {
-		assert(s >= lastSequence);
-		lastSequence = s;
+		assert(s >= lastsequence);
+		lastsequence = s;
 	}
 
 	// Returns true iff some level needs a compaction.
 	bool NeedsCompaction() const {
-		return (current()->compactionScore >= 1) || (current()->fileToCompact != nullptr);
+		return (current()->compactionscore >= 1) || (current()->filetocompact != nullptr);
 	}
 
 	// Arrange to reuse "file_number" unless a newer file number has
 	// already been allocated.
 	// REQUIRES: "file_number" was returned by a call to NewFileNumber().
 	void ReuseFileNumber(uint64_t fileNumber) {
-		if (nextFileNumber == fileNumber + 1) {
-			nextFileNumber = fileNumber;
+		if (nextfilenumber == fileNumber + 1) {
+			nextfilenumber = fileNumber;
 		}
 	}
 
@@ -195,19 +195,19 @@ public:
 	// "key" as of version "v".
 	uint64_t ApproximateOffsetOf(const InternalKey& key);
 
-	uint64_t GetLogNumber() { return logNumber; }
+	uint64_t GetLogNumber() { return lognumber; }
 
-	uint64_t GetPrevLogNumber() { return prevLogNumber; }
+	uint64_t GetPrevLogNumber() { return prevlognumber; }
 
 	const InternalKeyComparator icmp;
 
-	uint64_t NewFileNumber() { return nextFileNumber++; }
+	uint64_t NewFileNumber() { return nextfilenumber++; }
 
 	Status Recover(bool* manifest);
 
 	void MarkFileNumberUsed(uint64_t number);
 
-	uint64_t GetManifestFileNumber() { return manifestFileNumber; }
+	uint64_t GetManifestFileNumber() { return manifestfilenumber; }
 
 	void AppendVersion(const std::shared_ptr<Version>& v);
 
@@ -266,26 +266,26 @@ public:
 	std::string compactPointer[kNumLevels];
 	const std::string dbname;
 	const Options options;
-	uint64_t nextFileNumber;
-	uint64_t manifestFileNumber;
-	uint64_t lastSequence;
-	uint64_t logNumber;
-	uint64_t prevLogNumber;  // 0 or backing store for memtable being compacted
+	uint64_t nextfilenumber;
+	uint64_t manifestfilenumber;
+	uint64_t lastsequence;
+	uint64_t lognumber;
+	uint64_t prevlognumber;  // 0 or backing store for memtable being compacted
 
 	std::list<std::shared_ptr<Version>> dummyversions;
-	std::shared_ptr<LogWriter> descriptorLog;
-	std::shared_ptr<WritableFile> descriptorFile;
+	std::shared_ptr<LogWriter> descriptorlog;
+	std::shared_ptr<WritableFile> descriptorfile;
 	std::shared_ptr<TableCache> tablecache;
 };
 
-int FindFile(const InternalKeyComparator & icmp,
-	const std::vector<std::shared_ptr<FileMetaData>> & files,
+int FindFile(const InternalKeyComparator& icmp,
+	const std::vector<std::shared_ptr<FileMetaData>>& files,
 	const std::string_view & key);
 
-bool SomeFileOverlapsRange(const InternalKeyComparator & icmp, bool disjointSortedFiles,
-	const std::vector<std::shared_ptr<FileMetaData>> & files,
-	const std::string_view * smallestUserKey,
-	const std::string_view * largestUserKey);
+bool SomeFileOverlapsRange(const InternalKeyComparator& icmp, bool disjointSortedFiles,
+	const std::vector<std::shared_ptr<FileMetaData>>& files,
+	const std::string_view* smallestuserkey,
+	const std::string_view* largestuserkey);
 
 // A Compaction encapsulates information about a compaction.
 class Compaction {
@@ -309,7 +309,7 @@ public:
 	std::shared_ptr<FileMetaData> input(int which, int i) const { return inputs[which][i]; }
 
 	// Maximum size of files to build during this compaction.
-	uint64_t getMaxOutputFileSize() const { return maxOutputfileSize; }
+	uint64_t getMaxOutputFileSize() const { return maxoutputfilesize; }
 
 	// Is this a trivial compaction that can be implemented by just
 	// moving a single input file to the Next level (no merging or splitting)
@@ -321,7 +321,7 @@ public:
 	// Returns true if the information we have available guarantees that
 	// the compaction is producing data in "level+1" for which no data exists
 	// in levels greater than "level+1".
-	bool isBaseLevelForKey(const std::string_view& userKey);
+	bool isBaseLevelForKey(const std::string_view& userkey);
 
 	// Returns true iff we should stop building the version output
 	// before processing "internal_key".
@@ -337,10 +337,10 @@ private:
 	friend class VersionSet;
 
 	int level;
-	uint64_t maxOutputfileSize;
-	size_t grandparentIndex; // Index in grandparent_starts_
-	bool seenKey; // Some output key has been seen
-	int64_t overlappedBytes; // Bytes of overlap between version output
+	uint64_t maxoutputfilesize;
+	size_t grandparentindex; // Index in grandparent_starts_
+	bool seenkey; // Some output key has been seen
+	int64_t overlappedbytes; // Bytes of overlap between version output
 	// and grandparent files
 	// State for implementing IsBaseLevelForKey
 
@@ -348,10 +348,10 @@ private:
 	// is that we are positioned at one of the file ranges for each
 	// higher level than the ones involved in this compaction (i.e. for
 	// all L >= level_ + 2).
-	size_t levelPtrs[kNumLevels];
+	size_t levelptrs[kNumLevels];
 
 	VersionEdit edit;
-	std::shared_ptr<Version> inputVersion;
+	std::shared_ptr<Version> inputversion;
 	// Each compaction reads inputs from "level_" and "level_+1"
 	std::vector<std::shared_ptr<FileMetaData>> inputs[2];
 	// State used to check for number of of overlapping grandparent files

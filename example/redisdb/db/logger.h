@@ -124,25 +124,6 @@ public:
 			assert(p <= limit);
 			const size_t writesize = p - base;
 
-#ifdef _FALLOCATE_PRESENT
-			const int kDebugLogChunkSize = 128 * 1024;
-
-			// If this Write would cross a boundary of kDebugLogChunkSize
-			// space, pre-allocate more space to avoid overly large
-			// allocations from filesystem allocsize options.
-			const size_t log_size = logsize;
-			const size_t last_allocation_chunk =
-				((kDebugLogChunkSize - 1 + log_size) / kDebugLogChunkSize);
-			const size_t desired_allocation_chunk =
-				((kDebugLogChunkSize - 1 + log_size + writesize) /
-					kDebugLogChunkSize);
-			if (last_allocation_chunk != desired_allocation_chunk) {
-				fallocate(
-					fd, FALLOC_FL_KEEP_SIZE, 0,
-					static_cast<off_t>(desired_allocation_chunk * kDebugLogChunkSize));
-			}
-#endif
-
 			size_t sz = ::fwrite(base, 1, writesize, file);
 			flushpending = true;
 			if (sz > 0) {
@@ -155,6 +136,7 @@ public:
 				flush();
 			}
 
+			printf("%s", base);
 			if (base != buffer) {
 				delete[] base;
 			}
